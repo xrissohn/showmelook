@@ -227,6 +227,83 @@ async function generateImageWithVertexAI(
   return { imageBase64: imageBase64Result, text: textResult };
 }
 
+// Generate image using Lovable AI (fallback)
+async function generateImageWithLovableAI(
+  prompt: string,
+  imageUrl?: string
+): Promise<{ imageBase64: string; text?: string }> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY is not configured');
+  }
+
+  console.log('Calling Lovable AI (fallback)...');
+
+  // Build message content
+  let content: any;
+  if (imageUrl) {
+    content = [
+      { type: 'text', text: prompt },
+      { type: 'image_url', image_url: { url: imageUrl } }
+    ];
+  } else {
+    content = prompt;
+  }
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash-image-preview',
+      messages: [{ role: 'user', content }],
+      modalities: ['image', 'text']
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Lovable AI error:', response.status, errorText);
+    
+    if (response.status === 429) {
+      throw new Error('LOVABLE_RATE_LIMIT');
+    }
+    if (response.status === 402) {
+      throw new Error('LOVABLE_PAYMENT_REQUIRED');
+    }
+    
+    throw new Error(`Lovable AI 오류: ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log('Lovable AI response received');
+
+  // Extract image from response
+  const images = data.choices?.[0]?.message?.images;
+  if (!images || images.length === 0) {
+    console.error('No images in Lovable AI response:', JSON.stringify(data));
+    throw new Error('Lovable AI 이미지 생성 실패');
+  }
+
+  const imageDataUrl = images[0]?.image_url?.url;
+  if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
+    console.error('Invalid image data URL:', imageDataUrl?.substring(0, 100));
+    throw new Error('Lovable AI 이미지 형식 오류');
+  }
+
+  // Extract base64 from data URL (format: data:image/png;base64,...)
+  const base64Match = imageDataUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
+  if (!base64Match) {
+    throw new Error('Lovable AI base64 추출 실패');
+  }
+
+  const textContent = data.choices?.[0]?.message?.content;
+  
+  return { imageBase64: base64Match[1], text: textContent };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -419,8 +496,10 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
     const accessToken = await getGoogleAccessToken(serviceAccount);
     console.log('Access token obtained');
 
-    // Call Vertex AI for image generation
+    // Call Vertex AI for image generation with Lovable AI fallback
     let result;
+    let usedFallback = false;
+    
     try {
       result = await generateImageWithVertexAI(
         accessToken,
@@ -428,14 +507,44 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
         prompt,
         referenceImageUrl
       );
-    } catch (err) {
-      if (err instanceof Error && err.message === 'RATE_LIMIT') {
+      console.log('Image generated with Vertex AI');
+    } catch (vertexError) {
+      // RATE_LIMIT은 폴백하지 않고 그대로 반환
+      if (vertexError instanceof Error && vertexError.message === 'RATE_LIMIT') {
         return new Response(
           JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      throw err;
+      
+      // Vertex AI 실패 시 Lovable AI로 폴백
+      console.warn('Vertex AI failed, falling back to Lovable AI:', vertexError instanceof Error ? vertexError.message : vertexError);
+      
+      try {
+        result = await generateImageWithLovableAI(prompt, referenceImageUrl);
+        usedFallback = true;
+        console.log('Image generated with Lovable AI (fallback)');
+      } catch (lovableError) {
+        console.error('Lovable AI fallback also failed:', lovableError);
+        
+        // Lovable AI 특수 에러 처리
+        if (lovableError instanceof Error) {
+          if (lovableError.message === 'LOVABLE_RATE_LIMIT') {
+            return new Response(
+              JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          if (lovableError.message === 'LOVABLE_PAYMENT_REQUIRED') {
+            return new Response(
+              JSON.stringify({ error: '서비스 이용이 일시 중단되었습니다. 관리자에게 문의해주세요.' }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        
+        throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      }
     }
 
     const { imageBase64, text } = result;
