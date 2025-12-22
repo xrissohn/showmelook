@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -100,7 +101,7 @@ const Auth = () => {
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIiBzdHJva2Utd2lkdGg9IjIiLz48L2c+PC9zdmc+')] opacity-30" />
         <div className="relative z-10 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
-            <Sparkles className="w-10 h-10 text-accent" />
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-12 h-12 object-contain" />
             <h1 className="font-display text-5xl text-primary-foreground tracking-tight">
               showmelook
             </h1>
@@ -120,7 +121,7 @@ const Auth = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
             <div className="flex items-center justify-center gap-2 mb-2">
-              <Sparkles className="w-8 h-8 text-accent" />
+              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
               <h1 className="font-display text-3xl text-foreground">showmelook</h1>
             </div>
             <p className="text-muted-foreground">AI가 만들어주는 나만의 스타일</p>

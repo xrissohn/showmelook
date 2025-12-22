@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { Sparkles, ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings } from 'lucide-react';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 
 interface StyleTrend {
   id: string;
@@ -398,7 +399,7 @@ const StyleGenerator = () => {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-accent" />
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
             <span className="font-display text-xl text-foreground">showmelook</span>
           </div>
           <div className="flex items-center gap-4">
@@ -604,7 +605,7 @@ const StyleGenerator = () => {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="w-5 h-5" />
+                    <img src={showmelookLogo} alt="" className="w-5 h-5 object-contain" />
                     {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
                   </>
                 )}
@@ -638,7 +639,7 @@ const StyleGenerator = () => {
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <Sparkles className="w-16 h-16 mb-4" />
+                    <img src={showmelookLogo} alt="" className="w-16 h-16 mb-4 opacity-50" />
                     <p className="text-lg font-medium">AI 스타일 미리보기</p>
                     <p className="text-sm mt-2">트렌드와 아이템을 선택하고 생성하세요</p>
                   </div>
@@ -688,7 +689,7 @@ const StyleGenerator = () => {
           <div>
             {myLooks.length === 0 ? (
               <div className="text-center py-20">
-                <Sparkles className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+                <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
                 <p className="text-lg text-muted-foreground">아직 생성된 룩이 없습니다</p>
                 <Button
                   variant="hero"
