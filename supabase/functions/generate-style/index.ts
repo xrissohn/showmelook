@@ -11,13 +11,15 @@ function generateCacheKey(
   styleTrendId: string | null, 
   productIds: string[],
   bodyType?: string,
-  heightRange?: string
+  heightRange?: string,
+  gender?: string
 ): string {
   const sortedProducts = [...productIds].sort();
-  // Include body type and height range in cache key for better matching
+  // Include body type, height range, and gender in cache key for better matching
   const bodyKey = bodyType || 'default';
   const heightKey = heightRange || 'default';
-  const key = `${styleTrendId || 'none'}_${sortedProducts.join('_')}_${bodyKey}_${heightKey}`;
+  const genderKey = gender || 'default';
+  const key = `${styleTrendId || 'none'}_${sortedProducts.join('_')}_${bodyKey}_${heightKey}_${genderKey}`;
   let hash = 0;
   for (let i = 0; i < key.length; i++) {
     const char = key.charCodeAt(i);
@@ -339,12 +341,13 @@ async function findCachedImage(
   styleTrendId: string | null,
   productIds: string[],
   bodyType?: string,
-  height?: number
+  height?: number,
+  gender?: string
 ): Promise<{ imageUrl: string; cacheLevel: string } | null> {
   const heightRange = height ? getHeightRange(height) : undefined;
   
-  // Level 1: Exact match with body type and height range
-  const exactCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, heightRange);
+  // Level 1: Exact match with body type, height range, and gender
+  const exactCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, heightRange, gender);
   console.log(`Checking L1 cache (exact): ${exactCacheKey}`);
   
   const { data: exactMatch } = await supabaseAdmin
@@ -358,8 +361,8 @@ async function findCachedImage(
     return { imageUrl: exactMatch.image_url, cacheLevel: 'L1_EXACT' };
   }
   
-  // Level 2: Match with body type only (different height)
-  const bodyTypeCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, undefined);
+  // Level 2: Match with body type and gender only (different height)
+  const bodyTypeCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, undefined, gender);
   console.log(`Checking L2 cache (body type): ${bodyTypeCacheKey}`);
   
   const { data: bodyTypeMatch } = await supabaseAdmin
@@ -447,15 +450,16 @@ async function saveToCache(
   productIds: string[],
   imageUrl: string,
   bodyType?: string,
-  height?: number
+  height?: number,
+  gender?: string
 ) {
   const heightRange = height ? getHeightRange(height) : undefined;
   
-  // Save with exact key (includes body type and height)
-  const exactCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, heightRange);
+  // Save with exact key (includes body type, height, and gender)
+  const exactCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, heightRange, gender);
   
-  // Save with body type key
-  const bodyTypeCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, undefined);
+  // Save with body type and gender key
+  const bodyTypeCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, undefined, gender);
   
   // Save with simple key (style + products only)
   const simpleCacheKey = generateSimpleCacheKey(styleTrendId, productIds);
@@ -581,6 +585,7 @@ serve(async (req) => {
     const shouldUseCache = !useFaceComposite || !userAvatarUrl;
     const bodyType = userProfile?.body_type;
     const height = userProfile?.height;
+    const gender = userProfile?.gender;
 
     // Check cache first (only if not using face composite) - using multi-level strategy
     if (shouldUseCache) {
@@ -589,7 +594,8 @@ serve(async (req) => {
         styleTrendId || null,
         productIds || [],
         bodyType,
-        height
+        height,
+        gender
       );
 
       if (cachedResult) {
@@ -630,6 +636,26 @@ serve(async (req) => {
     const heightVal = userProfile?.height || 170;
     const bodyTypeVal = userProfile?.body_type || 'average';
     const stylePreferences = userProfile?.style_preferences?.join(', ') || '';
+    const genderVal = userProfile?.gender;
+
+    // Map gender to descriptive terms for the prompt
+    const getGenderDescription = (gender: string | null | undefined): string => {
+      switch (gender) {
+        case 'male':
+          return 'male';
+        case 'female':
+          return 'female';
+        case 'unisex':
+          return 'androgynous/gender-neutral';
+        default:
+          return ''; // prefer_not_to_say or null - don't specify
+      }
+    };
+
+    const genderDescription = getGenderDescription(genderVal);
+    const personDescription = genderDescription 
+      ? `a stylish ${genderDescription} Korean person`
+      : 'a stylish Korean person';
 
     let prompt: string;
     let referenceImageUrl: string | undefined;
@@ -638,6 +664,7 @@ serve(async (req) => {
       referenceImageUrl = userAvatarUrl;
       prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${style} style outfit.
 The outfit includes: ${products || 'modern casual wear'}.
+${genderDescription ? `Fashion style suited for ${genderDescription} body and preferences.` : ''}
 The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
 Create a full body shot with this exact person's face, clean white studio background, professional fashion photography lighting.
@@ -646,8 +673,9 @@ Keep the person's face exactly as shown in the reference photo while generating 
 
       console.log('Generating face composite image');
     } else {
-      prompt = `Create a professional fashion lookbook photo of a stylish Korean person wearing ${style} style outfit. 
+      prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing ${style} style outfit. 
 The outfit includes: ${products || 'modern casual wear'}.
+${genderDescription ? `Choose clothing items and silhouettes that complement ${genderDescription} fashion.` : ''}
 The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
 Full body shot, clean white studio background, professional fashion photography lighting.
@@ -656,7 +684,8 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
       console.log('Generating standard image');
     }
 
-    console.log('Prompt:', prompt.substring(0, 200) + '...');
+    console.log('Gender:', genderVal || 'not specified');
+    console.log('Prompt:', prompt.substring(0, 300) + '...');
 
     // Get Google Access Token
     console.log('Getting Google access token...');
@@ -753,7 +782,8 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
         productIds || [],
         finalImageUrl,
         bodyType,
-        height
+        height,
+        gender
       );
     }
 
