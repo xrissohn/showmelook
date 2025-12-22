@@ -175,7 +175,7 @@ const Landing = () => {
         <div className="container mx-auto text-center">
           <button onClick={() => navigate('/')} className="flex items-center justify-center gap-0 mb-4 hover:opacity-80 transition-opacity">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-12 object-contain -ml-2" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] object-contain -ml-2" />
           </button>
           <p className="text-sm text-muted-foreground">
             © 2024 ShowMeLook. All rights reserved.
