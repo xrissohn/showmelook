@@ -1,9 +1,41 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Wand2, ShoppingBag, Palette, ArrowRight, Star } from 'lucide-react';
+import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+
+// Particle component for hero background
+const Particle = ({ delay, left, size, duration }: { delay: number; left: number; size: number; duration: number }) => (
+  <div 
+    className="absolute bottom-0 animate-particle-rise opacity-0"
+    style={{ 
+      left: `${left}%`, 
+      animationDelay: `${delay}s`,
+      animationDuration: `${duration}s`
+    }}
+  >
+    <div 
+      className="rounded-full bg-gradient-to-br from-coral via-magenta to-purple"
+      style={{ width: size, height: size }}
+    />
+  </div>
+);
+
+// Sparkle star component
+const SparklesStar = ({ className, delay }: { className: string; delay: number }) => (
+  <div className={`absolute ${className}`} style={{ animationDelay: `${delay}s` }}>
+    <Sparkles className="text-primary animate-twinkle" style={{ animationDelay: `${delay}s` }} />
+  </div>
+);
+
+// Floating orb component
+const FloatingOrb = ({ className, gradient, delay }: { className: string; gradient: string; delay: number }) => (
+  <div 
+    className={`absolute rounded-full blur-xl animate-float ${className} ${gradient}`}
+    style={{ animationDelay: `${delay}s` }}
+  />
+);
 const Landing = () => {
   const navigate = useNavigate();
   const {
@@ -41,29 +73,62 @@ const Landing = () => {
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6 bg-gradient-hero relative overflow-hidden">
+        {/* Background gradients */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-brand rounded-full blur-3xl opacity-20 animate-gradient-flow" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-15 animate-gradient-flow" style={{ animationDelay: '1s' }} />
+        
+        {/* Floating Orbs */}
+        <FloatingOrb className="top-20 right-10 w-72 h-72 opacity-25" gradient="bg-gradient-brand" delay={0} />
+        <FloatingOrb className="bottom-10 left-10 w-96 h-96 opacity-20" gradient="bg-gradient-sky" delay={1} />
+        <FloatingOrb className="top-40 left-1/4 w-48 h-48 opacity-15" gradient="bg-gradient-coral" delay={2} />
+        <FloatingOrb className="bottom-40 right-1/4 w-64 h-64 opacity-20" gradient="bg-gradient-to-br from-purple to-sky" delay={1.5} />
+        
+        {/* Sparkle Stars */}
+        <SparklesStar className="top-24 left-[15%] w-6 h-6" delay={0} />
+        <SparklesStar className="top-32 right-[20%] w-8 h-8" delay={0.5} />
+        <SparklesStar className="top-48 left-[10%] w-5 h-5" delay={1} />
+        <SparklesStar className="top-56 right-[15%] w-7 h-7" delay={1.5} />
+        <SparklesStar className="bottom-32 left-[25%] w-6 h-6" delay={0.3} />
+        <SparklesStar className="bottom-48 right-[30%] w-5 h-5" delay={0.8} />
+        <SparklesStar className="top-36 left-[35%] w-4 h-4" delay={1.2} />
+        <SparklesStar className="bottom-24 right-[10%] w-6 h-6" delay={0.6} />
+        
+        {/* Rising Particles */}
+        {[...Array(20)].map((_, i) => (
+          <Particle 
+            key={i}
+            delay={i * 0.4}
+            left={Math.random() * 100}
+            size={Math.random() * 8 + 4}
+            duration={Math.random() * 4 + 6}
+          />
+        ))}
         
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            {/* Animated Hero Logo */}
-            <div className="flex items-center justify-center gap-1 mb-8 animate-fade-in">
+            {/* Animated Hero Logo with Sparkles */}
+            <div className="flex items-center justify-center gap-1 mb-8 animate-fade-in relative">
+              <Sparkles className="absolute -top-2 -left-4 w-6 h-6 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
+              <Sparkles className="absolute -top-4 left-8 w-4 h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.3s' }} />
+              <Sparkles className="absolute top-0 right-4 w-5 h-5 text-purple animate-sparkle" style={{ animationDelay: '0.6s' }} />
+              <Sparkles className="absolute -bottom-2 left-12 w-4 h-4 text-sky animate-sparkle" style={{ animationDelay: '0.9s' }} />
               <img 
                 src={showmelookLogo} 
                 alt="쇼미룩 로고" 
-                className="w-20 h-20 object-contain animate-gradient-flow drop-shadow-lg" 
+                className="w-20 h-20 object-contain animate-float drop-shadow-lg" 
               />
               <img 
                 src={showmelookKoreanLogo} 
                 alt="쇼미룩" 
                 className="h-[140px] object-contain -ml-4 drop-shadow-lg" 
               />
+              <Sparkles className="absolute -top-2 right-0 w-5 h-5 text-coral animate-sparkle" style={{ animationDelay: '1.2s' }} />
+              <Sparkles className="absolute bottom-4 -right-6 w-6 h-6 text-magenta animate-sparkle" style={{ animationDelay: '1.5s' }} />
             </div>
             
             <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full mb-8 animate-fade-in border border-primary/20 shadow-sm">
-              <Star className="w-4 h-4 text-primary" />
+              <Star className="w-4 h-4 text-primary animate-twinkle" />
               <span className="text-sm font-medium text-foreground">AI 패션 스타일링 서비스</span>
+              <Sparkles className="w-4 h-4 text-primary animate-sparkle" />
             </div>
             
             <h1 className="font-display text-5xl md:text-7xl text-foreground leading-tight mb-6 animate-fade-in-up">
