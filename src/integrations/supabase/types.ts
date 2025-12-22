@@ -175,6 +175,7 @@ export type Database = {
           body_type: string | null
           created_at: string
           full_name: string | null
+          gender: string | null
           height: number | null
           id: string
           style_preferences: string[] | null
@@ -187,6 +188,7 @@ export type Database = {
           body_type?: string | null
           created_at?: string
           full_name?: string | null
+          gender?: string | null
           height?: number | null
           id?: string
           style_preferences?: string[] | null
@@ -199,6 +201,7 @@ export type Database = {
           body_type?: string | null
           created_at?: string
           full_name?: string | null
+          gender?: string | null
           height?: number | null
           id?: string
           style_preferences?: string[] | null

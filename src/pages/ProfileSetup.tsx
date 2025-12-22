@@ -24,6 +24,13 @@ const bodyTypes = [
   { id: 'curvy', label: '볼륨 체형' },
 ];
 
+const genderOptions = [
+  { id: 'male', label: '남성', emoji: '👨' },
+  { id: 'female', label: '여성', emoji: '👩' },
+  { id: 'unisex', label: '유니섹스', emoji: '🧑' },
+  { id: 'prefer_not_to_say', label: '선택 안함', emoji: '🔒' },
+];
+
 const ProfileSetup = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
@@ -34,6 +41,7 @@ const ProfileSetup = () => {
   const [weight, setWeight] = useState('');
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [bodyType, setBodyType] = useState('');
+  const [gender, setGender] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -98,6 +106,7 @@ const ProfileSetup = () => {
           weight: weight ? parseInt(weight) : null,
           style_preferences: selectedStyles,
           body_type: bodyType || null,
+          gender: gender || null,
           avatar_url: avatarUrl,
         })
         .eq('user_id', user.id);
@@ -235,6 +244,26 @@ const ProfileSetup = () => {
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
                   />
+                </div>
+
+                <div className="space-y-3">
+                  <Label>성별 (선택)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {genderOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setGender(option.id)}
+                        className={`p-4 rounded-xl border-2 transition-all text-left ${
+                          gender === option.id
+                            ? 'border-accent bg-accent/5'
+                            : 'border-border hover:border-accent/50'
+                        }`}
+                      >
+                        <span className="text-xl mr-2">{option.emoji}</span>
+                        <span className="text-foreground font-medium">{option.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-3">
