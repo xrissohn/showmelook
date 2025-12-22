@@ -107,10 +107,10 @@ const Auth = () => {
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
             <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
           </div>
-          <p className="text-primary-foreground/80 text-xl font-light max-w-md">
+          <p className="text-primary-foreground/80 text-xl font-korean font-light max-w-md">
             AI가 만들어주는 나만의 스타일
           </p>
-          <p className="text-primary-foreground/60 mt-4 text-lg">
+          <p className="text-primary-foreground/60 mt-4 text-lg font-korean">
             당신만을 위한 패션을 경험하세요
           </p>
         </div>
@@ -125,14 +125,14 @@ const Auth = () => {
               <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
               <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
             </div>
-            <p className="text-muted-foreground">AI가 만들어주는 나만의 스타일</p>
+            <p className="text-muted-foreground font-korean">AI가 만들어주는 나만의 스타일</p>
           </div>
 
           <div className="mb-8">
-            <h2 className="font-display text-3xl text-foreground mb-2">
+            <h2 className="font-korean text-3xl text-foreground mb-2">
               {isLogin ? '다시 만나서 반가워요' : '쇼미룩에 오신 것을 환영합니다'}
             </h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground font-korean">
               {isLogin ? '계정에 로그인하세요' : '몇 초만에 시작할 수 있어요'}
             </p>
           </div>
@@ -140,7 +140,7 @@ const Auth = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="text-sm font-medium">이름</Label>
+                <Label htmlFor="fullName" className="text-sm font-medium font-korean">이름</Label>
                 <Input
                   id="fullName"
                   type="text"
@@ -148,12 +148,13 @@ const Auth = () => {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   required={!isLogin}
+                  className="font-korean"
                 />
               </div>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">이메일</Label>
+              <Label htmlFor="email" className="text-sm font-medium font-korean">이메일</Label>
               <Input
                 id="email"
                 type="email"
@@ -165,7 +166,7 @@ const Auth = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium">비밀번호</Label>
+              <Label htmlFor="password" className="text-sm font-medium font-korean">비밀번호</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -190,7 +191,7 @@ const Auth = () => {
               type="submit"
               variant="hero"
               size="xl"
-              className="w-full mt-6"
+              className="w-full mt-6 font-korean"
               disabled={isLoading}
             >
               {isLoading ? '처리 중...' : isLogin ? '로그인' : '회원가입'}
@@ -198,11 +199,11 @@ const Auth = () => {
           </form>
 
           <div className="mt-8 text-center">
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground font-korean">
               {isLogin ? '계정이 없으신가요?' : '이미 계정이 있으신가요?'}
               <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="ml-2 text-foreground font-medium hover:text-accent transition-colors"
+                className="ml-2 text-foreground font-medium hover:text-accent transition-colors font-korean"
               >
                 {isLogin ? '회원가입' : '로그인'}
               </button>

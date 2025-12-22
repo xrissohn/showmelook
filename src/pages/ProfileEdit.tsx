@@ -176,7 +176,7 @@ const ProfileEdit = () => {
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">로딩 중...</div>
+        <div className="animate-pulse text-muted-foreground font-korean">로딩 중...</div>
       </div>
     );
   }
@@ -188,7 +188,7 @@ const ProfileEdit = () => {
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <button 
             onClick={() => navigate('/style')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-korean"
           >
             <ArrowLeft className="w-5 h-5" />
             <span>돌아가기</span>
@@ -197,7 +197,7 @@ const ProfileEdit = () => {
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
             <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
           </button>
-          <span className="font-display text-lg text-foreground">프로필 수정</span>
+          <span className="font-korean text-lg text-foreground">프로필 수정</span>
         </div>
       </header>
 
@@ -205,7 +205,7 @@ const ProfileEdit = () => {
         <div className="container mx-auto max-w-lg space-y-8">
           {/* Photo Section */}
           <section className="animate-fade-in-up">
-            <h2 className="font-display text-xl text-foreground mb-4">프로필 사진</h2>
+            <h2 className="font-korean text-xl text-foreground mb-4">프로필 사진</h2>
             <div className="flex justify-center">
               <label
                 htmlFor="avatar-upload"
@@ -216,7 +216,7 @@ const ProfileEdit = () => {
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                     <Camera className="w-8 h-8 text-muted-foreground group-hover:text-accent transition-colors" />
-                    <span className="text-sm text-muted-foreground">사진 추가</span>
+                    <span className="text-sm text-muted-foreground font-korean">사진 추가</span>
                   </div>
                 )}
               </label>
@@ -232,11 +232,11 @@ const ProfileEdit = () => {
 
           {/* Body Info Section */}
           <section className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            <h2 className="font-display text-xl text-foreground mb-4">체형 정보</h2>
+            <h2 className="font-korean text-xl text-foreground mb-4">체형 정보</h2>
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="height">키 (cm)</Label>
+                  <Label htmlFor="height" className="font-korean">키 (cm)</Label>
                   <Input
                     id="height"
                     type="number"
@@ -246,7 +246,7 @@ const ProfileEdit = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="weight">몸무게 (kg)</Label>
+                  <Label htmlFor="weight" className="font-korean">몸무게 (kg)</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -258,7 +258,7 @@ const ProfileEdit = () => {
               </div>
 
               <div className="space-y-3">
-                <Label>성별</Label>
+                <Label className="font-korean">성별</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {genderOptions.map((option) => (
                     <button
@@ -270,15 +270,15 @@ const ProfileEdit = () => {
                           : 'border-border hover:border-accent/50'
                       }`}
                     >
-                      <span className="text-lg mr-2">{option.emoji}</span>
-                      <span className="text-foreground font-medium text-sm">{option.label}</span>
+                        <span className="text-lg mr-2">{option.emoji}</span>
+                        <span className="text-foreground font-medium text-sm font-korean">{option.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label>체형</Label>
+                <Label className="font-korean">체형</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {bodyTypes.map((type) => (
                     <button
@@ -290,7 +290,7 @@ const ProfileEdit = () => {
                           : 'border-border hover:border-accent/50'
                       }`}
                     >
-                      <span className="text-foreground font-medium text-sm">{type.label}</span>
+                      <span className="text-foreground font-medium text-sm font-korean">{type.label}</span>
                     </button>
                   ))}
                 </div>
@@ -300,7 +300,7 @@ const ProfileEdit = () => {
 
           {/* Style Preferences Section */}
           <section className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <h2 className="font-display text-xl text-foreground mb-4">선호 스타일</h2>
+            <h2 className="font-korean text-xl text-foreground mb-4">선호 스타일</h2>
             <div className="grid grid-cols-3 gap-3">
               {styleOptions.map((style) => (
                 <button
@@ -318,7 +318,7 @@ const ProfileEdit = () => {
                     </div>
                   )}
                   <span className="text-xl block mb-1">{style.emoji}</span>
-                  <span className="text-foreground font-medium text-sm">{style.label}</span>
+                  <span className="text-foreground font-medium text-sm font-korean">{style.label}</span>
                 </button>
               ))}
             </div>
@@ -329,7 +329,7 @@ const ProfileEdit = () => {
             <Button
               variant="gold"
               size="xl"
-              className="w-full"
+              className="w-full font-korean"
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
