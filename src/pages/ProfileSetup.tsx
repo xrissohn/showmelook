@@ -143,7 +143,7 @@ const ProfileSetup = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">로딩 중...</div>
+        <div className="animate-pulse text-muted-foreground font-korean">로딩 중...</div>
       </div>
     );
   }
@@ -175,8 +175,8 @@ const ProfileSetup = () => {
           {/* Step 1: Photo Upload */}
           {step === 1 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-display text-3xl text-foreground mb-2">사진을 업로드해주세요</h1>
-              <p className="text-muted-foreground mb-8">AI가 당신의 스타일을 분석합니다</p>
+              <h1 className="font-korean text-3xl text-foreground mb-2">사진을 업로드해주세요</h1>
+              <p className="text-muted-foreground mb-8 font-korean">AI가 당신의 스타일을 분석합니다</p>
 
               <div className="mb-8">
                 <label
@@ -191,8 +191,8 @@ const ProfileSetup = () => {
                         <Camera className="w-10 h-10 text-muted-foreground group-hover:text-accent transition-colors" />
                       </div>
                       <div className="text-center">
-                        <p className="text-foreground font-medium">클릭하여 업로드</p>
-                        <p className="text-sm text-muted-foreground mt-1">전신 사진을 권장합니다</p>
+                        <p className="text-foreground font-medium font-korean">클릭하여 업로드</p>
+                        <p className="text-sm text-muted-foreground mt-1 font-korean">전신 사진을 권장합니다</p>
                       </div>
                     </div>
                   )}
@@ -209,7 +209,7 @@ const ProfileSetup = () => {
               <Button
                 variant="hero"
                 size="xl"
-                className="w-full"
+                className="w-full font-korean"
                 onClick={() => setStep(2)}
                 disabled={!canProceed()}
               >
@@ -222,12 +222,12 @@ const ProfileSetup = () => {
           {/* Step 2: Body Measurements */}
           {step === 2 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-display text-3xl text-foreground mb-2">체형 정보를 알려주세요</h1>
-              <p className="text-muted-foreground mb-8">더 정확한 스타일링을 위해 필요해요</p>
+              <h1 className="font-korean text-3xl text-foreground mb-2">체형 정보를 알려주세요</h1>
+              <p className="text-muted-foreground mb-8 font-korean">더 정확한 스타일링을 위해 필요해요</p>
 
               <div className="space-y-6 mb-8">
                 <div className="space-y-2">
-                  <Label htmlFor="height">키 (cm)</Label>
+                  <Label htmlFor="height" className="font-korean">키 (cm)</Label>
                   <Input
                     id="height"
                     type="number"
@@ -238,7 +238,7 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="weight">몸무게 (kg)</Label>
+                  <Label htmlFor="weight" className="font-korean">몸무게 (kg)</Label>
                   <Input
                     id="weight"
                     type="number"
@@ -249,7 +249,7 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label>성별 (선택)</Label>
+                  <Label className="font-korean">성별 (선택)</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {genderOptions.map((option) => (
                       <button
@@ -262,14 +262,14 @@ const ProfileSetup = () => {
                         }`}
                       >
                         <span className="text-xl mr-2">{option.emoji}</span>
-                        <span className="text-foreground font-medium">{option.label}</span>
+                        <span className="text-foreground font-medium font-korean">{option.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <Label>체형 (선택)</Label>
+                  <Label className="font-korean">체형 (선택)</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {bodyTypes.map((type) => (
                       <button
@@ -281,7 +281,7 @@ const ProfileSetup = () => {
                             : 'border-border hover:border-accent/50'
                         }`}
                       >
-                        <span className="text-foreground font-medium">{type.label}</span>
+                        <span className="text-foreground font-medium font-korean">{type.label}</span>
                       </button>
                     ))}
                   </div>
@@ -289,13 +289,13 @@ const ProfileSetup = () => {
               </div>
 
               <div className="flex gap-3">
-                <Button variant="minimal" size="xl" onClick={() => setStep(1)} className="flex-1">
+                <Button variant="minimal" size="xl" onClick={() => setStep(1)} className="flex-1 font-korean">
                   이전
                 </Button>
                 <Button
                   variant="hero"
                   size="xl"
-                  className="flex-1"
+                  className="flex-1 font-korean"
                   onClick={() => setStep(3)}
                   disabled={!canProceed()}
                 >
@@ -309,8 +309,8 @@ const ProfileSetup = () => {
           {/* Step 3: Style Preferences */}
           {step === 3 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-display text-3xl text-foreground mb-2">선호하는 스타일을 선택하세요</h1>
-              <p className="text-muted-foreground mb-8">여러 개를 선택할 수 있어요</p>
+              <h1 className="font-korean text-3xl text-foreground mb-2">선호하는 스타일을 선택하세요</h1>
+              <p className="text-muted-foreground mb-8 font-korean">여러 개를 선택할 수 있어요</p>
 
               <div className="grid grid-cols-2 gap-3 mb-8">
                 {styleOptions.map((style) => (
@@ -329,19 +329,19 @@ const ProfileSetup = () => {
                       </div>
                     )}
                     <span className="text-2xl mb-2 block">{style.emoji}</span>
-                    <span className="text-foreground font-medium">{style.label}</span>
+                    <span className="text-foreground font-medium font-korean">{style.label}</span>
                   </button>
                 ))}
               </div>
 
               <div className="flex gap-3">
-                <Button variant="minimal" size="xl" onClick={() => setStep(2)} className="flex-1">
+                <Button variant="minimal" size="xl" onClick={() => setStep(2)} className="flex-1 font-korean">
                   이전
                 </Button>
                 <Button
                   variant="gold"
                   size="xl"
-                  className="flex-1"
+                  className="flex-1 font-korean"
                   onClick={handleSubmit}
                   disabled={!canProceed() || isSubmitting}
                 >

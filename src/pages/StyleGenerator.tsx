@@ -419,7 +419,7 @@ const StyleGenerator = () => {
         <div className="flex gap-4 mb-8">
           <button
             onClick={() => setActiveTab('generate')}
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`px-4 py-2 font-medium font-korean transition-colors ${
               activeTab === 'generate'
                 ? 'text-foreground border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
@@ -429,7 +429,7 @@ const StyleGenerator = () => {
           </button>
           <button
             onClick={() => setActiveTab('mylooks')}
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`px-4 py-2 font-medium font-korean transition-colors ${
               activeTab === 'mylooks'
                 ? 'text-foreground border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
@@ -439,7 +439,7 @@ const StyleGenerator = () => {
           </button>
           <button
             onClick={() => setActiveTab('mypage')}
-            className={`px-4 py-2 font-medium transition-colors ${
+            className={`px-4 py-2 font-medium font-korean transition-colors ${
               activeTab === 'mypage'
                 ? 'text-foreground border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
@@ -456,7 +456,7 @@ const StyleGenerator = () => {
             <div className="space-y-8">
               {/* Trend Selection */}
               <div>
-                <h2 className="font-display text-2xl text-foreground mb-4">트렌드 스타일 선택</h2>
+                <h2 className="font-korean text-2xl text-foreground mb-4">트렌드 스타일 선택</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {trends.map((trend) => (
                     <button
@@ -468,8 +468,8 @@ const StyleGenerator = () => {
                           : 'border-border hover:border-accent/50'
                       }`}
                     >
-                      <p className="font-medium text-foreground">{trend.name_ko}</p>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      <p className="font-medium text-foreground font-korean">{trend.name_ko}</p>
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 font-korean">
                         {trend.description}
                       </p>
                     </button>
@@ -479,11 +479,11 @@ const StyleGenerator = () => {
 
               {/* Product Selection by Category */}
               <div>
-                <h2 className="font-display text-2xl text-foreground mb-4">아이템 선택</h2>
+                <h2 className="font-korean text-2xl text-foreground mb-4">아이템 선택</h2>
                 <div className="space-y-6">
                   {Object.entries(productsByCategory).map(([category, categoryProducts]) => (
                     <div key={category}>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 font-korean">
                         {categoryLabels[category] || category}
                       </h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -500,7 +500,7 @@ const StyleGenerator = () => {
                             <div className="aspect-square bg-secondary rounded-lg mb-2 flex items-center justify-center">
                               <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
                             </div>
-                            <p className="font-medium text-foreground text-sm truncate">
+                            <p className="font-medium text-foreground text-sm truncate font-korean">
                               {product.name_ko}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -527,8 +527,8 @@ const StyleGenerator = () => {
                         />
                       </div>
                       <div>
-                        <p className="font-medium text-foreground">내 얼굴 합성하기</p>
-                        <p className="text-xs text-muted-foreground">AI가 생성한 이미지에 내 얼굴을 합성합니다</p>
+                        <p className="font-medium text-foreground font-korean">내 얼굴 합성하기</p>
+                        <p className="text-xs text-muted-foreground font-korean">AI가 생성한 이미지에 내 얼굴을 합성합니다</p>
                       </div>
                     </div>
                     <button
@@ -559,10 +559,10 @@ const StyleGenerator = () => {
                       </div>
                     )}
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="font-medium text-foreground font-korean">
                         {isPremium ? '프리미엄 회원' : '오늘 남은 생성 횟수'}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground font-korean">
                         {limitLoading ? (
                           '로딩 중...'
                         ) : isPremium ? (
@@ -574,12 +574,12 @@ const StyleGenerator = () => {
                     </div>
                   </div>
                   {!isPremium && remainingCount <= 2 && remainingCount > 0 && (
-                    <span className="px-3 py-1 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-full">
+                    <span className="px-3 py-1 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-full font-korean">
                       곧 소진
                     </span>
                   )}
                   {!isPremium && remainingCount === 0 && (
-                    <span className="px-3 py-1 bg-destructive/20 text-destructive text-xs font-medium rounded-full">
+                    <span className="px-3 py-1 bg-destructive/20 text-destructive text-xs font-medium rounded-full font-korean">
                       소진됨
                     </span>
                   )}
@@ -590,7 +590,7 @@ const StyleGenerator = () => {
               <Button
                 variant="gold"
                 size="xl"
-                className="w-full"
+                className="w-full font-korean"
                 onClick={generateStyle}
                 disabled={isGenerating || !canGenerate}
               >

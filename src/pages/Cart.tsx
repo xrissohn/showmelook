@@ -149,7 +149,7 @@ const Cart = () => {
               <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
             </button>
           </div>
-          <span className="font-display text-xl text-foreground">장바구니</span>
+          <span className="font-korean text-xl text-foreground">장바구니</span>
         </div>
       </header>
 
@@ -157,8 +157,8 @@ const Cart = () => {
         {cartItems.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-lg text-muted-foreground mb-4">장바구니가 비어있습니다</p>
-            <Button variant="hero" onClick={() => navigate('/style')}>
+            <p className="text-lg text-muted-foreground mb-4 font-korean">장바구니가 비어있습니다</p>
+            <Button variant="hero" onClick={() => navigate('/style')} className="font-korean">
               쇼핑하러 가기
             </Button>
           </div>
@@ -188,7 +188,7 @@ const Cart = () => {
                         <p className="text-xs text-muted-foreground">
                           {item.product?.brand || 'SHOWMELOOK'}
                         </p>
-                        <h3 className="font-medium text-foreground truncate">
+                        <h3 className="font-medium text-foreground truncate font-korean">
                           {item.product?.name_ko}
                         </h3>
                         <p className="text-lg font-semibold text-foreground mt-1">
@@ -226,7 +226,7 @@ const Cart = () => {
                           href={item.product.external_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-accent hover:underline"
+                          className="flex items-center gap-1 text-sm text-accent hover:underline font-korean"
                         >
                           상품 보기
                           <ExternalLink className="w-4 h-4" />
@@ -241,15 +241,15 @@ const Cart = () => {
             {/* Summary */}
             <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
               <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground">상품 금액</span>
+                <span className="text-muted-foreground font-korean">상품 금액</span>
                 <span className="text-foreground">₩{totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground">배송비</span>
-                <span className="text-foreground">무료</span>
+                <span className="text-muted-foreground font-korean">배송비</span>
+                <span className="text-foreground font-korean">무료</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-medium text-foreground">총 결제 금액</span>
+                <span className="font-medium text-foreground font-korean">총 결제 금액</span>
                 <span className="text-xl font-bold text-foreground">
                   ₩{totalPrice.toLocaleString()}
                 </span>
@@ -258,7 +258,7 @@ const Cart = () => {
               <Button
                 variant="gold"
                 size="xl"
-                className="w-full mt-4"
+                className="w-full mt-4 font-korean"
                 onClick={handleCheckout}
               >
                 결제하기
