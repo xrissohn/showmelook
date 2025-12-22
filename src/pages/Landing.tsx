@@ -24,7 +24,7 @@ const Landing = () => {
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[72px] object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[72px] object-contain -ml-3" />
           </button>
           <div className="flex items-center gap-4">
             {user ? (
@@ -175,7 +175,7 @@ const Landing = () => {
         <div className="container mx-auto text-center">
           <button onClick={() => navigate('/')} className="flex items-center justify-center gap-0 mb-4 hover:opacity-80 transition-opacity">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-12 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-12 object-contain -ml-2" />
           </button>
           <p className="text-sm text-muted-foreground">
             © 2024 ShowMeLook. All rights reserved.
