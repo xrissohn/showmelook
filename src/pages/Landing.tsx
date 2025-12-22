@@ -24,7 +24,7 @@ const Landing = () => {
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-6 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-12 object-contain" />
           </div>
           <div className="flex items-center gap-4">
             {user ? (
@@ -175,7 +175,7 @@ const Landing = () => {
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-6 h-6 object-contain" />
-            <span className="font-display text-lg text-foreground">showmelook</span>
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-8 object-contain" />
           </div>
           <p className="text-sm text-muted-foreground">
             © 2024 ShowMeLook. All rights reserved.
