@@ -129,12 +129,21 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 }
 
 // Generate image using Vertex AI (gemini-2.5-flash-image in us-west1)
+// TODO: Remove TEST_FALLBACK after testing
+const TEST_FALLBACK = true; // Set to true to force Lovable AI fallback for testing
+
 async function generateImageWithVertexAI(
   accessToken: string,
   projectId: string,
   prompt: string,
   imageUrl?: string
 ): Promise<{ imageBase64: string; text?: string }> {
+  // Force fallback for testing
+  if (TEST_FALLBACK) {
+    console.log('TEST MODE: Forcing Vertex AI failure to test fallback');
+    throw new Error('TEST_FORCED_FAILURE');
+  }
+
   const region = 'us-west1';
   const modelId = 'gemini-2.5-flash-image';
   const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
