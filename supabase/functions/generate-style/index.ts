@@ -30,10 +30,10 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-// Base64url encode for JWT
+// Base64url encode for JWT (supports UTF-8)
 function base64UrlEncode(data: Uint8Array | string): string {
-  const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const bytes = typeof data === 'string' ? new TextEncoder().encode(data) : data;
+  return base64Encode(bytes.buffer as ArrayBuffer).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 // Create JWT for Google OAuth
