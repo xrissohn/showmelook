@@ -117,22 +117,22 @@ const Auth = () => {
       </div>
 
       {/* Right side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md animate-fade-in-up">
           {/* Mobile logo */}
-          <div className="lg:hidden text-center mb-10">
+          <div className="lg:hidden text-center mb-8 sm:mb-10">
             <div className="flex items-center justify-center gap-0 mb-2">
-              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[70px] sm:h-[90px] object-contain -ml-2 sm:-ml-3" />
             </div>
-            <p className="text-muted-foreground font-korean">AI가 만들어주는 나만의 스타일</p>
+            <p className="text-muted-foreground font-korean text-sm sm:text-base">AI가 만들어주는 나만의 스타일</p>
           </div>
 
-          <div className="mb-8">
-            <h2 className="font-korean text-3xl text-foreground mb-2">
+          <div className="mb-6 sm:mb-8">
+            <h2 className="font-korean text-2xl sm:text-3xl text-foreground mb-2">
               {isLogin ? '다시 만나서 반가워요' : '쇼미룩에 오신 것을 환영합니다'}
             </h2>
-            <p className="text-muted-foreground font-korean">
+            <p className="text-muted-foreground font-korean text-sm sm:text-base">
               {isLogin ? '계정에 로그인하세요' : '몇 초만에 시작할 수 있어요'}
             </p>
           </div>
