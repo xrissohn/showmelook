@@ -139,21 +139,21 @@ const Cart = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2">
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
-              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] sm:h-[90px] object-contain -ml-2 sm:-ml-3 hidden xs:block" />
             </button>
           </div>
-          <span className="font-korean text-xl text-foreground">장바구니</span>
+          <span className="font-korean text-lg sm:text-xl text-foreground">장바구니</span>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8 max-w-3xl">
         {cartItems.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
@@ -168,9 +168,9 @@ const Cart = () => {
               {cartItems.map((item) => (
                 <div
                   key={item.id}
-                  className="flex gap-4 p-4 bg-card rounded-2xl border border-border"
+                  className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-xl sm:rounded-2xl border border-border"
                 >
-                  <div className="w-24 h-24 bg-secondary rounded-xl flex items-center justify-center flex-shrink-0">
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-secondary rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
                     {item.product?.image_url ? (
                       <img
                         src={item.product.image_url}

@@ -398,28 +398,28 @@ const StyleGenerator = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] sm:h-[90px] object-contain -ml-2 sm:-ml-3" />
           </button>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate('/cart')}>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2">
               <ShoppingBag className="w-5 h-5" />
             </Button>
-            <Button variant="ghost" size="sm" onClick={handleSignOut}>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="p-2">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8">
-        {/* Tabs */}
-        <div className="flex gap-4 mb-8">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        {/* Tabs - Mobile optimized with horizontal scroll */}
+        <div className="flex gap-1 sm:gap-4 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
           <button
             onClick={() => setActiveTab('generate')}
-            className={`px-4 py-2 font-medium font-korean transition-colors ${
+            className={`px-3 sm:px-4 py-2 font-medium font-korean transition-colors whitespace-nowrap text-sm sm:text-base ${
               activeTab === 'generate'
                 ? 'text-foreground border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
@@ -429,7 +429,7 @@ const StyleGenerator = () => {
           </button>
           <button
             onClick={() => setActiveTab('mylooks')}
-            className={`px-4 py-2 font-medium font-korean transition-colors ${
+            className={`px-3 sm:px-4 py-2 font-medium font-korean transition-colors whitespace-nowrap text-sm sm:text-base ${
               activeTab === 'mylooks'
                 ? 'text-foreground border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
@@ -439,25 +439,25 @@ const StyleGenerator = () => {
           </button>
           <button
             onClick={() => setActiveTab('mypage')}
-            className={`px-4 py-2 font-medium font-korean transition-colors ${
+            className={`px-3 sm:px-4 py-2 font-medium font-korean transition-colors whitespace-nowrap text-sm sm:text-base flex items-center ${
               activeTab === 'mypage'
                 ? 'text-foreground border-b-2 border-accent'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
-            <User className="w-4 h-4 inline mr-1" />
+            <User className="w-4 h-4 mr-1" />
             마이페이지
           </button>
         </div>
 
         {activeTab === 'generate' ? (
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Left: Selection */}
-            <div className="space-y-8">
+            <div className="space-y-6 sm:space-y-8">
               {/* Trend Selection */}
               <div>
-                <h2 className="font-korean text-2xl text-foreground mb-4">트렌드 스타일 선택</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">트렌드 스타일 선택</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                   {trends.map((trend) => (
                     <button
                       key={trend.id}
@@ -479,14 +479,14 @@ const StyleGenerator = () => {
 
               {/* Product Selection by Category */}
               <div>
-                <h2 className="font-korean text-2xl text-foreground mb-4">아이템 선택</h2>
-                <div className="space-y-6">
+                <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">아이템 선택</h2>
+                <div className="space-y-4 sm:space-y-6">
                   {Object.entries(productsByCategory).map(([category, categoryProducts]) => (
                     <div key={category}>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3 font-korean">
+                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 sm:mb-3 font-korean">
                         {categoryLabels[category] || category}
                       </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                         {categoryProducts.map((product) => (
                           <button
                             key={product.id}
@@ -516,19 +516,19 @@ const StyleGenerator = () => {
 
               {/* Face Composite Option */}
               {userProfile?.avatar_url && (
-                <div className="p-4 rounded-xl border-2 border-border bg-secondary/50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
+                <div className="p-3 sm:p-4 rounded-xl border-2 border-border bg-secondary/50">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
                         <img 
                           src={userProfile.avatar_url} 
                           alt="Your face" 
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground font-korean">내 얼굴 합성하기</p>
-                        <p className="text-xs text-muted-foreground font-korean">AI가 생성한 이미지에 내 얼굴을 합성합니다</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">내 얼굴 합성하기</p>
+                        <p className="text-xs text-muted-foreground font-korean truncate">AI가 생성한 이미지에 내 얼굴을 합성합니다</p>
                       </div>
                     </div>
                     <button
@@ -546,23 +546,23 @@ const StyleGenerator = () => {
               )}
 
               {/* Daily Generation Limit Display */}
-              <div className="p-4 rounded-xl border-2 border-border bg-secondary/50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+              <div className="p-3 sm:p-4 rounded-xl border-2 border-border bg-secondary/50">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                     {isPremium ? (
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center">
-                        <Crown className="w-5 h-5 text-white" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                        <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
-                        <Zap className="w-5 h-5 text-accent" />
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0">
+                        <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-accent" />
                       </div>
                     )}
-                    <div>
-                      <p className="font-medium text-foreground font-korean">
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
                         {isPremium ? '프리미엄 회원' : '오늘 남은 생성 횟수'}
                       </p>
-                      <p className="text-sm text-muted-foreground font-korean">
+                      <p className="text-xs sm:text-sm text-muted-foreground font-korean truncate">
                         {limitLoading ? (
                           '로딩 중...'
                         ) : isPremium ? (
@@ -629,9 +629,9 @@ const StyleGenerator = () => {
             </div>
 
             {/* Right: Generated Result */}
-            <div className="lg:sticky lg:top-24 lg:self-start">
-              <h2 className="font-display text-2xl text-foreground mb-4">생성된 스타일</h2>
-              <div className="aspect-[3/4] bg-secondary rounded-2xl overflow-hidden border border-border">
+            <div className="lg:sticky lg:top-24 lg:self-start mt-6 lg:mt-0">
+              <h2 className="font-display text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">생성된 스타일</h2>
+              <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border">
                 {generatedImage ? (
                   <img
                     src={generatedImage}
@@ -701,7 +701,7 @@ const StyleGenerator = () => {
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {myLooks.map((look) => (
                   <div
                     key={look.id}

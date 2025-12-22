@@ -280,10 +280,10 @@ const Landing = () => {
       {/* Navigation with scroll effect */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
-          ? 'bg-background/95 backdrop-blur-lg border-b border-border shadow-lg py-2' 
+          ? 'bg-background/95 backdrop-blur-lg border-b border-border shadow-lg py-1 sm:py-2' 
           : 'bg-background/60 backdrop-blur-md border-b border-transparent py-0'
       }`}>
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <button 
             onClick={() => navigate('/')} 
             className={`flex items-center gap-0 hover:opacity-80 transition-all duration-300 ${
@@ -294,38 +294,41 @@ const Landing = () => {
               src={showmelookLogo} 
               alt="쇼미룩 로고" 
               className={`object-contain transition-all duration-300 ${
-                isScrolled ? 'w-8 h-8' : 'w-10 h-10'
+                isScrolled ? 'w-7 h-7 sm:w-8 sm:h-8' : 'w-8 h-8 sm:w-10 sm:h-10'
               }`} 
             />
             <img 
               src={showmelookKoreanLogo} 
               alt="쇼미룩" 
-              className={`object-contain -ml-3 transition-all duration-300 ${
-                isScrolled ? 'h-[70px]' : 'h-[90px]'
+              className={`object-contain -ml-2 sm:-ml-3 transition-all duration-300 ${
+                isScrolled ? 'h-[50px] sm:h-[70px]' : 'h-[60px] sm:h-[90px]'
               }`} 
             />
           </button>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {user ? (
               <Button 
                 variant="hero" 
+                size="sm"
                 onClick={() => navigate('/style')}
-                className={`transition-all duration-300 font-korean ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                className={`transition-all duration-300 font-korean text-xs sm:text-sm px-3 sm:px-4 ${isScrolled ? 'scale-95' : 'scale-100'}`}
               >
-                <Sparkles className={`w-4 h-4 mr-1 transition-opacity ${isScrolled ? 'opacity-100 animate-twinkle' : 'opacity-0'}`} />
-                내 스타일 만들기
+                <Sparkles className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 transition-opacity ${isScrolled ? 'opacity-100 animate-twinkle' : 'opacity-0'}`} />
+                <span className="hidden xs:inline">내 스타일 만들기</span>
+                <span className="xs:hidden">시작</span>
               </Button>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => navigate('/auth')} className="font-korean">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/auth')} className="font-korean text-xs sm:text-sm px-2 sm:px-4">
                   로그인
                 </Button>
                 <Button 
                   variant="hero" 
+                  size="sm"
                   onClick={() => navigate('/auth')}
-                  className={`transition-all duration-300 font-korean ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                  className={`transition-all duration-300 font-korean text-xs sm:text-sm px-3 sm:px-4 ${isScrolled ? 'scale-95' : 'scale-100'}`}
                 >
-                  {isScrolled && <Sparkles className="w-4 h-4 mr-1 animate-twinkle" />}
+                  {isScrolled && <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-twinkle" />}
                   시작하기
                 </Button>
               </>
@@ -339,7 +342,7 @@ const Landing = () => {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 bg-gradient-hero relative overflow-hidden">
+      <section className="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 bg-gradient-hero relative overflow-hidden">
         {/* Background gradients */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         
@@ -398,35 +401,35 @@ const Landing = () => {
               <Sparkles className="w-4 h-4 text-primary animate-sparkle" />
             </div>
             
-            <h1 className="font-korean text-5xl md:text-7xl text-foreground leading-tight mb-6 animate-fade-in-up">
+            <h1 className="font-korean text-3xl sm:text-5xl md:text-7xl text-foreground leading-tight mb-4 sm:mb-6 animate-fade-in-up">
               나만의 스타일을<br />
               <span className="text-gradient-brand">AI가 완성합니다</span>
             </h1>
             
-            <p className="text-xl font-korean text-muted-foreground mb-10 max-w-xl mx-auto animate-fade-in-up" style={{
+            <p className="text-base sm:text-xl font-korean text-muted-foreground mb-8 sm:mb-10 max-w-xl mx-auto animate-fade-in-up px-4 sm:px-0" style={{
             animationDelay: '0.2s'
           }}>
               사진 한 장으로 트렌디한 스타일을 경험하세요.
               AI가 당신에게 딱 맞는 패션을 제안합니다.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up px-4 sm:px-0" style={{
             animationDelay: '0.4s'
           }}>
-              <Button variant="hero" size="xl" onClick={handleGetStarted} className="group font-korean">
+              <Button variant="hero" size="lg" onClick={handleGetStarted} className="group font-korean w-full sm:w-auto">
                 무료로 시작하기
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="hero-outline" size="xl" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({
+              <Button variant="hero-outline" size="lg" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({
               behavior: 'smooth'
-            })} className="font-korean">
+            })} className="font-korean w-full sm:w-auto">
                 자세히 알아보기
               </Button>
             </div>
           </div>
 
           {/* Preview Cards */}
-          <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto px-4 sm:px-0">
             {[{
             title: '미니멀리스트',
             desc: '깔끔한 라인의 현대적 스타일',
@@ -460,7 +463,7 @@ const Landing = () => {
       </section>
 
       {/* How it Works */}
-      <ScrollSection className="py-24 px-6 bg-background relative overflow-hidden" delay={0}>
+      <ScrollSection className="py-16 sm:py-24 px-4 sm:px-6 bg-background relative overflow-hidden" delay={0}>
         <div id="how-it-works" className="absolute -top-20" />
         {/* Subtle background effects */}
         <div className="absolute top-0 left-1/4 w-64 h-64 bg-gradient-coral rounded-full blur-3xl opacity-5 animate-float" />
@@ -473,21 +476,21 @@ const Landing = () => {
         <SparklesStar className="bottom-32 right-[10%] w-5 h-5" delay={1.5} />
         
         <div className="container mx-auto max-w-5xl relative z-10">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 mb-4">
-              <Sparkles className="w-5 h-5 text-coral animate-twinkle" />
-              <span className="text-sm font-medium text-primary uppercase tracking-wider">Simple Process</span>
-              <Sparkles className="w-5 h-5 text-sky animate-twinkle" style={{ animationDelay: '0.5s' }} />
+          <div className="text-center mb-10 sm:mb-16">
+            <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-coral animate-twinkle" />
+              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Simple Process</span>
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
-            <h2 className="font-korean text-4xl md:text-5xl text-foreground mb-4">
+            <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
               쉽고 빠르게 시작하세요
             </h2>
-            <p className="text-lg font-korean text-muted-foreground">
+            <p className="text-sm sm:text-lg font-korean text-muted-foreground">
               3단계로 완성되는 나만의 스타일
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 sm:gap-12">
             {[{
             icon: <Wand2 className="w-8 h-8" />,
             step: '01',
@@ -540,7 +543,7 @@ const Landing = () => {
       <CTASection handleGetStarted={handleGetStarted} />
 
       {/* Footer */}
-      <ScrollSection className="py-16 px-6 bg-background border-t border-border relative overflow-hidden" delay={100}>
+      <ScrollSection className="py-10 sm:py-16 px-4 sm:px-6 bg-background border-t border-border relative overflow-hidden" delay={100}>
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
         <FloatingOrb className="top-0 left-1/4 w-48 h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
