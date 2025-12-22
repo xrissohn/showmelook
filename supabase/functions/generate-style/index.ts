@@ -6,8 +6,29 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Generate cache key from style + products combination
-function generateCacheKey(styleTrendId: string | null, productIds: string[]): string {
+// Generate cache key from style + products + user profile combination
+function generateCacheKey(
+  styleTrendId: string | null, 
+  productIds: string[],
+  bodyType?: string,
+  heightRange?: string
+): string {
+  const sortedProducts = [...productIds].sort();
+  // Include body type and height range in cache key for better matching
+  const bodyKey = bodyType || 'default';
+  const heightKey = heightRange || 'default';
+  const key = `${styleTrendId || 'none'}_${sortedProducts.join('_')}_${bodyKey}_${heightKey}`;
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    const char = key.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `style_${Math.abs(hash).toString(36)}`;
+}
+
+// Generate a simpler cache key for fallback matching (without user profile)
+function generateSimpleCacheKey(styleTrendId: string | null, productIds: string[]): string {
   const sortedProducts = [...productIds].sort();
   const key = `${styleTrendId || 'none'}_${sortedProducts.join('_')}`;
   let hash = 0;
@@ -16,7 +37,13 @@ function generateCacheKey(styleTrendId: string | null, productIds: string[]): st
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash;
   }
-  return `style_${Math.abs(hash).toString(36)}`;
+  return `simple_${Math.abs(hash).toString(36)}`;
+}
+
+// Get height range for cache grouping (groups heights into 5cm ranges)
+function getHeightRange(height: number): string {
+  const rangeStart = Math.floor(height / 5) * 5;
+  return `${rangeStart}-${rangeStart + 5}`;
 }
 
 // Convert base64 to Uint8Array for storage upload
@@ -306,6 +333,153 @@ async function generateImageWithLovableAI(
   return { imageBase64: base64Match[1], text: textContent };
 }
 
+// Try to find cached image with multi-level cache strategy
+async function findCachedImage(
+  supabaseAdmin: any,
+  styleTrendId: string | null,
+  productIds: string[],
+  bodyType?: string,
+  height?: number
+): Promise<{ imageUrl: string; cacheLevel: string } | null> {
+  const heightRange = height ? getHeightRange(height) : undefined;
+  
+  // Level 1: Exact match with body type and height range
+  const exactCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, heightRange);
+  console.log(`Checking L1 cache (exact): ${exactCacheKey}`);
+  
+  const { data: exactMatch } = await supabaseAdmin
+    .from('style_cache')
+    .select('*')
+    .eq('cache_key', exactCacheKey)
+    .single();
+  
+  if (exactMatch) {
+    console.log('L1 Cache HIT (exact match with profile)');
+    return { imageUrl: exactMatch.image_url, cacheLevel: 'L1_EXACT' };
+  }
+  
+  // Level 2: Match with body type only (different height)
+  const bodyTypeCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, undefined);
+  console.log(`Checking L2 cache (body type): ${bodyTypeCacheKey}`);
+  
+  const { data: bodyTypeMatch } = await supabaseAdmin
+    .from('style_cache')
+    .select('*')
+    .eq('cache_key', bodyTypeCacheKey)
+    .single();
+  
+  if (bodyTypeMatch) {
+    console.log('L2 Cache HIT (body type match)');
+    return { imageUrl: bodyTypeMatch.image_url, cacheLevel: 'L2_BODY_TYPE' };
+  }
+  
+  // Level 3: Simple match (style + products only, most popular)
+  const simpleCacheKey = generateSimpleCacheKey(styleTrendId, productIds);
+  console.log(`Checking L3 cache (simple): ${simpleCacheKey}`);
+  
+  const { data: simpleMatch } = await supabaseAdmin
+    .from('style_cache')
+    .select('*')
+    .eq('cache_key', simpleCacheKey)
+    .order('use_count', { ascending: false })
+    .limit(1)
+    .single();
+  
+  if (simpleMatch) {
+    console.log('L3 Cache HIT (simple match, most popular)');
+    return { imageUrl: simpleMatch.image_url, cacheLevel: 'L3_SIMPLE' };
+  }
+  
+  // Level 4: Fuzzy match - same style trend with overlapping products
+  if (styleTrendId && productIds.length > 0) {
+    console.log('Checking L4 cache (fuzzy match)...');
+    
+    const { data: fuzzyMatches } = await supabaseAdmin
+      .from('style_cache')
+      .select('*')
+      .eq('style_trend_id', styleTrendId)
+      .order('use_count', { ascending: false })
+      .limit(10);
+    
+    if (fuzzyMatches && fuzzyMatches.length > 0) {
+      // Find cache with highest product overlap
+      let bestMatch = null;
+      let bestOverlap = 0;
+      
+      for (const cache of fuzzyMatches) {
+        const cacheProducts = cache.product_ids || [];
+        const overlap = productIds.filter(p => cacheProducts.includes(p)).length;
+        const overlapRatio = overlap / Math.max(productIds.length, cacheProducts.length);
+        
+        // Require at least 50% overlap
+        if (overlapRatio >= 0.5 && overlap > bestOverlap) {
+          bestMatch = cache;
+          bestOverlap = overlap;
+        }
+      }
+      
+      if (bestMatch) {
+        console.log(`L4 Cache HIT (fuzzy match, ${bestOverlap} products overlap)`);
+        return { imageUrl: bestMatch.image_url, cacheLevel: 'L4_FUZZY' };
+      }
+    }
+  }
+  
+  console.log('All cache levels MISS');
+  return null;
+}
+
+// Update cache usage statistics
+async function updateCacheUsage(supabaseAdmin: any, imageUrl: string) {
+  await supabaseAdmin
+    .from('style_cache')
+    .update({ 
+      use_count: supabaseAdmin.raw('use_count + 1'),
+      last_used_at: new Date().toISOString()
+    })
+    .eq('image_url', imageUrl);
+}
+
+// Save to cache with multiple keys for better hit rate
+async function saveToCache(
+  supabaseAdmin: any,
+  styleTrendId: string | null,
+  productIds: string[],
+  imageUrl: string,
+  bodyType?: string,
+  height?: number
+) {
+  const heightRange = height ? getHeightRange(height) : undefined;
+  
+  // Save with exact key (includes body type and height)
+  const exactCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, heightRange);
+  
+  // Save with body type key
+  const bodyTypeCacheKey = generateCacheKey(styleTrendId, productIds, bodyType, undefined);
+  
+  // Save with simple key (style + products only)
+  const simpleCacheKey = generateSimpleCacheKey(styleTrendId, productIds);
+  
+  // Insert all cache entries
+  const cacheEntries = [
+    { cache_key: exactCacheKey, style_trend_id: styleTrendId, product_ids: productIds, image_url: imageUrl, use_count: 1 },
+    { cache_key: bodyTypeCacheKey, style_trend_id: styleTrendId, product_ids: productIds, image_url: imageUrl, use_count: 1 },
+    { cache_key: simpleCacheKey, style_trend_id: styleTrendId, product_ids: productIds, image_url: imageUrl, use_count: 1 }
+  ];
+  
+  for (const entry of cacheEntries) {
+    const { error } = await supabaseAdmin
+      .from('style_cache')
+      .upsert(entry, { onConflict: 'cache_key' });
+    
+    if (error) {
+      console.error(`Error saving cache entry ${entry.cache_key}:`, error.message);
+    } else {
+      console.log(`Cached with key: ${entry.cache_key}`);
+    }
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -403,7 +577,43 @@ serve(async (req) => {
 
     const currentCount = usageRecord?.generation_count || 0;
 
-    // Check if user has exceeded daily limit (skip for premium users)
+    // Determine if we should use cache (not for face composite)
+    const shouldUseCache = !useFaceComposite || !userAvatarUrl;
+    const bodyType = userProfile?.body_type;
+    const height = userProfile?.height;
+
+    // Check cache first (only if not using face composite) - using multi-level strategy
+    if (shouldUseCache) {
+      const cachedResult = await findCachedImage(
+        supabaseAdmin,
+        styleTrendId || null,
+        productIds || [],
+        bodyType,
+        height
+      );
+
+      if (cachedResult) {
+        // Update cache usage (async, don't wait)
+        updateCacheUsage(supabaseAdmin, cachedResult.imageUrl).catch(console.error);
+
+        // CACHE HIT: Don't count against daily limit!
+        console.log(`Cache HIT (${cachedResult.cacheLevel}) - NOT counting against daily limit`);
+
+        return new Response(
+          JSON.stringify({ 
+            imageUrl: cachedResult.imageUrl,
+            message: '캐시된 스타일을 불러왔습니다! (무료)',
+            cached: true,
+            cacheLevel: cachedResult.cacheLevel,
+            remainingCount: isPremium ? -1 : (dailyLimit - currentCount),
+            isPremium
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // No cache hit - check if user has exceeded daily limit
     if (!isPremium && currentCount >= dailyLimit) {
       return new Response(
         JSON.stringify({ 
@@ -416,54 +626,9 @@ serve(async (req) => {
       );
     }
 
-    // Generate cache key (only for non-face-composite requests)
-    const shouldUseCache = !useFaceComposite || !userAvatarUrl;
-    const cacheKey = shouldUseCache ? generateCacheKey(styleTrendId || null, productIds || []) : null;
-
-    // Check cache first (only if not using face composite)
-    if (cacheKey) {
-      const { data: cachedImage } = await supabaseAdmin
-        .from('style_cache')
-        .select('*')
-        .eq('cache_key', cacheKey)
-        .single();
-
-      if (cachedImage) {
-        console.log(`Cache hit for key: ${cacheKey}`);
-        
-        // Update cache usage
-        await supabaseAdmin
-          .from('style_cache')
-          .update({ 
-            use_count: (cachedImage.use_count || 0) + 1,
-            last_used_at: new Date().toISOString()
-          })
-          .eq('id', cachedImage.id);
-
-        // Increment usage count
-        await supabaseAdmin
-          .from('daily_generation_usage')
-          .update({ generation_count: currentCount + 1 })
-          .eq('user_id', userId)
-          .eq('usage_date', today);
-
-        return new Response(
-          JSON.stringify({ 
-            imageUrl: cachedImage.image_url,
-            message: '캐시된 스타일을 불러왔습니다!',
-            cached: true,
-            remainingCount: isPremium ? -1 : (dailyLimit - currentCount - 1),
-            isPremium
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      console.log(`Cache miss for key: ${cacheKey}`);
-    }
-
     // Build the prompt based on user profile and selected items
-    const height = userProfile?.height || 170;
-    const bodyType = userProfile?.body_type || 'average';
+    const heightVal = userProfile?.height || 170;
+    const bodyTypeVal = userProfile?.body_type || 'average';
     const stylePreferences = userProfile?.style_preferences?.join(', ') || '';
 
     let prompt: string;
@@ -473,7 +638,7 @@ serve(async (req) => {
       referenceImageUrl = userAvatarUrl;
       prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${style} style outfit.
 The outfit includes: ${products || 'modern casual wear'}.
-The person has ${bodyType} body type, approximately ${height}cm tall.
+The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
 Create a full body shot with this exact person's face, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.
@@ -483,7 +648,7 @@ Keep the person's face exactly as shown in the reference photo while generating 
     } else {
       prompt = `Create a professional fashion lookbook photo of a stylish Korean person wearing ${style} style outfit. 
 The outfit includes: ${products || 'modern casual wear'}.
-The person has ${bodyType} body type, approximately ${height}cm tall.
+The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
 Full body shot, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.`;
@@ -580,26 +745,19 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
       throw uploadErr;
     }
 
-    // Save to cache (only for non-face-composite)
-    if (cacheKey && finalImageUrl) {
-      const { error: cacheError } = await supabaseAdmin
-        .from('style_cache')
-        .insert({
-          cache_key: cacheKey,
-          style_trend_id: styleTrendId || null,
-          product_ids: productIds || [],
-          image_url: finalImageUrl,
-          use_count: 1
-        });
-
-      if (cacheError) {
-        console.error('Error saving to cache:', cacheError);
-      } else {
-        console.log('Image cached with key:', cacheKey);
-      }
+    // Save to cache with multiple keys (only for non-face-composite)
+    if (shouldUseCache && finalImageUrl) {
+      await saveToCache(
+        supabaseAdmin,
+        styleTrendId || null,
+        productIds || [],
+        finalImageUrl,
+        bodyType,
+        height
+      );
     }
 
-    // Increment usage count
+    // Increment usage count (only for new generations)
     await supabaseAdmin
       .from('daily_generation_usage')
       .update({ generation_count: currentCount + 1 })
