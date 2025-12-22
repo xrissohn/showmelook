@@ -156,17 +156,17 @@ const StyleGenerator = () => {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
       
       const { error: uploadError, data } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
-        .getPublicUrl(fileName);
+        .getPublicUrl(filePath);
 
       await supabase
         .from('profiles')
