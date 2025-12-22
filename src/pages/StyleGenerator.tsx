@@ -878,11 +878,22 @@ const StyleGenerator = () => {
                       </p>
                     </div>
                   </div>
-                  <div className="p-4 bg-background rounded-xl">
-                    <p className="text-sm text-muted-foreground mb-2">체형</p>
-                    <p className="text-lg font-medium text-foreground">
-                      {bodyTypes.find(t => t.id === userProfile?.body_type)?.label || '-'}
-                    </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-background rounded-xl">
+                      <p className="text-sm text-muted-foreground mb-2">성별</p>
+                      <p className="text-lg font-medium text-foreground">
+                        {userProfile?.gender === 'male' ? '남성' : 
+                         userProfile?.gender === 'female' ? '여성' : 
+                         userProfile?.gender === 'unisex' ? '유니섹스' : 
+                         userProfile?.gender === 'prefer_not_to_say' ? '비공개' : '-'}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-background rounded-xl">
+                      <p className="text-sm text-muted-foreground mb-2">체형</p>
+                      <p className="text-lg font-medium text-foreground">
+                        {bodyTypes.find(t => t.id === userProfile?.body_type)?.label || '-'}
+                      </p>
+                    </div>
                   </div>
                   <div className="p-4 bg-background rounded-xl">
                     <p className="text-sm text-muted-foreground mb-2">선호 스타일</p>
