@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, ShoppingBag, RefreshCw, Heart, LogOut, ChevronRight, Loader2 } from 'lucide-react';
+import { Sparkles, ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check } from 'lucide-react';
 
 interface StyleTrend {
   id: string;
@@ -35,6 +37,31 @@ interface GeneratedLook {
   created_at: string;
 }
 
+interface UserProfile {
+  height: number | null;
+  weight: number | null;
+  body_type: string | null;
+  style_preferences: string[] | null;
+  avatar_url: string | null;
+  full_name: string | null;
+}
+
+const styleOptions = [
+  { id: 'minimal', label: '미니멀', emoji: '🤍' },
+  { id: 'street', label: '스트릿', emoji: '🔥' },
+  { id: 'classic', label: '클래식', emoji: '👔' },
+  { id: 'casual', label: '캐주얼', emoji: '👕' },
+  { id: 'sporty', label: '스포티', emoji: '⚡' },
+  { id: 'bohemian', label: '보헤미안', emoji: '🌸' },
+];
+
+const bodyTypes = [
+  { id: 'slim', label: '마른 체형' },
+  { id: 'average', label: '보통 체형' },
+  { id: 'muscular', label: '근육질' },
+  { id: 'curvy', label: '볼륨 체형' },
+];
+
 const StyleGenerator = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
@@ -47,7 +74,17 @@ const StyleGenerator = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
-  const [activeTab, setActiveTab] = useState<'generate' | 'mylooks'>('generate');
+  const [activeTab, setActiveTab] = useState<'generate' | 'mylooks' | 'mypage'>('generate');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editForm, setEditForm] = useState({
+    height: '',
+    weight: '',
+    body_type: '',
+    style_preferences: [] as string[],
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [useFaceComposite, setUseFaceComposite] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -57,7 +94,7 @@ const StyleGenerator = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [user]);
 
   const fetchData = async () => {
     // Fetch trends
@@ -76,7 +113,7 @@ const StyleGenerator = () => {
     
     if (productsData) setProducts(productsData);
 
-    // Fetch user's generated looks
+    // Fetch user's generated looks and profile
     if (user) {
       const { data: looksData } = await supabase
         .from('generated_looks')
@@ -85,6 +122,112 @@ const StyleGenerator = () => {
         .order('created_at', { ascending: false });
       
       if (looksData) setMyLooks(looksData);
+
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('height, weight, body_type, style_preferences, avatar_url, full_name')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (profileData) {
+        setUserProfile(profileData);
+        setEditForm({
+          height: profileData.height?.toString() || '',
+          weight: profileData.weight?.toString() || '',
+          body_type: profileData.body_type || '',
+          style_preferences: profileData.style_preferences || [],
+        });
+      }
+    }
+  };
+
+  const toggleStylePreference = (styleId: string) => {
+    setEditForm(prev => ({
+      ...prev,
+      style_preferences: prev.style_preferences.includes(styleId)
+        ? prev.style_preferences.filter(s => s !== styleId)
+        : [...prev.style_preferences, styleId]
+    }));
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError, data } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id);
+
+      setUserProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      
+      toast({
+        title: '프로필 사진 변경됨',
+        description: '새 프로필 사진이 저장되었습니다.',
+      });
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast({
+        title: '업로드 실패',
+        description: '프로필 사진 업로드 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const saveProfile = async () => {
+    if (!user) return;
+    
+    setIsSavingProfile(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          height: editForm.height ? parseInt(editForm.height) : null,
+          weight: editForm.weight ? parseInt(editForm.weight) : null,
+          body_type: editForm.body_type || null,
+          style_preferences: editForm.style_preferences,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setUserProfile(prev => prev ? {
+        ...prev,
+        height: editForm.height ? parseInt(editForm.height) : null,
+        weight: editForm.weight ? parseInt(editForm.weight) : null,
+        body_type: editForm.body_type || null,
+        style_preferences: editForm.style_preferences,
+      } : null);
+      
+      setIsEditingProfile(false);
+      toast({
+        title: '프로필 저장됨',
+        description: '프로필 정보가 업데이트되었습니다.',
+      });
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      toast({
+        title: '저장 실패',
+        description: '프로필 저장 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -101,22 +244,17 @@ const StyleGenerator = () => {
 
     setIsGenerating(true);
     try {
-      // Get user profile for context
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
       const styleDescription = selectedTrend?.name_ko || '트렌디한';
       const productsDescription = selectedProducts.map(p => p.name_ko).join(', ') || '기본 아이템';
 
-      // Call AI generation edge function
+      // Call AI generation edge function with face composite option
       const { data, error } = await supabase.functions.invoke('generate-style', {
         body: {
           style: styleDescription,
           products: productsDescription,
-          userProfile: profile,
+          userProfile: userProfile,
+          useFaceComposite: useFaceComposite && !!userProfile?.avatar_url,
+          userAvatarUrl: userProfile?.avatar_url,
         },
       });
 
@@ -136,7 +274,9 @@ const StyleGenerator = () => {
 
         toast({
           title: '스타일 생성 완료!',
-          description: '당신만의 룩이 완성되었습니다.',
+          description: useFaceComposite && userProfile?.avatar_url 
+            ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
+            : '당신만의 룩이 완성되었습니다.',
         });
 
         fetchData(); // Refresh my looks
@@ -244,6 +384,17 @@ const StyleGenerator = () => {
           >
             내 룩 ({myLooks.length})
           </button>
+          <button
+            onClick={() => setActiveTab('mypage')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'mypage'
+                ? 'text-foreground border-b-2 border-accent'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <User className="w-4 h-4 inline mr-1" />
+            마이페이지
+          </button>
         </div>
 
         {activeTab === 'generate' ? (
@@ -310,6 +461,37 @@ const StyleGenerator = () => {
                 </div>
               </div>
 
+              {/* Face Composite Option */}
+              {userProfile?.avatar_url && (
+                <div className="p-4 rounded-xl border-2 border-border bg-secondary/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
+                        <img 
+                          src={userProfile.avatar_url} 
+                          alt="Your face" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">내 얼굴 합성하기</p>
+                        <p className="text-xs text-muted-foreground">AI가 생성한 이미지에 내 얼굴을 합성합니다</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setUseFaceComposite(!useFaceComposite)}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${
+                        useFaceComposite ? 'bg-accent' : 'bg-muted'
+                      }`}
+                    >
+                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                        useFaceComposite ? 'translate-x-6' : 'translate-x-0.5'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Generate Button */}
               <Button
                 variant="gold"
@@ -326,7 +508,7 @@ const StyleGenerator = () => {
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    스타일 생성하기
+                    {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
                   </>
                 )}
               </Button>
@@ -389,7 +571,7 @@ const StyleGenerator = () => {
               )}
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'mylooks' ? (
           /* My Looks Grid */
           <div>
             {myLooks.length === 0 ? (
@@ -428,6 +610,195 @@ const StyleGenerator = () => {
                 ))}
               </div>
             )}
+          </div>
+        ) : (
+          /* My Page */
+          <div className="max-w-2xl mx-auto">
+            {/* Profile Header */}
+            <div className="flex flex-col items-center mb-8">
+              <div className="relative group">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-secondary border-4 border-accent/20">
+                  {userProfile?.avatar_url ? (
+                    <img 
+                      src={userProfile.avatar_url} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <User className="w-12 h-12 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <label className="absolute bottom-0 right-0 w-10 h-10 bg-accent rounded-full flex items-center justify-center cursor-pointer hover:bg-accent/90 transition-colors">
+                  <Camera className="w-5 h-5 text-primary-foreground" />
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <h2 className="font-display text-2xl text-foreground mt-4">
+                {userProfile?.full_name || user?.email?.split('@')[0] || '사용자'}
+              </h2>
+              <p className="text-muted-foreground">{user?.email}</p>
+            </div>
+
+            {/* Profile Info */}
+            <div className="bg-secondary/50 rounded-2xl p-6 border border-border">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display text-xl text-foreground">프로필 정보</h3>
+                {!isEditingProfile ? (
+                  <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
+                    수정
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      setIsEditingProfile(false);
+                      setEditForm({
+                        height: userProfile?.height?.toString() || '',
+                        weight: userProfile?.weight?.toString() || '',
+                        body_type: userProfile?.body_type || '',
+                        style_preferences: userProfile?.style_preferences || [],
+                      });
+                    }}>
+                      취소
+                    </Button>
+                    <Button variant="hero" size="sm" onClick={saveProfile} disabled={isSavingProfile}>
+                      {isSavingProfile ? '저장 중...' : '저장'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {isEditingProfile ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-height">키 (cm)</Label>
+                      <Input
+                        id="edit-height"
+                        type="number"
+                        placeholder="170"
+                        value={editForm.height}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, height: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-weight">몸무게 (kg)</Label>
+                      <Input
+                        id="edit-weight"
+                        type="number"
+                        placeholder="65"
+                        value={editForm.weight}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, weight: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>체형</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {bodyTypes.map((type) => (
+                        <button
+                          key={type.id}
+                          onClick={() => setEditForm(prev => ({ ...prev, body_type: type.id }))}
+                          className={`p-3 rounded-xl border-2 transition-all text-left ${
+                            editForm.body_type === type.id
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border hover:border-accent/50'
+                          }`}
+                        >
+                          <span className="text-foreground font-medium">{type.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>선호 스타일</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {styleOptions.map((style) => (
+                        <button
+                          key={style.id}
+                          onClick={() => toggleStylePreference(style.id)}
+                          className={`p-3 rounded-xl border-2 transition-all text-center relative ${
+                            editForm.style_preferences.includes(style.id)
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border hover:border-accent/50'
+                          }`}
+                        >
+                          {editForm.style_preferences.includes(style.id) && (
+                            <div className="absolute top-2 right-2 w-4 h-4 bg-accent rounded-full flex items-center justify-center">
+                              <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                            </div>
+                          )}
+                          <span className="text-xl block mb-1">{style.emoji}</span>
+                          <span className="text-foreground text-sm font-medium">{style.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-background rounded-xl">
+                      <p className="text-sm text-muted-foreground">키</p>
+                      <p className="text-lg font-medium text-foreground">
+                        {userProfile?.height ? `${userProfile.height}cm` : '-'}
+                      </p>
+                    </div>
+                    <div className="p-4 bg-background rounded-xl">
+                      <p className="text-sm text-muted-foreground">몸무게</p>
+                      <p className="text-lg font-medium text-foreground">
+                        {userProfile?.weight ? `${userProfile.weight}kg` : '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-background rounded-xl">
+                    <p className="text-sm text-muted-foreground mb-2">체형</p>
+                    <p className="text-lg font-medium text-foreground">
+                      {bodyTypes.find(t => t.id === userProfile?.body_type)?.label || '-'}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-background rounded-xl">
+                    <p className="text-sm text-muted-foreground mb-2">선호 스타일</p>
+                    <div className="flex flex-wrap gap-2">
+                      {userProfile?.style_preferences?.length ? (
+                        userProfile.style_preferences.map(styleId => {
+                          const style = styleOptions.find(s => s.id === styleId);
+                          return style ? (
+                            <span key={styleId} className="px-3 py-1 bg-accent/10 text-accent rounded-full text-sm">
+                              {style.emoji} {style.label}
+                            </span>
+                          ) : null;
+                        })
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
+                <p className="text-3xl font-display text-foreground">{myLooks.length}</p>
+                <p className="text-muted-foreground">생성된 룩</p>
+              </div>
+              <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
+                <p className="text-3xl font-display text-foreground">
+                  {myLooks.filter(l => l.is_favorite).length}
+                </p>
+                <p className="text-muted-foreground">즐겨찾기</p>
+              </div>
+            </div>
           </div>
         )}
       </div>

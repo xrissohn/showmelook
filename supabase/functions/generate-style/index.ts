@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { style, products, userProfile } = await req.json();
+    const { style, products, userProfile, useFaceComposite, userAvatarUrl } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -24,14 +24,56 @@ serve(async (req) => {
     const bodyType = userProfile?.body_type || 'average';
     const stylePreferences = userProfile?.style_preferences?.join(', ') || '';
 
-    const prompt = `Create a professional fashion lookbook photo of a stylish Korean person wearing ${style} style outfit. 
+    let prompt: string;
+    let messages: any[];
+
+    if (useFaceComposite && userAvatarUrl) {
+      // Generate with face composite - use image editing
+      prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${style} style outfit.
+The outfit includes: ${products || 'modern casual wear'}.
+The person has ${bodyType} body type, approximately ${height}cm tall.
+Style preferences: ${stylePreferences || 'modern and trendy'}.
+Create a full body shot with this exact person's face, clean white studio background, professional fashion photography lighting.
+High fashion editorial style, ultra high resolution, 4K quality.
+Keep the person's face exactly as shown in the reference photo while generating the fashionable outfit on their body.`;
+
+      console.log('Generating face composite image with prompt:', prompt);
+
+      messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: userAvatarUrl
+              }
+            }
+          ]
+        }
+      ];
+    } else {
+      // Generate without face composite - standard generation
+      prompt = `Create a professional fashion lookbook photo of a stylish Korean person wearing ${style} style outfit. 
 The outfit includes: ${products || 'modern casual wear'}.
 The person has ${bodyType} body type, approximately ${height}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
 Full body shot, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.`;
 
-    console.log('Generating image with prompt:', prompt);
+      console.log('Generating standard image with prompt:', prompt);
+
+      messages = [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ];
+    }
 
     // Call Lovable AI Gateway for image generation
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -42,12 +84,7 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
+        messages,
         modalities: ['image', 'text']
       }),
     });
@@ -86,7 +123,8 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
     return new Response(
       JSON.stringify({ 
         imageUrl,
-        message: data.choices?.[0]?.message?.content || '스타일이 생성되었습니다!'
+        message: data.choices?.[0]?.message?.content || '스타일이 생성되었습니다!',
+        faceComposite: useFaceComposite && userAvatarUrl ? true : false
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
