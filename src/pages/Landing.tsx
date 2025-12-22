@@ -38,6 +38,59 @@ const FloatingOrb = ({ className, gradient, delay }: { className: string; gradie
   />
 );
 
+// Hover particle card component
+const HoverParticleCard = ({ children, className, style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [hoverParticles, setHoverParticles] = useState<{ id: number; x: number; y: number; size: number; color: string }[]>([]);
+  const particleId = useRef(0);
+  const colors = ['bg-coral', 'bg-magenta', 'bg-purple', 'bg-sky'];
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+    // Generate burst of particles on hover
+    const newParticles = [];
+    for (let i = 0; i < 8; i++) {
+      newParticles.push({
+        id: particleId.current++,
+        x: 50 + (Math.random() - 0.5) * 80,
+        y: 50 + (Math.random() - 0.5) * 80,
+        size: Math.random() * 6 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      });
+    }
+    setHoverParticles(newParticles);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    setHoverParticles([]);
+  };
+
+  return (
+    <div 
+      className={`relative ${className}`}
+      style={style}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {children}
+      {isHovered && hoverParticles.map(p => (
+        <div
+          key={p.id}
+          className={`absolute rounded-full ${p.color} animate-sparkle pointer-events-none z-20`}
+          style={{
+            left: `${p.x}%`,
+            top: `${p.y}%`,
+            width: p.size,
+            height: p.size,
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
 // Interactive mouse particle
 interface MouseParticle {
   id: number;
@@ -318,23 +371,45 @@ const Landing = () => {
             title: '클래식 엘레강스',
             desc: '시간을 초월한 우아함',
             gradient: 'from-purple to-sky'
-          }].map((style, i) => <div key={style.title} className="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in-up border border-border group" style={{
-            animationDelay: `${0.6 + i * 0.1}s`
-          }}>
-                <div className={`aspect-[3/4] bg-gradient-to-br ${style.gradient} rounded-xl mb-4 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-opacity`}>
-                  <Palette className="w-12 h-12 text-white/70" />
-                </div>
-                <h3 className="font-display text-lg text-foreground mb-1">{style.title}</h3>
-                <p className="text-sm text-muted-foreground">{style.desc}</p>
-              </div>)}
+          }].map((style, i) => (
+            <HoverParticleCard 
+              key={style.title} 
+              className="bg-card rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fade-in-up border border-border group overflow-hidden" 
+              style={{ animationDelay: `${0.6 + i * 0.1}s` }}
+            >
+              <div className={`aspect-[3/4] bg-gradient-to-br ${style.gradient} rounded-xl mb-4 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105`}>
+                <Palette className="w-12 h-12 text-white/70 group-hover:text-white transition-colors" />
+              </div>
+              <h3 className="font-display text-lg text-foreground mb-1 group-hover:text-primary transition-colors">{style.title}</h3>
+              <p className="text-sm text-muted-foreground">{style.desc}</p>
+              {/* Hover sparkles */}
+              <Sparkles className="absolute top-4 right-4 w-5 h-5 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+              <Sparkles className="absolute bottom-16 left-4 w-4 h-4 text-magenta opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
+            </HoverParticleCard>
+          ))}
           </div>
         </div>
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="py-24 px-6 bg-background">
-        <div className="container mx-auto max-w-5xl">
+      <section id="how-it-works" className="py-24 px-6 bg-background relative overflow-hidden">
+        {/* Subtle background effects */}
+        <div className="absolute top-0 left-1/4 w-64 h-64 bg-gradient-coral rounded-full blur-3xl opacity-5 animate-float" />
+        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-gradient-sky rounded-full blur-3xl opacity-5 animate-float" style={{ animationDelay: '2s' }} />
+        
+        {/* Decorative sparkles */}
+        <SparklesStar className="top-16 left-[8%] w-5 h-5" delay={0} />
+        <SparklesStar className="top-24 right-[12%] w-6 h-6" delay={0.5} />
+        <SparklesStar className="bottom-20 left-[15%] w-4 h-4" delay={1} />
+        <SparklesStar className="bottom-32 right-[10%] w-5 h-5" delay={1.5} />
+        
+        <div className="container mx-auto max-w-5xl relative z-10">
           <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-coral animate-twinkle" />
+              <span className="text-sm font-medium text-primary uppercase tracking-wider">Simple Process</span>
+              <Sparkles className="w-5 h-5 text-sky animate-twinkle" style={{ animationDelay: '0.5s' }} />
+            </div>
             <h2 className="font-display text-4xl md:text-5xl text-foreground mb-4">
               쉽고 빠르게 시작하세요
             </h2>
@@ -362,16 +437,32 @@ const Landing = () => {
             title: '아이템 구매',
             desc: '마음에 드는 아이템을 선택하고 바로 구매하세요.',
             color: 'from-purple to-sky'
-          }].map((item, i) => <div key={item.step} className="relative text-center group">
-                <div className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center text-white shadow-brand group-hover:scale-110 transition-transform duration-300`}>
-                  {item.icon}
+          }].map((item, i) => (
+            <HoverParticleCard key={item.step} className="relative text-center group">
+              {/* Animated icon box */}
+              <div className={`w-20 h-20 mx-auto mb-6 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center text-white shadow-brand group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 relative`}>
+                {item.icon}
+                {/* Icon sparkles on hover */}
+                <Sparkles className="absolute -top-2 -right-2 w-4 h-4 text-white opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+                <Sparkles className="absolute -bottom-1 -left-2 w-3 h-3 text-white opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
+              </div>
+              
+              {/* Step number with animation */}
+              <span className="text-6xl font-display text-primary/10 absolute -top-4 left-1/2 -translate-x-1/2 -z-10 group-hover:text-primary/20 group-hover:scale-110 transition-all duration-300">
+                {item.step}
+              </span>
+              
+              {/* Connecting line animation (except last item) */}
+              {i < 2 && (
+                <div className="hidden md:block absolute top-10 left-[60%] w-[80%] h-0.5 bg-gradient-to-r from-primary/20 to-transparent">
+                  <div className="absolute top-0 left-0 w-4 h-4 -translate-y-1/2 rounded-full bg-primary/20 animate-pulse-brand" />
                 </div>
-                <span className="text-6xl font-display text-primary/10 absolute -top-4 left-1/2 -translate-x-1/2 -z-10">
-                  {item.step}
-                </span>
-                <h3 className="font-display text-xl text-foreground mb-3">{item.title}</h3>
-                <p className="text-muted-foreground">{item.desc}</p>
-              </div>)}
+              )}
+              
+              <h3 className="font-display text-xl text-foreground mb-3 group-hover:text-primary transition-colors">{item.title}</h3>
+              <p className="text-muted-foreground">{item.desc}</p>
+            </HoverParticleCard>
+          ))}
           </div>
         </div>
       </section>
