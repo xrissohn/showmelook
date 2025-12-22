@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Camera, Sparkles, ArrowLeft, Check, Save } from 'lucide-react';
+import { Camera, ArrowLeft, Check, Save } from 'lucide-react';
+import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 const styleOptions = [
   { id: 'minimal', label: '미니멀', emoji: '🤍' },
@@ -191,11 +193,11 @@ const ProfileEdit = () => {
             <ArrowLeft className="w-5 h-5" />
             <span>돌아가기</span>
           </button>
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-accent" />
-            <span className="font-display text-xl text-foreground">프로필 수정</span>
-          </div>
-          <div className="w-20" />
+          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+          </button>
+          <span className="font-display text-lg text-foreground">프로필 수정</span>
         </div>
       </header>
 
