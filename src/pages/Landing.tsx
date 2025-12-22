@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import { useState, useCallback, useRef } from 'react';
 
 // Particle component for hero background
 const Particle = ({ delay, left, size, duration }: { delay: number; left: number; size: number; duration: number }) => (
   <div 
-    className="absolute bottom-0 animate-particle-rise opacity-0"
+    className="absolute bottom-0 animate-particle-rise opacity-0 pointer-events-none"
     style={{ 
       left: `${left}%`, 
       animationDelay: `${delay}s`,
@@ -24,7 +25,7 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
 
 // Sparkle star component
 const SparklesStar = ({ className, delay }: { className: string; delay: number }) => (
-  <div className={`absolute ${className}`} style={{ animationDelay: `${delay}s` }}>
+  <div className={`absolute ${className} pointer-events-none`} style={{ animationDelay: `${delay}s` }}>
     <Sparkles className="text-primary animate-twinkle" style={{ animationDelay: `${delay}s` }} />
   </div>
 );
@@ -32,10 +33,155 @@ const SparklesStar = ({ className, delay }: { className: string; delay: number }
 // Floating orb component
 const FloatingOrb = ({ className, gradient, delay }: { className: string; gradient: string; delay: number }) => (
   <div 
-    className={`absolute rounded-full blur-xl animate-float ${className} ${gradient}`}
+    className={`absolute rounded-full blur-xl animate-float pointer-events-none ${className} ${gradient}`}
     style={{ animationDelay: `${delay}s` }}
   />
 );
+
+// Interactive mouse particle
+interface MouseParticle {
+  id: number;
+  x: number;
+  y: number;
+  size: number;
+  color: string;
+}
+
+const InteractiveParticle = ({ particle, onComplete }: { particle: MouseParticle; onComplete: (id: number) => void }) => {
+  return (
+    <div
+      className="absolute pointer-events-none animate-sparkle"
+      style={{
+        left: particle.x,
+        top: particle.y,
+        transform: 'translate(-50%, -50%)',
+      }}
+      onAnimationEnd={() => onComplete(particle.id)}
+    >
+      <div
+        className={`rounded-full ${particle.color}`}
+        style={{ width: particle.size, height: particle.size }}
+      />
+    </div>
+  );
+};
+
+// Hook for interactive mouse particles
+const useMouseParticles = () => {
+  const [particles, setParticles] = useState<MouseParticle[]>([]);
+  const idCounter = useRef(0);
+  const colors = ['bg-coral', 'bg-magenta', 'bg-purple', 'bg-sky', 'bg-primary'];
+
+  const addParticle = useCallback((e: React.MouseEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const newParticles: MouseParticle[] = [];
+    for (let i = 0; i < 3; i++) {
+      newParticles.push({
+        id: idCounter.current++,
+        x: x + (Math.random() - 0.5) * 40,
+        y: y + (Math.random() - 0.5) * 40,
+        size: Math.random() * 8 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      });
+    }
+    
+    setParticles(prev => [...prev, ...newParticles]);
+  }, []);
+
+  const removeParticle = useCallback((id: number) => {
+    setParticles(prev => prev.filter(p => p.id !== id));
+  }, []);
+
+  return { particles, addParticle, removeParticle };
+};
+
+// CTA Section with interactive particles
+const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
+  const { particles, addParticle, removeParticle } = useMouseParticles();
+  
+  return (
+    <section 
+      className="py-24 px-6 bg-gradient-dark relative overflow-hidden cursor-pointer"
+      onMouseMove={addParticle}
+    >
+      {/* Background effects */}
+      <div className="absolute inset-0 bg-gradient-brand opacity-20" />
+      
+      {/* Floating Orbs */}
+      <FloatingOrb className="top-0 right-0 w-96 h-96 opacity-25" gradient="bg-gradient-coral" delay={0} />
+      <FloatingOrb className="bottom-0 left-0 w-96 h-96 opacity-25" gradient="bg-gradient-sky" delay={1.5} />
+      <FloatingOrb className="top-1/2 left-1/4 w-64 h-64 opacity-20" gradient="bg-gradient-brand" delay={0.5} />
+      <FloatingOrb className="bottom-1/4 right-1/4 w-48 h-48 opacity-15" gradient="bg-gradient-to-br from-magenta to-purple" delay={2} />
+      
+      {/* Sparkle Stars */}
+      <SparklesStar className="top-12 left-[10%] w-6 h-6" delay={0} />
+      <SparklesStar className="top-20 right-[15%] w-8 h-8" delay={0.4} />
+      <SparklesStar className="bottom-16 left-[20%] w-5 h-5" delay={0.8} />
+      <SparklesStar className="bottom-24 right-[25%] w-7 h-7" delay={1.2} />
+      <SparklesStar className="top-1/3 left-[5%] w-4 h-4" delay={0.2} />
+      <SparklesStar className="top-1/2 right-[8%] w-6 h-6" delay={0.6} />
+      <SparklesStar className="bottom-1/3 left-[30%] w-5 h-5" delay={1} />
+      <SparklesStar className="top-24 left-1/2 w-4 h-4" delay={1.4} />
+      
+      {/* Rising Particles */}
+      {[...Array(15)].map((_, i) => (
+        <Particle 
+          key={i}
+          delay={i * 0.5}
+          left={Math.random() * 100}
+          size={Math.random() * 6 + 3}
+          duration={Math.random() * 3 + 5}
+        />
+      ))}
+      
+      {/* Interactive Mouse Particles */}
+      {particles.map(particle => (
+        <InteractiveParticle 
+          key={particle.id} 
+          particle={particle} 
+          onComplete={removeParticle}
+        />
+      ))}
+      
+      <div className="container mx-auto max-w-3xl text-center relative z-10">
+        {/* Logo with sparkles */}
+        <div className="relative inline-block mb-6">
+          <Sparkles className="absolute -top-2 -left-4 w-5 h-5 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
+          <Sparkles className="absolute -top-3 right-0 w-4 h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.4s' }} />
+          <img src={showmelookLogo} alt="쇼미룩 로고" className="w-16 h-16 mx-auto object-contain animate-float" />
+          <Sparkles className="absolute -bottom-1 -right-3 w-5 h-5 text-sky animate-sparkle" style={{ animationDelay: '0.8s' }} />
+          <Sparkles className="absolute bottom-2 -left-5 w-4 h-4 text-purple animate-sparkle" style={{ animationDelay: '1.2s' }} />
+        </div>
+        
+        <h2 className="font-display text-4xl md:text-5xl text-white mb-6 relative">
+          <Sparkles className="absolute -left-8 top-0 w-6 h-6 text-coral/70 animate-twinkle hidden md:block" />
+          지금 바로 시작하세요
+          <Sparkles className="absolute -right-8 bottom-0 w-6 h-6 text-sky/70 animate-twinkle hidden md:block" style={{ animationDelay: '0.5s' }} />
+        </h2>
+        <p className="text-xl text-white/70 mb-10">
+          당신만의 스타일을 발견할 준비가 되셨나요?
+        </p>
+        <Button variant="gold" size="xl" onClick={handleGetStarted} className="group relative overflow-hidden">
+          <span className="relative z-10 flex items-center gap-2">
+            무료로 시작하기
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </span>
+          <Sparkles className="absolute top-1 right-2 w-4 h-4 text-white/50 animate-sparkle" />
+        </Button>
+        
+        <p className="mt-6 text-sm text-white/50 flex items-center justify-center gap-2">
+          <Star className="w-4 h-4 animate-twinkle" />
+          마우스를 움직여 파티클 효과를 경험하세요
+          <Star className="w-4 h-4 animate-twinkle" style={{ animationDelay: '0.5s' }} />
+        </p>
+      </div>
+    </section>
+  );
+};
+
 const Landing = () => {
   const navigate = useNavigate();
   const {
@@ -231,25 +377,7 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-6 bg-gradient-dark relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-brand opacity-20" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-coral rounded-full blur-3xl opacity-20" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-20" />
-        
-        <div className="container mx-auto max-w-3xl text-center relative z-10">
-          <img src={showmelookLogo} alt="쇼미룩 로고" className="w-16 h-16 mx-auto mb-6 object-contain" />
-          <h2 className="font-display text-4xl md:text-5xl text-white mb-6">
-            지금 바로 시작하세요
-          </h2>
-          <p className="text-xl text-white/70 mb-10">
-            당신만의 스타일을 발견할 준비가 되셨나요?
-          </p>
-          <Button variant="gold" size="xl" onClick={handleGetStarted} className="group">
-            무료로 시작하기
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </div>
-      </section>
+      <CTASection handleGetStarted={handleGetStarted} />
 
       {/* Footer */}
       <footer className="py-12 px-6 bg-background border-t border-border">
