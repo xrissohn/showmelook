@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 // Particle component for hero background
 const Particle = ({ delay, left, size, duration }: { delay: number; left: number; size: number; duration: number }) => (
@@ -240,6 +240,17 @@ const Landing = () => {
   const {
     user
   } = useAuth();
+  const [isScrolled, setIsScrolled] = useState(false);
+  
+  // Scroll detection for navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+  
   const handleGetStarted = () => {
     if (user) {
       navigate('/style');
@@ -248,26 +259,65 @@ const Landing = () => {
     }
   };
   return <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      {/* Navigation with scroll effect */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-background/95 backdrop-blur-lg border-b border-border shadow-lg py-2' 
+          : 'bg-background/60 backdrop-blur-md border-b border-transparent py-0'
+      }`}>
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+          <button 
+            onClick={() => navigate('/')} 
+            className={`flex items-center gap-0 hover:opacity-80 transition-all duration-300 ${
+              isScrolled ? 'scale-90' : 'scale-100'
+            }`}
+          >
+            <img 
+              src={showmelookLogo} 
+              alt="쇼미룩 로고" 
+              className={`object-contain transition-all duration-300 ${
+                isScrolled ? 'w-8 h-8' : 'w-10 h-10'
+              }`} 
+            />
+            <img 
+              src={showmelookKoreanLogo} 
+              alt="쇼미룩" 
+              className={`object-contain -ml-3 transition-all duration-300 ${
+                isScrolled ? 'h-[70px]' : 'h-[90px]'
+              }`} 
+            />
           </button>
           <div className="flex items-center gap-4">
-            {user ? <Button variant="hero" onClick={() => navigate('/style')}>
+            {user ? (
+              <Button 
+                variant="hero" 
+                onClick={() => navigate('/style')}
+                className={`transition-all duration-300 ${isScrolled ? 'scale-95' : 'scale-100'}`}
+              >
+                <Sparkles className={`w-4 h-4 mr-1 transition-opacity ${isScrolled ? 'opacity-100 animate-twinkle' : 'opacity-0'}`} />
                 내 스타일 만들기
-              </Button> : <>
+              </Button>
+            ) : (
+              <>
                 <Button variant="ghost" onClick={() => navigate('/auth')}>
                   로그인
                 </Button>
-                <Button variant="hero" onClick={() => navigate('/auth')}>
+                <Button 
+                  variant="hero" 
+                  onClick={() => navigate('/auth')}
+                  className={`transition-all duration-300 ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                >
+                  {isScrolled && <Sparkles className="w-4 h-4 mr-1 animate-twinkle" />}
                   시작하기
                 </Button>
-              </>}
+              </>
+            )}
           </div>
         </div>
+        {/* Animated gradient line at bottom of nav when scrolled */}
+        <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-brand transition-opacity duration-300 ${
+          isScrolled ? 'opacity-100' : 'opacity-0'
+        }`} />
       </nav>
 
       {/* Hero Section */}
@@ -471,13 +521,65 @@ const Landing = () => {
       <CTASection handleGetStarted={handleGetStarted} />
 
       {/* Footer */}
-      <footer className="py-12 px-6 bg-background border-t border-border">
-        <div className="container mx-auto text-center">
-          <button onClick={() => navigate('/')} className="flex items-center justify-center gap-0 mb-4 hover:opacity-80 transition-opacity">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] object-contain -ml-2" />
-          </button>
-          <p className="text-sm text-muted-foreground">© 2025 ShowMeLook. All rights reserved.</p>
+      <footer className="py-16 px-6 bg-background border-t border-border relative overflow-hidden">
+        {/* Background effects */}
+        <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
+        <FloatingOrb className="top-0 left-1/4 w-48 h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
+        <FloatingOrb className="bottom-0 right-1/4 w-64 h-64 opacity-10" gradient="bg-gradient-sky" delay={1} />
+        
+        {/* Sparkle decorations */}
+        <SparklesStar className="top-8 left-[10%] w-4 h-4" delay={0} />
+        <SparklesStar className="top-12 right-[15%] w-5 h-5" delay={0.5} />
+        <SparklesStar className="bottom-8 left-[20%] w-4 h-4" delay={1} />
+        <SparklesStar className="bottom-12 right-[10%] w-5 h-5" delay={1.5} />
+        
+        {/* Rising particles */}
+        {[...Array(8)].map((_, i) => (
+          <Particle 
+            key={i}
+            delay={i * 0.8}
+            left={10 + Math.random() * 80}
+            size={Math.random() * 4 + 2}
+            duration={Math.random() * 3 + 5}
+          />
+        ))}
+        
+        <div className="container mx-auto relative z-10">
+          <div className="flex flex-col items-center">
+            {/* Animated logo */}
+            <button 
+              onClick={() => navigate('/')} 
+              className="flex items-center justify-center gap-0 mb-6 hover:opacity-80 transition-opacity group relative"
+            >
+              <Sparkles className="absolute -top-2 -left-4 w-4 h-4 text-coral opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain group-hover:animate-float" />
+              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[70px] object-contain -ml-2" />
+              <Sparkles className="absolute -bottom-1 -right-4 w-4 h-4 text-sky opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
+            </button>
+            
+            {/* Social/links area with hover effects */}
+            <div className="flex items-center gap-6 mb-6">
+              {['Instagram', 'Twitter', 'Blog'].map((social, i) => (
+                <button 
+                  key={social}
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors relative group"
+                >
+                  {social}
+                  <Sparkles className="absolute -top-2 -right-2 w-3 h-3 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+                </button>
+              ))}
+            </div>
+            
+            {/* Divider with gradient */}
+            <div className="w-32 h-0.5 bg-gradient-brand rounded-full mb-6 opacity-50" />
+            
+            {/* Copyright with sparkles */}
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Star className="w-3 h-3 animate-twinkle" />
+              © 2025 ShowMeLook. All rights reserved.
+              <Star className="w-3 h-3 animate-twinkle" style={{ animationDelay: '0.5s' }} />
+            </p>
+          </div>
         </div>
       </footer>
     </div>;
