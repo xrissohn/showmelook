@@ -129,20 +129,12 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
 }
 
 // Generate image using Vertex AI (gemini-2.5-flash-image in us-west1)
-// TODO: Remove TEST_FALLBACK after testing
-const TEST_FALLBACK = true; // Set to true to force Lovable AI fallback for testing
-
 async function generateImageWithVertexAI(
   accessToken: string,
   projectId: string,
   prompt: string,
   imageUrl?: string
 ): Promise<{ imageBase64: string; text?: string }> {
-  // Force fallback for testing
-  if (TEST_FALLBACK) {
-    console.log('TEST MODE: Forcing Vertex AI failure to test fallback');
-    throw new Error('TEST_FORCED_FAILURE');
-  }
 
   const region = 'us-west1';
   const modelId = 'gemini-2.5-flash-image';
@@ -248,41 +240,16 @@ async function generateImageWithLovableAI(
 
   console.log('Calling Lovable AI (fallback)...');
 
-  // Modify prompt for better face compositing with Lovable AI
-  let modifiedPrompt = prompt;
-  if (prompt.includes("Take this person's face") && imageUrl) {
-    // Use a more compatible prompt for Lovable AI face compositing
-    const styleMatch = prompt.match(/wearing (.+?) style outfit/);
-    const outfitMatch = prompt.match(/The outfit includes: (.+?)\./);
-    const bodyMatch = prompt.match(/has (.+?) body type/);
-    const heightMatch = prompt.match(/approximately (\d+)cm/);
-    
-    const style = styleMatch?.[1] || 'modern';
-    const outfit = outfitMatch?.[1] || 'modern casual wear';
-    const bodyType = bodyMatch?.[1] || 'average';
-    const height = heightMatch?.[1] || '170';
-    
-    modifiedPrompt = `Based on this reference photo of a person, create a professional fashion lookbook image.
-Generate the SAME PERSON from the reference photo wearing a ${style} style outfit.
-Outfit details: ${outfit}.
-Body type: ${bodyType}, height: approximately ${height}cm.
-IMPORTANT: The generated image MUST feature the exact same person from the reference photo.
-Style: Full body shot, clean white studio background, professional fashion photography, high fashion editorial, 4K quality.
-Keep the person's facial features, skin tone, and overall appearance identical to the reference.`;
-    
-    console.log('Modified prompt for Lovable AI face composite');
-  }
-
-  // Build message content with image if available
+  // Build message content - use original prompt directly (proven to work well)
   let content: any;
   if (imageUrl) {
     content = [
-      { type: 'text', text: modifiedPrompt },
+      { type: 'text', text: prompt },
       { type: 'image_url', image_url: { url: imageUrl } }
     ];
     console.log('Including reference image for face composite');
   } else {
-    content = modifiedPrompt;
+    content = prompt;
   }
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -292,7 +259,7 @@ Keep the person's facial features, skin tone, and overall appearance identical t
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      model: 'google/gemini-3-pro-image-preview',
+      model: 'google/gemini-2.5-flash-image-preview',
       messages: [{ role: 'user', content }],
       modalities: ['image', 'text']
     })
