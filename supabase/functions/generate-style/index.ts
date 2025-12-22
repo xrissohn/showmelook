@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { encode as base64Encode } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +11,6 @@ const corsHeaders = {
 function generateCacheKey(styleTrendId: string | null, productIds: string[]): string {
   const sortedProducts = [...productIds].sort();
   const key = `${styleTrendId || 'none'}_${sortedProducts.join('_')}`;
-  // Simple hash function
   let hash = 0;
   for (let i = 0; i < key.length; i++) {
     const char = key.charCodeAt(i);
@@ -30,6 +30,184 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+// Base64url encode for JWT
+function base64UrlEncode(data: Uint8Array | string): string {
+  const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Create JWT for Google OAuth
+async function createJWT(serviceAccount: { client_email: string; private_key: string }): Promise<string> {
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: serviceAccount.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  };
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
+  const signInput = `${encodedHeader}.${encodedPayload}`;
+
+  // Import the private key
+  const pemContents = serviceAccount.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\n/g, '');
+  
+  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(signInput)
+  );
+
+  const encodedSignature = base64UrlEncode(new Uint8Array(signature));
+  return `${signInput}.${encodedSignature}`;
+}
+
+// Get Google Access Token from Service Account
+async function getGoogleAccessToken(serviceAccountJson: string): Promise<string> {
+  const serviceAccount = JSON.parse(serviceAccountJson);
+  const jwt = await createJWT(serviceAccount);
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error('Failed to get access token:', error);
+    throw new Error('Google 인증에 실패했습니다.');
+  }
+
+  const data = await response.json();
+  return data.access_token;
+}
+
+// Fetch image and convert to base64
+async function imageUrlToBase64(imageUrl: string): Promise<{ data: string; mimeType: string }> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error('Failed to fetch image');
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const base64 = base64Encode(arrayBuffer);
+  const contentType = response.headers.get('content-type') || 'image/jpeg';
+  return { data: base64, mimeType: contentType };
+}
+
+// Generate image using Vertex AI
+async function generateImageWithVertexAI(
+  accessToken: string,
+  projectId: string,
+  region: string,
+  prompt: string,
+  imageUrl?: string
+): Promise<{ imageBase64: string; text?: string }> {
+  const endpoint = `https://${region}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${region}/publishers/google/models/gemini-2.0-flash-exp:generateContent`;
+
+  const parts: any[] = [{ text: prompt }];
+
+  // If image URL is provided, fetch and include it
+  if (imageUrl) {
+    try {
+      const { data, mimeType } = await imageUrlToBase64(imageUrl);
+      parts.push({
+        inlineData: {
+          mimeType,
+          data
+        }
+      });
+    } catch (err) {
+      console.error('Error fetching reference image:', err);
+    }
+  }
+
+  const requestBody = {
+    contents: [{
+      role: 'user',
+      parts
+    }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE'],
+    }
+  };
+
+  console.log('Calling Vertex AI endpoint:', endpoint);
+  console.log('Request body:', JSON.stringify({ ...requestBody, contents: [{ ...requestBody.contents[0], parts: parts.map(p => p.text ? { text: p.text.substring(0, 100) + '...' } : { inlineData: 'image' }) }] }));
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Vertex AI error:', response.status, errorText);
+    
+    if (response.status === 429) {
+      throw new Error('RATE_LIMIT');
+    }
+    if (response.status === 403) {
+      throw new Error('Vertex AI 접근 권한이 없습니다. Service Account 권한을 확인해주세요.');
+    }
+    
+    throw new Error(`Vertex AI 오류: ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log('Vertex AI response received');
+
+  // Extract image and text from response
+  const candidates = data.candidates;
+  if (!candidates || candidates.length === 0) {
+    console.error('No candidates in response:', JSON.stringify(data));
+    throw new Error('이미지 생성에 실패했습니다.');
+  }
+
+  const parts_response = candidates[0]?.content?.parts || [];
+  let imageBase64 = '';
+  let text = '';
+
+  for (const part of parts_response) {
+    if (part.inlineData) {
+      imageBase64 = part.inlineData.data;
+    }
+    if (part.text) {
+      text = part.text;
+    }
+  }
+
+  if (!imageBase64) {
+    console.error('No image in response parts:', JSON.stringify(parts_response));
+    throw new Error('이미지 생성에 실패했습니다.');
+  }
+
+  return { imageBase64, text };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -39,12 +217,20 @@ serve(async (req) => {
   try {
     const { style, products, userProfile, useFaceComposite, userAvatarUrl, styleTrendId, productIds } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    // Get Google Cloud credentials
+    const GOOGLE_SERVICE_ACCOUNT_JSON = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
+    const GOOGLE_CLOUD_PROJECT_ID = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID');
+    const GOOGLE_CLOUD_REGION = Deno.env.get('GOOGLE_CLOUD_REGION') || 'asia-northeast3';
+    
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!GOOGLE_SERVICE_ACCOUNT_JSON) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_JSON is not configured');
+    }
+
+    if (!GOOGLE_CLOUD_PROJECT_ID) {
+      throw new Error('GOOGLE_CLOUD_PROJECT_ID is not configured');
     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -89,7 +275,6 @@ serve(async (req) => {
       .single();
 
     if (!subscription) {
-      // Create default free subscription
       const { data: newSub, error: subError } = await supabaseAdmin
         .from('user_subscriptions')
         .insert({ user_id: userId, plan: 'free', daily_limit: 5 })
@@ -194,10 +379,10 @@ serve(async (req) => {
     const stylePreferences = userProfile?.style_preferences?.join(', ') || '';
 
     let prompt: string;
-    let messages: any[];
+    let referenceImageUrl: string | undefined;
 
     if (useFaceComposite && userAvatarUrl) {
-      // Generate with face composite - use image editing
+      referenceImageUrl = userAvatarUrl;
       prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${style} style outfit.
 The outfit includes: ${products || 'modern casual wear'}.
 The person has ${bodyType} body type, approximately ${height}cm tall.
@@ -206,27 +391,8 @@ Create a full body shot with this exact person's face, clean white studio backgr
 High fashion editorial style, ultra high resolution, 4K quality.
 Keep the person's face exactly as shown in the reference photo while generating the fashionable outfit on their body.`;
 
-      console.log('Generating face composite image with prompt:', prompt);
-
-      messages = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: prompt
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: userAvatarUrl
-              }
-            }
-          ]
-        }
-      ];
+      console.log('Generating face composite image');
     } else {
-      // Generate without face composite - standard generation
       prompt = `Create a professional fashion lookbook photo of a stylish Korean person wearing ${style} style outfit. 
 The outfit includes: ${products || 'modern casual wear'}.
 The person has ${bodyType} body type, approximately ${height}cm tall.
@@ -234,91 +400,65 @@ Style preferences: ${stylePreferences || 'modern and trendy'}.
 Full body shot, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.`;
 
-      console.log('Generating standard image with prompt:', prompt);
-
-      messages = [
-        {
-          role: 'user',
-          content: prompt
-        }
-      ];
+      console.log('Generating standard image');
     }
 
-    // Call Lovable AI Gateway for image generation
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages,
-        modalities: ['image', 'text']
-      }),
-    });
+    console.log('Prompt:', prompt.substring(0, 200) + '...');
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI gateway error:', response.status, errorText);
-      
-      if (response.status === 429) {
+    // Get Google Access Token
+    console.log('Getting Google Access Token...');
+    const accessToken = await getGoogleAccessToken(GOOGLE_SERVICE_ACCOUNT_JSON);
+    console.log('Access token obtained');
+
+    // Call Vertex AI for image generation
+    let result;
+    try {
+      result = await generateImageWithVertexAI(
+        accessToken,
+        GOOGLE_CLOUD_PROJECT_ID,
+        GOOGLE_CLOUD_REGION,
+        prompt,
+        referenceImageUrl
+      );
+    } catch (err) {
+      if (err instanceof Error && err.message === 'RATE_LIMIT') {
         return new Response(
           JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: '크레딧이 부족합니다. 크레딧을 충전해주세요.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      throw err;
+    }
+
+    const { imageBase64, text } = result;
+
+    // Upload image to Supabase Storage
+    let finalImageUrl = '';
+    
+    try {
+      const imageBytes = base64ToUint8Array(imageBase64);
+      const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
+      
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('generated-looks')
+        .upload(fileName, imageBytes, {
+          contentType: 'image/png',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        throw new Error('이미지 저장에 실패했습니다.');
       }
       
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('AI response received');
-
-    // Extract image from response
-    const imageDataUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-    if (!imageDataUrl) {
-      console.error('No image in response:', JSON.stringify(data));
-      throw new Error('이미지 생성에 실패했습니다.');
-    }
-
-    // Upload image to Supabase Storage instead of storing base64
-    let finalImageUrl = imageDataUrl;
-    
-    if (imageDataUrl.startsWith('data:image/')) {
-      try {
-        const base64Data = imageDataUrl.split(',')[1];
-        const imageBytes = base64ToUint8Array(base64Data);
-        const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
-        
-        const { error: uploadError, data: uploadData } = await supabaseAdmin.storage
-          .from('generated-looks')
-          .upload(fileName, imageBytes, {
-            contentType: 'image/png',
-            upsert: false
-          });
-
-        if (uploadError) {
-          console.error('Error uploading image:', uploadError);
-          // Fall back to base64 if upload fails
-        } else {
-          const { data: { publicUrl } } = supabaseAdmin.storage
-            .from('generated-looks')
-            .getPublicUrl(fileName);
-          finalImageUrl = publicUrl;
-          console.log('Image uploaded to storage:', finalImageUrl);
-        }
-      } catch (uploadErr) {
-        console.error('Error processing image upload:', uploadErr);
-        // Continue with base64 if upload fails
-      }
+      const { data: { publicUrl } } = supabaseAdmin.storage
+        .from('generated-looks')
+        .getPublicUrl(fileName);
+      finalImageUrl = publicUrl;
+      console.log('Image uploaded to storage:', finalImageUrl);
+    } catch (uploadErr) {
+      console.error('Error processing image upload:', uploadErr);
+      throw uploadErr;
     }
 
     // Save to cache (only for non-face-composite)
@@ -352,7 +492,7 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
     return new Response(
       JSON.stringify({ 
         imageUrl: finalImageUrl,
-        message: data.choices?.[0]?.message?.content || '스타일이 생성되었습니다!',
+        message: text || '스타일이 생성되었습니다!',
         faceComposite: useFaceComposite && userAvatarUrl ? true : false,
         cached: false,
         remainingCount: isPremium ? -1 : (dailyLimit - currentCount - 1),
