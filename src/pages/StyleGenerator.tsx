@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { Sparkles, ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown } from 'lucide-react';
+import { Sparkles, ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings } from 'lucide-react';
 
 interface StyleTrend {
   id: string;
@@ -761,12 +761,18 @@ const StyleGenerator = () => {
             <div className="bg-secondary/50 rounded-2xl p-6 border border-border">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-display text-xl text-foreground">프로필 정보</h3>
-                {!isEditingProfile ? (
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
-                    수정
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/profile-edit')}>
+                    <Settings className="w-4 h-4 mr-1" />
+                    전체 수정
                   </Button>
-                ) : (
-                  <div className="flex gap-2">
+                  {!isEditingProfile && (
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
+                      빠른 수정
+                    </Button>
+                  )}
+                {isEditingProfile && (
+                  <>
                     <Button variant="ghost" size="sm" onClick={() => {
                       setIsEditingProfile(false);
                       setEditForm({
@@ -781,8 +787,9 @@ const StyleGenerator = () => {
                     <Button variant="hero" size="sm" onClick={saveProfile} disabled={isSavingProfile}>
                       {isSavingProfile ? '저장 중...' : '저장'}
                     </Button>
-                  </div>
+                  </>
                 )}
+                </div>
               </div>
 
               {isEditingProfile ? (

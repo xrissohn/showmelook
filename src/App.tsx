@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import ProfileSetup from "./pages/ProfileSetup";
+import ProfileEdit from "./pages/ProfileEdit";
 import StyleGenerator from "./pages/StyleGenerator";
 import Cart from "./pages/Cart";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile-setup" element={<ProfileSetup />} />
+            <Route path="/profile-edit" element={<ProfileEdit />} />
             <Route path="/style" element={<StyleGenerator />} />
             <Route path="/cart" element={<Cart />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
