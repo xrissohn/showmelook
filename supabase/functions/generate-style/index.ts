@@ -29,85 +29,202 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-// Generate image using Lovable AI Gateway
-async function generateImageWithLovableAI(
-  apiKey: string,
+// Base64URL encode for JWT
+function base64UrlEncode(data: Uint8Array): string {
+  const base64 = btoa(String.fromCharCode(...data));
+  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// UTF-8 string to Uint8Array
+function stringToUint8Array(str: string): Uint8Array {
+  return new TextEncoder().encode(str);
+}
+
+// Generate JWT for Google Service Account
+async function generateJWT(serviceAccount: { client_email: string; private_key: string }): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT'
+  };
+  
+  const payload = {
+    iss: serviceAccount.client_email,
+    sub: serviceAccount.client_email,
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+    scope: 'https://www.googleapis.com/auth/cloud-platform'
+  };
+  
+  const headerB64 = base64UrlEncode(stringToUint8Array(JSON.stringify(header)));
+  const payloadB64 = base64UrlEncode(stringToUint8Array(JSON.stringify(payload)));
+  const unsignedToken = `${headerB64}.${payloadB64}`;
+  
+  // Parse PEM private key
+  const pemContents = serviceAccount.private_key
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\n/g, '');
+  
+  const binaryKey = Uint8Array.from(atob(pemContents), c => c.charCodeAt(0));
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey.buffer as ArrayBuffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const dataToSign = new Uint8Array(stringToUint8Array(unsignedToken));
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    dataToSign.buffer as ArrayBuffer
+  );
+  
+  const signatureB64 = base64UrlEncode(new Uint8Array(signature));
+  
+  return `${unsignedToken}.${signatureB64}`;
+}
+
+// Get Google Access Token using JWT
+async function getGoogleAccessToken(serviceAccount: { client_email: string; private_key: string }): Promise<string> {
+  const jwt = await generateJWT(serviceAccount);
+  
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt
+    })
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Token exchange failed:', response.status, errorText);
+    throw new Error(`토큰 교환 실패: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return data.access_token;
+}
+
+// Download image and convert to base64
+async function imageUrlToBase64(imageUrl: string): Promise<string> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`이미지 다운로드 실패: ${response.status}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+// Generate image using Vertex AI (gemini-2.5-flash-image in us-west1)
+async function generateImageWithVertexAI(
+  accessToken: string,
+  projectId: string,
   prompt: string,
   imageUrl?: string
 ): Promise<{ imageBase64: string; text?: string }> {
-  const messages: any[] = [];
+  const region = 'us-west1';
+  const modelId = 'gemini-2.5-flash-image';
+  const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
+
+  // Build content parts
+  const parts: any[] = [{ text: prompt }];
   
   if (imageUrl) {
-    // Include reference image for face composite
-    messages.push({
-      role: 'user',
-      content: [
-        { type: 'text', text: prompt },
-        { type: 'image_url', image_url: { url: imageUrl } }
-      ]
-    });
-  } else {
-    messages.push({
-      role: 'user',
-      content: prompt
+    console.log('Downloading reference image for face composite...');
+    const imageBase64 = await imageUrlToBase64(imageUrl);
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: imageBase64
+      }
     });
   }
 
-  console.log('Calling Lovable AI Gateway for image generation');
+  const requestBody = {
+    contents: [{
+      role: 'user',
+      parts
+    }],
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT']
+    }
+  };
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  console.log('Calling Vertex AI:', endpoint);
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash-image-preview',
-      messages,
-      modalities: ['image', 'text']
-    }),
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Lovable AI error:', response.status, errorText);
+    console.error('Vertex AI error:', response.status, errorText);
     
     if (response.status === 429) {
       throw new Error('RATE_LIMIT');
     }
+    if (response.status === 404) {
+      throw new Error(`Vertex AI 모델을 찾을 수 없습니다: ${modelId} in ${region}`);
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Vertex AI 인증 실패');
+    }
     
-    throw new Error(`이미지 생성 오류: ${response.status}`);
+    throw new Error(`Vertex AI 오류: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('Lovable AI response received');
+  console.log('Vertex AI response received');
 
-  // Extract image and text from response
-  const choice = data.choices?.[0];
-  if (!choice) {
-    console.error('No choices in response:', JSON.stringify(data));
+  // Parse Vertex AI response
+  const candidates = data.candidates;
+  if (!candidates || candidates.length === 0) {
+    console.error('No candidates in response:', JSON.stringify(data));
     throw new Error('이미지 생성에 실패했습니다.');
   }
 
-  const message = choice.message;
-  const text = message?.content || '';
-  const images = message?.images || [];
-
-  if (images.length === 0) {
-    console.error('No images in response:', JSON.stringify(message));
+  const content = candidates[0].content;
+  if (!content || !content.parts) {
+    console.error('No content parts in response:', JSON.stringify(candidates[0]));
     throw new Error('이미지 생성에 실패했습니다.');
   }
 
-  // Extract base64 from data URL
-  const imageDataUrl = images[0]?.image_url?.url || '';
-  const base64Match = imageDataUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
-  
-  if (!base64Match) {
-    console.error('Invalid image data URL format');
-    throw new Error('이미지 형식이 올바르지 않습니다.');
+  let imageBase64Result: string | null = null;
+  let textResult: string | undefined;
+
+  for (const part of content.parts) {
+    if (part.inlineData && part.inlineData.data) {
+      imageBase64Result = part.inlineData.data;
+    }
+    if (part.text) {
+      textResult = part.text;
+    }
   }
 
-  return { imageBase64: base64Match[1], text };
+  if (!imageBase64Result) {
+    console.error('No image data in response parts:', JSON.stringify(content.parts));
+    throw new Error('이미지 생성에 실패했습니다.');
+  }
+
+  return { imageBase64: imageBase64Result, text: textResult };
 }
 
 serve(async (req) => {
@@ -119,16 +236,26 @@ serve(async (req) => {
   try {
     const { style, products, userProfile, useFaceComposite, userAvatarUrl, styleTrendId, productIds } = await req.json();
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GOOGLE_SERVICE_ACCOUNT_JSON = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
+    const GOOGLE_CLOUD_PROJECT_ID = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!GOOGLE_SERVICE_ACCOUNT_JSON || !GOOGLE_CLOUD_PROJECT_ID) {
+      throw new Error('Google Cloud configuration is missing');
     }
 
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error('Supabase configuration is missing');
+    }
+
+    // Parse service account JSON
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(GOOGLE_SERVICE_ACCOUNT_JSON);
+    } catch (e) {
+      console.error('Failed to parse service account JSON:', e);
+      throw new Error('서비스 계정 JSON 파싱 실패');
     }
 
     // Create Supabase client with service role for cache management
@@ -287,11 +414,17 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
 
     console.log('Prompt:', prompt.substring(0, 200) + '...');
 
-    // Call Lovable AI for image generation
+    // Get Google Access Token
+    console.log('Getting Google access token...');
+    const accessToken = await getGoogleAccessToken(serviceAccount);
+    console.log('Access token obtained');
+
+    // Call Vertex AI for image generation
     let result;
     try {
-      result = await generateImageWithLovableAI(
-        LOVABLE_API_KEY,
+      result = await generateImageWithVertexAI(
+        accessToken,
+        GOOGLE_CLOUD_PROJECT_ID,
         prompt,
         referenceImageUrl
       );
