@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,16 +15,33 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
   
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) {
-      navigate('/style');
-    }
-  }, [user, navigate]);
+    const checkProfileAndRedirect = async () => {
+      if (!user) return;
+      
+      // Check if profile has been completed
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('height, weight, style_preferences')
+        .eq('user_id', user.id)
+        .single();
+      
+      // If new user or incomplete profile, go to profile setup
+      if (isNewUser || !profile?.height || !profile?.style_preferences?.length) {
+        navigate('/profile-setup');
+      } else {
+        navigate('/style');
+      }
+    };
+    
+    checkProfileAndRedirect();
+  }, [user, navigate, isNewUser]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,9 +75,10 @@ const Auth = () => {
             variant: 'destructive',
           });
         } else {
+          setIsNewUser(true);
           toast({
             title: '회원가입 성공!',
-            description: '쇼미룩에 오신 것을 환영합니다.',
+            description: '프로필을 설정해주세요.',
           });
         }
       }
