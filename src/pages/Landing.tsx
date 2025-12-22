@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
-
 const Landing = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-
+  const {
+    user
+  } = useAuth();
   const handleGetStarted = () => {
     if (user) {
       navigate('/style');
@@ -16,9 +16,7 @@ const Landing = () => {
       navigate('/auth');
     }
   };
-
-  return (
-    <div className="min-h-screen bg-background">
+  return <div className="min-h-screen bg-background">
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
@@ -27,20 +25,16 @@ const Landing = () => {
             <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
           </button>
           <div className="flex items-center gap-4">
-            {user ? (
-              <Button variant="hero" onClick={() => navigate('/style')}>
+            {user ? <Button variant="hero" onClick={() => navigate('/style')}>
                 내 스타일 만들기
-              </Button>
-            ) : (
-              <>
+              </Button> : <>
                 <Button variant="ghost" onClick={() => navigate('/auth')}>
                   로그인
                 </Button>
                 <Button variant="hero" onClick={() => navigate('/auth')}>
                   시작하기
                 </Button>
-              </>
-            )}
+              </>}
           </div>
         </div>
       </nav>
@@ -61,17 +55,23 @@ const Landing = () => {
               <span className="text-gradient-gold">AI가 완성합니다</span>
             </h1>
             
-            <p className="text-xl text-muted-foreground mb-10 max-w-xl mx-auto animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <p className="text-xl text-muted-foreground mb-10 max-w-xl mx-auto animate-fade-in-up" style={{
+            animationDelay: '0.2s'
+          }}>
               사진 한 장으로 트렌디한 스타일을 경험하세요.
               AI가 당신에게 딱 맞는 패션을 제안합니다.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{
+            animationDelay: '0.4s'
+          }}>
               <Button variant="hero" size="xl" onClick={handleGetStarted} className="group">
                 무료로 시작하기
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="hero-outline" size="xl" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}>
+              <Button variant="hero-outline" size="xl" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({
+              behavior: 'smooth'
+            })}>
                 자세히 알아보기
               </Button>
             </div>
@@ -79,23 +79,24 @@ const Landing = () => {
 
           {/* Preview Cards */}
           <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { title: '미니멀리스트', desc: '깔끔한 라인의 현대적 스타일' },
-              { title: '스트릿 스타일', desc: '도시적인 캐주얼 감성' },
-              { title: '클래식 엘레강스', desc: '시간을 초월한 우아함' },
-            ].map((style, i) => (
-              <div
-                key={style.title}
-                className="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in-up border border-border"
-                style={{ animationDelay: `${0.6 + i * 0.1}s` }}
-              >
+            {[{
+            title: '미니멀리스트',
+            desc: '깔끔한 라인의 현대적 스타일'
+          }, {
+            title: '스트릿 스타일',
+            desc: '도시적인 캐주얼 감성'
+          }, {
+            title: '클래식 엘레강스',
+            desc: '시간을 초월한 우아함'
+          }].map((style, i) => <div key={style.title} className="bg-card rounded-2xl p-6 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 animate-fade-in-up border border-border" style={{
+            animationDelay: `${0.6 + i * 0.1}s`
+          }}>
                 <div className="aspect-[3/4] bg-gradient-to-b from-secondary to-muted rounded-xl mb-4 flex items-center justify-center">
                   <Palette className="w-12 h-12 text-muted-foreground/50" />
                 </div>
                 <h3 className="font-display text-lg text-foreground mb-1">{style.title}</h3>
                 <p className="text-sm text-muted-foreground">{style.desc}</p>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -113,30 +114,22 @@ const Landing = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {[
-              {
-                icon: <Wand2 className="w-8 h-8" />,
-                step: '01',
-                title: '프로필 설정',
-                desc: '사진을 업로드하고 키, 몸무게, 선호 스타일을 입력하세요.',
-              },
-              {
-                icon: <Palette className="w-8 h-8" />,
-                step: '02',
-                title: 'AI 스타일 생성',
-                desc: 'AI가 당신에게 맞는 트렌디한 스타일을 생성합니다.',
-              },
-              {
-                icon: <ShoppingBag className="w-8 h-8" />,
-                step: '03',
-                title: '아이템 구매',
-                desc: '마음에 드는 아이템을 선택하고 바로 구매하세요.',
-              },
-            ].map((item, i) => (
-              <div
-                key={item.step}
-                className="relative text-center group"
-              >
+            {[{
+            icon: <Wand2 className="w-8 h-8" />,
+            step: '01',
+            title: '프로필 설정',
+            desc: '사진을 업로드하고 키, 몸무게, 선호 스타일을 입력하세요.'
+          }, {
+            icon: <Palette className="w-8 h-8" />,
+            step: '02',
+            title: 'AI 스타일 생성',
+            desc: 'AI가 당신에게 맞는 트렌디한 스타일을 생성합니다.'
+          }, {
+            icon: <ShoppingBag className="w-8 h-8" />,
+            step: '03',
+            title: '아이템 구매',
+            desc: '마음에 드는 아이템을 선택하고 바로 구매하세요.'
+          }].map((item, i) => <div key={item.step} className="relative text-center group">
                 <div className="w-20 h-20 mx-auto mb-6 bg-gradient-gold rounded-2xl flex items-center justify-center text-primary-foreground shadow-gold group-hover:scale-110 transition-transform duration-300">
                   {item.icon}
                 </div>
@@ -145,8 +138,7 @@ const Landing = () => {
                 </span>
                 <h3 className="font-display text-xl text-foreground mb-3">{item.title}</h3>
                 <p className="text-muted-foreground">{item.desc}</p>
-              </div>
-            ))}
+              </div>)}
           </div>
         </div>
       </section>
@@ -177,13 +169,9 @@ const Landing = () => {
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
             <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] object-contain -ml-2" />
           </button>
-          <p className="text-sm text-muted-foreground">
-            © 2024 ShowMeLook. All rights reserved.
-          </p>
+          <p className="text-sm text-muted-foreground">© 2025 ShowMeLook. All rights reserved.</p>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
