@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         display: ['"Playfair Display"', 'serif'],
         body: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+        korean: ['"Cafe24Ssurround"', 'Pretendard', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
