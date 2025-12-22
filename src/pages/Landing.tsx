@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Wand2, ShoppingBag, Palette, ArrowRight, Star } from 'lucide-react';
+import { Wand2, ShoppingBag, Palette, ArrowRight, Star } from 'lucide-react';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ const Landing = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-accent" />
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
             <span className="font-display text-xl text-foreground tracking-tight">showmelook</span>
           </div>
           <div className="flex items-center gap-4">
@@ -154,7 +155,7 @@ const Landing = () => {
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDMpIiBzdHJva2Utd2lkdGg9IjIiLz48L2c+PC9zdmc+')] opacity-50" />
         
         <div className="container mx-auto max-w-3xl text-center relative z-10">
-          <Sparkles className="w-12 h-12 text-accent mx-auto mb-6" />
+          <img src={showmelookLogo} alt="쇼미룩 로고" className="w-16 h-16 mx-auto mb-6 object-contain" />
           <h2 className="font-display text-4xl md:text-5xl text-primary-foreground mb-6">
             지금 바로 시작하세요
           </h2>
@@ -172,7 +173,7 @@ const Landing = () => {
       <footer className="py-12 px-6 bg-background border-t border-border">
         <div className="container mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-accent" />
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-6 h-6 object-contain" />
             <span className="font-display text-lg text-foreground">showmelook</span>
           </div>
           <p className="text-sm text-muted-foreground">
