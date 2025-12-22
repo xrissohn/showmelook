@@ -237,9 +237,10 @@ async function generateImageWithVertexAI(
 }
 
 // Generate image using Lovable AI (fallback)
+// Note: Lovable AI doesn't support face compositing, so we use a simplified prompt
 async function generateImageWithLovableAI(
   prompt: string,
-  imageUrl?: string
+  _imageUrl?: string  // Ignored - Lovable AI doesn't support face compositing
 ): Promise<{ imageBase64: string; text?: string }> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) {
@@ -248,15 +249,29 @@ async function generateImageWithLovableAI(
 
   console.log('Calling Lovable AI (fallback)...');
 
-  // Build message content
-  let content: any;
-  if (imageUrl) {
-    content = [
-      { type: 'text', text: prompt },
-      { type: 'image_url', image_url: { url: imageUrl } }
-    ];
-  } else {
-    content = prompt;
+  // Modify prompt for Lovable AI - remove face composite instructions
+  // Extract style info and create a simpler prompt
+  let simplifiedPrompt = prompt;
+  if (prompt.includes("Take this person's face")) {
+    // Convert face composite prompt to standard image generation prompt
+    const styleMatch = prompt.match(/wearing (.+?) style outfit/);
+    const outfitMatch = prompt.match(/The outfit includes: (.+?)\./);
+    const bodyMatch = prompt.match(/has (.+?) body type/);
+    const heightMatch = prompt.match(/approximately (\d+)cm/);
+    
+    const style = styleMatch?.[1] || 'modern';
+    const outfit = outfitMatch?.[1] || 'modern casual wear';
+    const bodyType = bodyMatch?.[1] || 'average';
+    const height = heightMatch?.[1] || '170';
+    
+    simplifiedPrompt = `Create a professional fashion lookbook photo of a stylish Korean model wearing ${style} style outfit.
+The outfit includes: ${outfit}.
+The model has ${bodyType} body type, approximately ${height}cm tall.
+Full body shot, clean white studio background, professional fashion photography lighting.
+High fashion editorial style, ultra high resolution, 4K quality.
+Generate a complete fashion image with a model wearing the outfit.`;
+    
+    console.log('Simplified prompt for Lovable AI (face composite not supported)');
   }
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -267,7 +282,7 @@ async function generateImageWithLovableAI(
     },
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash-image-preview',
-      messages: [{ role: 'user', content }],
+      messages: [{ role: 'user', content: simplifiedPrompt }],
       modalities: ['image', 'text']
     })
   });
