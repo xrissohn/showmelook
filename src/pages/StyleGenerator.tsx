@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check } from 'lucide-react';
+import { useGenerationLimit } from '@/hooks/useGenerationLimit';
+import { Sparkles, ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown } from 'lucide-react';
 
 interface StyleTrend {
   id: string;
@@ -66,6 +67,14 @@ const StyleGenerator = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { 
+    isPremium, 
+    remainingCount, 
+    canGenerate, 
+    isLoading: limitLoading, 
+    updateAfterGeneration,
+    refetch: refetchLimit 
+  } = useGenerationLimit(user?.id);
 
   const [trends, setTrends] = useState<StyleTrend[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -242,6 +251,16 @@ const StyleGenerator = () => {
   const generateStyle = async () => {
     if (!user) return;
 
+    // Check limit before generating
+    if (!canGenerate) {
+      toast({
+        title: '일일 생성 횟수 초과',
+        description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const styleDescription = selectedTrend?.name_ko || '트렌디한';
@@ -255,37 +274,68 @@ const StyleGenerator = () => {
           userProfile: userProfile,
           useFaceComposite: useFaceComposite && !!userProfile?.avatar_url,
           userAvatarUrl: userProfile?.avatar_url,
+          styleTrendId: selectedTrend?.id || null,
+          productIds: selectedProducts.map(p => p.id),
         },
       });
 
       if (error) throw error;
 
+      // Handle limit exceeded error
+      if (data?.limitExceeded) {
+        toast({
+          title: '일일 생성 횟수 초과',
+          description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+          variant: 'destructive',
+        });
+        refetchLimit();
+        return;
+      }
+
       if (data?.imageUrl) {
         setGeneratedImage(data.imageUrl);
 
-        // Save to database
-        await supabase.from('generated_looks').insert({
-          user_id: user.id,
-          image_url: data.imageUrl,
-          prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
-          style_trend_id: selectedTrend?.id || null,
-          product_ids: selectedProducts.map(p => p.id),
-        });
+        // Update local limit state
+        if (typeof data.remainingCount === 'number') {
+          updateAfterGeneration(data.isPremium, data.remainingCount);
+        }
 
-        toast({
-          title: '스타일 생성 완료!',
-          description: useFaceComposite && userProfile?.avatar_url 
-            ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
-            : '당신만의 룩이 완성되었습니다.',
-        });
+        // Show appropriate toast
+        if (data.cached) {
+          toast({
+            title: '캐시된 스타일 불러옴!',
+            description: '이전에 생성된 동일한 조합의 스타일입니다. (비용 절약 🎉)',
+          });
+        } else {
+          toast({
+            title: '스타일 생성 완료!',
+            description: useFaceComposite && userProfile?.avatar_url 
+              ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
+              : '당신만의 룩이 완성되었습니다.',
+          });
+        }
+
+        // Save to database (only if not cached - edge function handles caching)
+        if (!data.cached) {
+          await supabase.from('generated_looks').insert({
+            user_id: user.id,
+            image_url: data.imageUrl,
+            prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
+            style_trend_id: selectedTrend?.id || null,
+            product_ids: selectedProducts.map(p => p.id),
+          });
+        }
 
         fetchData(); // Refresh my looks
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating style:', error);
+      
+      // Handle specific error messages
+      const errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
       toast({
         title: '생성 실패',
-        description: '스타일 생성 중 문제가 발생했습니다. 다시 시도해주세요.',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -492,18 +542,64 @@ const StyleGenerator = () => {
                 </div>
               )}
 
+              {/* Daily Generation Limit Display */}
+              <div className="p-4 rounded-xl border-2 border-border bg-secondary/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {isPremium ? (
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center">
+                        <Crown className="w-5 h-5 text-white" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-accent" />
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {isPremium ? '프리미엄 회원' : '오늘 남은 생성 횟수'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {limitLoading ? (
+                          '로딩 중...'
+                        ) : isPremium ? (
+                          '무제한 스타일 생성'
+                        ) : (
+                          `${remainingCount}회 남음 (일일 5회)`
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {!isPremium && remainingCount <= 2 && remainingCount > 0 && (
+                    <span className="px-3 py-1 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-full">
+                      곧 소진
+                    </span>
+                  )}
+                  {!isPremium && remainingCount === 0 && (
+                    <span className="px-3 py-1 bg-destructive/20 text-destructive text-xs font-medium rounded-full">
+                      소진됨
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* Generate Button */}
               <Button
                 variant="gold"
                 size="xl"
                 className="w-full"
                 onClick={generateStyle}
-                disabled={isGenerating}
+                disabled={isGenerating || !canGenerate}
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     생성 중...
+                  </>
+                ) : !canGenerate ? (
+                  <>
+                    <Crown className="w-5 h-5" />
+                    프리미엄으로 업그레이드
                   </>
                 ) : (
                   <>
@@ -512,6 +608,21 @@ const StyleGenerator = () => {
                   </>
                 )}
               </Button>
+
+              {/* Upgrade Prompt for non-premium users with low remaining */}
+              {!isPremium && remainingCount <= 2 && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30">
+                  <div className="flex items-start gap-3">
+                    <Crown className="w-5 h-5 text-yellow-500 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground text-sm">프리미엄으로 업그레이드</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        무제한 스타일 생성, 고화질 이미지, 우선 처리 혜택을 누려보세요.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Generated Result */}

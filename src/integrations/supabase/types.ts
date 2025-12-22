@@ -56,6 +56,33 @@ export type Database = {
           },
         ]
       }
+      daily_generation_usage: {
+        Row: {
+          created_at: string | null
+          generation_count: number | null
+          id: string
+          updated_at: string | null
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          generation_count?: number | null
+          id?: string
+          updated_at?: string | null
+          usage_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          generation_count?: number | null
+          id?: string
+          updated_at?: string | null
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       generated_looks: {
         Row: {
           created_at: string
@@ -181,6 +208,47 @@ export type Database = {
         }
         Relationships: []
       }
+      style_cache: {
+        Row: {
+          cache_key: string
+          created_at: string | null
+          id: string
+          image_url: string
+          last_used_at: string | null
+          product_ids: string[]
+          style_trend_id: string | null
+          use_count: number | null
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string | null
+          id?: string
+          image_url: string
+          last_used_at?: string | null
+          product_ids?: string[]
+          style_trend_id?: string | null
+          use_count?: number | null
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string | null
+          id?: string
+          image_url?: string
+          last_used_at?: string | null
+          product_ids?: string[]
+          style_trend_id?: string | null
+          use_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_cache_style_trend_id_fkey"
+            columns: ["style_trend_id"]
+            isOneToOne: false
+            referencedRelation: "style_trends"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       style_trends: {
         Row: {
           created_at: string
@@ -211,6 +279,39 @@ export type Database = {
           name?: string
           name_ko?: string
           tags?: string[] | null
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          created_at: string | null
+          daily_limit: number
+          expires_at: string | null
+          id: string
+          plan: string
+          started_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          daily_limit?: number
+          expires_at?: string | null
+          id?: string
+          plan?: string
+          started_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          daily_limit?: number
+          expires_at?: string | null
+          id?: string
+          plan?: string
+          started_at?: string | null
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
