@@ -5,6 +5,24 @@ import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles } from 'lucide-
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+
+// Scroll animated section wrapper
+const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
+  const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
+  
+  return (
+    <section
+      ref={ref as React.RefObject<HTMLElement>}
+      className={`transition-all duration-700 ease-out ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
+      } ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </section>
+  );
+};
 
 // Particle component for hero background
 const Particle = ({ delay, left, size, duration }: { delay: number; left: number; size: number; duration: number }) => (
@@ -209,15 +227,15 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
           <Sparkles className="absolute bottom-2 -left-5 w-4 h-4 text-purple animate-sparkle" style={{ animationDelay: '1.2s' }} />
         </div>
         
-        <h2 className="font-display text-4xl md:text-5xl text-white mb-6 relative">
+        <h2 className="font-korean text-4xl md:text-5xl text-white mb-6 relative">
           <Sparkles className="absolute -left-8 top-0 w-6 h-6 text-coral/70 animate-twinkle hidden md:block" />
           지금 바로 시작하세요
           <Sparkles className="absolute -right-8 bottom-0 w-6 h-6 text-sky/70 animate-twinkle hidden md:block" style={{ animationDelay: '0.5s' }} />
         </h2>
-        <p className="text-xl text-white/70 mb-10">
+        <p className="text-xl font-korean text-white/70 mb-10">
           당신만의 스타일을 발견할 준비가 되셨나요?
         </p>
-        <Button variant="gold" size="xl" onClick={handleGetStarted} className="group relative overflow-hidden">
+        <Button variant="gold" size="xl" onClick={handleGetStarted} className="group relative overflow-hidden font-korean">
           <span className="relative z-10 flex items-center gap-2">
             무료로 시작하기
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -225,7 +243,7 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
           <Sparkles className="absolute top-1 right-2 w-4 h-4 text-white/50 animate-sparkle" />
         </Button>
         
-        <p className="mt-6 text-sm text-white/50 flex items-center justify-center gap-2">
+        <p className="mt-6 text-sm font-korean text-white/50 flex items-center justify-center gap-2">
           <Star className="w-4 h-4 animate-twinkle" />
           마우스를 움직여 파티클 효과를 경험하세요
           <Star className="w-4 h-4 animate-twinkle" style={{ animationDelay: '0.5s' }} />
@@ -292,20 +310,20 @@ const Landing = () => {
               <Button 
                 variant="hero" 
                 onClick={() => navigate('/style')}
-                className={`transition-all duration-300 ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                className={`transition-all duration-300 font-korean ${isScrolled ? 'scale-95' : 'scale-100'}`}
               >
                 <Sparkles className={`w-4 h-4 mr-1 transition-opacity ${isScrolled ? 'opacity-100 animate-twinkle' : 'opacity-0'}`} />
                 내 스타일 만들기
               </Button>
             ) : (
               <>
-                <Button variant="ghost" onClick={() => navigate('/auth')}>
+                <Button variant="ghost" onClick={() => navigate('/auth')} className="font-korean">
                   로그인
                 </Button>
                 <Button 
                   variant="hero" 
                   onClick={() => navigate('/auth')}
-                  className={`transition-all duration-300 ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                  className={`transition-all duration-300 font-korean ${isScrolled ? 'scale-95' : 'scale-100'}`}
                 >
                   {isScrolled && <Sparkles className="w-4 h-4 mr-1 animate-twinkle" />}
                   시작하기
@@ -376,16 +394,16 @@ const Landing = () => {
             
             <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full mb-8 animate-fade-in border border-primary/20 shadow-sm">
               <Star className="w-4 h-4 text-primary animate-twinkle" />
-              <span className="text-sm font-medium text-foreground">AI 패션 스타일링 서비스</span>
+              <span className="text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
               <Sparkles className="w-4 h-4 text-primary animate-sparkle" />
             </div>
             
-            <h1 className="font-display text-5xl md:text-7xl text-foreground leading-tight mb-6 animate-fade-in-up">
+            <h1 className="font-korean text-5xl md:text-7xl text-foreground leading-tight mb-6 animate-fade-in-up">
               나만의 스타일을<br />
               <span className="text-gradient-brand">AI가 완성합니다</span>
             </h1>
             
-            <p className="text-xl text-muted-foreground mb-10 max-w-xl mx-auto animate-fade-in-up" style={{
+            <p className="text-xl font-korean text-muted-foreground mb-10 max-w-xl mx-auto animate-fade-in-up" style={{
             animationDelay: '0.2s'
           }}>
               사진 한 장으로 트렌디한 스타일을 경험하세요.
@@ -395,13 +413,13 @@ const Landing = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-fade-in-up" style={{
             animationDelay: '0.4s'
           }}>
-              <Button variant="hero" size="xl" onClick={handleGetStarted} className="group">
+              <Button variant="hero" size="xl" onClick={handleGetStarted} className="group font-korean">
                 무료로 시작하기
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="hero-outline" size="xl" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({
               behavior: 'smooth'
-            })}>
+            })} className="font-korean">
                 자세히 알아보기
               </Button>
             </div>
@@ -430,8 +448,8 @@ const Landing = () => {
               <div className={`aspect-[3/4] bg-gradient-to-br ${style.gradient} rounded-xl mb-4 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105`}>
                 <Palette className="w-12 h-12 text-white/70 group-hover:text-white transition-colors" />
               </div>
-              <h3 className="font-display text-lg text-foreground mb-1 group-hover:text-primary transition-colors">{style.title}</h3>
-              <p className="text-sm text-muted-foreground">{style.desc}</p>
+              <h3 className="font-korean text-lg text-foreground mb-1 group-hover:text-primary transition-colors">{style.title}</h3>
+              <p className="text-sm font-korean text-muted-foreground">{style.desc}</p>
               {/* Hover sparkles */}
               <Sparkles className="absolute top-4 right-4 w-5 h-5 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
               <Sparkles className="absolute bottom-16 left-4 w-4 h-4 text-magenta opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
@@ -442,7 +460,8 @@ const Landing = () => {
       </section>
 
       {/* How it Works */}
-      <section id="how-it-works" className="py-24 px-6 bg-background relative overflow-hidden">
+      <ScrollSection className="py-24 px-6 bg-background relative overflow-hidden" delay={0}>
+        <div id="how-it-works" className="absolute -top-20" />
         {/* Subtle background effects */}
         <div className="absolute top-0 left-1/4 w-64 h-64 bg-gradient-coral rounded-full blur-3xl opacity-5 animate-float" />
         <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-gradient-sky rounded-full blur-3xl opacity-5 animate-float" style={{ animationDelay: '2s' }} />
@@ -460,10 +479,10 @@ const Landing = () => {
               <span className="text-sm font-medium text-primary uppercase tracking-wider">Simple Process</span>
               <Sparkles className="w-5 h-5 text-sky animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
-            <h2 className="font-display text-4xl md:text-5xl text-foreground mb-4">
+            <h2 className="font-korean text-4xl md:text-5xl text-foreground mb-4">
               쉽고 빠르게 시작하세요
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-lg font-korean text-muted-foreground">
               3단계로 완성되는 나만의 스타일
             </p>
           </div>
@@ -509,19 +528,19 @@ const Landing = () => {
                 </div>
               )}
               
-              <h3 className="font-display text-xl text-foreground mb-3 group-hover:text-primary transition-colors">{item.title}</h3>
-              <p className="text-muted-foreground">{item.desc}</p>
+              <h3 className="font-korean text-xl text-foreground mb-3 group-hover:text-primary transition-colors">{item.title}</h3>
+              <p className="font-korean text-muted-foreground">{item.desc}</p>
             </HoverParticleCard>
           ))}
           </div>
         </div>
-      </section>
+      </ScrollSection>
 
       {/* CTA Section */}
       <CTASection handleGetStarted={handleGetStarted} />
 
       {/* Footer */}
-      <footer className="py-16 px-6 bg-background border-t border-border relative overflow-hidden">
+      <ScrollSection className="py-16 px-6 bg-background border-t border-border relative overflow-hidden" delay={100}>
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
         <FloatingOrb className="top-0 left-1/4 w-48 h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
@@ -581,7 +600,7 @@ const Landing = () => {
             </p>
           </div>
         </div>
-      </footer>
+      </ScrollSection>
     </div>;
 };
 export default Landing;
