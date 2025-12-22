@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const Landing = () => {
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <span className="font-display text-xl text-foreground tracking-tight">showmelook</span>
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-6 object-contain" />
           </div>
           <div className="flex items-center gap-4">
             {user ? (
