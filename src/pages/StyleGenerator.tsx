@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookTextLogo from '@/assets/showmelook-text-logo.png';
 
 interface StyleTrend {
   id: string;
@@ -398,10 +399,10 @@ const StyleGenerator = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <span className="font-display text-xl text-foreground">showmelook</span>
-          </div>
+            <img src={showmelookTextLogo} alt="쇼미룩" className="h-8 object-contain" />
+          </button>
           <div className="flex items-center gap-4">
             <Button variant="ghost" onClick={() => navigate('/cart')}>
               <ShoppingBag className="w-5 h-5" />
