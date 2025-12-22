@@ -42,11 +42,25 @@ const Landing = () => {
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-6 bg-gradient-hero relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-brand rounded-full blur-3xl opacity-20" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-15" />
+        <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-brand rounded-full blur-3xl opacity-20 animate-gradient-flow" />
+        <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-15 animate-gradient-flow" style={{ animationDelay: '1s' }} />
         
         <div className="container mx-auto max-w-6xl relative z-10">
           <div className="text-center max-w-3xl mx-auto">
+            {/* Animated Hero Logo */}
+            <div className="flex items-center justify-center gap-1 mb-8 animate-fade-in">
+              <img 
+                src={showmelookLogo} 
+                alt="쇼미룩 로고" 
+                className="w-20 h-20 object-contain animate-gradient-flow drop-shadow-lg" 
+              />
+              <img 
+                src={showmelookKoreanLogo} 
+                alt="쇼미룩" 
+                className="h-[140px] object-contain -ml-4 drop-shadow-lg" 
+              />
+            </div>
+            
             <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full mb-8 animate-fade-in border border-primary/20 shadow-sm">
               <Star className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-foreground">AI 패션 스타일링 서비스</span>

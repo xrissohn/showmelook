@@ -4,7 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, ArrowLeft, Trash2, ShoppingBag, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, Trash2, ShoppingBag, ExternalLink, Loader2 } from 'lucide-react';
+import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 interface CartItem {
   id: string;
@@ -142,11 +144,12 @@ const Cart = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-accent" />
-              <span className="font-display text-xl text-foreground">장바구니</span>
-            </div>
+            <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
+              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
+              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+            </button>
           </div>
+          <span className="font-display text-xl text-foreground">장바구니</span>
         </div>
       </header>
 

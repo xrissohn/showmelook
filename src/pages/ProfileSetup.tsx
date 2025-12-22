@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, Camera, Sparkles, ArrowRight, Check } from 'lucide-react';
+import { Upload, Camera, ArrowRight, Check, Sparkles } from 'lucide-react';
+import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 const styleOptions = [
   { id: 'minimal', label: '미니멀', emoji: '🤍' },
@@ -151,10 +153,10 @@ const ProfileSetup = () => {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-accent" />
-            <span className="font-display text-xl text-foreground">showmelook</span>
-          </div>
+          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+          </button>
           <div className="flex items-center gap-2">
             {[1, 2, 3].map((s) => (
               <div

@@ -126,6 +126,11 @@ export default {
           "50%": { backgroundPosition: "100% 50%" },
           "100%": { backgroundPosition: "0% 50%" },
         },
+        "gradient-flow": {
+          "0%": { filter: "hue-rotate(0deg)" },
+          "50%": { filter: "hue-rotate(15deg)" },
+          "100%": { filter: "hue-rotate(0deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -136,6 +141,7 @@ export default {
         "scale-in": "scale-in 0.5s ease-out forwards",
         "pulse-brand": "pulse-brand 2s infinite",
         "gradient-shift": "gradient-shift 3s ease infinite",
+        "gradient-flow": "gradient-flow 4s ease-in-out infinite",
       },
       backgroundImage: {
         "gradient-brand": "linear-gradient(135deg, hsl(10 85% 65%) 0%, hsl(330 75% 55%) 35%, hsl(280 70% 55%) 65%, hsl(200 85% 55%) 100%)",
