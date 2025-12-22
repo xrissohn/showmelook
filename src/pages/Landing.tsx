@@ -22,10 +22,10 @@ const Landing = () => {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-12 object-contain" />
-          </div>
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[72px] object-contain" />
+          </button>
           <div className="flex items-center gap-4">
             {user ? (
               <Button variant="hero" onClick={() => navigate('/style')}>
