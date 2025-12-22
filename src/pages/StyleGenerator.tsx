@@ -45,6 +45,7 @@ interface UserProfile {
   style_preferences: string[] | null;
   avatar_url: string | null;
   full_name: string | null;
+  gender: string | null;
 }
 
 const styleOptions = [
@@ -134,7 +135,7 @@ const StyleGenerator = () => {
 
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('height, weight, body_type, style_preferences, avatar_url, full_name')
+        .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
         .eq('user_id', user.id)
         .single();
       
