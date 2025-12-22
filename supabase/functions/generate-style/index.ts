@@ -231,7 +231,8 @@ async function generateImageWithVertexAI(
 // Generate image using Lovable AI (fallback)
 async function generateImageWithLovableAI(
   prompt: string,
-  imageUrl?: string
+  imageUrl?: string,
+  retryWithoutFace: boolean = false
 ): Promise<{ imageBase64: string; text?: string }> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) {
@@ -240,16 +241,41 @@ async function generateImageWithLovableAI(
 
   console.log('Calling Lovable AI (fallback)...');
 
-  // Build message content - use original prompt directly (proven to work well)
+  // If retrying without face composite, create a simpler prompt
+  let finalPrompt = prompt;
+  let useImage = imageUrl;
+  
+  if (retryWithoutFace) {
+    console.log('Retrying without face composite - generating generic fashion image');
+    // Extract style information from original prompt and create a new one
+    const styleMatch = prompt.match(/wearing (.+?) style outfit/);
+    const outfitMatch = prompt.match(/The outfit includes: (.+?)\./);
+    const bodyMatch = prompt.match(/has (.+?) body type/);
+    const heightMatch = prompt.match(/approximately (\d+)cm/);
+    
+    const style = styleMatch?.[1] || 'modern';
+    const outfit = outfitMatch?.[1] || 'casual wear';
+    const bodyType = bodyMatch?.[1] || 'average';
+    const height = heightMatch?.[1] || '170';
+    
+    finalPrompt = `Create a professional fashion lookbook photo of a stylish model wearing ${style} style outfit.
+The outfit includes: ${outfit}.
+Model should have ${bodyType} body type, approximately ${height}cm tall.
+Style: Full body shot, clean white studio background, professional fashion photography, high fashion editorial, 4K quality.
+The model should look natural, stylish, and confident.`;
+    useImage = undefined; // Don't include reference image
+  }
+
+  // Build message content
   let content: any;
-  if (imageUrl) {
+  if (useImage) {
     content = [
-      { type: 'text', text: prompt },
-      { type: 'image_url', image_url: { url: imageUrl } }
+      { type: 'text', text: finalPrompt },
+      { type: 'image_url', image_url: { url: useImage } }
     ];
     console.log('Including reference image for face composite');
   } else {
-    content = prompt;
+    content = finalPrompt;
   }
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -285,6 +311,11 @@ async function generateImageWithLovableAI(
   // Extract image from response
   const images = data.choices?.[0]?.message?.images;
   if (!images || images.length === 0) {
+    // If no images and not yet retried, retry without face composite
+    if (!retryWithoutFace && imageUrl) {
+      console.log('Face composite refused, retrying with generic fashion image...');
+      return generateImageWithLovableAI(prompt, imageUrl, true);
+    }
     console.error('No images in Lovable AI response:', JSON.stringify(data));
     throw new Error('Lovable AI 이미지 생성 실패');
   }
