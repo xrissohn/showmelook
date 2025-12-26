@@ -618,8 +618,8 @@ const StyleGenerator = () => {
                   <div className="flex items-start gap-3">
                     <Crown className="w-5 h-5 text-yellow-500 mt-0.5" />
                     <div>
-                      <p className="font-medium text-foreground text-sm">프리미엄으로 업그레이드</p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="font-medium text-foreground text-sm font-korean">프리미엄으로 업그레이드</p>
+                      <p className="text-xs text-muted-foreground mt-1 font-korean">
                         무제한 스타일 생성, 고화질 이미지, 우선 처리 혜택을 누려보세요.
                       </p>
                     </div>
@@ -649,7 +649,7 @@ const StyleGenerator = () => {
 
               {generatedImage && selectedProducts.length > 0 && (
                 <div className="mt-6">
-                  <h3 className="font-medium text-foreground mb-3">선택된 아이템 구매하기</h3>
+                  <h3 className="font-medium text-foreground mb-3 font-korean">선택된 아이템 구매하기</h3>
                   <div className="space-y-2">
                     {selectedProducts.map((product) => (
                       <div
@@ -657,7 +657,7 @@ const StyleGenerator = () => {
                         className="flex items-center justify-between p-3 bg-secondary rounded-xl"
                       >
                         <div>
-                          <p className="font-medium text-foreground">{product.name_ko}</p>
+                          <p className="font-medium text-foreground font-korean">{product.name_ko}</p>
                           <p className="text-sm text-muted-foreground">
                             ₩{product.price.toLocaleString()}
                           </p>
@@ -666,6 +666,7 @@ const StyleGenerator = () => {
                           variant="minimal"
                           size="sm"
                           onClick={() => addToCart(product)}
+                          className="font-korean"
                         >
                           담기
                         </Button>
@@ -675,7 +676,7 @@ const StyleGenerator = () => {
                   <Button
                     variant="hero"
                     size="lg"
-                    className="w-full mt-4"
+                    className="w-full mt-4 font-korean"
                     onClick={() => navigate('/cart')}
                   >
                     장바구니로 이동
@@ -691,10 +692,10 @@ const StyleGenerator = () => {
             {myLooks.length === 0 ? (
               <div className="text-center py-20">
                 <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
-                <p className="text-lg text-muted-foreground">아직 생성된 룩이 없습니다</p>
+                <p className="text-lg text-muted-foreground font-korean">아직 생성된 룩이 없습니다</p>
                 <Button
                   variant="hero"
-                  className="mt-4"
+                  className="mt-4 font-korean"
                   onClick={() => setActiveTab('generate')}
                 >
                   첫 스타일 만들기
