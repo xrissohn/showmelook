@@ -546,20 +546,20 @@ const Landing = () => {
       <CTASection handleGetStarted={handleGetStarted} />
 
       {/* Footer */}
-      <ScrollSection className="py-10 sm:py-16 px-4 sm:px-6 bg-background border-t border-border relative overflow-hidden" delay={100}>
+      <ScrollSection className="py-8 sm:py-12 md:py-16 px-4 sm:px-6 bg-background border-t border-border relative overflow-hidden" delay={100}>
         {/* Background effects */}
         <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent" />
-        <FloatingOrb className="top-0 left-1/4 w-48 h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
-        <FloatingOrb className="bottom-0 right-1/4 w-64 h-64 opacity-10" gradient="bg-gradient-sky" delay={1} />
+        <FloatingOrb className="top-0 left-1/4 w-32 sm:w-48 h-32 sm:h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
+        <FloatingOrb className="bottom-0 right-1/4 w-40 sm:w-64 h-40 sm:h-64 opacity-10" gradient="bg-gradient-sky" delay={1} />
         
-        {/* Sparkle decorations */}
-        <SparklesStar className="top-8 left-[10%] w-4 h-4" delay={0} />
-        <SparklesStar className="top-12 right-[15%] w-5 h-5" delay={0.5} />
-        <SparklesStar className="bottom-8 left-[20%] w-4 h-4" delay={1} />
-        <SparklesStar className="bottom-12 right-[10%] w-5 h-5" delay={1.5} />
+        {/* Sparkle decorations - hidden on mobile */}
+        <SparklesStar className="top-8 left-[10%] w-3 h-3 sm:w-4 sm:h-4 hidden sm:block" delay={0} />
+        <SparklesStar className="top-12 right-[15%] w-4 h-4 sm:w-5 sm:h-5 hidden sm:block" delay={0.5} />
+        <SparklesStar className="bottom-8 left-[20%] w-3 h-3 sm:w-4 sm:h-4 hidden sm:block" delay={1} />
+        <SparklesStar className="bottom-12 right-[10%] w-4 h-4 sm:w-5 sm:h-5 hidden sm:block" delay={1.5} />
         
-        {/* Rising particles */}
-        {[...Array(8)].map((_, i) => (
+        {/* Rising particles - fewer on mobile */}
+        {[...Array(4)].map((_, i) => (
           <Particle 
             key={i}
             delay={i * 0.8}
@@ -574,35 +574,35 @@ const Landing = () => {
             {/* Animated logo */}
             <button 
               onClick={() => navigate('/')} 
-              className="flex items-center justify-center gap-0 mb-6 hover:opacity-80 transition-opacity group relative"
+              className="flex items-center justify-center gap-0 mb-4 sm:mb-6 hover:opacity-80 transition-opacity group relative"
             >
-              <Sparkles className="absolute -top-2 -left-4 w-4 h-4 text-coral opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
-              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain group-hover:animate-float" />
-              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[70px] object-contain -ml-2" />
-              <Sparkles className="absolute -bottom-1 -right-4 w-4 h-4 text-sky opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
+              <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-4 sm:h-4 text-coral opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain group-hover:animate-float" />
+              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[50px] sm:h-[60px] md:h-[70px] object-contain -ml-1.5 sm:-ml-2" />
+              <Sparkles className="absolute -bottom-0.5 -right-2 sm:-bottom-1 sm:-right-4 w-3 h-3 sm:w-4 sm:h-4 text-sky opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
             </button>
             
             {/* Social/links area with hover effects */}
-            <div className="flex items-center gap-6 mb-6">
+            <div className="flex items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
               {['Instagram', 'Twitter', 'Blog'].map((social, i) => (
                 <button 
                   key={social}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors relative group"
+                  className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors relative group"
                 >
                   {social}
-                  <Sparkles className="absolute -top-2 -right-2 w-3 h-3 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+                  <Sparkles className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-2 h-2 sm:w-3 sm:h-3 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
                 </button>
               ))}
             </div>
             
             {/* Divider with gradient */}
-            <div className="w-32 h-0.5 bg-gradient-brand rounded-full mb-6 opacity-50" />
+            <div className="w-24 sm:w-32 h-0.5 bg-gradient-brand rounded-full mb-4 sm:mb-6 opacity-50" />
             
             {/* Copyright with sparkles */}
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Star className="w-3 h-3 animate-twinkle" />
-              © 2025 ShowMeLook. All rights reserved.
-              <Star className="w-3 h-3 animate-twinkle" style={{ animationDelay: '0.5s' }} />
+            <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5 sm:gap-2">
+              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-twinkle flex-shrink-0" />
+              <span>© 2025 ShowMeLook</span>
+              <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-twinkle flex-shrink-0" style={{ animationDelay: '0.5s' }} />
             </p>
           </div>
         </div>
