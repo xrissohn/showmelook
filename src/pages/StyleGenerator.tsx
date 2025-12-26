@@ -630,7 +630,7 @@ const StyleGenerator = () => {
 
             {/* Right: Generated Result */}
             <div className="lg:sticky lg:top-24 lg:self-start mt-6 lg:mt-0">
-              <h2 className="font-display text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">생성된 스타일</h2>
+              <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">생성된 스타일</h2>
               <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border">
                 {generatedImage ? (
                   <img
