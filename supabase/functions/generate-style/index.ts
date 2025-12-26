@@ -753,9 +753,19 @@ serve(async (req) => {
         // CACHE HIT: Don't count against daily limit!
         console.log(`Cache HIT (${cachedResult.cacheLevel}) - NOT counting against daily limit`);
 
+        // Generate signed URL for cached image (bucket is now private)
+        let signedCacheUrl = cachedResult.imageUrl;
+        if (!cachedResult.imageUrl.startsWith('http')) {
+          const { data: signedData } = await supabaseAdmin.storage
+            .from('generated-looks')
+            .createSignedUrl(cachedResult.imageUrl, 86400);
+          signedCacheUrl = signedData?.signedUrl || cachedResult.imageUrl;
+        }
+
         return new Response(
           JSON.stringify({ 
-            imageUrl: cachedResult.imageUrl,
+            imageUrl: signedCacheUrl,
+            imagePath: cachedResult.imageUrl,
             message: '캐시된 스타일을 불러왔습니다! (무료)',
             cached: true,
             cacheLevel: cachedResult.cacheLevel,
@@ -912,15 +922,16 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
     const { imageBase64, text } = result;
 
     // Upload image to Supabase Storage
-    let finalImageUrl = '';
+    let filePath = '';
+    let signedImageUrl = '';
     
     try {
       const imageBytes = base64ToUint8Array(imageBase64);
-      const fileName = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
+      filePath = `${userId}/${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
       
       const { error: uploadError } = await supabaseAdmin.storage
         .from('generated-looks')
-        .upload(fileName, imageBytes, {
+        .upload(filePath, imageBytes, {
           contentType: 'image/png',
           upsert: false
         });
@@ -930,23 +941,30 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
         throw new Error('이미지 저장에 실패했습니다.');
       }
       
-      const { data: { publicUrl } } = supabaseAdmin.storage
+      // Generate signed URL (bucket is now private)
+      const { data: signedData, error: signedError } = await supabaseAdmin.storage
         .from('generated-looks')
-        .getPublicUrl(fileName);
-      finalImageUrl = publicUrl;
-      console.log('Image uploaded to storage:', finalImageUrl);
+        .createSignedUrl(filePath, 86400); // 24 hours
+      
+      if (signedError) {
+        console.error('Error creating signed URL:', signedError);
+        throw new Error('이미지 URL 생성에 실패했습니다.');
+      }
+      
+      signedImageUrl = signedData.signedUrl;
+      console.log('Image uploaded to storage with signed URL');
     } catch (uploadErr) {
       console.error('Error processing image upload:', uploadErr);
       throw uploadErr;
     }
 
-    // Save to cache with multiple keys (only for non-face-composite)
-    if (shouldUseCache && finalImageUrl) {
+    // Save to cache with file path (only for non-face-composite)
+    if (shouldUseCache && filePath) {
       await saveToCache(
         supabaseAdmin,
         styleTrendId || null,
         productIds || [],
-        finalImageUrl,
+        filePath,
         bodyType,
         height,
         gender
@@ -964,7 +982,8 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
 
     return new Response(
       JSON.stringify({ 
-        imageUrl: finalImageUrl,
+        imageUrl: signedImageUrl,
+        imagePath: filePath,
         message: text || '스타일이 생성되었습니다!',
         faceComposite: useFaceComposite && userAvatarUrl ? true : false,
         cached: false,

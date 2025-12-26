@@ -133,7 +133,22 @@ const StyleGenerator = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (looksData) setMyLooks(looksData);
+      // Generate signed URLs for generated looks (bucket is now private)
+      if (looksData) {
+        const looksWithSignedUrls = await Promise.all(
+          looksData.map(async (look) => {
+            // Check if it's a file path (not already a full signed URL)
+            if (look.image_url && !look.image_url.startsWith('http')) {
+              const { data: signedData } = await supabase.storage
+                .from('generated-looks')
+                .createSignedUrl(look.image_url, 3600);
+              return { ...look, image_url: signedData?.signedUrl || look.image_url };
+            }
+            return look;
+          })
+        );
+        setMyLooks(looksWithSignedUrls);
+      }
 
       const { data: profileData } = await supabase
         .from('profiles')
@@ -142,7 +157,16 @@ const StyleGenerator = () => {
         .single();
       
       if (profileData) {
-        setUserProfile(profileData);
+        // Generate signed URL for avatar if it's a file path
+        let avatarDisplayUrl = profileData.avatar_url;
+        if (profileData.avatar_url && !profileData.avatar_url.startsWith('http')) {
+          const { data: signedData } = await supabase.storage
+            .from('avatars')
+            .createSignedUrl(profileData.avatar_url, 3600);
+          avatarDisplayUrl = signedData?.signedUrl || profileData.avatar_url;
+        }
+        
+        setUserProfile({ ...profileData, avatar_url: avatarDisplayUrl });
         setEditForm({
           height: profileData.height?.toString() || '',
           weight: profileData.weight?.toString() || '',
@@ -176,16 +200,20 @@ const StyleGenerator = () => {
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      // Store the file path instead of public URL (bucket is now private)
+      const storagePath = filePath;
 
       await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        .update({ avatar_url: storagePath })
         .eq('user_id', user.id);
 
-      setUserProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+      // Generate signed URL for display (valid for 1 hour)
+      const { data: signedData } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(storagePath, 3600);
+
+      setUserProfile(prev => prev ? { ...prev, avatar_url: signedData?.signedUrl || storagePath } : null);
       
       toast({
         title: '프로필 사진 변경됨',
@@ -319,10 +347,11 @@ const StyleGenerator = () => {
         }
 
         // Save to database (only if not cached - edge function handles caching)
+        // Store the file path, not the signed URL
         if (!data.cached) {
           await supabase.from('generated_looks').insert({
             user_id: user.id,
-            image_url: data.imageUrl,
+            image_url: data.imagePath || data.imageUrl,
             prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
             style_trend_id: selectedTrend?.id || null,
             product_ids: selectedProducts.map(p => p.id),
