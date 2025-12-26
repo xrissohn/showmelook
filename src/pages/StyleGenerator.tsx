@@ -754,23 +754,23 @@ const StyleGenerator = () => {
                   />
                 </label>
               </div>
-              <h2 className="font-display text-2xl text-foreground mt-4">
+              <h2 className="font-korean text-2xl text-foreground mt-4">
                 {userProfile?.full_name || user?.email?.split('@')[0] || '사용자'}
               </h2>
-              <p className="text-muted-foreground">{user?.email}</p>
+              <p className="text-muted-foreground font-korean">{user?.email}</p>
             </div>
 
             {/* Profile Info */}
             <div className="bg-secondary/50 rounded-2xl p-6 border border-border">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-display text-xl text-foreground">프로필 정보</h3>
+                <h3 className="font-korean text-xl text-foreground">프로필 정보</h3>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => navigate('/profile-edit')}>
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/profile-edit')} className="font-korean">
                     <Settings className="w-4 h-4 mr-1" />
                     전체 수정
                   </Button>
                   {!isEditingProfile && (
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)}>
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)} className="font-korean">
                       빠른 수정
                     </Button>
                   )}
@@ -787,7 +787,7 @@ const StyleGenerator = () => {
                     }}>
                       취소
                     </Button>
-                    <Button variant="hero" size="sm" onClick={saveProfile} disabled={isSavingProfile}>
+                    <Button variant="hero" size="sm" onClick={saveProfile} disabled={isSavingProfile} className="font-korean">
                       {isSavingProfile ? '저장 중...' : '저장'}
                     </Button>
                   </>
@@ -799,7 +799,7 @@ const StyleGenerator = () => {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-height">키 (cm)</Label>
+                      <Label htmlFor="edit-height" className="font-korean">키 (cm)</Label>
                       <Input
                         id="edit-height"
                         type="number"
@@ -809,7 +809,7 @@ const StyleGenerator = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-weight">몸무게 (kg)</Label>
+                      <Label htmlFor="edit-weight" className="font-korean">몸무게 (kg)</Label>
                       <Input
                         id="edit-weight"
                         type="number"
@@ -821,7 +821,7 @@ const StyleGenerator = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label>체형</Label>
+                    <Label className="font-korean">체형</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {bodyTypes.map((type) => (
                         <button
@@ -833,14 +833,14 @@ const StyleGenerator = () => {
                               : 'border-border hover:border-accent/50'
                           }`}
                         >
-                          <span className="text-foreground font-medium">{type.label}</span>
+                          <span className="text-foreground font-medium font-korean">{type.label}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <Label>선호 스타일</Label>
+                    <Label className="font-korean">선호 스타일</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {styleOptions.map((style) => (
                         <button
@@ -858,7 +858,7 @@ const StyleGenerator = () => {
                             </div>
                           )}
                           <span className="text-xl block mb-1">{style.emoji}</span>
-                          <span className="text-foreground text-sm font-medium">{style.label}</span>
+                          <span className="text-foreground text-sm font-medium font-korean">{style.label}</span>
                         </button>
                       ))}
                     </div>
@@ -868,22 +868,22 @@ const StyleGenerator = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground">키</p>
-                      <p className="text-lg font-medium text-foreground">
+                      <p className="text-sm text-muted-foreground font-korean">키</p>
+                      <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.height ? `${userProfile.height}cm` : '-'}
                       </p>
                     </div>
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground">몸무게</p>
-                      <p className="text-lg font-medium text-foreground">
+                      <p className="text-sm text-muted-foreground font-korean">몸무게</p>
+                      <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.weight ? `${userProfile.weight}kg` : '-'}
                       </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground mb-2">성별</p>
-                      <p className="text-lg font-medium text-foreground">
+                      <p className="text-sm text-muted-foreground mb-2 font-korean">성별</p>
+                      <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.gender === 'male' ? '남성' : 
                          userProfile?.gender === 'female' ? '여성' : 
                          userProfile?.gender === 'unisex' ? '유니섹스' : 
@@ -891,20 +891,20 @@ const StyleGenerator = () => {
                       </p>
                     </div>
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground mb-2">체형</p>
-                      <p className="text-lg font-medium text-foreground">
+                      <p className="text-sm text-muted-foreground mb-2 font-korean">체형</p>
+                      <p className="text-lg font-medium text-foreground font-korean">
                         {bodyTypes.find(t => t.id === userProfile?.body_type)?.label || '-'}
                       </p>
                     </div>
                   </div>
                   <div className="p-4 bg-background rounded-xl">
-                    <p className="text-sm text-muted-foreground mb-2">선호 스타일</p>
+                    <p className="text-sm text-muted-foreground mb-2 font-korean">선호 스타일</p>
                     <div className="flex flex-wrap gap-2">
                       {userProfile?.style_preferences?.length ? (
                         userProfile.style_preferences.map(styleId => {
                           const style = styleOptions.find(s => s.id === styleId);
                           return style ? (
-                            <span key={styleId} className="px-3 py-1 bg-accent/10 text-accent rounded-full text-sm">
+                            <span key={styleId} className="px-3 py-1 bg-accent/10 text-accent rounded-full text-sm font-korean">
                               {style.emoji} {style.label}
                             </span>
                           ) : null;
@@ -921,14 +921,14 @@ const StyleGenerator = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
-                <p className="text-3xl font-display text-foreground">{myLooks.length}</p>
-                <p className="text-muted-foreground">생성된 룩</p>
+                <p className="text-3xl font-korean text-foreground">{myLooks.length}</p>
+                <p className="text-muted-foreground font-korean">생성된 룩</p>
               </div>
               <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
-                <p className="text-3xl font-display text-foreground">
+                <p className="text-3xl font-korean text-foreground">
                   {myLooks.filter(l => l.is_favorite).length}
                 </p>
-                <p className="text-muted-foreground">즐겨찾기</p>
+                <p className="text-muted-foreground font-korean">즐겨찾기</p>
               </div>
             </div>
           </div>
