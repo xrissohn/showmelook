@@ -374,63 +374,65 @@ const Landing = () => {
           />
         ))}
         
-        <div className="container mx-auto max-w-6xl relative z-10">
+        <div className="container mx-auto max-w-6xl relative z-10 px-4 sm:px-6">
           <div className="text-center max-w-3xl mx-auto">
             {/* Animated Hero Logo with Sparkles */}
-            <div className="flex items-center justify-center gap-1 mb-8 animate-fade-in relative">
-              <Sparkles className="absolute -top-2 -left-4 w-6 h-6 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
-              <Sparkles className="absolute -top-4 left-8 w-4 h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.3s' }} />
-              <Sparkles className="absolute top-0 right-4 w-5 h-5 text-purple animate-sparkle" style={{ animationDelay: '0.6s' }} />
-              <Sparkles className="absolute -bottom-2 left-12 w-4 h-4 text-sky animate-sparkle" style={{ animationDelay: '0.9s' }} />
+            <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-4 sm:mb-8 animate-fade-in relative">
+              <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-4 h-4 sm:w-6 sm:h-6 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
+              <Sparkles className="absolute -top-2 left-6 sm:-top-4 sm:left-8 w-3 h-3 sm:w-4 sm:h-4 text-magenta animate-sparkle hidden sm:block" style={{ animationDelay: '0.3s' }} />
+              <Sparkles className="absolute top-0 right-2 sm:right-4 w-3 h-3 sm:w-5 sm:h-5 text-purple animate-sparkle hidden sm:block" style={{ animationDelay: '0.6s' }} />
+              <Sparkles className="absolute -bottom-1 left-8 sm:-bottom-2 sm:left-12 w-3 h-3 sm:w-4 sm:h-4 text-sky animate-sparkle hidden sm:block" style={{ animationDelay: '0.9s' }} />
               <img 
                 src={showmelookLogo} 
                 alt="쇼미룩 로고" 
-                className="w-20 h-20 object-contain animate-float drop-shadow-lg" 
+                className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain animate-float drop-shadow-lg" 
               />
               <img 
                 src={showmelookKoreanLogo} 
                 alt="쇼미룩" 
-                className="h-[140px] object-contain -ml-4 drop-shadow-lg" 
+                className="h-[80px] sm:h-[110px] md:h-[140px] object-contain -ml-2 sm:-ml-3 md:-ml-4 drop-shadow-lg" 
               />
-              <Sparkles className="absolute -top-2 right-0 w-5 h-5 text-coral animate-sparkle" style={{ animationDelay: '1.2s' }} />
-              <Sparkles className="absolute bottom-4 -right-6 w-6 h-6 text-magenta animate-sparkle" style={{ animationDelay: '1.5s' }} />
+              <Sparkles className="absolute -top-1 right-0 w-3 h-3 sm:w-5 sm:h-5 text-coral animate-sparkle" style={{ animationDelay: '1.2s' }} />
+              <Sparkles className="absolute bottom-2 -right-3 sm:bottom-4 sm:-right-6 w-4 h-4 sm:w-6 sm:h-6 text-magenta animate-sparkle hidden sm:block" style={{ animationDelay: '1.5s' }} />
             </div>
             
-            <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full mb-8 animate-fade-in border border-primary/20 shadow-sm">
-              <Star className="w-4 h-4 text-primary animate-twinkle" />
-              <span className="text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
-              <Sparkles className="w-4 h-4 text-primary animate-sparkle" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-white/80 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-4 sm:mb-8 animate-fade-in border border-primary/20 shadow-sm">
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-twinkle flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
+              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-sparkle flex-shrink-0" />
             </div>
             
-            <h1 className="font-korean text-3xl sm:text-5xl md:text-7xl text-foreground leading-tight mb-4 sm:mb-6 animate-fade-in-up">
+            <h1 className="font-korean text-2xl sm:text-4xl md:text-5xl lg:text-7xl text-foreground leading-tight mb-3 sm:mb-6 animate-fade-in-up">
               나만의 스타일을<br />
               <span className="text-gradient-brand">AI가 완성합니다</span>
             </h1>
             
-            <p className="text-base sm:text-xl font-korean text-muted-foreground mb-8 sm:mb-10 max-w-xl mx-auto animate-fade-in-up px-4 sm:px-0" style={{
+            <p className="text-sm sm:text-base md:text-xl font-korean text-muted-foreground mb-6 sm:mb-10 max-w-xl mx-auto animate-fade-in-up px-2 sm:px-4" style={{
             animationDelay: '0.2s'
           }}>
               사진 한 장으로 트렌디한 스타일을 경험하세요.
+              <span className="hidden sm:inline"><br /></span>
+              <span className="sm:hidden"> </span>
               AI가 당신에게 딱 맞는 패션을 제안합니다.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center animate-fade-in-up px-4 sm:px-0" style={{
+            <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center animate-fade-in-up" style={{
             animationDelay: '0.4s'
           }}>
-              <Button variant="hero" size="lg" onClick={handleGetStarted} className="group font-korean w-full sm:w-auto">
+              <Button variant="hero" size="lg" onClick={handleGetStarted} className="group font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3">
                 무료로 시작하기
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="hero-outline" size="lg" onClick={() => document.getElementById('how-it-works')?.scrollIntoView({
               behavior: 'smooth'
-            })} className="font-korean w-full sm:w-auto">
+            })} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3">
                 자세히 알아보기
               </Button>
             </div>
           </div>
 
           {/* Preview Cards */}
-          <div className="mt-12 sm:mt-20 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto px-4 sm:px-0">
+          <div className="mt-10 sm:mt-16 md:mt-20 grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 max-w-4xl mx-auto">
             {[{
             title: '미니멀리스트',
             desc: '깔끔한 라인의 현대적 스타일',
@@ -446,17 +448,17 @@ const Landing = () => {
           }].map((style, i) => (
             <HoverParticleCard 
               key={style.title} 
-              className="bg-card rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fade-in-up border border-border group overflow-hidden" 
+              className="bg-card rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fade-in-up border border-border group overflow-hidden" 
               style={{ animationDelay: `${0.6 + i * 0.1}s` }}
             >
-              <div className={`aspect-[3/4] bg-gradient-to-br ${style.gradient} rounded-xl mb-4 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105`}>
-                <Palette className="w-12 h-12 text-white/70 group-hover:text-white transition-colors" />
+              <div className={`aspect-[3/4] bg-gradient-to-br ${style.gradient} rounded-lg sm:rounded-xl mb-2 sm:mb-4 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105`}>
+                <Palette className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 text-white/70 group-hover:text-white transition-colors" />
               </div>
-              <h3 className="font-korean text-lg text-foreground mb-1 group-hover:text-primary transition-colors">{style.title}</h3>
-              <p className="text-sm font-korean text-muted-foreground">{style.desc}</p>
+              <h3 className="font-korean text-xs sm:text-sm md:text-lg text-foreground mb-0.5 sm:mb-1 group-hover:text-primary transition-colors truncate">{style.title}</h3>
+              <p className="text-[10px] sm:text-xs md:text-sm font-korean text-muted-foreground line-clamp-2 hidden sm:block">{style.desc}</p>
               {/* Hover sparkles */}
-              <Sparkles className="absolute top-4 right-4 w-5 h-5 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
-              <Sparkles className="absolute bottom-16 left-4 w-4 h-4 text-magenta opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
+              <Sparkles className="absolute top-2 right-2 sm:top-4 sm:right-4 w-3 h-3 sm:w-5 sm:h-5 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+              <Sparkles className="absolute bottom-10 left-2 sm:bottom-16 sm:left-4 w-2 h-2 sm:w-4 sm:h-4 text-magenta opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity hidden sm:block" style={{ animationDelay: '0.3s' }} />
             </HoverParticleCard>
           ))}
           </div>
