@@ -637,6 +637,7 @@ const StyleGenerator = () => {
                     src={generatedImage}
                     alt="Generated style"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
@@ -712,6 +713,7 @@ const StyleGenerator = () => {
                       src={look.image_url}
                       alt="Generated look"
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-overlay opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                       <p className="text-sm text-primary-foreground/80">
@@ -738,6 +740,7 @@ const StyleGenerator = () => {
                       src={userProfile.avatar_url} 
                       alt="Profile" 
                       className="w-full h-full object-cover"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
