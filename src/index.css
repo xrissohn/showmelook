@@ -335,3 +335,51 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Performance Optimizations */
+
+/* GPU acceleration for animations */
+.animate-float,
+.animate-sparkle,
+.animate-twinkle,
+.animate-pulse-brand,
+.animate-gradient-shift,
+.animate-fade-in,
+.animate-fade-in-up,
+.animate-scale-in {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize transitions */
+.transition-all,
+.transition-transform,
+.transition-opacity,
+.transition-colors {
+  will-change: auto;
+}
+
+/* Image rendering optimization */
+img {
+  content-visibility: auto;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .animate-float,
+  .animate-sparkle,
+  .animate-twinkle,
+  .animate-pulse-brand,
+  .animate-gradient-shift {
+    animation: none !important;
+  }
+}
