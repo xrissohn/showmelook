@@ -306,7 +306,24 @@ const Landing = () => {
               }`} 
             />
           </button>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/install')} 
+              className="font-korean text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex"
+            >
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
+              앱 설치
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate('/install')} 
+              className="sm:hidden w-8 h-8"
+            >
+              <Download className="w-4 h-4" />
+            </Button>
             {user ? (
               <Button 
                 variant="hero" 
