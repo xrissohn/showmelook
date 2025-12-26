@@ -79,7 +79,7 @@ const ProfileSetup = () => {
     
     setIsSubmitting(true);
     try {
-      let avatarUrl = null;
+      let avatarPath = null;
 
       // Upload avatar if provided
       if (avatarFile) {
@@ -93,10 +93,8 @@ const ProfileSetup = () => {
         if (uploadError) {
           console.error('Upload error:', uploadError);
         } else if (data) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-          avatarUrl = publicUrl;
+          // Store the file path instead of public URL (bucket is now private)
+          avatarPath = filePath;
         }
       }
 
@@ -109,7 +107,7 @@ const ProfileSetup = () => {
           style_preferences: selectedStyles,
           body_type: bodyType || null,
           gender: gender || null,
-          avatar_url: avatarUrl,
+          avatar_url: avatarPath,
         })
         .eq('user_id', user.id);
 

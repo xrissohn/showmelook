@@ -75,7 +75,19 @@ const ProfileEdit = () => {
           setBodyType(data.body_type || '');
           setGender(data.gender || '');
           setCurrentAvatarUrl(data.avatar_url);
-          setAvatarPreview(data.avatar_url);
+          
+          // Generate signed URL for display if avatar exists
+          if (data.avatar_url) {
+            // Check if it's a file path (not already a full URL)
+            if (!data.avatar_url.startsWith('http')) {
+              const { data: signedData } = await supabase.storage
+                .from('avatars')
+                .createSignedUrl(data.avatar_url, 3600);
+              setAvatarPreview(signedData?.signedUrl || null);
+            } else {
+              setAvatarPreview(data.avatar_url);
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -119,7 +131,7 @@ const ProfileEdit = () => {
     
     setIsSubmitting(true);
     try {
-      let avatarUrl = currentAvatarUrl;
+      let avatarPath = currentAvatarUrl;
 
       // Upload new avatar if provided
       if (avatarFile) {
@@ -133,10 +145,8 @@ const ProfileEdit = () => {
         if (uploadError) {
           console.error('Upload error:', uploadError);
         } else if (data) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(filePath);
-          avatarUrl = publicUrl;
+          // Store the file path instead of public URL (bucket is now private)
+          avatarPath = filePath;
         }
       }
 
@@ -149,7 +159,7 @@ const ProfileEdit = () => {
           style_preferences: selectedStyles,
           body_type: bodyType || null,
           gender: gender || null,
-          avatar_url: avatarUrl,
+          avatar_url: avatarPath,
         })
         .eq('user_id', user.id);
 
