@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles } from 'lucide-react';
+import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -584,6 +584,14 @@ const Landing = () => {
             
             {/* Social/links area with hover effects */}
             <div className="flex items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
+              <button 
+                onClick={() => navigate('/install')}
+                className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors relative group flex items-center gap-1"
+              >
+                <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="font-korean">앱 설치</span>
+                <Sparkles className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-2 h-2 sm:w-3 sm:h-3 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
+              </button>
               {['Instagram', 'Twitter', 'Blog'].map((social, i) => (
                 <button 
                   key={social}
