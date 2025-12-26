@@ -217,36 +217,37 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         />
       ))}
       
-      <div className="container mx-auto max-w-3xl text-center relative z-10">
+      <div className="container mx-auto max-w-3xl text-center relative z-10 px-4 sm:px-6">
         {/* Logo with sparkles */}
-        <div className="relative inline-block mb-6">
-          <Sparkles className="absolute -top-2 -left-4 w-5 h-5 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
-          <Sparkles className="absolute -top-3 right-0 w-4 h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.4s' }} />
-          <img src={showmelookLogo} alt="쇼미룩 로고" className="w-16 h-16 mx-auto object-contain animate-float" />
-          <Sparkles className="absolute -bottom-1 -right-3 w-5 h-5 text-sky animate-sparkle" style={{ animationDelay: '0.8s' }} />
-          <Sparkles className="absolute bottom-2 -left-5 w-4 h-4 text-purple animate-sparkle" style={{ animationDelay: '1.2s' }} />
+        <div className="relative inline-block mb-4 sm:mb-6">
+          <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-5 sm:h-5 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
+          <Sparkles className="absolute -top-2 right-0 w-3 h-3 sm:w-4 sm:h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.4s' }} />
+          <img src={showmelookLogo} alt="쇼미룩 로고" className="w-12 h-12 sm:w-16 sm:h-16 mx-auto object-contain animate-float" />
+          <Sparkles className="absolute -bottom-1 -right-2 sm:-right-3 w-3 h-3 sm:w-5 sm:h-5 text-sky animate-sparkle" style={{ animationDelay: '0.8s' }} />
+          <Sparkles className="absolute bottom-1 -left-3 sm:bottom-2 sm:-left-5 w-3 h-3 sm:w-4 sm:h-4 text-purple animate-sparkle" style={{ animationDelay: '1.2s' }} />
         </div>
         
-        <h2 className="font-korean text-4xl md:text-5xl text-white mb-6 relative">
-          <Sparkles className="absolute -left-8 top-0 w-6 h-6 text-coral/70 animate-twinkle hidden md:block" />
+        <h2 className="font-korean text-2xl sm:text-3xl md:text-5xl text-white mb-3 sm:mb-6 relative leading-tight">
+          <Sparkles className="absolute -left-6 sm:-left-8 top-0 w-4 h-4 sm:w-6 sm:h-6 text-coral/70 animate-twinkle hidden sm:block" />
           지금 바로 시작하세요
-          <Sparkles className="absolute -right-8 bottom-0 w-6 h-6 text-sky/70 animate-twinkle hidden md:block" style={{ animationDelay: '0.5s' }} />
+          <Sparkles className="absolute -right-6 sm:-right-8 bottom-0 w-4 h-4 sm:w-6 sm:h-6 text-sky/70 animate-twinkle hidden sm:block" style={{ animationDelay: '0.5s' }} />
         </h2>
-        <p className="text-xl font-korean text-white/70 mb-10">
+        <p className="text-base sm:text-lg md:text-xl font-korean text-white/70 mb-6 sm:mb-10 px-2">
           당신만의 스타일을 발견할 준비가 되셨나요?
         </p>
-        <Button variant="gold" size="xl" onClick={handleGetStarted} className="group relative overflow-hidden font-korean">
+        <Button variant="gold" size="lg" onClick={handleGetStarted} className="group relative overflow-hidden font-korean text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-4">
           <span className="relative z-10 flex items-center gap-2">
             무료로 시작하기
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
           </span>
-          <Sparkles className="absolute top-1 right-2 w-4 h-4 text-white/50 animate-sparkle" />
+          <Sparkles className="absolute top-1 right-2 w-3 h-3 sm:w-4 sm:h-4 text-white/50 animate-sparkle" />
         </Button>
         
-        <p className="mt-6 text-sm font-korean text-white/50 flex items-center justify-center gap-2">
-          <Star className="w-4 h-4 animate-twinkle" />
-          마우스를 움직여 파티클 효과를 경험하세요
-          <Star className="w-4 h-4 animate-twinkle" style={{ animationDelay: '0.5s' }} />
+        <p className="mt-4 sm:mt-6 text-xs sm:text-sm font-korean text-white/50 flex items-center justify-center gap-1 sm:gap-2 px-4">
+          <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" />
+          <span className="hidden sm:inline">마우스를 움직여 파티클 효과를 경험하세요</span>
+          <span className="sm:hidden">터치하여 파티클 효과를 경험하세요</span>
+          <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDelay: '0.5s' }} />
         </p>
       </div>
     </section>
