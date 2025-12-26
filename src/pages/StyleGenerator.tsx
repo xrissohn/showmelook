@@ -641,8 +641,8 @@ const StyleGenerator = () => {
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                     <img src={showmelookLogo} alt="" className="w-16 h-16 mb-4 opacity-50" />
-                    <p className="text-lg font-medium">AI 스타일 미리보기</p>
-                    <p className="text-sm mt-2">트렌드와 아이템을 선택하고 생성하세요</p>
+                    <p className="text-lg font-medium font-korean">AI 스타일 미리보기</p>
+                    <p className="text-sm mt-2 font-korean">트렌드와 아이템을 선택하고 생성하세요</p>
                   </div>
                 )}
               </div>
