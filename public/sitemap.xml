@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- 메인 페이지 -->
+  <url>
+    <loc>https://showmelook.lovable.app/</loc>
+    <lastmod>2025-06-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- 로그인/회원가입 -->
+  <url>
+    <loc>https://showmelook.lovable.app/auth</loc>
+    <lastmod>2025-06-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- 스타일 생성기 -->
+  <url>
+    <loc>https://showmelook.lovable.app/style</loc>
+    <lastmod>2025-06-26</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- 장바구니 -->
+  <url>
+    <loc>https://showmelook.lovable.app/cart</loc>
+    <lastmod>2025-06-26</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+</urlset>
