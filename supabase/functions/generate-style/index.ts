@@ -6,6 +6,154 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ===========================================
+// INPUT VALIDATION & SANITIZATION FUNCTIONS
+// ===========================================
+
+// Allowed characters for text inputs (alphanumeric, Korean, common punctuation, spaces)
+const ALLOWED_TEXT_CHARS = /^[\p{L}\p{N}\s\-_.,!?&'":;()\/]+$/u;
+
+// Prompt injection patterns to detect and block
+const PROMPT_INJECTION_PATTERNS = [
+  /ignore\s+(previous|all|above)/i,
+  /disregard\s+(previous|all|above)/i,
+  /forget\s+(previous|all|above)/i,
+  /system\s*prompt/i,
+  /you\s+are\s+(now|a)/i,
+  /pretend\s+to\s+be/i,
+  /act\s+as\s+(if|a)/i,
+  /new\s+instructions/i,
+  /override\s+instructions/i,
+  /<\/?[a-z]+>/i, // HTML-like tags
+  /\[\/?(system|user|assistant)\]/i, // Chat role markers
+  /```/g, // Code blocks
+];
+
+// Maximum lengths for different input types
+const MAX_LENGTHS = {
+  style: 100,
+  products: 500,
+  bodyType: 50,
+  gender: 20,
+  stylePreference: 50,
+  stylePreferencesTotal: 200,
+};
+
+// Allowed body types (whitelist)
+const ALLOWED_BODY_TYPES = ['slim', 'average', 'athletic', 'curvy', 'plus-size', 'default'];
+
+// Allowed genders (whitelist)
+const ALLOWED_GENDERS = ['male', 'female', 'unisex', 'prefer_not_to_say', null, undefined];
+
+/**
+ * Sanitizes text input by removing potentially harmful characters and patterns
+ */
+function sanitizeTextInput(input: string | null | undefined, maxLength: number): string {
+  if (!input || typeof input !== 'string') {
+    return '';
+  }
+  
+  // Trim and limit length first
+  let sanitized = input.trim().slice(0, maxLength);
+  
+  // Check for prompt injection patterns
+  for (const pattern of PROMPT_INJECTION_PATTERNS) {
+    if (pattern.test(sanitized)) {
+      console.warn('Prompt injection pattern detected and blocked:', pattern.toString());
+      return ''; // Return empty string if injection detected
+    }
+  }
+  
+  // Remove any characters that don't match allowed pattern
+  if (!ALLOWED_TEXT_CHARS.test(sanitized)) {
+    // Filter out disallowed characters
+    sanitized = sanitized.split('').filter(char => 
+      ALLOWED_TEXT_CHARS.test(char)
+    ).join('');
+  }
+  
+  // Double-check: remove any remaining potentially dangerous sequences
+  sanitized = sanitized
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/\s+/g, ' ') // Normalize whitespace
+    .trim();
+  
+  return sanitized;
+}
+
+/**
+ * Validates and sanitizes style input
+ */
+function sanitizeStyle(style: string | null | undefined): string {
+  const sanitized = sanitizeTextInput(style, MAX_LENGTHS.style);
+  return sanitized || 'casual'; // Default fallback
+}
+
+/**
+ * Validates and sanitizes products description
+ */
+function sanitizeProducts(products: string | null | undefined): string {
+  const sanitized = sanitizeTextInput(products, MAX_LENGTHS.products);
+  return sanitized || 'modern casual wear'; // Default fallback
+}
+
+/**
+ * Validates body type against whitelist
+ */
+function validateBodyType(bodyType: string | null | undefined): string {
+  if (!bodyType || typeof bodyType !== 'string') {
+    return 'average';
+  }
+  const normalized = bodyType.toLowerCase().trim();
+  return ALLOWED_BODY_TYPES.includes(normalized) ? normalized : 'average';
+}
+
+/**
+ * Validates gender against whitelist
+ */
+function validateGender(gender: string | null | undefined): string | null {
+  if (!gender || typeof gender !== 'string') {
+    return null;
+  }
+  const normalized = gender.toLowerCase().trim();
+  if (ALLOWED_GENDERS.includes(normalized)) {
+    return normalized === 'prefer_not_to_say' ? null : normalized;
+  }
+  return null;
+}
+
+/**
+ * Validates and sanitizes style preferences array
+ */
+function sanitizeStylePreferences(preferences: any[] | null | undefined): string {
+  if (!Array.isArray(preferences) || preferences.length === 0) {
+    return '';
+  }
+  
+  // Sanitize each preference, filter out empty ones, limit total
+  const sanitized = preferences
+    .filter(p => typeof p === 'string')
+    .map(p => sanitizeTextInput(p, MAX_LENGTHS.stylePreference))
+    .filter(p => p.length > 0)
+    .slice(0, 5); // Max 5 preferences
+  
+  const result = sanitized.join(', ');
+  
+  // Enforce total length limit
+  return result.slice(0, MAX_LENGTHS.stylePreferencesTotal);
+}
+
+/**
+ * Validates height is a reasonable number
+ */
+function validateHeight(height: any): number {
+  if (typeof height !== 'number' || isNaN(height)) {
+    return 170; // Default
+  }
+  // Reasonable human height range in cm
+  return Math.min(Math.max(Math.round(height), 100), 250);
+}
+
 // Generate cache key from style + products + user profile combination
 function generateCacheKey(
   styleTrendId: string | null, 
@@ -632,13 +780,30 @@ serve(async (req) => {
       );
     }
 
-    // Build the prompt based on user profile and selected items
-    const heightVal = userProfile?.height || 170;
-    const bodyTypeVal = userProfile?.body_type || 'average';
-    const stylePreferences = userProfile?.style_preferences?.join(', ') || '';
-    const genderVal = userProfile?.gender;
+    // ===========================================
+    // SANITIZE ALL USER INPUTS BEFORE PROMPT CONSTRUCTION
+    // ===========================================
+    
+    // Sanitize style and products from request body
+    const sanitizedStyle = sanitizeStyle(style);
+    const sanitizedProducts = sanitizeProducts(products);
+    
+    // Validate and sanitize user profile fields
+    const heightVal = validateHeight(userProfile?.height);
+    const bodyTypeVal = validateBodyType(userProfile?.body_type);
+    const stylePreferences = sanitizeStylePreferences(userProfile?.style_preferences);
+    const genderVal = validateGender(userProfile?.gender);
 
-    // Map gender to descriptive terms for the prompt
+    console.log('Sanitized inputs:', {
+      style: sanitizedStyle,
+      products: sanitizedProducts.slice(0, 50) + (sanitizedProducts.length > 50 ? '...' : ''),
+      height: heightVal,
+      bodyType: bodyTypeVal,
+      gender: genderVal || 'not specified',
+      stylePreferences: stylePreferences.slice(0, 50) + (stylePreferences.length > 50 ? '...' : '')
+    });
+
+    // Map gender to descriptive terms for the prompt (using validated value)
     const getGenderDescription = (gender: string | null | undefined): string => {
       switch (gender) {
         case 'male':
@@ -660,10 +825,11 @@ serve(async (req) => {
     let prompt: string;
     let referenceImageUrl: string | undefined;
 
+    // Build prompts using ONLY sanitized/validated values
     if (useFaceComposite && userAvatarUrl) {
       referenceImageUrl = userAvatarUrl;
-      prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${style} style outfit.
-The outfit includes: ${products || 'modern casual wear'}.
+      prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${sanitizedStyle} style outfit.
+The outfit includes: ${sanitizedProducts}.
 ${genderDescription ? `Fashion style suited for ${genderDescription} body and preferences.` : ''}
 The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
@@ -673,8 +839,8 @@ Keep the person's face exactly as shown in the reference photo while generating 
 
       console.log('Generating face composite image');
     } else {
-      prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing ${style} style outfit. 
-The outfit includes: ${products || 'modern casual wear'}.
+      prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing ${sanitizedStyle} style outfit. 
+The outfit includes: ${sanitizedProducts}.
 ${genderDescription ? `Choose clothing items and silhouettes that complement ${genderDescription} fashion.` : ''}
 The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
 Style preferences: ${stylePreferences || 'modern and trendy'}.
@@ -685,7 +851,7 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
     }
 
     console.log('Gender:', genderVal || 'not specified');
-    console.log('Prompt:', prompt.substring(0, 300) + '...');
+    console.log('Prompt length:', prompt.length, 'chars');
 
     // Get Google Access Token
     console.log('Getting Google access token...');
