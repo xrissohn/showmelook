@@ -124,6 +124,48 @@ export type Database = {
           },
         ]
       }
+      merchants: {
+        Row: {
+          base_url: string
+          commission_rate: number | null
+          created_at: string | null
+          deeplink_template: string
+          id: string
+          is_active: boolean | null
+          last_collected_at: string | null
+          name: string
+          name_ko: string
+          scrape_config: Json | null
+          scrape_type: string | null
+        }
+        Insert: {
+          base_url: string
+          commission_rate?: number | null
+          created_at?: string | null
+          deeplink_template: string
+          id: string
+          is_active?: boolean | null
+          last_collected_at?: string | null
+          name: string
+          name_ko: string
+          scrape_config?: Json | null
+          scrape_type?: string | null
+        }
+        Update: {
+          base_url?: string
+          commission_rate?: number | null
+          created_at?: string | null
+          deeplink_template?: string
+          id?: string
+          is_active?: boolean | null
+          last_collected_at?: string | null
+          name?: string
+          name_ko?: string
+          scrape_config?: Json | null
+          scrape_type?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           brand: string | null
@@ -168,6 +210,80 @@ export type Database = {
           tags?: string[] | null
         }
         Relationships: []
+      }
+      products_cache: {
+        Row: {
+          brand: string | null
+          category: string
+          collected_at: string | null
+          color: string | null
+          external_id: string | null
+          gender: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean | null
+          is_in_stock: boolean | null
+          merchant_id: string | null
+          name: string
+          original_price: number | null
+          price: number
+          product_url: string
+          sizes: Json | null
+          style_tags: string[] | null
+          sub_category: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          brand?: string | null
+          category: string
+          collected_at?: string | null
+          color?: string | null
+          external_id?: string | null
+          gender?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_in_stock?: boolean | null
+          merchant_id?: string | null
+          name: string
+          original_price?: number | null
+          price: number
+          product_url: string
+          sizes?: Json | null
+          style_tags?: string[] | null
+          sub_category?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          brand?: string | null
+          category?: string
+          collected_at?: string | null
+          color?: string | null
+          external_id?: string | null
+          gender?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean | null
+          is_in_stock?: boolean | null
+          merchant_id?: string | null
+          name?: string
+          original_price?: number | null
+          price?: number
+          product_url?: string
+          sizes?: Json | null
+          style_tags?: string[] | null
+          sub_category?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_cache_merchant_id_fkey"
+            columns: ["merchant_id"]
+            isOneToOne: false
+            referencedRelation: "merchants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
