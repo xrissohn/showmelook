@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,74 +33,72 @@ serve(async (req) => {
       );
     }
 
-    // Extract domain from product URL to find merchant
-    const urlObj = new URL(product_url);
-    const domain = urlObj.hostname.toLowerCase();
+    // Encode the product URL
+    const encodedUrl = encodeURIComponent(product_url);
 
-    console.log('Extracted domain:', domain);
+    // Call LinkPrice API to get the actual deeplink
+    const apiUrl = `https://api.linkprice.com/ci/service/custom_link_xml?a_id=${affiliateId}&url=${encodedUrl}&mode=json`;
+    
+    console.log('Calling LinkPrice API:', apiUrl);
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Find merchant by domain
-    const { data: merchants, error: merchantError } = await supabase
-      .from('merchants')
-      .select('id, name, deeplink_template')
-      .eq('is_active', true);
-
-    if (merchantError) {
-      console.error('Error fetching merchants:', merchantError);
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      console.error('LinkPrice API error:', response.status, response.statusText);
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch merchants' }),
+        JSON.stringify({ 
+          error: 'LinkPrice API error', 
+          message: `Status: ${response.status}` 
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Match merchant by domain
-    const merchant = merchants?.find(m => {
-      const merchantDomains: Record<string, string[]> = {
-        'wconcept': ['wconcept.co.kr', 'www.wconcept.co.kr'],
-        'posty': ['posty.kr', 'www.posty.kr'],
-        'arket': ['arket.com', 'www.arket.com'],
-        'jestina': ['jestina.co.kr', 'www.jestina.co.kr'],
-        'hfashion': ['hfashionmall.com', 'www.hfashionmall.com'],
-        'benetton1': ['benettonmall.co.kr', 'www.benettonmall.co.kr'],
-        'stories': ['stories.com', 'www.stories.com'],
-        'paulsmith': ['paulsmith.co.kr', 'www.paulsmith.co.kr'],
-      };
-      return merchantDomains[m.id]?.some(d => domain.includes(d));
-    });
+    const responseText = await response.text();
+    console.log('LinkPrice API raw response:', responseText);
 
-    if (!merchant) {
-      console.log('No matching merchant found for domain:', domain);
+    // Parse JSON response (LinkPrice uses EUC-KR encoding, but JSON should work)
+    let linkPriceData;
+    try {
+      linkPriceData = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse LinkPrice response:', parseError);
       return new Response(
         JSON.stringify({ 
-          error: 'Unsupported merchant', 
-          message: `No affiliate program found for domain: ${domain}` 
+          error: 'Failed to parse LinkPrice response', 
+          raw_response: responseText 
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('LinkPrice API parsed response:', linkPriceData);
+
+    // Check if conversion was successful
+    if (linkPriceData.result !== 'S') {
+      console.error('LinkPrice conversion failed:', linkPriceData);
+      return new Response(
+        JSON.stringify({ 
+          error: 'LinkPrice conversion failed', 
+          message: 'The URL could not be converted. This merchant may not be supported.',
+          result: linkPriceData.result
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Found merchant:', merchant.name);
-
-    // Generate affiliate URL
-    const encodedUrl = encodeURIComponent(product_url);
-    const affiliateUrl = merchant.deeplink_template
-      .replace('{affiliate_id}', affiliateId)
-      .replace('{encoded_url}', encodedUrl);
-
-    console.log('Generated affiliate URL:', affiliateUrl);
+    // Extract merchant name from domain for display
+    const urlObj = new URL(product_url);
+    const domain = urlObj.hostname.replace('www.', '');
+    const merchantName = domain.split('.')[0];
 
     return new Response(
       JSON.stringify({
         success: true,
-        merchant_id: merchant.id,
-        merchant_name: merchant.name,
+        merchant_name: merchantName,
         original_url: product_url,
-        affiliate_url: affiliateUrl,
+        affiliate_url: linkPriceData.url,
+        mobile_supported: linkPriceData.mobile_yn === 'Y',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
