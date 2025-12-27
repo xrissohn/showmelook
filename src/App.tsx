@@ -15,6 +15,7 @@ const ProfileEdit = lazy(() => import("./pages/ProfileEdit"));
 const StyleGenerator = lazy(() => import("./pages/StyleGenerator"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Install = lazy(() => import("./pages/Install"));
+const Admin = lazy(() => import("./pages/Admin"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient configuration
@@ -52,6 +53,7 @@ const App = () => (
               <Route path="/style" element={<StyleGenerator />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/install" element={<Install />} />
+              <Route path="/admin" element={<Admin />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
