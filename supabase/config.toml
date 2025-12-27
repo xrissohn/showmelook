@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.deeplink]
 verify_jwt = false
+
+[functions.collect-products]
+verify_jwt = false

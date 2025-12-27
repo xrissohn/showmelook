@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,6 +27,31 @@ interface Merchant {
   commission_rate: number;
   scrape_type: string;
   is_active: boolean;
+  last_collected_at: string | null;
+}
+
+interface CollectResult {
+  success: boolean;
+  merchant_id: string;
+  collected: number;
+  inserted: number;
+  updated: number;
+  errors: number;
+  error?: string;
+  message?: string;
+}
+
+interface CachedProduct {
+  id: string;
+  merchant_id: string;
+  name: string;
+  brand: string | null;
+  price: number;
+  image_url: string | null;
+  category: string;
+  style_tags: string[] | null;
+  is_in_stock: boolean;
+  collected_at: string;
 }
 
 const Admin = () => {
@@ -39,6 +65,22 @@ const Admin = () => {
   // Merchants list state
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [merchantsLoading, setMerchantsLoading] = useState(false);
+
+  // Phase 2: Product collection state
+  const [selectedMerchant, setSelectedMerchant] = useState<string>("");
+  const [collectLimit, setCollectLimit] = useState("10");
+  const [collectResult, setCollectResult] = useState<CollectResult | null>(null);
+  const [isCollecting, setIsCollecting] = useState(false);
+  
+  // Products list state
+  const [cachedProducts, setCachedProducts] = useState<CachedProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productStats, setProductStats] = useState<{ total: number; byMerchant: Record<string, number> }>({ total: 0, byMerchant: {} });
+
+  // Load merchants on mount
+  useEffect(() => {
+    loadMerchants();
+  }, []);
 
   const testDeeplink = async () => {
     if (!productUrl.trim()) {
@@ -102,6 +144,114 @@ const Admin = () => {
     }
   };
 
+  const collectProducts = async () => {
+    if (!selectedMerchant) {
+      toast({
+        title: "머천트 선택 필요",
+        description: "상품을 수집할 머천트를 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCollecting(true);
+    setCollectResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('collect-products', {
+        body: { 
+          merchant_id: selectedMerchant,
+          limit: parseInt(collectLimit) || 10
+        },
+      });
+
+      if (error) throw error;
+      
+      setCollectResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "상품 수집 완료",
+          description: `${data.collected}개 상품 중 ${data.inserted}개 저장됨`,
+        });
+        // Refresh merchants list to show updated last_collected_at
+        loadMerchants();
+        // Refresh product stats
+        loadProductStats();
+      } else {
+        toast({
+          title: "상품 수집 실패",
+          description: data.error || data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Collect products error:', error);
+      setCollectResult({ 
+        success: false, 
+        merchant_id: selectedMerchant,
+        collected: 0,
+        inserted: 0,
+        updated: 0,
+        errors: 0,
+        error: error.message 
+      });
+      toast({
+        title: "상품 수집 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsCollecting(false);
+    }
+  };
+
+  const loadProductStats = async () => {
+    try {
+      // Get total count
+      const { count: total } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true });
+
+      // Get counts by merchant
+      const { data: products } = await supabase
+        .from('products_cache')
+        .select('merchant_id');
+
+      const byMerchant: Record<string, number> = {};
+      products?.forEach(p => {
+        byMerchant[p.merchant_id] = (byMerchant[p.merchant_id] || 0) + 1;
+      });
+
+      setProductStats({ total: total || 0, byMerchant });
+    } catch (error) {
+      console.error('Error loading product stats:', error);
+    }
+  };
+
+  const loadCachedProducts = async () => {
+    setProductsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('products_cache')
+        .select('id, merchant_id, name, brand, price, image_url, category, style_tags, is_in_stock, collected_at')
+        .order('collected_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      setCachedProducts(data || []);
+      loadProductStats();
+    } catch (error: any) {
+      toast({
+        title: "상품 로드 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   const openAffiliateLink = () => {
     if (deeplinkResult?.affiliate_url) {
       window.open(deeplinkResult.affiliate_url, '_blank');
@@ -110,7 +260,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-foreground">Admin 테스트 페이지</h1>
@@ -145,8 +295,8 @@ const Admin = () => {
                 phase={2} 
                 title="상품 자동 수집" 
                 items={[
-                  { done: false, label: "collect-products Edge Function" },
-                  { done: false, label: "스타일 태그 자동 분류" },
+                  { done: true, label: "collect-products Edge Function" },
+                  { done: true, label: "스타일 태그 자동 분류" },
                   { done: false, label: "CRON 스케줄 설정" },
                 ]}
               />
@@ -173,10 +323,11 @@ const Admin = () => {
 
         {/* Test Tabs */}
         <Tabs defaultValue="deeplink" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="deeplink">Phase 1: 딥링크</TabsTrigger>
             <TabsTrigger value="merchants">머천트 목록</TabsTrigger>
-            <TabsTrigger value="products" disabled>Phase 2: 상품 수집</TabsTrigger>
+            <TabsTrigger value="collect">Phase 2: 상품 수집</TabsTrigger>
+            <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
 
           {/* Deeplink Test Tab */}
@@ -213,20 +364,20 @@ const Admin = () => {
                   <p className="font-medium mb-2">테스트 URL 예시:</p>
                   <div className="space-y-1">
                     <button 
-                      onClick={() => setProductUrl("https://www.wconcept.co.kr/Product/12345678")}
-                      className="block text-primary hover:underline"
+                      onClick={() => setProductUrl("https://www.wconcept.co.kr/Product/307494735")}
+                      className="block text-primary hover:underline text-left"
                     >
-                      더블유컨셉: https://www.wconcept.co.kr/Product/12345678
+                      더블유컨셉: https://www.wconcept.co.kr/Product/307494735
                     </button>
                     <button 
                       onClick={() => setProductUrl("https://www.posty.kr/product/123456")}
-                      className="block text-primary hover:underline"
+                      className="block text-primary hover:underline text-left"
                     >
                       포스티: https://www.posty.kr/product/123456
                     </button>
                     <button 
                       onClick={() => setProductUrl("https://www.jestina.co.kr/product/view?productNo=12345")}
-                      className="block text-primary hover:underline"
+                      className="block text-primary hover:underline text-left"
                     >
                       제이에스티나: https://www.jestina.co.kr/product/view?productNo=12345
                     </button>
@@ -297,8 +448,10 @@ const Admin = () => {
                 <Button onClick={loadMerchants} disabled={merchantsLoading}>
                   {merchantsLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  머천트 목록 불러오기
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  머천트 목록 새로고침
                 </Button>
 
                 {merchants.length > 0 && (
@@ -317,9 +470,16 @@ const Admin = () => {
                             <p className="text-sm text-muted-foreground">{merchant.base_url}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{merchant.commission_rate}%</Badge>
-                          <Badge variant="secondary">{merchant.scrape_type}</Badge>
+                        <div className="flex items-center gap-2 text-right">
+                          <div className="text-sm">
+                            <Badge variant="outline">{merchant.commission_rate}%</Badge>
+                            <Badge variant="secondary" className="ml-1">{merchant.scrape_type}</Badge>
+                          </div>
+                          {merchant.last_collected_at && (
+                            <span className="text-xs text-muted-foreground">
+                              최근 수집: {new Date(merchant.last_collected_at).toLocaleDateString('ko-KR')}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -329,11 +489,180 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Products Tab (Disabled for now) */}
-          <TabsContent value="products">
+          {/* Collect Products Tab */}
+          <TabsContent value="collect" className="space-y-4">
             <Card>
-              <CardContent className="p-6 text-center text-muted-foreground">
-                Phase 2에서 구현 예정
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  상품 수집 테스트
+                </CardTitle>
+                <CardDescription>
+                  선택한 머천트에서 상품을 수집하고 products_cache에 저장합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Select value={selectedMerchant} onValueChange={setSelectedMerchant}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="머천트 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {merchants.map((m) => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.name_ko} ({m.scrape_type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Input
+                    type="number"
+                    placeholder="수집 개수"
+                    value={collectLimit}
+                    onChange={(e) => setCollectLimit(e.target.value)}
+                    className="w-[120px]"
+                  />
+                  
+                  <Button onClick={collectProducts} disabled={isCollecting || !selectedMerchant}>
+                    {isCollecting ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Package className="w-4 h-4 mr-2" />
+                    )}
+                    수집 시작
+                  </Button>
+                </div>
+
+                {/* Collection Result */}
+                {collectResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    collectResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {collectResult.success ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-medium">상품 수집 완료</span>
+                          <Badge variant="secondary">{collectResult.merchant_id}</Badge>
+                        </div>
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">수집:</span>
+                            <p className="font-bold text-lg">{collectResult.collected}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">저장:</span>
+                            <p className="font-bold text-lg text-green-600">{collectResult.inserted}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">업데이트:</span>
+                            <p className="font-bold text-lg text-blue-600">{collectResult.updated}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">에러:</span>
+                            <p className="font-bold text-lg text-red-600">{collectResult.errors}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                        <XCircle className="w-5 h-5" />
+                        <span className="font-medium">
+                          {collectResult.error}: {collectResult.message}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Product Stats */}
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <h4 className="font-medium mb-2">저장된 상품 통계</h4>
+                  <div className="text-2xl font-bold mb-2">총 {productStats.total}개</div>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(productStats.byMerchant).map(([merchantId, count]) => (
+                      <Badge key={merchantId} variant="outline">
+                        {merchantId}: {count}개
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Products List Tab */}
+          <TabsContent value="products" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  수집된 상품 목록
+                </CardTitle>
+                <CardDescription>
+                  products_cache에 저장된 최근 상품 50개
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button onClick={loadCachedProducts} disabled={productsLoading}>
+                  {productsLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                  )}
+                  상품 목록 불러오기
+                </Button>
+
+                {cachedProducts.length > 0 && (
+                  <div className="grid gap-3 max-h-[600px] overflow-y-auto">
+                    {cachedProducts.map((product) => (
+                      <div 
+                        key={product.id}
+                        className="flex items-center gap-4 p-3 rounded-lg border bg-card"
+                      >
+                        {product.image_url && (
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name}
+                            className="w-16 h-20 object-cover rounded"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-xs">{product.merchant_id}</Badge>
+                            <Badge variant="secondary" className="text-xs">{product.category}</Badge>
+                            {!product.is_in_stock && (
+                              <Badge variant="destructive" className="text-xs">품절</Badge>
+                            )}
+                          </div>
+                          <p className="font-medium truncate">{product.name}</p>
+                          <p className="text-sm text-muted-foreground">{product.brand}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="font-bold">₩{product.price.toLocaleString()}</span>
+                            {product.style_tags && product.style_tags.length > 0 && (
+                              <div className="flex gap-1">
+                                {product.style_tags.map((tag, idx) => (
+                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                    {tag}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {cachedProducts.length === 0 && !productsLoading && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    아직 수집된 상품이 없습니다. Phase 2 탭에서 상품을 수집해주세요.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
