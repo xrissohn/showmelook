@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.collect-products]
 verify_jwt = false
+
+[functions.cron-collect]
+verify_jwt = false
