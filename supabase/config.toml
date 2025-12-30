@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.cron-collect]
 verify_jwt = false
+
+[functions.test-serpapi]
+verify_jwt = false
