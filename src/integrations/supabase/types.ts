@@ -331,6 +331,7 @@ export type Database = {
         Row: {
           cache_key: string
           created_at: string | null
+          expires_at: string | null
           id: string
           image_url: string
           last_used_at: string | null
@@ -341,6 +342,7 @@ export type Database = {
         Insert: {
           cache_key: string
           created_at?: string | null
+          expires_at?: string | null
           id?: string
           image_url: string
           last_used_at?: string | null
@@ -351,6 +353,7 @@ export type Database = {
         Update: {
           cache_key?: string
           created_at?: string | null
+          expires_at?: string | null
           id?: string
           image_url?: string
           last_used_at?: string | null

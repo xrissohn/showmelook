@@ -100,6 +100,43 @@ interface StyleV1Result {
   error?: string;
 }
 
+interface StyleRecommendResult {
+  success: boolean;
+  cacheHit: boolean;
+  look?: {
+    name: string;
+    items: Array<{
+      category: string;
+      product: {
+        id: string;
+        name: string;
+        brand: string | null;
+        price: number;
+        image_url: string | null;
+        product_url: string;
+        category: string;
+        style_tags: string[] | null;
+      } | null;
+      affiliateUrl: string | null;
+      source: 'cache' | 'serpapi' | 'none';
+    }>;
+    totalPrice: number;
+    stylingTips: string;
+    styleTags: string[];
+  };
+  apiCalls?: {
+    gemini: number;
+    serpapi: number;
+  };
+  stats?: {
+    requestedItems: number;
+    foundInCache: number;
+    foundViaSerpapi: number;
+    notFound: number;
+  };
+  error?: string;
+}
+
 const Admin = () => {
   const { toast } = useToast();
   
@@ -137,6 +174,14 @@ const Admin = () => {
   const [styleBudgetMax, setStyleBudgetMax] = useState("300000");
   const [styleResult, setStyleResult] = useState<StyleV1Result | null>(null);
   const [isStyleLoading, setIsStyleLoading] = useState(false);
+
+  // Style-recommend (AI) test state
+  const [aiUserRequest, setAiUserRequest] = useState("");
+  const [aiGender, setAiGender] = useState("여성");
+  const [aiBudget, setAiBudget] = useState("200000");
+  const [aiForceRefresh, setAiForceRefresh] = useState(false);
+  const [aiResult, setAiResult] = useState<StyleRecommendResult | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   // Load merchants on mount
   useEffect(() => {
@@ -423,6 +468,60 @@ const Admin = () => {
     }
   };
 
+  const testStyleRecommend = async () => {
+    if (!aiUserRequest.trim()) {
+      toast({
+        title: "요청 입력 필요",
+        description: "스타일 요청을 입력해주세요. (예: 캐주얼 데이트룩)",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAiLoading(true);
+    setAiResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('style-recommend', {
+        body: {
+          userRequest: aiUserRequest,
+          gender: aiGender,
+          budget: parseInt(aiBudget) || 200000,
+          forceRefresh: aiForceRefresh,
+        },
+      });
+
+      if (error) throw error;
+      
+      setAiResult(data);
+      
+      if (data.success) {
+        const cacheMsg = data.cacheHit ? '캐시 히트!' : `API: Gemini ${data.apiCalls?.gemini || 0}, SerpAPI ${data.apiCalls?.serpapi || 0}`;
+        toast({
+          title: "AI 추천 완료",
+          description: `${data.look?.items?.filter((i: any) => i.product)?.length || 0}개 아이템 추천 (${cacheMsg})`,
+        });
+      } else {
+        toast({
+          title: "AI 추천 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Style recommend error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setAiResult({ success: false, cacheHit: false, error: errorMessage });
+      toast({
+        title: "AI 추천 실패",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -470,6 +569,7 @@ const Admin = () => {
                 title="규칙 기반 추천" 
                 items={[
                   { done: true, label: "style_v1 Edge Function" },
+                  { done: true, label: "style-recommend Edge Function (AI)" },
                   { done: false, label: "/recommend 페이지" },
                 ]}
               />
@@ -487,15 +587,229 @@ const Admin = () => {
         </Card>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="serpapi" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-6">
+        <Tabs defaultValue="style-recommend" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-7">
+            <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
             <TabsTrigger value="serpapi">SerpAPI</TabsTrigger>
-            <TabsTrigger value="style-v1">Phase 3: 추천</TabsTrigger>
+            <TabsTrigger value="style-v1">규칙 추천</TabsTrigger>
             <TabsTrigger value="deeplink">딥링크</TabsTrigger>
             <TabsTrigger value="merchants">머천트</TabsTrigger>
             <TabsTrigger value="collect">상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
+
+          {/* Style Recommend (AI) Test Tab */}
+          <TabsContent value="style-recommend" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5" />
+                  AI 스타일 추천 (style-recommend)
+                </CardTitle>
+                <CardDescription>
+                  Gemini AI가 스타일을 추론하고, 캐시된 상품 또는 SerpAPI 검색 결과로 룩을 조합합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">스타일 요청</label>
+                    <Input
+                      placeholder="예: 캐주얼 데이트룩, 출근 비즈니스 캐주얼..."
+                      value={aiUserRequest}
+                      onChange={(e) => setAiUserRequest(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && testStyleRecommend()}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">성별</label>
+                      <Select value={aiGender} onValueChange={setAiGender}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="성별 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="여성">여성</SelectItem>
+                          <SelectItem value="남성">남성</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">총 예산</label>
+                      <Input
+                        type="number"
+                        placeholder="200000"
+                        value={aiBudget}
+                        onChange={(e) => setAiBudget(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center gap-2 text-sm pb-2">
+                        <input
+                          type="checkbox"
+                          checked={aiForceRefresh}
+                          onChange={(e) => setAiForceRefresh(e.target.checked)}
+                          className="rounded"
+                        />
+                        캐시 무시 (새로 생성)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sample Requests */}
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium mb-2">예시 요청:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["캐주얼 데이트룩", "비즈니스 캐주얼", "여름 휴가 스타일", "파티룩", "미니멀 데일리"].map((q) => (
+                      <button 
+                        key={q}
+                        onClick={() => setAiUserRequest(q)}
+                        className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <Button onClick={testStyleRecommend} disabled={isAiLoading} className="w-full">
+                  {isAiLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                  )}
+                  AI 추천 생성
+                </Button>
+
+                {/* Result */}
+                {aiResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    aiResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {aiResult.success && aiResult.look ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">{aiResult.look.name}</span>
+                            {aiResult.cacheHit && (
+                              <Badge variant="secondary">캐시 히트!</Badge>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">₩{aiResult.look.totalPrice.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {aiResult.look.items.filter(i => i.product).length}개 아이템
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* API Calls & Stats */}
+                        {aiResult.apiCalls && (
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="outline">Gemini: {aiResult.apiCalls.gemini}회</Badge>
+                            <Badge variant="outline">SerpAPI: {aiResult.apiCalls.serpapi}회</Badge>
+                            {aiResult.stats && (
+                              <>
+                                <Badge variant="secondary">캐시: {aiResult.stats.foundInCache}</Badge>
+                                <Badge variant="secondary">SerpAPI: {aiResult.stats.foundViaSerpapi}</Badge>
+                                {aiResult.stats.notFound > 0 && (
+                                  <Badge variant="destructive">미발견: {aiResult.stats.notFound}</Badge>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Style Tags */}
+                        <div className="flex flex-wrap gap-1">
+                          {aiResult.look.styleTags.map((tag) => (
+                            <Badge key={tag} variant="secondary">{tag}</Badge>
+                          ))}
+                        </div>
+
+                        {/* Styling Tips */}
+                        {aiResult.look.stylingTips && (
+                          <div className="p-3 bg-muted rounded-lg text-sm">
+                            <p className="font-medium mb-1">💡 스타일링 팁</p>
+                            <p>{aiResult.look.stylingTips}</p>
+                          </div>
+                        )}
+
+                        {/* Look Items Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {aiResult.look.items.map((item, idx) => (
+                            <div key={idx} className="border rounded-lg overflow-hidden bg-card">
+                              <div className="aspect-square bg-muted relative">
+                                {item.product?.image_url ? (
+                                  <img 
+                                    src={item.product.image_url} 
+                                    alt={item.product.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = '/placeholder.svg';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="w-8 h-8 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <Badge className="absolute top-1 left-1 text-xs" variant="default">
+                                  {item.category}
+                                </Badge>
+                                <Badge className="absolute top-1 right-1 text-xs" variant={
+                                  item.source === 'cache' ? 'secondary' : 
+                                  item.source === 'serpapi' ? 'outline' : 'destructive'
+                                }>
+                                  {item.source === 'cache' ? '캐시' : 
+                                   item.source === 'serpapi' ? 'SerpAPI' : '없음'}
+                                </Badge>
+                              </div>
+                              <div className="p-2">
+                                {item.product ? (
+                                  <>
+                                    <p className="text-xs font-medium line-clamp-2 mb-1">{item.product.name}</p>
+                                    <p className="text-sm font-bold text-primary">
+                                      ₩{item.product.price.toLocaleString()}
+                                    </p>
+                                    {item.affiliateUrl && (
+                                      <a 
+                                        href={item.affiliateUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
+                                      >
+                                        <ExternalLink className="w-3 h-3" />
+                                        구매하기 (제휴)
+                                      </a>
+                                    )}
+                                  </>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">상품 없음</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">추천 실패: {aiResult.error}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* SerpAPI Test Tab */}
           <TabsContent value="serpapi" className="space-y-4">
