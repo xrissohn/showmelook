@@ -28,7 +28,8 @@ async function firecrawlScrape(url: string): Promise<{ markdown?: string; html?:
         url,
         formats: ['html', 'links', 'markdown'],
         onlyMainContent: false,
-        waitFor: 3000,
+        waitFor: 5000, // Wait 5 seconds for JavaScript rendering (SPA sites)
+        timeout: 30000, // 30 second total timeout
       }),
     });
 
