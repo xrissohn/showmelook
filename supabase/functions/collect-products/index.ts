@@ -8,6 +8,136 @@ const corsHeaders = {
 
 const STYLE_TAGS = ['미니멀 시크', '스트릿 무드', '로맨틱 클래식', '애슬레저 핏', '보헤미안 에센스'];
 
+// Firecrawl API helper
+async function firecrawlScrape(url: string): Promise<{ markdown?: string; html?: string; links?: string[] } | null> {
+  const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
+  if (!apiKey) {
+    console.log('FIRECRAWL_API_KEY not configured, skipping Firecrawl');
+    return null;
+  }
+
+  try {
+    console.log(`Firecrawl scraping: ${url}`);
+    const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url,
+        formats: ['html', 'links'],
+        onlyMainContent: false,
+        waitFor: 2000,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`Firecrawl error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`Firecrawl success for ${url}`);
+    return data.data || data;
+  } catch (error) {
+    console.error('Firecrawl error:', error);
+    return null;
+  }
+}
+
+// Extract products from Firecrawl HTML result
+function extractProductsFromHtml(html: string, merchantId: string, baseUrl: string): Product[] {
+  const products: Product[] = [];
+  
+  // Generic product extraction patterns
+  const productPatterns = [
+    // W Concept style
+    /<div[^>]*class="[^"]*product[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>[\s\S]*?<[^>]*class="[^"]*name[^"]*"[^>]*>([^<]+)<[\s\S]*?<[^>]*class="[^"]*price[^"]*"[^>]*>([^<]+)</gi,
+    // Image + title patterns
+    /<a[^>]*href="([^"]*product[^"]*)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?<\/a>/gi,
+    // JSON-LD structured data
+    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi,
+  ];
+
+  // Try to extract JSON-LD product data
+  const jsonLdMatches = html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
+  for (const match of jsonLdMatches) {
+    try {
+      const jsonData = JSON.parse(match[1]);
+      if (jsonData['@type'] === 'Product' || (Array.isArray(jsonData['@graph']) && jsonData['@graph'].some((item: any) => item['@type'] === 'Product'))) {
+        const productData = jsonData['@type'] === 'Product' ? jsonData : jsonData['@graph'].find((item: any) => item['@type'] === 'Product');
+        if (productData) {
+          products.push({
+            merchant_id: merchantId,
+            product_url: productData.url || baseUrl,
+            external_id: productData.sku || `${merchantId}-${Date.now()}`,
+            name: productData.name || '',
+            brand: productData.brand?.name || '',
+            price: parseInt(productData.offers?.price) || 0,
+            original_price: parseInt(productData.offers?.highPrice),
+            image_url: Array.isArray(productData.image) ? productData.image[0] : productData.image,
+            category: detectCategory(productData.name || ''),
+            is_in_stock: productData.offers?.availability !== 'OutOfStock',
+          });
+        }
+      }
+      // ItemList for category pages
+      if (jsonData['@type'] === 'ItemList' && jsonData.itemListElement) {
+        for (const item of jsonData.itemListElement.slice(0, 10)) {
+          if (item.item && item.item['@type'] === 'Product') {
+            const p = item.item;
+            products.push({
+              merchant_id: merchantId,
+              product_url: p.url || baseUrl,
+              external_id: p.sku || `${merchantId}-${item.position}`,
+              name: p.name || '',
+              brand: p.brand?.name || '',
+              price: parseInt(p.offers?.price) || 0,
+              image_url: Array.isArray(p.image) ? p.image[0] : p.image,
+              category: detectCategory(p.name || ''),
+              is_in_stock: true,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Invalid JSON-LD, skip
+    }
+  }
+
+  // Extract images with product links
+  const imgMatches = html.matchAll(/<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/gi);
+  for (const match of imgMatches) {
+    const href = match[1];
+    const imgSrc = match[2];
+    const alt = match[3];
+    
+    // Filter product links
+    if (href.includes('/product') || href.includes('/goods') || href.includes('/item')) {
+      const absoluteUrl = imgSrc.startsWith('http') ? imgSrc : 
+                          imgSrc.startsWith('//') ? `https:${imgSrc}` :
+                          `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
+      
+      if (alt && alt.length > 2 && !products.some(p => p.name === alt)) {
+        products.push({
+          merchant_id: merchantId,
+          product_url: href.startsWith('http') ? href : `${baseUrl}${href}`,
+          external_id: `${merchantId}-${products.length}`,
+          name: alt,
+          brand: merchantId,
+          price: 0, // Will need to be fetched separately
+          image_url: absoluteUrl,
+          category: detectCategory(alt),
+          is_in_stock: true,
+        });
+      }
+    }
+  }
+
+  return products;
+}
+
 interface Product {
   merchant_id: string;
   product_url: string;
@@ -72,23 +202,39 @@ serve(async (req) => {
 
     let products: Product[] = [];
     
-    try {
-      switch (merchant.scrape_type) {
-        case 'next_data':
-          products = await scrapeNextData(merchant, limit);
-          break;
-        case 'api':
-          products = await scrapeApi(merchant, limit);
-          break;
-        case 'html':
-          products = await scrapeHtml(merchant, limit);
-          break;
-        default:
-          console.log(`Unknown scrape_type: ${merchant.scrape_type}`);
-          products = [];
+    // Try Firecrawl first if API key is available
+    const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+    if (firecrawlApiKey) {
+      console.log('Firecrawl API key found, trying Firecrawl first...');
+      try {
+        products = await scrapeWithFirecrawl(merchant, limit);
+        console.log(`Firecrawl returned ${products.length} products`);
+      } catch (firecrawlError) {
+        console.error('Firecrawl failed:', firecrawlError);
       }
-    } catch (scrapeError) {
-      console.error('Scraping error:', scrapeError);
+    }
+
+    // Fallback to traditional scraping if Firecrawl failed or not available
+    if (products.length === 0) {
+      console.log('Falling back to traditional scraping...');
+      try {
+        switch (merchant.scrape_type) {
+          case 'next_data':
+            products = await scrapeNextData(merchant, limit);
+            break;
+          case 'api':
+            products = await scrapeApi(merchant, limit);
+            break;
+          case 'html':
+            products = await scrapeHtml(merchant, limit);
+            break;
+          default:
+            console.log(`Unknown scrape_type: ${merchant.scrape_type}`);
+            products = [];
+        }
+      } catch (scrapeError) {
+        console.error('Traditional scraping error:', scrapeError);
+      }
     }
 
     console.log(`Collected ${products.length} real products`);
@@ -135,6 +281,55 @@ serve(async (req) => {
     );
   }
 });
+
+// Scrape using Firecrawl API
+async function scrapeWithFirecrawl(merchant: Merchant, limit: number): Promise<Product[]> {
+  const products: Product[] = [];
+  
+  // Get category URLs for each merchant
+  const merchantUrls: Record<string, string[]> = {
+    'wconcept': [
+      'https://www.wconcept.co.kr/Women/Top',
+      'https://www.wconcept.co.kr/Women/Bottom',
+      'https://www.wconcept.co.kr/Women/Outer',
+    ],
+    'posty': ['https://www.posty.kr/product/list?category=001'],
+    'jestina': ['https://www.jestina.co.kr/product/list?category=1'],
+    'paulsmith': ['https://www.paulsmith.co.kr/'],
+    'arket': ['https://www.arket.com/en_kr/women/tops.html'],
+    'stories': ['https://www.stories.com/en_krw/clothing/tops.html'],
+    'hfashion': ['https://www.hfashionmall.com/display/category/list?categoryId=10000'],
+    'benetton1': ['https://kr.benetton.com/women/'],
+  };
+
+  const urls = merchantUrls[merchant.id] || [merchant.base_url];
+  
+  for (const url of urls) {
+    if (products.length >= limit) break;
+    
+    const scrapeResult = await firecrawlScrape(url);
+    if (scrapeResult?.html) {
+      const extractedProducts = extractProductsFromHtml(scrapeResult.html, merchant.id, merchant.base_url);
+      console.log(`Firecrawl extracted ${extractedProducts.length} products from ${url}`);
+      
+      for (const product of extractedProducts) {
+        if (products.length >= limit) break;
+        if (product.name && product.image_url) {
+          products.push(product);
+        }
+      }
+    }
+  }
+
+  // If Firecrawl found products with images but no prices, that's still valuable
+  // We can show the products with images even without exact prices
+  if (products.length > 0) {
+    console.log(`Firecrawl successfully found ${products.length} products with images`);
+    return products;
+  }
+
+  return [];
+}
 
 // Normalize image URL to absolute path with proper CDN
 function normalizeImageUrl(url: string | undefined, merchantId: string, baseUrl: string): string | undefined {
