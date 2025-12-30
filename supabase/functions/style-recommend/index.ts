@@ -127,31 +127,54 @@ serve(async (req) => {
     let serpApiCalls = 0;
     let styleGuide: GeminiStyleResponse | null = null;
 
+    // Calculate per-item budget (total / expected items, with buffer)
+    const expectedItems = 4;
+    const maxItemBudget = Math.floor(budget / expectedItems * 1.2); // 20% buffer per item
+    
     if (LOVABLE_API_KEY) {
-      const stylePrompt = `당신은 한국 패션 스타일리스트입니다.
-사용자 요청: "${userRequest}"
+      const systemPrompt = `너는 이 지구상 최고의 패션 MD이자 스타일리스트야. 
+수십 년간 패션 업계에서 일하며 W컨셉, 한섬, 무신사 등 한국 최고의 패션 플랫폼에서 MD로 활동해왔어.
+트렌드를 읽는 눈과 고객의 니즈를 정확히 파악하는 능력이 탁월해.
+
+중요 규칙:
+1. 카테고리와 상품이 반드시 일치해야 해 (상의=탑/블라우스/셔츠/니트, 하의=팬츠/스커트/청바지, 신발=구두/스니커즈/부츠, 가방=백/클러치, 아우터=자켓/코트/점퍼)
+2. 검색 키워드에 반드시 해당 카테고리 한글명을 포함해 (예: "여성 화이트 블라우스 상의 캐주얼")
+3. 총 예산을 절대 초과하면 안 돼. 각 아이템 가격의 합이 총 예산 이하가 되도록 설정해
+4. 반드시 유효한 JSON만 응답해`;
+
+      const stylePrompt = `사용자 요청: "${userRequest}"
 성별: ${gender}
-예산: ${budget}원 (총합)
+총 예산: ${budget}원 (모든 아이템 가격 합계가 이 금액 이하여야 함)
+아이템당 최대 예산: ${maxItemBudget}원
 
-다음 한국 온라인 쇼핑몰들의 트렌드를 참고하여 코디를 구성해주세요:
-${merchantNames.join(', ')}
+참고 쇼핑몰: ${merchantNames.join(', ')}
 
-반드시 다음 JSON 형식으로만 응답하세요:
+다음 JSON 형식으로만 응답해:
 {
   "lookName": "코디 이름",
   "items": [
     {
       "category": "상의",
-      "searchKeywords": "검색 키워드 (예: 여성 화이트 블라우스 캐주얼)",
+      "categoryKeyword": "블라우스",
+      "searchKeywords": "여성 화이트 블라우스 상의 캐주얼",
       "styleTags": ["캐주얼", "로맨틱"],
-      "priceRange": { "min": 30000, "max": 80000 },
-      "colorSuggestion": "추천 색상"
+      "priceRange": { "min": 20000, "max": 50000 },
+      "colorSuggestion": "화이트"
+    },
+    {
+      "category": "하의",
+      "categoryKeyword": "청바지",
+      "searchKeywords": "여성 하이웨이스트 청바지 하의",
+      "styleTags": ["캐주얼"],
+      "priceRange": { "min": 30000, "max": 60000 },
+      "colorSuggestion": "블루"
     }
   ],
   "stylingTips": "스타일링 팁"
 }
 
-카테고리는 상의, 하의, 아우터, 신발, 가방 중에서 선택하세요. 최소 3개, 최대 5개 아이템을 추천하세요.`;
+카테고리는 상의, 하의, 아우터, 신발, 가방 중에서만 선택하고, categoryKeyword에 구체적인 품목명을 넣어.
+3~5개 아이템을 추천하되, 각 아이템 priceRange.max 합계가 ${budget}원을 넘지 않도록 해.`;
 
       try {
         const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -163,7 +186,7 @@ ${merchantNames.join(', ')}
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash',
             messages: [
-              { role: 'system', content: 'You are a Korean fashion stylist. Always respond in valid JSON format only.' },
+              { role: 'system', content: systemPrompt },
               { role: 'user', content: stylePrompt }
             ],
           }),
@@ -178,8 +201,20 @@ ${merchantNames.join(', ')}
           // Extract JSON from response
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            styleGuide = JSON.parse(jsonMatch[0]);
-            console.log(`[style-recommend] Gemini style guide:`, JSON.stringify(styleGuide, null, 2));
+            const parsed = JSON.parse(jsonMatch[0]) as GeminiStyleResponse;
+            console.log(`[style-recommend] Gemini style guide:`, JSON.stringify(parsed, null, 2));
+            
+            // Validate budget constraint
+            const totalMaxPrice = parsed.items.reduce((sum: number, item: StyleGuideItem) => sum + item.priceRange.max, 0);
+            if (totalMaxPrice > budget * 1.5) {
+              console.log(`[style-recommend] Budget exceeded, adjusting price ranges`);
+              const scaleFactor = budget / totalMaxPrice;
+              parsed.items.forEach((item: StyleGuideItem) => {
+                item.priceRange.min = Math.floor(item.priceRange.min * scaleFactor);
+                item.priceRange.max = Math.floor(item.priceRange.max * scaleFactor);
+              });
+            }
+            styleGuide = parsed;
           }
         } else {
           console.error('[style-recommend] Gemini API error:', await geminiResponse.text());
@@ -260,12 +295,15 @@ ${merchantNames.join(', ')}
         // Try multiple merchants until we find a product
         let found = false;
         
+        // Get category-specific keyword for better search accuracy
+        const categoryKeyword = (item as any).categoryKeyword || getCategoryKeyword(item.category);
+        
         for (const merchant of (merchants || []).slice(0, 3)) {
           if (found) break;
           
-          // Use merchant Korean name for better search results (not site: prefix)
-          const searchQuery = `${merchant.name_ko} ${item.searchKeywords}`;
-          console.log(`[style-recommend] SerpAPI query: "${searchQuery}"`);
+          // Build precise search query with category keyword
+          const searchQuery = `${merchant.name_ko} ${gender} ${categoryKeyword} ${item.colorSuggestion || ''}`.trim();
+          console.log(`[style-recommend] SerpAPI query: "${searchQuery}" for category: ${item.category}`);
           
           try {
             const serpUrl = new URL('https://serpapi.com/search.json');
@@ -274,7 +312,11 @@ ${merchantNames.join(', ')}
             serpUrl.searchParams.set('hl', 'ko');
             serpUrl.searchParams.set('gl', 'kr');
             serpUrl.searchParams.set('api_key', SERPAPI_API_KEY);
-            serpUrl.searchParams.set('num', '10');
+            serpUrl.searchParams.set('num', '20'); // Get more results for better filtering
+            // Add price filter
+            if (item.priceRange.max > 0) {
+              serpUrl.searchParams.set('price_max', String(item.priceRange.max));
+            }
 
             const serpResponse = await fetch(serpUrl.toString());
             serpApiCalls++;
@@ -285,18 +327,30 @@ ${merchantNames.join(', ')}
               console.log(`[style-recommend] SerpAPI returned ${results.length} results for ${item.category}`);
 
               if (results.length > 0) {
-                // Get first valid result with image and price
-                const validResult = results.find((r: any) => r.thumbnail && r.title && (r.price || r.extracted_price));
+                // Find a valid result that matches the category
+                const validResult = results.find((r: any) => {
+                  if (!r.thumbnail || !r.title || !(r.price || r.extracted_price)) return false;
+                  
+                  const title = r.title.toLowerCase();
+                  const price = r.extracted_price || parsePrice(r.price);
+                  
+                  // Check price is within budget
+                  if (price > item.priceRange.max * 1.2) return false;
+                  
+                  // Validate category matches (prevent watch showing up for pants, etc.)
+                  return validateCategoryMatch(title, item.category, categoryKeyword);
+                });
                 
                 if (validResult) {
                   const productUrl = validResult.link || validResult.product_link || `${merchant.base_url}/search?q=${encodeURIComponent(validResult.title)}`;
+                  const price = validResult.extracted_price || parsePrice(validResult.price);
                   
                   // Save to products_cache
                   const newProduct: CachedProduct = {
                     id: crypto.randomUUID(),
                     name: validResult.title,
                     brand: extractBrand(validResult.title),
-                    price: validResult.extracted_price || parsePrice(validResult.price),
+                    price: price,
                     image_url: validResult.thumbnail,
                     product_url: productUrl,
                     category: item.category,
@@ -475,4 +529,59 @@ function parsePrice(priceStr: string): number {
   if (!priceStr) return 0;
   const numStr = priceStr.replace(/[^0-9]/g, '');
   return parseInt(numStr) || 0;
+}
+
+// Get category-specific keyword for search
+function getCategoryKeyword(category: string): string {
+  const keywords: Record<string, string> = {
+    '상의': '블라우스 셔츠 티셔츠 니트',
+    '하의': '팬츠 청바지 스커트 바지',
+    '아우터': '자켓 코트 점퍼 가디건',
+    '신발': '구두 스니커즈 부츠 힐',
+    '가방': '백 가방 토트백 숄더백'
+  };
+  return keywords[category] || category;
+}
+
+// Validate that search result matches the intended category
+function validateCategoryMatch(title: string, category: string, categoryKeyword: string): boolean {
+  // Exclusion list - items that should NOT appear in certain categories
+  const exclusions: Record<string, string[]> = {
+    '상의': ['바지', '팬츠', '스커트', '신발', '구두', '스니커즈', '가방', '백', '시계', '목걸이', '팔찌', '귀걸이', '반지'],
+    '하의': ['셔츠', '블라우스', '니트', '티셔츠', '신발', '구두', '스니커즈', '가방', '백', '시계', '목걸이', '귀걸이', '자켓', '코트'],
+    '아우터': ['바지', '팬츠', '스커트', '신발', '구두', '스니커즈', '가방', '백', '시계', '목걸이', '귀걸이'],
+    '신발': ['바지', '팬츠', '셔츠', '블라우스', '가방', '백', '시계', '목걸이', '귀걸이', '자켓', '코트'],
+    '가방': ['바지', '팬츠', '셔츠', '블라우스', '신발', '구두', '스니커즈', '시계', '목걸이', '귀걸이', '자켓', '코트']
+  };
+  
+  // Check for exclusions
+  const excluded = exclusions[category] || [];
+  for (const word of excluded) {
+    if (title.includes(word)) {
+      return false;
+    }
+  }
+  
+  // Inclusion list - at least one keyword should match
+  const inclusions: Record<string, string[]> = {
+    '상의': ['셔츠', '블라우스', '티셔츠', '니트', '탑', '상의', '맨투맨', '스웨터', '후드', '가디건'],
+    '하의': ['바지', '팬츠', '청바지', '스커트', '하의', '데님', '슬랙스', '진', '레깅스'],
+    '아우터': ['자켓', '코트', '점퍼', '가디건', '아우터', '재킷', '패딩', '무스탕', '트렌치'],
+    '신발': ['신발', '구두', '스니커즈', '부츠', '힐', '샌들', '로퍼', '플랫', '슬리퍼', '운동화'],
+    '가방': ['가방', '백', '토트', '숄더', '크로스', '클러치', '파우치', '핸드백']
+  };
+  
+  const included = inclusions[category] || [];
+  for (const word of included) {
+    if (title.includes(word)) {
+      return true;
+    }
+  }
+  
+  // Also check categoryKeyword from Gemini
+  if (categoryKeyword && title.includes(categoryKeyword)) {
+    return true;
+  }
+  
+  return false;
 }
