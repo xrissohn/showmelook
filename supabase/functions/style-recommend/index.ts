@@ -40,10 +40,17 @@ interface LookItem {
   source: 'cache' | 'serpapi' | 'none';
 }
 
-// Generate cache key from request parameters
+// Generate cache key from request parameters (handles Unicode)
 function generateCacheKey(gender: string, style: string, occasion: string, budget: number): string {
   const normalized = `${gender}|${style}|${occasion}|${Math.floor(budget / 50000) * 50000}`;
-  return btoa(normalized).replace(/[^a-zA-Z0-9]/g, '').substring(0, 32);
+  // Use simple hash for Unicode-safe cache key
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    const char = normalized.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return `style_${Math.abs(hash).toString(36)}`;
 }
 
 serve(async (req) => {
