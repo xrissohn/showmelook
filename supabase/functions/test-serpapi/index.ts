@@ -45,20 +45,21 @@ serve(async (req) => {
       );
     }
 
-    // Define merchant domains
-    const merchantDomains: Record<string, string> = {
-      'wconcept': 'wconcept.co.kr',
-      'hfashion': 'hfashionmall.com',
-      'musinsa': 'musinsa.com',
-      'posty': 'posty.kr',
-      'jestina': 'jestina.co.kr',
-      'oslonog': 'oslonog.co.kr',
+    // Define merchant search terms (use brand names for better Google Shopping results)
+    const merchantSearchTerms: Record<string, { name: string; domain: string }> = {
+      'wconcept': { name: 'W컨셉', domain: 'wconcept.co.kr' },
+      'hfashion': { name: 'H패션몰', domain: 'hfashionmall.com' },
+      'musinsa': { name: '무신사', domain: 'musinsa.com' },
+      'posty': { name: '포스티', domain: 'posty.kr' },
+      'jestina': { name: '제이에스티나', domain: 'jestina.co.kr' },
+      'oslonog': { name: '오슬로앤지', domain: 'oslonog.co.kr' },
     };
 
-    const domain = merchantDomains[merchant] || merchantDomains['wconcept'];
-    const searchQuery = `site:${domain} ${query}`;
+    const merchantInfo = merchantSearchTerms[merchant] || merchantSearchTerms['wconcept'];
+    // Search with Korean brand name for better results in Korean market
+    const searchQuery = `${merchantInfo.name} ${query}`;
 
-    console.log(`[SerpAPI] Searching: "${searchQuery}"`);
+    console.log(`[SerpAPI] Searching: "${searchQuery}" (filtering for domain: ${merchantInfo.domain})`);
     const startTime = Date.now();
 
     // Build SerpAPI URL
@@ -104,7 +105,7 @@ serve(async (req) => {
       link: item.link || '',
       price: item.extracted_price || null,
       priceText: item.price || '',
-      source: item.source || domain,
+      source: item.source || merchantInfo.name,
     }));
 
     console.log(`[SerpAPI] Found ${products.length} products`);
@@ -119,7 +120,7 @@ serve(async (req) => {
         success: true,
         query: searchQuery,
         merchant,
-        domain,
+        domain: merchantInfo.domain,
         count: products.length,
         responseTime,
         products,
