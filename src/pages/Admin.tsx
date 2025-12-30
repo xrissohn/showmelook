@@ -69,6 +69,7 @@ interface SerpAPIResult {
   merchant?: string;
   domain?: string;
   count?: number;
+  savedCount?: number;
   responseTime?: number;
   products?: SerpAPIProduct[];
   error?: string;
@@ -103,6 +104,7 @@ const Admin = () => {
   const [serpMerchant, setSerpMerchant] = useState("wconcept");
   const [serpResult, setSerpResult] = useState<SerpAPIResult | null>(null);
   const [isSerpSearching, setIsSerpSearching] = useState(false);
+  const [serpSaveToCache, setSerpSaveToCache] = useState(false);
 
   // Load merchants on mount
   useEffect(() => {
@@ -300,7 +302,7 @@ const Admin = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('test-serpapi', {
-        body: { query: serpQuery, merchant: serpMerchant },
+        body: { query: serpQuery, merchant: serpMerchant, saveToCache: serpSaveToCache },
       });
 
       if (error) throw error;
@@ -308,10 +310,15 @@ const Admin = () => {
       setSerpResult(data);
       
       if (data.success) {
+        const savedMsg = data.savedCount > 0 ? ` (${data.savedCount}개 저장됨)` : '';
         toast({
           title: "SerpAPI 검색 완료",
-          description: `${data.count}개 상품 발견 (${data.responseTime}ms)`,
+          description: `${data.count}개 상품 발견 (${data.responseTime}ms)${savedMsg}`,
         });
+        // Reload products if saved
+        if (data.savedCount > 0) {
+          loadCachedProducts();
+        }
       } else {
         toast({
           title: "SerpAPI 검색 실패",
@@ -415,7 +422,7 @@ const Admin = () => {
                   SerpAPI Google Shopping 테스트
                 </CardTitle>
                 <CardDescription>
-                  Google Shopping API를 통해 머천트 사이트의 상품과 이미지를 검색합니다. (무료 플랜: 월 100회)
+                  Google Shopping API를 통해 머천트 사이트의 상품과 이미지를 검색합니다. (무료 플랜: 월 250회)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -447,6 +454,15 @@ const Admin = () => {
                     )}
                     검색
                   </Button>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={serpSaveToCache}
+                      onChange={(e) => setSerpSaveToCache(e.target.checked)}
+                      className="rounded"
+                    />
+                    캐시에 저장
+                  </label>
                 </div>
 
                 {/* Sample Queries */}
@@ -478,6 +494,9 @@ const Admin = () => {
                           <CheckCircle2 className="w-5 h-5" />
                           <span className="font-medium">검색 성공</span>
                           <Badge variant="secondary">{serpResult.count}개 상품</Badge>
+                          {serpResult.savedCount !== undefined && serpResult.savedCount > 0 && (
+                            <Badge variant="default">{serpResult.savedCount}개 저장됨</Badge>
+                          )}
                           <Badge variant="outline">{serpResult.responseTime}ms</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
