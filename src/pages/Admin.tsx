@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,6 +54,27 @@ interface CachedProduct {
   collected_at: string;
 }
 
+interface SerpAPIProduct {
+  title: string;
+  thumbnail: string;
+  link: string;
+  price: number | null;
+  priceText: string;
+  source: string;
+}
+
+interface SerpAPIResult {
+  success: boolean;
+  query?: string;
+  merchant?: string;
+  domain?: string;
+  count?: number;
+  responseTime?: number;
+  products?: SerpAPIProduct[];
+  error?: string;
+  details?: string;
+}
+
 const Admin = () => {
   const { toast } = useToast();
   
@@ -76,6 +97,12 @@ const Admin = () => {
   const [cachedProducts, setCachedProducts] = useState<CachedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productStats, setProductStats] = useState<{ total: number; byMerchant: Record<string, number> }>({ total: 0, byMerchant: {} });
+
+  // SerpAPI test state
+  const [serpQuery, setSerpQuery] = useState("");
+  const [serpMerchant, setSerpMerchant] = useState("wconcept");
+  const [serpResult, setSerpResult] = useState<SerpAPIResult | null>(null);
+  const [isSerpSearching, setIsSerpSearching] = useState(false);
 
   // Load merchants on mount
   useEffect(() => {
@@ -258,6 +285,54 @@ const Admin = () => {
     }
   };
 
+  const testSerpAPI = async () => {
+    if (!serpQuery.trim()) {
+      toast({
+        title: "검색어 입력 필요",
+        description: "검색어를 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSerpSearching(true);
+    setSerpResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-serpapi', {
+        body: { query: serpQuery, merchant: serpMerchant },
+      });
+
+      if (error) throw error;
+      
+      setSerpResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "SerpAPI 검색 완료",
+          description: `${data.count}개 상품 발견 (${data.responseTime}ms)`,
+        });
+      } else {
+        toast({
+          title: "SerpAPI 검색 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      console.error('SerpAPI test error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setSerpResult({ success: false, error: errorMessage });
+      toast({
+        title: "SerpAPI 검색 실패",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSerpSearching(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -322,13 +397,157 @@ const Admin = () => {
         </Card>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="deeplink" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="serpapi" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="serpapi">SerpAPI 테스트</TabsTrigger>
             <TabsTrigger value="deeplink">Phase 1: 딥링크</TabsTrigger>
             <TabsTrigger value="merchants">머천트 목록</TabsTrigger>
             <TabsTrigger value="collect">Phase 2: 상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
+
+          {/* SerpAPI Test Tab */}
+          <TabsContent value="serpapi" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Search className="w-5 h-5" />
+                  SerpAPI Google Shopping 테스트
+                </CardTitle>
+                <CardDescription>
+                  Google Shopping API를 통해 머천트 사이트의 상품과 이미지를 검색합니다. (무료 플랜: 월 100회)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Select value={serpMerchant} onValueChange={setSerpMerchant}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="머천트 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="wconcept">W Concept</SelectItem>
+                      <SelectItem value="hfashion">H Fashion</SelectItem>
+                      <SelectItem value="musinsa">Musinsa</SelectItem>
+                      <SelectItem value="posty">Posty</SelectItem>
+                      <SelectItem value="jestina">J.Estina</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    placeholder="검색어 (예: 여성 상의 캐주얼)"
+                    value={serpQuery}
+                    onChange={(e) => setSerpQuery(e.target.value)}
+                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && testSerpAPI()}
+                  />
+                  <Button onClick={testSerpAPI} disabled={isSerpSearching}>
+                    {isSerpSearching ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Search className="w-4 h-4" />
+                    )}
+                    검색
+                  </Button>
+                </div>
+
+                {/* Sample Queries */}
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium mb-2">테스트 검색어 예시:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {["여성 상의", "캐주얼 원피스", "남성 아우터", "스니커즈", "미니멀 백"].map((q) => (
+                      <button 
+                        key={q}
+                        onClick={() => setSerpQuery(q)}
+                        className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Result */}
+                {serpResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    serpResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {serpResult.success ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-medium">검색 성공</span>
+                          <Badge variant="secondary">{serpResult.count}개 상품</Badge>
+                          <Badge variant="outline">{serpResult.responseTime}ms</Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          <span>검색 쿼리: </span>
+                          <code className="bg-muted px-1 rounded">{serpResult.query}</code>
+                        </div>
+                        
+                        {/* Product Grid */}
+                        {serpResult.products && serpResult.products.length > 0 && (
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
+                            {serpResult.products.map((product, idx) => (
+                              <div key={idx} className="border rounded-lg overflow-hidden bg-card">
+                                <div className="aspect-square bg-muted relative">
+                                  {product.thumbnail ? (
+                                    <img 
+                                      src={product.thumbnail} 
+                                      alt={product.title}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = '/placeholder.svg';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <Package className="w-8 h-8 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                  <Badge className="absolute top-1 right-1 text-xs" variant="secondary">
+                                    {idx + 1}
+                                  </Badge>
+                                </div>
+                                <div className="p-2">
+                                  <p className="text-xs font-medium line-clamp-2 mb-1">{product.title}</p>
+                                  <p className="text-sm font-bold text-primary">
+                                    {product.price ? `₩${product.price.toLocaleString()}` : product.priceText || '-'}
+                                  </p>
+                                  <a 
+                                    href={product.link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                    상품 보기
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">검색 실패: {serpResult.error}</span>
+                        </div>
+                        {serpResult.details && (
+                          <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
+                            {serpResult.details}
+                          </pre>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Deeplink Test Tab */}
           <TabsContent value="deeplink" className="space-y-4">
