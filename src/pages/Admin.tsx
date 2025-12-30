@@ -68,12 +68,36 @@ interface SerpAPIResult {
   query?: string;
   merchant?: string;
   domain?: string;
+  totalCount?: number;
   count?: number;
+  filteredCount?: number;
   savedCount?: number;
   responseTime?: number;
+  registeredDomains?: string[];
   products?: SerpAPIProduct[];
   error?: string;
   details?: string;
+}
+
+interface StyleV1Result {
+  success: boolean;
+  look?: {
+    items: Array<{
+      id: string;
+      name: string;
+      brand: string | null;
+      price: number;
+      image_url: string | null;
+      product_url: string;
+      category: string;
+      style_tags: string[] | null;
+    }>;
+    totalPrice: number;
+    styleTags: string[];
+    occasion: string;
+  };
+  message?: string;
+  error?: string;
 }
 
 const Admin = () => {
@@ -105,6 +129,14 @@ const Admin = () => {
   const [serpResult, setSerpResult] = useState<SerpAPIResult | null>(null);
   const [isSerpSearching, setIsSerpSearching] = useState(false);
   const [serpSaveToCache, setSerpSaveToCache] = useState(false);
+  const [serpFilterByDomain, setSerpFilterByDomain] = useState(true);
+
+  // Style v1 test state
+  const [styleOccasion, setStyleOccasion] = useState("캐주얼");
+  const [styleGender, setStyleGender] = useState<"male" | "female" | "unisex">("female");
+  const [styleBudgetMax, setStyleBudgetMax] = useState("300000");
+  const [styleResult, setStyleResult] = useState<StyleV1Result | null>(null);
+  const [isStyleLoading, setIsStyleLoading] = useState(false);
 
   // Load merchants on mount
   useEffect(() => {
@@ -302,7 +334,12 @@ const Admin = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('test-serpapi', {
-        body: { query: serpQuery, merchant: serpMerchant, saveToCache: serpSaveToCache },
+        body: { 
+          query: serpQuery, 
+          merchant: serpMerchant, 
+          saveToCache: serpSaveToCache,
+          filterByMerchantDomain: serpFilterByDomain,
+        },
       });
 
       if (error) throw error;
@@ -337,6 +374,52 @@ const Admin = () => {
       });
     } finally {
       setIsSerpSearching(false);
+    }
+  };
+
+  const testStyleV1 = async () => {
+    setIsStyleLoading(true);
+    setStyleResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('style-v1', {
+        body: {
+          preferences: {
+            gender: styleGender,
+            style: [styleOccasion === '비즈니스' ? '포멀' : styleOccasion === '운동' ? '스포티' : '캐주얼'],
+            budget: { max: parseInt(styleBudgetMax) || 300000 },
+            occasion: styleOccasion,
+          },
+        },
+      });
+
+      if (error) throw error;
+      
+      setStyleResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "룩 추천 완료",
+          description: `${data.look.items.length}개 아이템, 총 ₩${data.look.totalPrice.toLocaleString()}`,
+        });
+      } else {
+        toast({
+          title: "룩 추천 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Style v1 test error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setStyleResult({ success: false, error: errorMessage });
+      toast({
+        title: "룩 추천 실패",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsStyleLoading(false);
     }
   };
 
@@ -386,7 +469,7 @@ const Admin = () => {
                 phase={3} 
                 title="규칙 기반 추천" 
                 items={[
-                  { done: false, label: "style_v1 Edge Function" },
+                  { done: true, label: "style_v1 Edge Function" },
                   { done: false, label: "/recommend 페이지" },
                 ]}
               />
@@ -405,11 +488,12 @@ const Admin = () => {
 
         {/* Test Tabs */}
         <Tabs defaultValue="serpapi" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="serpapi">SerpAPI 테스트</TabsTrigger>
-            <TabsTrigger value="deeplink">Phase 1: 딥링크</TabsTrigger>
-            <TabsTrigger value="merchants">머천트 목록</TabsTrigger>
-            <TabsTrigger value="collect">Phase 2: 상품 수집</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-6">
+            <TabsTrigger value="serpapi">SerpAPI</TabsTrigger>
+            <TabsTrigger value="style-v1">Phase 3: 추천</TabsTrigger>
+            <TabsTrigger value="deeplink">딥링크</TabsTrigger>
+            <TabsTrigger value="merchants">머천트</TabsTrigger>
+            <TabsTrigger value="collect">상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
 
@@ -457,6 +541,15 @@ const Admin = () => {
                   <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
+                      checked={serpFilterByDomain}
+                      onChange={(e) => setSerpFilterByDomain(e.target.checked)}
+                      className="rounded"
+                    />
+                    머천트 필터
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
                       checked={serpSaveToCache}
                       onChange={(e) => setSerpSaveToCache(e.target.checked)}
                       className="rounded"
@@ -494,6 +587,9 @@ const Admin = () => {
                           <CheckCircle2 className="w-5 h-5" />
                           <span className="font-medium">검색 성공</span>
                           <Badge variant="secondary">{serpResult.count}개 상품</Badge>
+                          {serpResult.filteredCount !== undefined && serpResult.filteredCount > 0 && (
+                            <Badge variant="outline">{serpResult.filteredCount}개 제외됨</Badge>
+                          )}
                           {serpResult.savedCount !== undefined && serpResult.savedCount > 0 && (
                             <Badge variant="default">{serpResult.savedCount}개 저장됨</Badge>
                           )}
@@ -560,6 +656,151 @@ const Admin = () => {
                             {serpResult.details}
                           </pre>
                         )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Style V1 Test Tab */}
+          <TabsContent value="style-v1" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingBag className="w-5 h-5" />
+                  Phase 3: 규칙 기반 룩 추천 (style-v1)
+                </CardTitle>
+                <CardDescription>
+                  products_cache의 상품으로 카테고리별 1개씩 조합하여 룩을 추천합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">TPO/상황</label>
+                    <Select value={styleOccasion} onValueChange={setStyleOccasion}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="상황 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="캐주얼">캐주얼</SelectItem>
+                        <SelectItem value="비즈니스">비즈니스</SelectItem>
+                        <SelectItem value="데이트">데이트</SelectItem>
+                        <SelectItem value="파티">파티</SelectItem>
+                        <SelectItem value="운동">운동</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">성별</label>
+                    <Select value={styleGender} onValueChange={(v) => setStyleGender(v as "male" | "female" | "unisex")}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="성별 선택" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="female">여성</SelectItem>
+                        <SelectItem value="male">남성</SelectItem>
+                        <SelectItem value="unisex">무관</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">최대 예산</label>
+                    <Input
+                      type="number"
+                      placeholder="300000"
+                      value={styleBudgetMax}
+                      onChange={(e) => setStyleBudgetMax(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <Button onClick={testStyleV1} disabled={isStyleLoading} className="w-full">
+                  {isStyleLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <ShoppingBag className="w-4 h-4 mr-2" />
+                  )}
+                  룩 추천 생성
+                </Button>
+
+                {/* Result */}
+                {styleResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    styleResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {styleResult.success && styleResult.look ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">{styleResult.message}</span>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-lg font-bold">₩{styleResult.look.totalPrice.toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground">{styleResult.look.items.length}개 아이템</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1">
+                          {styleResult.look.styleTags.map((tag) => (
+                            <Badge key={tag} variant="secondary">{tag}</Badge>
+                          ))}
+                        </div>
+
+                        {/* Look Items Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                          {styleResult.look.items.map((item) => (
+                            <div key={item.id} className="border rounded-lg overflow-hidden bg-card">
+                              <div className="aspect-square bg-muted relative">
+                                {item.image_url ? (
+                                  <img 
+                                    src={item.image_url} 
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = '/placeholder.svg';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Package className="w-8 h-8 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <Badge className="absolute top-1 left-1 text-xs" variant="default">
+                                  {item.category}
+                                </Badge>
+                              </div>
+                              <div className="p-2">
+                                <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
+                                <p className="text-sm font-bold text-primary">
+                                  ₩{item.price.toLocaleString()}
+                                </p>
+                                <a 
+                                  href={item.product_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  구매하기
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">추천 실패: {styleResult.error}</span>
+                        </div>
                       </div>
                     )}
                   </div>

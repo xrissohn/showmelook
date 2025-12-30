@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.test-serpapi]
 verify_jwt = false
+
+[functions.style-v1]
+verify_jwt = false
