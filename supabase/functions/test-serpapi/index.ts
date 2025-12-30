@@ -39,7 +39,17 @@ serve(async (req) => {
       );
     }
 
-    const { query, merchant = 'wconcept', saveToCache = false } = await req.json();
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Supabase credentials not configured');
+      return new Response(
+        JSON.stringify({ success: false, error: 'Supabase credentials not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { query, merchant = 'wconcept', saveToCache = false, filterByMerchantDomain = true } = await req.json();
 
     if (!query) {
       return new Response(
@@ -48,17 +58,36 @@ serve(async (req) => {
       );
     }
 
-    // Define merchant search terms (use brand names for better Google Shopping results)
-    const merchantSearchTerms: Record<string, { name: string; domain: string }> = {
-      'wconcept': { name: 'W컨셉', domain: 'wconcept.co.kr' },
-      'hfashion': { name: 'H패션몰', domain: 'hfashionmall.com' },
-      'musinsa': { name: '무신사', domain: 'musinsa.com' },
-      'posty': { name: '포스티', domain: 'posty.kr' },
-      'jestina': { name: '제이에스티나', domain: 'jestina.co.kr' },
-      'oslonog': { name: '오슬로앤지', domain: 'oslonog.co.kr' },
-    };
+    // Load registered merchants from DB
+    const { data: merchantsData, error: merchantsError } = await supabase
+      .from('merchants')
+      .select('id, name, name_ko, base_url')
+      .eq('is_active', true);
 
-    const merchantInfo = merchantSearchTerms[merchant] || merchantSearchTerms['wconcept'];
+    if (merchantsError) {
+      console.error('[SerpAPI] Error loading merchants:', merchantsError);
+    }
+
+    // Build merchant domain map from DB
+    const registeredDomains: string[] = [];
+    const merchantSearchTerms: Record<string, { name: string; domain: string }> = {};
+    
+    if (merchantsData) {
+      for (const m of merchantsData) {
+        try {
+          const url = new URL(m.base_url);
+          const domain = url.hostname.replace('www.', '');
+          registeredDomains.push(domain);
+          merchantSearchTerms[m.id] = { name: m.name_ko || m.name, domain };
+        } catch {
+          console.warn(`[SerpAPI] Invalid base_url for merchant ${m.id}: ${m.base_url}`);
+        }
+      }
+    }
+
+    console.log(`[SerpAPI] Registered domains: ${registeredDomains.join(', ')}`);
+
+    const merchantInfo = merchantSearchTerms[merchant] || { name: merchant, domain: '' };
     // Search with Korean brand name for better results in Korean market
     const searchQuery = `${merchantInfo.name} ${query}`;
 
@@ -102,7 +131,7 @@ serve(async (req) => {
     }
 
     // Extract products from shopping_results
-    const products = (data.shopping_results || []).map((item) => ({
+    const allProducts = (data.shopping_results || []).map((item) => ({
       title: item.title || 'Unknown',
       thumbnail: item.thumbnail || '',
       link: item.link || '',
@@ -111,7 +140,25 @@ serve(async (req) => {
       source: item.source || merchantInfo.name,
     }));
 
-    console.log(`[SerpAPI] Found ${products.length} products`);
+    console.log(`[SerpAPI] Found ${allProducts.length} total products`);
+
+    // Filter by registered merchant domains if enabled
+    let products = allProducts;
+    let filteredCount = 0;
+    
+    if (filterByMerchantDomain && registeredDomains.length > 0) {
+      products = allProducts.filter((p) => {
+        if (!p.link) return false;
+        try {
+          const productDomain = new URL(p.link).hostname.replace('www.', '');
+          return registeredDomains.some(d => productDomain.includes(d) || d.includes(productDomain));
+        } catch {
+          return false;
+        }
+      });
+      filteredCount = allProducts.length - products.length;
+      console.log(`[SerpAPI] Filtered to ${products.length} products from registered merchants (excluded ${filteredCount})`);
+    }
 
     // Log sample product for debugging
     if (products.length > 0) {
@@ -120,27 +167,41 @@ serve(async (req) => {
 
     // Save to products_cache if requested
     let savedCount = 0;
-    if (saveToCache && products.length > 0 && SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      
+    if (saveToCache && products.length > 0) {
       // Filter products with valid thumbnails and prepare for insert
       const productsToSave = products
         .filter((p) => p.thumbnail && p.title !== 'Unknown')
         .slice(0, 20) // Limit to 20 products per search
-        .map((p) => ({
-          name: p.title,
-          image_url: p.thumbnail,
-          product_url: p.link || `https://www.google.com/search?q=${encodeURIComponent(p.title)}`,
-          price: p.price || 0,
-          category: detectCategory(query),
-          merchant_id: merchant,
-          brand: extractBrand(p.title, p.source),
-          is_active: true,
-          is_in_stock: true,
-          collected_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          style_tags: classifyStyleTags(p.title),
-        }));
+        .map((p) => {
+          // Detect merchant_id from product link
+          let detectedMerchantId = merchant;
+          if (p.link) {
+            try {
+              const productDomain = new URL(p.link).hostname.replace('www.', '');
+              for (const [mId, mInfo] of Object.entries(merchantSearchTerms)) {
+                if (productDomain.includes(mInfo.domain) || mInfo.domain.includes(productDomain)) {
+                  detectedMerchantId = mId;
+                  break;
+                }
+              }
+            } catch { /* use default */ }
+          }
+
+          return {
+            name: p.title,
+            image_url: p.thumbnail,
+            product_url: p.link || `https://www.google.com/search?q=${encodeURIComponent(p.title)}`,
+            price: p.price || 0,
+            category: detectCategory(query),
+            merchant_id: detectedMerchantId,
+            brand: extractBrand(p.title, p.source),
+            is_active: true,
+            is_in_stock: true,
+            collected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            style_tags: classifyStyleTags(p.title),
+          };
+        });
 
       if (productsToSave.length > 0) {
         const { data: insertedData, error: insertError } = await supabase
@@ -166,9 +227,12 @@ serve(async (req) => {
         query: searchQuery,
         merchant,
         domain: merchantInfo.domain,
+        totalCount: allProducts.length,
         count: products.length,
+        filteredCount,
         savedCount,
         responseTime,
+        registeredDomains,
         products,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
