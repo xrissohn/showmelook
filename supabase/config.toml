@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.style-v1]
 verify_jwt = false
+
+[functions.style-recommend]
+verify_jwt = false
