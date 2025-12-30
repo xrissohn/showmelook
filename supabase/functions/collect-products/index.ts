@@ -8,8 +8,8 @@ const corsHeaders = {
 
 const STYLE_TAGS = ['미니멀 시크', '스트릿 무드', '로맨틱 클래식', '애슬레저 핏', '보헤미안 에센스'];
 
-// Firecrawl API helper
-async function firecrawlScrape(url: string): Promise<{ markdown?: string; html?: string; links?: string[] } | null> {
+// Firecrawl API helper - enhanced to get multiple formats
+async function firecrawlScrape(url: string): Promise<{ markdown?: string; html?: string; links?: string[]; metadata?: any } | null> {
   const apiKey = Deno.env.get('FIRECRAWL_API_KEY');
   if (!apiKey) {
     console.log('FIRECRAWL_API_KEY not configured, skipping Firecrawl');
@@ -26,78 +26,104 @@ async function firecrawlScrape(url: string): Promise<{ markdown?: string; html?:
       },
       body: JSON.stringify({
         url,
-        formats: ['html', 'links'],
+        formats: ['html', 'links', 'markdown'],
         onlyMainContent: false,
-        waitFor: 2000,
+        waitFor: 3000,
       }),
     });
 
     if (!response.ok) {
-      console.error(`Firecrawl error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Firecrawl error: ${response.status} - ${errorText}`);
       return null;
     }
 
     const data = await response.json();
     console.log(`Firecrawl success for ${url}`);
-    return data.data || data;
+    
+    // Handle nested data structure from Firecrawl v1 API
+    const result = data.data || data;
+    console.log(`Firecrawl got: html=${!!result.html}, markdown=${!!result.markdown}, links=${result.links?.length || 0}`);
+    return result;
   } catch (error) {
     console.error('Firecrawl error:', error);
     return null;
   }
 }
 
-// Extract products from Firecrawl HTML result
-function extractProductsFromHtml(html: string, merchantId: string, baseUrl: string): Product[] {
+// Enhanced product extraction from Firecrawl result
+function extractProductsFromFirecrawl(
+  result: { markdown?: string; html?: string; links?: string[]; metadata?: any },
+  merchantId: string,
+  baseUrl: string
+): Product[] {
+  const products: Product[] = [];
+  const html = result.html || '';
+  const links = result.links || [];
+  
+  console.log(`Extracting products for ${merchantId} from ${html.length} chars HTML, ${links.length} links`);
+
+  // 1. Try JSON-LD structured data first (most reliable)
+  const jsonLdProducts = extractFromJsonLd(html, merchantId, baseUrl);
+  if (jsonLdProducts.length > 0) {
+    console.log(`Found ${jsonLdProducts.length} products from JSON-LD`);
+    return jsonLdProducts;
+  }
+
+  // 2. Try merchant-specific patterns
+  const merchantProducts = extractMerchantSpecific(html, merchantId, baseUrl);
+  if (merchantProducts.length > 0) {
+    console.log(`Found ${merchantProducts.length} products from merchant-specific extraction`);
+    return merchantProducts;
+  }
+
+  // 3. Try generic image + link extraction
+  const genericProducts = extractFromImagesAndLinks(html, links, merchantId, baseUrl);
+  if (genericProducts.length > 0) {
+    console.log(`Found ${genericProducts.length} products from generic extraction`);
+    return genericProducts;
+  }
+
+  console.log('No products extracted from Firecrawl result');
+  return products;
+}
+
+// Extract from JSON-LD structured data
+function extractFromJsonLd(html: string, merchantId: string, baseUrl: string): Product[] {
   const products: Product[] = [];
   
-  // Generic product extraction patterns
-  const productPatterns = [
-    // W Concept style
-    /<div[^>]*class="[^"]*product[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>[\s\S]*?<[^>]*class="[^"]*name[^"]*"[^>]*>([^<]+)<[\s\S]*?<[^>]*class="[^"]*price[^"]*"[^>]*>([^<]+)</gi,
-    // Image + title patterns
-    /<a[^>]*href="([^"]*product[^"]*)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?<\/a>/gi,
-    // JSON-LD structured data
-    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi,
-  ];
-
-  // Try to extract JSON-LD product data
-  const jsonLdMatches = html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi);
+  const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
   for (const match of jsonLdMatches) {
     try {
-      const jsonData = JSON.parse(match[1]);
-      if (jsonData['@type'] === 'Product' || (Array.isArray(jsonData['@graph']) && jsonData['@graph'].some((item: any) => item['@type'] === 'Product'))) {
-        const productData = jsonData['@type'] === 'Product' ? jsonData : jsonData['@graph'].find((item: any) => item['@type'] === 'Product');
-        if (productData) {
-          products.push({
-            merchant_id: merchantId,
-            product_url: productData.url || baseUrl,
-            external_id: productData.sku || `${merchantId}-${Date.now()}`,
-            name: productData.name || '',
-            brand: productData.brand?.name || '',
-            price: parseInt(productData.offers?.price) || 0,
-            original_price: parseInt(productData.offers?.highPrice),
-            image_url: Array.isArray(productData.image) ? productData.image[0] : productData.image,
-            category: detectCategory(productData.name || ''),
-            is_in_stock: productData.offers?.availability !== 'OutOfStock',
-          });
+      const jsonData = JSON.parse(match[1].trim());
+      
+      // Handle single Product
+      if (jsonData['@type'] === 'Product') {
+        const p = parseJsonLdProduct(jsonData, merchantId, baseUrl);
+        if (p) products.push(p);
+      }
+      
+      // Handle @graph with Products
+      if (Array.isArray(jsonData['@graph'])) {
+        for (const item of jsonData['@graph']) {
+          if (item['@type'] === 'Product') {
+            const p = parseJsonLdProduct(item, merchantId, baseUrl);
+            if (p) products.push(p);
+          }
         }
       }
-      // ItemList for category pages
-      if (jsonData['@type'] === 'ItemList' && jsonData.itemListElement) {
-        for (const item of jsonData.itemListElement.slice(0, 10)) {
-          if (item.item && item.item['@type'] === 'Product') {
-            const p = item.item;
-            products.push({
-              merchant_id: merchantId,
-              product_url: p.url || baseUrl,
-              external_id: p.sku || `${merchantId}-${item.position}`,
-              name: p.name || '',
-              brand: p.brand?.name || '',
-              price: parseInt(p.offers?.price) || 0,
-              image_url: Array.isArray(p.image) ? p.image[0] : p.image,
-              category: detectCategory(p.name || ''),
-              is_in_stock: true,
-            });
+      
+      // Handle ItemList (category pages)
+      if (jsonData['@type'] === 'ItemList' && Array.isArray(jsonData.itemListElement)) {
+        for (const item of jsonData.itemListElement.slice(0, 20)) {
+          if (item.item?.['@type'] === 'Product') {
+            const p = parseJsonLdProduct(item.item, merchantId, baseUrl);
+            if (p) products.push(p);
+          }
+          // Some sites have product directly
+          if (item['@type'] === 'Product') {
+            const p = parseJsonLdProduct(item, merchantId, baseUrl);
+            if (p) products.push(p);
           }
         }
       }
@@ -105,36 +131,162 @@ function extractProductsFromHtml(html: string, merchantId: string, baseUrl: stri
       // Invalid JSON-LD, skip
     }
   }
+  
+  return products;
+}
 
-  // Extract images with product links
-  const imgMatches = html.matchAll(/<a[^>]*href="([^"]*)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/gi);
-  for (const match of imgMatches) {
-    const href = match[1];
-    const imgSrc = match[2];
-    const alt = match[3];
-    
-    // Filter product links
-    if (href.includes('/product') || href.includes('/goods') || href.includes('/item')) {
-      const absoluteUrl = imgSrc.startsWith('http') ? imgSrc : 
-                          imgSrc.startsWith('//') ? `https:${imgSrc}` :
-                          `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
-      
-      if (alt && alt.length > 2 && !products.some(p => p.name === alt)) {
-        products.push({
-          merchant_id: merchantId,
-          product_url: href.startsWith('http') ? href : `${baseUrl}${href}`,
-          external_id: `${merchantId}-${products.length}`,
-          name: alt,
-          brand: merchantId,
-          price: 0, // Will need to be fetched separately
-          image_url: absoluteUrl,
-          category: detectCategory(alt),
-          is_in_stock: true,
-        });
+function parseJsonLdProduct(data: any, merchantId: string, baseUrl: string): Product | null {
+  const name = data.name;
+  if (!name) return null;
+  
+  let imageUrl = Array.isArray(data.image) ? data.image[0] : data.image;
+  if (typeof imageUrl === 'object') imageUrl = imageUrl.url || imageUrl.contentUrl;
+  
+  const price = data.offers?.price || data.offers?.lowPrice || 0;
+  
+  return {
+    merchant_id: merchantId,
+    product_url: data.url || baseUrl,
+    external_id: data.sku || data.productID || `${merchantId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    name: name,
+    brand: data.brand?.name || data.brand || merchantId,
+    price: parseInt(price) || 0,
+    original_price: parseInt(data.offers?.highPrice) || undefined,
+    image_url: imageUrl,
+    category: detectCategory(name),
+    is_in_stock: data.offers?.availability !== 'OutOfStock' && data.offers?.availability !== 'https://schema.org/OutOfStock',
+  };
+}
+
+// Merchant-specific extraction patterns
+function extractMerchantSpecific(html: string, merchantId: string, baseUrl: string): Product[] {
+  const products: Product[] = [];
+  
+  switch (merchantId) {
+    case 'wconcept': {
+      // W Concept uses data attributes and specific class patterns
+      const productMatches = html.matchAll(/<div[^>]*class="[^"]*goods-item[^"]*"[^>]*>[\s\S]*?<a[^>]*href="([^"]*\/Product\/\d+)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*>[\s\S]*?<span[^>]*class="[^"]*name[^"]*"[^>]*>([^<]+)<[\s\S]*?<span[^>]*class="[^"]*price[^"]*"[^>]*>([^<]+)</gi);
+      for (const match of productMatches) {
+        const [, href, img, name, priceText] = match;
+        const price = parseInt(priceText.replace(/[^\d]/g, '')) || 0;
+        if (name && img) {
+          products.push({
+            merchant_id: merchantId,
+            product_url: href.startsWith('http') ? href : `https://www.wconcept.co.kr${href}`,
+            external_id: href.match(/\/Product\/(\d+)/)?.[1] || `wconcept-${products.length}`,
+            name: name.trim(),
+            brand: 'W Concept',
+            price,
+            image_url: img.startsWith('//') ? `https:${img}` : img,
+            category: detectCategory(name),
+            is_in_stock: true,
+          });
+        }
       }
+      break;
+    }
+    
+    case 'posty': {
+      // Posty product cards
+      const productMatches = html.matchAll(/<a[^>]*href="(\/product\/[^"]+)"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?<\/a>/gi);
+      for (const match of productMatches) {
+        const [, href, img, name] = match;
+        if (name && img && !name.includes('banner')) {
+          products.push({
+            merchant_id: merchantId,
+            product_url: `https://www.posty.kr${href}`,
+            external_id: href.split('/').pop() || `posty-${products.length}`,
+            name: name.trim(),
+            brand: 'Posty',
+            price: 0, // Will be filled from detail page or estimated
+            image_url: img.startsWith('//') ? `https:${img}` : img.startsWith('/') ? `https://www.posty.kr${img}` : img,
+            category: detectCategory(name),
+            is_in_stock: true,
+          });
+        }
+      }
+      break;
+    }
+    
+    case 'benetton1': {
+      // Benetton product grid
+      const productMatches = html.matchAll(/<a[^>]*href="([^"]*\/product\/[^"]+)"[^>]*>[\s\S]*?<img[^>]*(?:data-src|src)="([^"]+)"[^>]*alt="([^"]*)"[\s\S]*?<\/a>/gi);
+      for (const match of productMatches) {
+        const [, href, img, name] = match;
+        if (name && img) {
+          products.push({
+            merchant_id: merchantId,
+            product_url: href.startsWith('http') ? href : `https://kr.benetton.com${href}`,
+            external_id: `benetton-${products.length}`,
+            name: name.trim(),
+            brand: 'United Colors of Benetton',
+            price: 0,
+            image_url: img.startsWith('//') ? `https:${img}` : img,
+            category: detectCategory(name),
+            is_in_stock: true,
+          });
+        }
+      }
+      break;
     }
   }
+  
+  return products;
+}
 
+// Generic extraction from images and links
+function extractFromImagesAndLinks(html: string, links: string[], merchantId: string, baseUrl: string): Product[] {
+  const products: Product[] = [];
+  const seenNames = new Set<string>();
+  
+  // Find product images with meaningful alt text
+  const imgMatches = html.matchAll(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/gi);
+  for (const match of imgMatches) {
+    const [, imgSrc, alt] = match;
+    
+    // Filter: must have alt text, not be icons/logos, have product-like image URL
+    if (!alt || alt.length < 3 || seenNames.has(alt)) continue;
+    if (alt.toLowerCase().includes('logo') || alt.toLowerCase().includes('icon') || alt.toLowerCase().includes('banner')) continue;
+    if (imgSrc.includes('icon') || imgSrc.includes('logo') || imgSrc.includes('placeholder')) continue;
+    
+    // Check if image URL looks like a product image
+    const isProductImage = imgSrc.includes('product') || 
+                           imgSrc.includes('goods') || 
+                           imgSrc.includes('item') ||
+                           imgSrc.includes('upload') ||
+                           imgSrc.match(/\/\d{4,}\//); // Product ID patterns
+    
+    if (!isProductImage) continue;
+    
+    seenNames.add(alt);
+    
+    let absoluteImgUrl = imgSrc;
+    if (imgSrc.startsWith('//')) absoluteImgUrl = `https:${imgSrc}`;
+    else if (imgSrc.startsWith('/')) absoluteImgUrl = `${baseUrl}${imgSrc}`;
+    
+    // Find corresponding product link
+    let productUrl = baseUrl;
+    const productLinkPattern = new RegExp(`<a[^>]*href="([^"]*(?:product|goods|item)[^"]*)"[^>]*>[^<]*${alt.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').substring(0, 20)}`, 'i');
+    const linkMatch = html.match(productLinkPattern);
+    if (linkMatch) {
+      productUrl = linkMatch[1].startsWith('http') ? linkMatch[1] : `${baseUrl}${linkMatch[1]}`;
+    }
+    
+    products.push({
+      merchant_id: merchantId,
+      product_url: productUrl,
+      external_id: `${merchantId}-${products.length}-${Date.now()}`,
+      name: alt.trim(),
+      brand: merchantId,
+      price: 0,
+      image_url: absoluteImgUrl,
+      category: detectCategory(alt),
+      is_in_stock: true,
+    });
+    
+    if (products.length >= 20) break;
+  }
+  
   return products;
 }
 
@@ -308,13 +460,13 @@ async function scrapeWithFirecrawl(merchant: Merchant, limit: number): Promise<P
     if (products.length >= limit) break;
     
     const scrapeResult = await firecrawlScrape(url);
-    if (scrapeResult?.html) {
-      const extractedProducts = extractProductsFromHtml(scrapeResult.html, merchant.id, merchant.base_url);
+    if (scrapeResult) {
+      const extractedProducts = extractProductsFromFirecrawl(scrapeResult, merchant.id, merchant.base_url);
       console.log(`Firecrawl extracted ${extractedProducts.length} products from ${url}`);
       
       for (const product of extractedProducts) {
         if (products.length >= limit) break;
-        if (product.name && product.image_url) {
+        if (product.name) {
           products.push(product);
         }
       }
