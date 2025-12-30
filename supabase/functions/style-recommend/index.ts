@@ -257,74 +257,96 @@ ${merchantNames.join(', ')}
       console.log(`[style-recommend] Searching SerpAPI for ${missingCategories.length} missing categories`);
 
       for (const item of missingCategories) {
-        // Search from first active merchant
-        const merchant = merchants?.[0];
-        if (!merchant) continue;
-
-        const searchQuery = `site:${merchant.base_url.replace('https://', '')} ${item.searchKeywords}`;
+        // Try multiple merchants until we find a product
+        let found = false;
         
-        try {
-          const serpUrl = new URL('https://serpapi.com/search.json');
-          serpUrl.searchParams.set('q', searchQuery);
-          serpUrl.searchParams.set('engine', 'google_shopping');
-          serpUrl.searchParams.set('hl', 'ko');
-          serpUrl.searchParams.set('gl', 'kr');
-          serpUrl.searchParams.set('api_key', SERPAPI_API_KEY);
-          serpUrl.searchParams.set('num', '5');
+        for (const merchant of (merchants || []).slice(0, 3)) {
+          if (found) break;
+          
+          // Use merchant Korean name for better search results (not site: prefix)
+          const searchQuery = `${merchant.name_ko} ${item.searchKeywords}`;
+          console.log(`[style-recommend] SerpAPI query: "${searchQuery}"`);
+          
+          try {
+            const serpUrl = new URL('https://serpapi.com/search.json');
+            serpUrl.searchParams.set('q', searchQuery);
+            serpUrl.searchParams.set('engine', 'google_shopping');
+            serpUrl.searchParams.set('hl', 'ko');
+            serpUrl.searchParams.set('gl', 'kr');
+            serpUrl.searchParams.set('api_key', SERPAPI_API_KEY);
+            serpUrl.searchParams.set('num', '10');
 
-          const serpResponse = await fetch(serpUrl.toString());
-          serpApiCalls++;
+            const serpResponse = await fetch(serpUrl.toString());
+            serpApiCalls++;
 
-          if (serpResponse.ok) {
-            const serpData = await serpResponse.json();
-            const results = serpData.shopping_results || [];
+            if (serpResponse.ok) {
+              const serpData = await serpResponse.json();
+              const results = serpData.shopping_results || [];
+              console.log(`[style-recommend] SerpAPI returned ${results.length} results for ${item.category}`);
 
-            if (results.length > 0) {
-              // Get first valid result
-              const validResult = results.find((r: any) => r.thumbnail && r.title);
-              
-              if (validResult) {
-                // Save to products_cache
-                const newProduct: CachedProduct = {
-                  id: crypto.randomUUID(),
-                  name: validResult.title,
-                  brand: extractBrand(validResult.title),
-                  price: parsePrice(validResult.price),
-                  image_url: validResult.thumbnail,
-                  product_url: validResult.link || validResult.product_link || '',
-                  category: item.category,
-                  style_tags: item.styleTags,
-                  merchant_id: merchant.id
-                };
-
-                // Insert to cache
-                await supabase.from('products_cache').upsert({
-                  ...newProduct,
-                  gender,
-                  is_active: true,
-                  is_in_stock: true,
-                  collected_at: new Date().toISOString()
-                }, { onConflict: 'product_url' });
-
-                const affiliateUrl = generateAffiliateUrl(newProduct, merchants || [], LINKPRICE_AFFILIATE_ID);
-
-                // Update lookItems
-                const idx = lookItems.findIndex(l => l.category === item.category);
-                if (idx !== -1) {
-                  lookItems[idx] = {
+              if (results.length > 0) {
+                // Get first valid result with image and price
+                const validResult = results.find((r: any) => r.thumbnail && r.title && (r.price || r.extracted_price));
+                
+                if (validResult) {
+                  const productUrl = validResult.link || validResult.product_link || `${merchant.base_url}/search?q=${encodeURIComponent(validResult.title)}`;
+                  
+                  // Save to products_cache
+                  const newProduct: CachedProduct = {
+                    id: crypto.randomUUID(),
+                    name: validResult.title,
+                    brand: extractBrand(validResult.title),
+                    price: validResult.extracted_price || parsePrice(validResult.price),
+                    image_url: validResult.thumbnail,
+                    product_url: productUrl,
                     category: item.category,
-                    product: newProduct,
-                    affiliateUrl,
-                    source: 'serpapi'
+                    style_tags: item.styleTags,
+                    merchant_id: merchant.id
                   };
-                }
 
-                console.log(`[style-recommend] ${item.category}: Found via SerpAPI - ${newProduct.name}`);
+                  console.log(`[style-recommend] Found product: ${newProduct.name} at ₩${newProduct.price}`);
+
+                  // Insert to cache (ignore conflict)
+                  try {
+                    await supabase.from('products_cache').insert({
+                      ...newProduct,
+                      gender,
+                      is_active: true,
+                      is_in_stock: true,
+                      collected_at: new Date().toISOString()
+                    });
+                  } catch (insertErr) {
+                    console.log(`[style-recommend] Product already in cache or insert error`);
+                  }
+
+                  const affiliateUrl = generateAffiliateUrl(newProduct, merchants || [], LINKPRICE_AFFILIATE_ID);
+
+                  // Update lookItems
+                  const idx = lookItems.findIndex(l => l.category === item.category);
+                  if (idx !== -1) {
+                    lookItems[idx] = {
+                      category: item.category,
+                      product: newProduct,
+                      affiliateUrl,
+                      source: 'serpapi'
+                    };
+                  }
+
+                  console.log(`[style-recommend] ${item.category}: Found via SerpAPI - ${newProduct.name}`);
+                  found = true;
+                }
               }
+            } else {
+              const errText = await serpResponse.text();
+              console.error(`[style-recommend] SerpAPI error: ${serpResponse.status} - ${errText}`);
             }
+          } catch (e) {
+            console.error(`[style-recommend] SerpAPI error for ${item.category}:`, e);
           }
-        } catch (e) {
-          console.error(`[style-recommend] SerpAPI error for ${item.category}:`, e);
+        }
+        
+        if (!found) {
+          console.log(`[style-recommend] No product found for ${item.category} after trying all merchants`);
         }
       }
     }
