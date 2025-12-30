@@ -623,13 +623,32 @@ const Admin = () => {
                         key={product.id}
                         className="flex items-center gap-4 p-3 rounded-lg border bg-card"
                       >
-                        {product.image_url && (
-                          <img 
-                            src={product.image_url} 
-                            alt={product.name}
-                            className="w-16 h-20 object-cover rounded"
-                          />
-                        )}
+                        <div className="w-16 h-20 flex-shrink-0 rounded overflow-hidden bg-muted">
+                          {product.image_url ? (
+                            <img 
+                              src={product.image_url} 
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.innerHTML = `
+                                  <div class="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
+                                      <circle cx="9" cy="9" r="2"/>
+                                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                    </svg>
+                                  </div>
+                                `;
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                              <Package className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge variant="outline" className="text-xs">{product.merchant_id}</Badge>
