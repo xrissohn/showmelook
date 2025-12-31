@@ -6,6 +6,7 @@ import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
+import StyleCarousel from '@/components/StyleCarousel';
 
 // Scroll animated section wrapper
 const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -447,37 +448,8 @@ const Landing = () => {
             </div>
           </div>
 
-          {/* Preview Cards */}
-          <div className="mt-10 sm:mt-16 md:mt-20 grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 max-w-4xl mx-auto">
-            {[{
-            title: '미니멀리스트',
-            desc: '깔끔한 라인의 현대적 스타일',
-            gradient: 'from-coral to-magenta'
-          }, {
-            title: '스트릿 스타일',
-            desc: '도시적인 캐주얼 감성',
-            gradient: 'from-magenta to-purple'
-          }, {
-            title: '클래식 엘레강스',
-            desc: '시간을 초월한 우아함',
-            gradient: 'from-purple to-sky'
-          }].map((style, i) => (
-            <HoverParticleCard 
-              key={style.title} 
-              className="bg-card rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2 animate-fade-in-up border border-border group overflow-hidden" 
-              style={{ animationDelay: `${0.6 + i * 0.1}s` }}
-            >
-              <div className={`aspect-[3/4] bg-gradient-to-br ${style.gradient} rounded-lg sm:rounded-xl mb-2 sm:mb-4 flex items-center justify-center opacity-80 group-hover:opacity-100 transition-all duration-300 group-hover:scale-105`}>
-                <Palette className="w-6 h-6 sm:w-8 sm:h-8 md:w-12 md:h-12 text-white/70 group-hover:text-white transition-colors" />
-              </div>
-              <h3 className="font-korean text-xs sm:text-sm md:text-lg text-foreground mb-0.5 sm:mb-1 group-hover:text-primary transition-colors truncate">{style.title}</h3>
-              <p className="text-[10px] sm:text-xs md:text-sm font-korean text-muted-foreground line-clamp-2 hidden sm:block">{style.desc}</p>
-              {/* Hover sparkles */}
-              <Sparkles className="absolute top-2 right-2 sm:top-4 sm:right-4 w-3 h-3 sm:w-5 sm:h-5 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
-              <Sparkles className="absolute bottom-10 left-2 sm:bottom-16 sm:left-4 w-2 h-2 sm:w-4 sm:h-4 text-magenta opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity hidden sm:block" style={{ animationDelay: '0.3s' }} />
-            </HoverParticleCard>
-          ))}
-          </div>
+          {/* Preview Cards - Style Carousel */}
+          <StyleCarousel />
         </div>
       </section>
 
