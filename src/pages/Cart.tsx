@@ -29,6 +29,7 @@ const Cart = () => {
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [purchasingItems, setPurchasingItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -111,6 +112,48 @@ const Cart = () => {
           item.id === itemId ? { ...item, quantity: newQuantity } : item
         )
       );
+    }
+  };
+
+  const handlePurchase = async (item: CartItem) => {
+    if (!item.product?.external_url) {
+      toast({
+        title: '오류',
+        description: '상품 URL이 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setPurchasingItems(prev => new Set(prev).add(item.id));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('deeplink', {
+        body: { product_url: item.product.external_url }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.affiliate_url) {
+        window.open(data.affiliate_url, '_blank');
+        toast({
+          title: '구매 페이지 열기',
+          description: `${item.product.name_ko} 구매 페이지로 이동합니다.`,
+        });
+      } else {
+        // 딥링크 실패 시 원본 URL로 이동
+        window.open(item.product.external_url, '_blank');
+      }
+    } catch (error) {
+      console.error('Deeplink error:', error);
+      // 오류 시에도 원본 URL로 이동
+      window.open(item.product.external_url, '_blank');
+    } finally {
+      setPurchasingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(item.id);
+        return newSet;
+      });
     }
   };
 
@@ -203,7 +246,7 @@ const Cart = () => {
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-3 mt-3">
+                    <div className="flex items-center gap-3 mt-3 flex-wrap">
                       <div className="flex items-center border border-border rounded-lg">
                         <button
                           onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -222,15 +265,20 @@ const Cart = () => {
                       </div>
 
                       {item.product?.external_url && (
-                        <a
-                          href={item.product.external_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-accent hover:underline font-korean"
+                        <Button
+                          variant="gold"
+                          size="sm"
+                          onClick={() => handlePurchase(item)}
+                          disabled={purchasingItems.has(item.id)}
+                          className="font-korean"
                         >
-                          상품 보기
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
+                          {purchasingItems.has(item.id) ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                          ) : (
+                            <ExternalLink className="w-4 h-4 mr-1" />
+                          )}
+                          구매하기
+                        </Button>
                       )}
                     </div>
                   </div>
