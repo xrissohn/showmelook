@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, ShoppingBag, ExternalLink, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, ShoppingBag, ExternalLink, Loader2, Plus, User, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 interface RecommendedItem {
@@ -19,6 +19,7 @@ interface RecommendedItem {
   product_url: string;
   affiliate_url?: string;
   brand?: string;
+  addedToCart?: boolean;
 }
 
 interface RecommendationResult {
@@ -33,12 +34,14 @@ interface RecommendationResult {
 const Recommend = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   
   const [stylePrompt, setStylePrompt] = useState("");
   const [gender, setGender] = useState<"female" | "male">("female");
   const [budget, setBudget] = useState([200000]);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<RecommendationResult | null>(null);
+  const [addingToCart, setAddingToCart] = useState<Set<number>>(new Set());
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price) + '원';
@@ -92,6 +95,24 @@ const Recommend = () => {
           styleGuide: data.look.styleGuide
         });
 
+        // Save to history if user is logged in
+        if (user) {
+          try {
+            await supabase.from('recommendation_history').insert({
+              user_id: user.id,
+              prompt: stylePrompt,
+              gender,
+              budget: budget[0],
+              style_concept: data.look.styleGuide?.concept || '',
+              style_reasoning: data.look.styleGuide?.reasoning || '',
+              items: itemsWithAffiliateUrls,
+              total_price: data.look.totalPrice
+            });
+          } catch (saveError) {
+            console.error('Failed to save to history:', saveError);
+          }
+        }
+
         toast({
           title: "스타일 추천 완료!",
           description: `${itemsWithAffiliateUrls.length}개의 아이템을 추천해드렸어요.`,
@@ -113,6 +134,100 @@ const Recommend = () => {
 
   const handlePurchase = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleAddToCart = async (item: RecommendedItem, index: number) => {
+    if (!user) {
+      toast({
+        title: "로그인이 필요합니다",
+        description: "장바구니 기능을 사용하려면 로그인해주세요.",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    setAddingToCart(prev => new Set(prev).add(index));
+
+    try {
+      // First, check if product exists in products table, if not create it
+      let productId: string;
+      
+      // Try to find existing product by URL
+      const { data: existingProduct } = await supabase
+        .from('products')
+        .select('id')
+        .eq('external_url', item.product_url)
+        .maybeSingle();
+
+      if (existingProduct) {
+        productId = existingProduct.id;
+      } else {
+        // Create new product
+        const { data: newProduct, error: productError } = await supabase
+          .from('products')
+          .insert({
+            name: item.name,
+            name_ko: item.name,
+            price: item.price,
+            category: item.category,
+            brand: item.brand || null,
+            image_url: item.image_url,
+            external_url: item.product_url,
+            is_active: true
+          })
+          .select('id')
+          .single();
+
+        if (productError) throw productError;
+        productId = newProduct.id;
+      }
+
+      // Add to cart
+      const { error: cartError } = await supabase
+        .from('cart_items')
+        .insert({
+          user_id: user.id,
+          product_id: productId,
+          quantity: 1
+        });
+
+      if (cartError) {
+        if (cartError.code === '23505') {
+          toast({
+            title: "이미 장바구니에 있어요",
+            description: "해당 상품은 이미 장바구니에 담겨있습니다.",
+          });
+        } else {
+          throw cartError;
+        }
+      } else {
+        // Mark as added
+        if (result) {
+          const updatedItems = [...result.items];
+          updatedItems[index] = { ...updatedItems[index], addedToCart: true };
+          setResult({ ...result, items: updatedItems });
+        }
+
+        toast({
+          title: "장바구니에 담겼어요",
+          description: `${item.name}이(가) 장바구니에 추가되었습니다.`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Add to cart error:', error);
+      toast({
+        title: "장바구니 추가 실패",
+        description: error.message || "다시 시도해주세요.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingToCart(prev => {
+        const next = new Set(prev);
+        next.delete(index);
+        return next;
+      });
+    }
   };
 
   return (
@@ -269,15 +384,38 @@ const Recommend = () => {
                     <p className="text-base font-bold text-primary">
                       {formatPrice(item.price)}
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => handlePurchase(item.affiliate_url || item.product_url)}
-                    >
-                      <ExternalLink className="w-3 h-3 mr-1" />
-                      구매하기
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant={item.addedToCart ? "secondary" : "outline"}
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleAddToCart(item, index)}
+                        disabled={addingToCart.has(index) || item.addedToCart}
+                      >
+                        {addingToCart.has(index) ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : item.addedToCart ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            담김
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3 h-3 mr-1" />
+                            담기
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handlePurchase(item.affiliate_url || item.product_url)}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        구매
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -313,6 +451,7 @@ const Recommend = () => {
                 다시 추천받기
               </Button>
               <Button 
+                variant="default"
                 className="flex-1"
                 onClick={() => navigate('/cart')}
               >
@@ -320,6 +459,16 @@ const Recommend = () => {
                 장바구니 보기
               </Button>
             </div>
+            {user && (
+              <Button 
+                variant="ghost" 
+                className="w-full"
+                onClick={() => navigate('/mypage')}
+              >
+                <User className="w-4 h-4 mr-2" />
+                마이페이지에서 히스토리 보기
+              </Button>
+            )}
           </div>
         )}
       </main>

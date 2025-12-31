@@ -327,6 +327,45 @@ export type Database = {
         }
         Relationships: []
       }
+      recommendation_history: {
+        Row: {
+          budget: number
+          created_at: string
+          gender: string
+          id: string
+          items: Json
+          prompt: string
+          style_concept: string | null
+          style_reasoning: string | null
+          total_price: number
+          user_id: string
+        }
+        Insert: {
+          budget: number
+          created_at?: string
+          gender: string
+          id?: string
+          items?: Json
+          prompt: string
+          style_concept?: string | null
+          style_reasoning?: string | null
+          total_price?: number
+          user_id: string
+        }
+        Update: {
+          budget?: number
+          created_at?: string
+          gender?: string
+          id?: string
+          items?: Json
+          prompt?: string
+          style_concept?: string | null
+          style_reasoning?: string | null
+          total_price?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       style_cache: {
         Row: {
           cache_key: string
