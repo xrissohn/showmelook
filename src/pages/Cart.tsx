@@ -30,6 +30,7 @@ const Cart = () => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingItems, setPurchasingItems] = useState<Set<string>>(new Set());
+  const [bulkPurchasing, setBulkPurchasing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -162,13 +163,64 @@ const Cart = () => {
     0
   );
 
-  const handleCheckout = () => {
-    toast({
-      title: '결제 페이지로 이동',
-      description: '외부 결제 시스템으로 연결됩니다.',
-    });
-    // In a real app, this would redirect to actual checkout
+  const handleBulkPurchase = async () => {
+    const itemsWithUrl = cartItems.filter(item => item.product?.external_url);
+    
+    if (itemsWithUrl.length === 0) {
+      toast({
+        title: '오류',
+        description: '구매 가능한 상품이 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setBulkPurchasing(true);
+
+    try {
+      // 모든 상품에 대해 딥링크 생성
+      const deeplinkPromises = itemsWithUrl.map(item =>
+        supabase.functions.invoke('deeplink', {
+          body: { product_url: item.product.external_url }
+        }).then(({ data, error }) => ({
+          item,
+          affiliateUrl: data?.success ? data.affiliate_url : item.product.external_url,
+          error
+        }))
+      );
+
+      const results = await Promise.all(deeplinkPromises);
+      
+      // 약간의 딜레이를 두고 각 URL 열기 (팝업 차단 방지)
+      let openedCount = 0;
+      for (let i = 0; i < results.length; i++) {
+        const { item, affiliateUrl } = results[i];
+        if (affiliateUrl) {
+          // 첫 번째는 바로, 나머지는 약간의 딜레이
+          setTimeout(() => {
+            window.open(affiliateUrl, '_blank');
+          }, i * 500);
+          openedCount++;
+        }
+      }
+
+      toast({
+        title: '일괄 구매 시작',
+        description: `${openedCount}개 상품의 구매 페이지가 열립니다. 팝업 차단을 해제해주세요.`,
+      });
+    } catch (error) {
+      console.error('Bulk purchase error:', error);
+      toast({
+        title: '오류',
+        description: '일괄 구매 처리 중 문제가 발생했습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setBulkPurchasing(false);
+    }
   };
+
+  const purchasableItemsCount = cartItems.filter(item => item.product?.external_url).length;
 
   if (authLoading || loading) {
     return (
@@ -307,10 +359,24 @@ const Cart = () => {
                 variant="gold"
                 size="xl"
                 className="w-full mt-4 font-korean"
-                onClick={handleCheckout}
+                onClick={handleBulkPurchase}
+                disabled={bulkPurchasing || purchasableItemsCount === 0}
               >
-                결제하기
+                {bulkPurchasing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    처리 중...
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="w-5 h-5 mr-2" />
+                    전체 상품 구매하기 ({purchasableItemsCount}개)
+                  </>
+                )}
               </Button>
+              <p className="text-xs text-muted-foreground text-center mt-2 font-korean">
+                각 상품의 구매 페이지가 새 탭으로 열립니다
+              </p>
             </div>
           </>
         )}
