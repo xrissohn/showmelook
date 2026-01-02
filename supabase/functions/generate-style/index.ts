@@ -639,7 +639,7 @@ serve(async (req) => {
   }
 
   try {
-    const { style, products, userProfile, useFaceComposite, userAvatarUrl, styleTrendId, productIds } = await req.json();
+    const { style, products, productDetails, productImageUrls, userProfile, useFaceComposite, userAvatarUrl, styleTrendId, productIds } = await req.json();
     
     const GOOGLE_SERVICE_ACCOUNT_JSON = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON');
     const GOOGLE_CLOUD_PROJECT_ID = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID');
@@ -835,29 +835,53 @@ serve(async (req) => {
     let prompt: string;
     let referenceImageUrl: string | undefined;
 
+    // 상품 상세 정보가 있으면 더 구체적인 프롬프트 생성
+    let detailedProductsDescription = sanitizedProducts;
+    if (productDetails && Array.isArray(productDetails) && productDetails.length > 0) {
+      const categoryDescriptions = productDetails.map((p: any) => {
+        const brand = p.brand ? `${p.brand} ` : '';
+        const category = p.category || '';
+        return `${category}: ${brand}${p.name}`;
+      });
+      detailedProductsDescription = categoryDescriptions.join(', ');
+      console.log('Using detailed product descriptions:', detailedProductsDescription);
+    }
+
     // Build prompts using ONLY sanitized/validated values
     if (useFaceComposite && userAvatarUrl) {
       referenceImageUrl = userAvatarUrl;
-      prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing ${sanitizedStyle} style outfit.
-The outfit includes: ${sanitizedProducts}.
-${genderDescription ? `Fashion style suited for ${genderDescription} body and preferences.` : ''}
-The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
-Style preferences: ${stylePreferences || 'modern and trendy'}.
+      prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing EXACTLY these specific items:
+${detailedProductsDescription}
+
+CRITICAL INSTRUCTIONS:
+- The model MUST wear these EXACT items as specified above, not similar or generic items
+- Each clothing category (top, bottom, outerwear, shoes, accessory) must match the product names exactly
+- Style: ${sanitizedStyle}
+${genderDescription ? `- Fashion suited for ${genderDescription} body and preferences` : ''}
+- Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
+- Style preferences: ${stylePreferences || 'modern and trendy'}
+
 Create a full body shot with this exact person's face, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.
-Keep the person's face exactly as shown in the reference photo while generating the fashionable outfit on their body.`;
+Keep the person's face exactly as shown in the reference photo while generating the specified outfit on their body.`;
 
-      console.log('Generating face composite image');
+      console.log('Generating face composite image with exact products');
     } else {
-      prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing ${sanitizedStyle} style outfit. 
-The outfit includes: ${sanitizedProducts}.
-${genderDescription ? `Choose clothing items and silhouettes that complement ${genderDescription} fashion.` : ''}
-The person has ${bodyTypeVal} body type, approximately ${heightVal}cm tall.
-Style preferences: ${stylePreferences || 'modern and trendy'}.
+      prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing EXACTLY these specific items:
+${detailedProductsDescription}
+
+CRITICAL INSTRUCTIONS:
+- The model MUST wear these EXACT items as specified above, not similar or generic items
+- Each clothing category (top, bottom, outerwear, shoes, accessory) must match the product names exactly
+- Style: ${sanitizedStyle}
+${genderDescription ? `- Choose silhouettes that complement ${genderDescription} fashion` : ''}
+- Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
+- Style preferences: ${stylePreferences || 'modern and trendy'}
+
 Full body shot, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.`;
 
-      console.log('Generating standard image');
+      console.log('Generating standard image with exact products');
     }
 
     console.log('Gender:', genderVal || 'not specified');
