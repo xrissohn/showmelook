@@ -62,10 +62,10 @@ const Recommend = () => {
     try {
       const { data, error } = await supabase.functions.invoke('style-recommend', {
         body: {
-          prompt: stylePrompt,
-          gender,
+          userRequest: stylePrompt,
+          gender: gender === 'female' ? '여성' : '남성',
           budget: budget[0],
-          categories: ['상의', '하의', '신발', '가방']
+          forceRefresh: false
         }
       });
 
