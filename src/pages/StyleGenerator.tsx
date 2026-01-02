@@ -386,21 +386,62 @@ const StyleGenerator = () => {
       return;
     }
 
+    // 트렌드 상품 또는 일반 상품 사용
+    const useTrendProducts = selectedTrendProducts.length > 0;
+    const productsToUse = useTrendProducts ? selectedTrendProducts : selectedProducts;
+    
+    if (productsToUse.length === 0 && !selectedTrend) {
+      toast({
+        title: '상품을 선택해주세요',
+        description: '스타일 생성을 위해 최소 1개의 상품을 선택해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const styleDescription = selectedTrend?.name_ko || '트렌디한';
-      const productsDescription = selectedProducts.map(p => p.name_ko).join(', ') || '기본 아이템';
+      
+      // 상품 정보를 상세하게 구성 (이름, 브랜드, 카테고리 포함)
+      const productsWithDetails = useTrendProducts 
+        ? selectedTrendProducts.map(p => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            category: p.category,
+            image_url: p.image_url,
+          }))
+        : selectedProducts.map(p => ({
+            id: p.id,
+            name: p.name_ko,
+            brand: p.brand,
+            category: p.category,
+            image_url: p.image_url,
+          }));
+
+      const productsDescription = productsWithDetails.map(p => {
+        const brandPart = p.brand ? `${p.brand} ` : '';
+        return `${brandPart}${p.name}`;
+      }).join(', ') || '기본 아이템';
+
+      // 상품 이미지 URL 목록 (AI가 참고할 수 있도록)
+      const productImageUrls = productsWithDetails
+        .filter(p => p.image_url)
+        .map(p => p.image_url);
 
       // Call AI generation edge function with face composite option
       const { data, error } = await supabase.functions.invoke('generate-style', {
         body: {
           style: styleDescription,
           products: productsDescription,
+          productDetails: productsWithDetails, // 상세 상품 정보 전달
+          productImageUrls: productImageUrls, // 상품 이미지 URL 전달
           userProfile: userProfile,
           useFaceComposite: useFaceComposite && !!userProfile?.avatar_url,
           userAvatarUrl: userProfile?.avatar_url,
           styleTrendId: selectedTrend?.id || null,
-          productIds: selectedProducts.map(p => p.id),
+          productIds: productsWithDetails.map(p => p.id),
         },
       });
 
@@ -441,14 +482,13 @@ const StyleGenerator = () => {
         }
 
         // Save to database (only if not cached - edge function handles caching)
-        // Store the file path, not the signed URL
         if (!data.cached) {
           await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: data.imagePath || data.imageUrl,
             prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
             style_trend_id: selectedTrend?.id || null,
-            product_ids: selectedProducts.map(p => p.id),
+            product_ids: productsWithDetails.map(p => p.id),
           });
         }
 
@@ -457,7 +497,6 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Error generating style:', error);
       
-      // Handle specific error messages
       const errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
       toast({
         title: '생성 실패',
