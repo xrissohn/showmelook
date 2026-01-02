@@ -33,6 +33,19 @@ interface Product {
   tags: string[] | null;
 }
 
+// 캐시된 상품 (products_cache 테이블에서 가져온 상품)
+interface CachedProduct {
+  id: string;
+  name: string;
+  brand: string | null;
+  price: number;
+  image_url: string | null;
+  product_url: string;
+  category: string;
+  style_tags: string[] | null;
+  affiliate_url?: string;
+}
+
 interface GeneratedLook {
   id: string;
   image_url: string;
@@ -97,6 +110,11 @@ const StyleGenerator = () => {
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [useFaceComposite, setUseFaceComposite] = useState(true);
+  
+  // 트렌드 기반 실시간 검색된 상품들
+  const [trendProducts, setTrendProducts] = useState<CachedProduct[]>([]);
+  const [isSearchingProducts, setIsSearchingProducts] = useState(false);
+  const [selectedTrendProducts, setSelectedTrendProducts] = useState<CachedProduct[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -277,6 +295,82 @@ const StyleGenerator = () => {
         ? prev.filter(p => p.id !== product.id)
         : [...prev, product]
     );
+  };
+
+  const toggleTrendProduct = (product: CachedProduct) => {
+    setSelectedTrendProducts(prev =>
+      prev.find(p => p.id === product.id)
+        ? prev.filter(p => p.id !== product.id)
+        : [...prev, product]
+    );
+  };
+
+  // 트렌드 선택 시 실시간 상품 검색
+  const handleTrendSelect = async (trend: StyleTrend) => {
+    setSelectedTrend(trend);
+    setTrendProducts([]);
+    setSelectedTrendProducts([]);
+    
+    if (!trend) return;
+    
+    setIsSearchingProducts(true);
+    
+    try {
+      const gender = userProfile?.gender === 'female' ? '여성' : '남성';
+      const userRequest = `${trend.name_ko} 스타일 코디`;
+      
+      const { data, error } = await supabase.functions.invoke('style-recommend', {
+        body: {
+          userRequest,
+          gender,
+          budget: 300000,
+          forceRefresh: false
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data.success && data.look?.items) {
+        // 검색된 상품들 추출 (product가 있는 아이템만)
+        const foundProducts: CachedProduct[] = data.look.items
+          .filter((item: any) => item.product !== null)
+          .map((item: any) => ({
+            id: item.product.id,
+            name: item.product.name,
+            brand: item.product.brand,
+            price: item.product.price,
+            image_url: item.product.image_url,
+            product_url: item.product.product_url,
+            category: item.category,
+            style_tags: item.product.style_tags,
+            affiliate_url: item.affiliateUrl
+          }));
+        
+        setTrendProducts(foundProducts);
+        
+        // 캐시 히트 시 알림
+        if (data.cacheHit) {
+          toast({
+            title: '캐시된 스타일 불러옴!',
+            description: `${foundProducts.length}개 아이템 (API 비용 절약 🎉)`,
+          });
+        } else {
+          toast({
+            title: '상품 검색 완료!',
+            description: `${foundProducts.length}개의 ${trend.name_ko} 스타일 아이템을 찾았어요.`,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error searching products:', error);
+      toast({
+        title: '검색 실패',
+        description: '상품 검색 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSearchingProducts(false);
+    }
   };
 
   const generateStyle = async () => {
@@ -490,7 +584,7 @@ const StyleGenerator = () => {
                   {trends.map((trend) => (
                     <button
                       key={trend.id}
-                      onClick={() => setSelectedTrend(trend)}
+                      onClick={() => handleTrendSelect(trend)}
                       className={`p-4 rounded-xl border-2 transition-all text-left ${
                         selectedTrend?.id === trend.id
                           ? 'border-accent bg-accent/5'
@@ -506,42 +600,137 @@ const StyleGenerator = () => {
                 </div>
               </div>
 
-              {/* Product Selection by Category */}
-              <div>
-                <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">아이템 선택</h2>
-                <div className="space-y-4 sm:space-y-6">
-                  {Object.entries(productsByCategory).map(([category, categoryProducts]) => (
-                    <div key={category}>
-                      <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 sm:mb-3 font-korean">
-                        {categoryLabels[category] || category}
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                        {categoryProducts.map((product) => (
-                          <button
-                            key={product.id}
-                            onClick={() => toggleProduct(product)}
-                            className={`p-3 rounded-xl border-2 transition-all text-left ${
-                              selectedProducts.find(p => p.id === product.id)
-                                ? 'border-accent bg-accent/5'
-                                : 'border-border hover:border-accent/50'
-                            }`}
-                          >
-                            <div className="aspect-square bg-secondary rounded-lg mb-2 flex items-center justify-center">
-                              <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
-                            </div>
-                            <p className="font-medium text-foreground text-sm truncate font-korean">
-                              {product.name_ko}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              ₩{product.price.toLocaleString()}
-                            </p>
-                          </button>
-                        ))}
-                      </div>
+              {/* Trend-based Product Selection (실시간 검색 결과) */}
+              {selectedTrend && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                    <h2 className="font-korean text-xl sm:text-2xl text-foreground">
+                      {selectedTrend.name_ko} 추천 아이템
+                    </h2>
+                    {isSearchingProducts && (
+                      <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                    )}
+                  </div>
+                  
+                  {isSearchingProducts ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="p-3 rounded-xl border-2 border-border animate-pulse">
+                          <div className="aspect-square bg-secondary rounded-lg mb-2" />
+                          <div className="h-4 bg-secondary rounded w-3/4 mb-1" />
+                          <div className="h-3 bg-secondary rounded w-1/2" />
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : trendProducts.length > 0 ? (
+                    <div className="space-y-4 sm:space-y-6">
+                      {/* 카테고리별로 그룹화 */}
+                      {['상의', '하의', '아우터', '신발', '가방'].map((category) => {
+                        const categoryItems = trendProducts.filter(p => p.category === category);
+                        if (categoryItems.length === 0) return null;
+                        
+                        return (
+                          <div key={category}>
+                            <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 sm:mb-3 font-korean">
+                              {category}
+                            </h3>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                              {categoryItems.map((product) => (
+                                <button
+                                  key={product.id}
+                                  onClick={() => toggleTrendProduct(product)}
+                                  className={`p-3 rounded-xl border-2 transition-all text-left ${
+                                    selectedTrendProducts.find(p => p.id === product.id)
+                                      ? 'border-accent bg-accent/5'
+                                      : 'border-border hover:border-accent/50'
+                                  }`}
+                                >
+                                  <div className="aspect-square bg-secondary rounded-lg mb-2 overflow-hidden">
+                                    {product.image_url ? (
+                                      <img 
+                                        src={product.image_url} 
+                                        alt={product.name}
+                                        className="w-full h-full object-cover"
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <p className="font-medium text-foreground text-sm truncate font-korean">
+                                    {product.name}
+                                  </p>
+                                  {product.brand && (
+                                    <p className="text-xs text-accent truncate">{product.brand}</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground">
+                                    ₩{product.price.toLocaleString()}
+                                  </p>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center text-muted-foreground bg-secondary/50 rounded-xl">
+                      <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="font-korean">트렌드를 선택하면 추천 아이템이 표시됩니다</p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* 기본 아이템 선택 (트렌드 상품이 없을 때만 표시) */}
+              {!selectedTrend && products.length > 0 && (
+                <div>
+                  <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">아이템 선택</h2>
+                  <div className="space-y-4 sm:space-y-6">
+                    {Object.entries(productsByCategory).map(([category, categoryProducts]) => (
+                      <div key={category}>
+                        <h3 className="text-xs sm:text-sm font-medium text-muted-foreground mb-2 sm:mb-3 font-korean">
+                          {categoryLabels[category] || category}
+                        </h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                          {categoryProducts.map((product) => (
+                            <button
+                              key={product.id}
+                              onClick={() => toggleProduct(product)}
+                              className={`p-3 rounded-xl border-2 transition-all text-left ${
+                                selectedProducts.find(p => p.id === product.id)
+                                  ? 'border-accent bg-accent/5'
+                                  : 'border-border hover:border-accent/50'
+                              }`}
+                            >
+                              <div className="aspect-square bg-secondary rounded-lg mb-2 flex items-center justify-center overflow-hidden">
+                                {product.image_url ? (
+                                  <img 
+                                    src={product.image_url} 
+                                    alt={product.name_ko}
+                                    className="w-full h-full object-cover"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
+                                )}
+                              </div>
+                              <p className="font-medium text-foreground text-sm truncate font-korean">
+                                {product.name_ko}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                ₩{product.price.toLocaleString()}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Face Composite Option */}
               {userProfile?.avatar_url && (
@@ -677,9 +866,58 @@ const StyleGenerator = () => {
                 )}
               </div>
 
-              {generatedImage && selectedProducts.length > 0 && (
+              {/* 선택된 트렌드 상품 구매하기 */}
+              {selectedTrendProducts.length > 0 && (
                 <div className="mt-6">
                   <h3 className="font-medium text-foreground mb-3 font-korean">선택된 아이템 구매하기</h3>
+                  <div className="space-y-2">
+                    {selectedTrendProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex items-center gap-3 p-3 bg-secondary rounded-xl"
+                      >
+                        {product.image_url && (
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name}
+                            className="w-12 h-12 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground font-korean text-sm truncate">{product.name}</p>
+                          {product.brand && (
+                            <p className="text-xs text-accent truncate">{product.brand}</p>
+                          )}
+                          <p className="text-sm text-muted-foreground">
+                            ₩{product.price.toLocaleString()}
+                          </p>
+                        </div>
+                        <Button
+                          variant="minimal"
+                          size="sm"
+                          onClick={() => {
+                            const url = product.affiliate_url || product.product_url;
+                            if (url) window.open(url, '_blank');
+                          }}
+                          className="font-korean"
+                        >
+                          구매
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 p-3 bg-accent/10 rounded-xl text-center">
+                    <p className="text-sm text-accent font-korean">
+                      총 ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 기존 상품 테이블에서 선택한 아이템 */}
+              {generatedImage && selectedProducts.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="font-medium text-foreground mb-3 font-korean">기본 아이템 구매하기</h3>
                   <div className="space-y-2">
                     {selectedProducts.map((product) => (
                       <div
