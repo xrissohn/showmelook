@@ -72,27 +72,26 @@ const Recommend = () => {
       if (error) throw error;
 
       if (data.success && data.look) {
-        // Generate affiliate URLs for each item
-        const itemsWithAffiliateUrls = await Promise.all(
-          data.look.items.map(async (item: RecommendedItem) => {
-            try {
-              const { data: deeplinkData } = await supabase.functions.invoke('deeplink', {
-                body: { product_url: item.product_url }
-              });
-              return {
-                ...item,
-                affiliate_url: deeplinkData?.affiliate_url || item.product_url
-              };
-            } catch {
-              return { ...item, affiliate_url: item.product_url };
-            }
-          })
-        );
+        // Transform LookItem[] to RecommendedItem[]
+        const transformedItems: RecommendedItem[] = data.look.items
+          .filter((item: any) => item.product !== null)
+          .map((item: any) => ({
+            category: item.category,
+            name: item.product?.name || '',
+            price: item.product?.price || 0,
+            image_url: item.product?.image_url || '',
+            product_url: item.product?.product_url || '',
+            affiliate_url: item.affiliateUrl || item.product?.product_url || '',
+            brand: item.product?.brand || undefined
+          }));
 
         setResult({
-          items: itemsWithAffiliateUrls,
-          totalPrice: data.look.totalPrice,
-          styleGuide: data.look.styleGuide
+          items: transformedItems,
+          totalPrice: data.look.totalPrice || 0,
+          styleGuide: {
+            concept: data.look.name || '스타일 추천',
+            reasoning: data.look.stylingTips || ''
+          }
         });
 
         // Save to history if user is logged in
@@ -101,12 +100,12 @@ const Recommend = () => {
             await supabase.from('recommendation_history').insert({
               user_id: user.id,
               prompt: stylePrompt,
-              gender,
+              gender: gender === 'female' ? '여성' : '남성',
               budget: budget[0],
-              style_concept: data.look.styleGuide?.concept || '',
-              style_reasoning: data.look.styleGuide?.reasoning || '',
-              items: itemsWithAffiliateUrls,
-              total_price: data.look.totalPrice
+              style_concept: data.look.name || '',
+              style_reasoning: data.look.stylingTips || '',
+              items: transformedItems as any,
+              total_price: data.look.totalPrice || 0
             });
           } catch (saveError) {
             console.error('Failed to save to history:', saveError);
@@ -115,7 +114,7 @@ const Recommend = () => {
 
         toast({
           title: "스타일 추천 완료!",
-          description: `${itemsWithAffiliateUrls.length}개의 아이템을 추천해드렸어요.`,
+          description: `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
         });
       } else {
         throw new Error(data.error || '추천 실패');
