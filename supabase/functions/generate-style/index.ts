@@ -305,12 +305,32 @@ async function imageUrlToBase64(imageUrl: string): Promise<string> {
   return btoa(binary);
 }
 
+// Download multiple product images and convert to base64
+async function downloadProductImages(imageUrls: string[]): Promise<{ url: string; base64: string }[]> {
+  const results: { url: string; base64: string }[] = [];
+  // Limit to 4 product images to avoid API limits
+  const limitedUrls = imageUrls.slice(0, 4);
+  
+  for (const url of limitedUrls) {
+    try {
+      if (!url || !url.startsWith('http')) continue;
+      const base64 = await imageUrlToBase64(url);
+      results.push({ url, base64 });
+      console.log(`Downloaded product image: ${url.substring(0, 50)}...`);
+    } catch (error) {
+      console.warn(`Failed to download product image: ${url}`, error);
+    }
+  }
+  return results;
+}
+
 // Generate image using Vertex AI (gemini-2.5-flash-image in us-west1)
 async function generateImageWithVertexAI(
   accessToken: string,
   projectId: string,
   prompt: string,
-  imageUrl?: string
+  imageUrl?: string,
+  productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
 
   const region = 'us-west1';
@@ -320,6 +340,7 @@ async function generateImageWithVertexAI(
   // Build content parts
   const parts: any[] = [{ text: prompt }];
   
+  // Add reference face image if provided
   if (imageUrl) {
     console.log('Downloading reference image for face composite...');
     const imageBase64 = await imageUrlToBase64(imageUrl);
@@ -329,6 +350,19 @@ async function generateImageWithVertexAI(
         data: imageBase64
       }
     });
+  }
+  
+  // Add product reference images
+  if (productImages && productImages.length > 0) {
+    console.log(`Adding ${productImages.length} product images for visual reference...`);
+    for (const product of productImages) {
+      parts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: product.base64
+        }
+      });
+    }
   }
 
   const requestBody = {
@@ -408,7 +442,8 @@ async function generateImageWithVertexAI(
 // Generate image using Lovable AI (fallback) - uses gemini-3-pro for better face compositing
 async function generateImageWithLovableAI(
   prompt: string,
-  imageUrl?: string
+  imageUrl?: string,
+  productImageUrls?: string[]
 ): Promise<{ imageBase64: string; text?: string }> {
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
   if (!LOVABLE_API_KEY) {
@@ -418,15 +453,23 @@ async function generateImageWithLovableAI(
   console.log('Calling Lovable AI (fallback) with gemini-3-pro-image-preview...');
 
   // Build message content
-  let content: any;
+  let content: any[] = [{ type: 'text', text: prompt }];
+  
+  // Add reference face image if provided
   if (imageUrl) {
-    content = [
-      { type: 'text', text: prompt },
-      { type: 'image_url', image_url: { url: imageUrl } }
-    ];
+    content.push({ type: 'image_url', image_url: { url: imageUrl } });
     console.log('Including reference image for face composite');
-  } else {
-    content = prompt;
+  }
+  
+  // Add product reference images
+  if (productImageUrls && productImageUrls.length > 0) {
+    const limitedUrls = productImageUrls.slice(0, 4);
+    for (const url of limitedUrls) {
+      if (url && url.startsWith('http')) {
+        content.push({ type: 'image_url', image_url: { url } });
+      }
+    }
+    console.log(`Including ${limitedUrls.length} product images for visual reference`);
   }
 
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -834,6 +877,14 @@ serve(async (req) => {
 
     let prompt: string;
     let referenceImageUrl: string | undefined;
+    let productImages: { url: string; base64: string }[] = [];
+
+    // Download product images for visual reference
+    if (productImageUrls && Array.isArray(productImageUrls) && productImageUrls.length > 0) {
+      console.log(`Downloading ${productImageUrls.length} product images for visual reference...`);
+      productImages = await downloadProductImages(productImageUrls);
+      console.log(`Successfully downloaded ${productImages.length} product images`);
+    }
 
     // 상품 상세 정보가 있으면 더 구체적인 프롬프트 생성
     let detailedProductsDescription = sanitizedProducts;
@@ -846,6 +897,14 @@ serve(async (req) => {
       detailedProductsDescription = categoryDescriptions.join(', ');
       console.log('Using detailed product descriptions:', detailedProductsDescription);
     }
+
+    // Add visual reference instruction if product images are available
+    const visualReferenceInstruction = productImages.length > 0
+      ? `\n\nIMPORTANT: Reference images of the exact products are provided below. 
+The generated outfit MUST match these product images EXACTLY - same colors, patterns, designs, logos, and styles.
+DO NOT create generic or similar-looking items. Use the exact visual appearance from the reference images.
+Each product image corresponds to the items listed above in order.`
+      : '';
 
     // Build prompts using ONLY sanitized/validated values
     if (useFaceComposite && userAvatarUrl) {
@@ -860,12 +919,14 @@ CRITICAL INSTRUCTIONS:
 ${genderDescription ? `- Fashion suited for ${genderDescription} body and preferences` : ''}
 - Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
 - Style preferences: ${stylePreferences || 'modern and trendy'}
+${visualReferenceInstruction}
 
 Create a full body shot with this exact person's face, clean white studio background, professional fashion photography lighting.
 High fashion editorial style, ultra high resolution, 4K quality.
-Keep the person's face exactly as shown in the reference photo while generating the specified outfit on their body.`;
+Keep the person's face exactly as shown in the FIRST reference photo while generating the specified outfit on their body.
+The subsequent product images show the EXACT items that must appear on the model.`;
 
-      console.log('Generating face composite image with exact products');
+      console.log('Generating face composite image with exact products and visual references');
     } else {
       prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing EXACTLY these specific items:
 ${detailedProductsDescription}
@@ -877,14 +938,17 @@ CRITICAL INSTRUCTIONS:
 ${genderDescription ? `- Choose silhouettes that complement ${genderDescription} fashion` : ''}
 - Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
 - Style preferences: ${stylePreferences || 'modern and trendy'}
+${visualReferenceInstruction}
 
 Full body shot, clean white studio background, professional fashion photography lighting.
-High fashion editorial style, ultra high resolution, 4K quality.`;
+High fashion editorial style, ultra high resolution, 4K quality.
+The reference product images show the EXACT items that must appear on the model.`;
 
-      console.log('Generating standard image with exact products');
+      console.log('Generating standard image with exact products and visual references');
     }
 
     console.log('Gender:', genderVal || 'not specified');
+    console.log('Product images count:', productImages.length);
     console.log('Prompt length:', prompt.length, 'chars');
 
     // Get Google Access Token
@@ -901,7 +965,8 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
         accessToken,
         GOOGLE_CLOUD_PROJECT_ID,
         prompt,
-        referenceImageUrl
+        referenceImageUrl,
+        productImages
       );
       console.log('Image generated with Vertex AI');
     } catch (vertexError) {
@@ -917,7 +982,7 @@ High fashion editorial style, ultra high resolution, 4K quality.`;
       console.warn('Vertex AI failed, falling back to Lovable AI:', vertexError instanceof Error ? vertexError.message : vertexError);
       
       try {
-        result = await generateImageWithLovableAI(prompt, referenceImageUrl);
+        result = await generateImageWithLovableAI(prompt, referenceImageUrl, productImageUrls);
         usedFallback = true;
         console.log('Image generated with Lovable AI (fallback)');
       } catch (lovableError) {
