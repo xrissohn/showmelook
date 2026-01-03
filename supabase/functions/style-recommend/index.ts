@@ -100,10 +100,28 @@ serve(async (req) => {
           .update({ use_count: (cached.use_count || 0) + 1, last_used_at: new Date().toISOString() })
           .eq('id', cached.id);
 
+        // Fetch product details for cached product_ids
+        let items: LookItem[] = [];
+        if (cached.product_ids && cached.product_ids.length > 0) {
+          const { data: cachedProducts } = await supabase
+            .from('products_cache')
+            .select('*')
+            .in('id', cached.product_ids);
+
+          if (cachedProducts) {
+            items = cachedProducts.map((product: CachedProduct) => ({
+              category: product.category,
+              product: product,
+              affiliateUrl: generateAffiliateUrl(product, [], LINKPRICE_AFFILIATE_ID),
+              source: 'cache' as const
+            }));
+          }
+        }
+
         return new Response(JSON.stringify({
           success: true,
           cacheHit: true,
-          look: cached,
+          look: { ...cached, items },
           apiCalls: { gemini: 0, serpapi: 0 }
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
