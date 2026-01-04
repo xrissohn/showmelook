@@ -1052,8 +1052,35 @@ const StyleGenerator = () => {
                           );
                         }
                         
-                        return ['상의', '하의', '아우터', '신발', '가방'].map((category) => {
-                          const categoryItems = filteredProducts.filter(p => p.category === category);
+                        // Map categories (Korean and English)
+                        const categoryGroups: Record<string, string[]> = {
+                          '상의': ['상의', 'top', 'tops'],
+                          '하의': ['하의', 'bottom', 'bottoms', 'pants'],
+                          '아우터': ['아우터', 'outerwear', 'outer', 'jacket'],
+                          '신발': ['신발', 'shoes', 'footwear'],
+                          '가방': ['가방', 'bag', 'bags', 'accessory'],
+                        };
+                        
+                        const normalizeCategory = (cat: string): string => {
+                          for (const [korName, variants] of Object.entries(categoryGroups)) {
+                            if (variants.some(v => v.toLowerCase() === cat.toLowerCase())) {
+                              return korName;
+                            }
+                          }
+                          return cat;
+                        };
+                        
+                        // Group products by normalized category
+                        const groupedProducts: Record<string, CachedProduct[]> = {};
+                        filteredProducts.forEach(p => {
+                          const normalizedCat = normalizeCategory(p.category);
+                          if (!groupedProducts[normalizedCat]) {
+                            groupedProducts[normalizedCat] = [];
+                          }
+                          groupedProducts[normalizedCat].push(p);
+                        });
+                        
+                        return Object.entries(groupedProducts).map(([category, categoryItems]) => {
                           if (categoryItems.length === 0) return null;
                           
                           return (
