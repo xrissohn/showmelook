@@ -5,9 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Slider } from '@/components/ui/slider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
@@ -119,6 +122,19 @@ const StyleGenerator = () => {
   // 필터 상태
   const [priceFilter, setPriceFilter] = useState<'all' | 'under50k' | 'under100k' | 'under200k' | 'over200k'>('all');
   const [brandFilter, setBrandFilter] = useState<string>('all');
+  
+  // 주관식 스타일 입력 모드 상태
+  const [inputMode, setInputMode] = useState<'trend' | 'custom'>('trend');
+  const [customStylePrompt, setCustomStylePrompt] = useState('');
+  const [customGender, setCustomGender] = useState<'female' | 'male'>('female');
+  const [customBudget, setCustomBudget] = useState([200000]);
+  const [isCustomSearching, setIsCustomSearching] = useState(false);
+  const [customResult, setCustomResult] = useState<{
+    items: CachedProduct[];
+    styleConcept: string;
+    styleReasoning: string;
+    totalPrice: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -377,6 +393,94 @@ const StyleGenerator = () => {
     }
   };
 
+  // 주관식 스타일 추천 핸들러
+  const handleCustomStyleSearch = async () => {
+    if (!customStylePrompt.trim()) {
+      toast({
+        title: '스타일 프롬프트를 입력해주세요',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsCustomSearching(true);
+    setCustomResult(null);
+    setSelectedTrendProducts([]);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('style-recommend', {
+        body: {
+          userRequest: customStylePrompt,
+          gender: customGender === 'female' ? '여성' : '남성',
+          budget: customBudget[0],
+          forceRefresh: false
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.look) {
+        const transformedItems: CachedProduct[] = data.look.items
+          .filter((item: any) => item.product !== null)
+          .map((item: any) => ({
+            id: item.product.id,
+            name: item.product.name,
+            brand: item.product.brand,
+            price: item.product.price,
+            image_url: item.product.image_url,
+            product_url: item.product.product_url,
+            category: item.category,
+            style_tags: item.product.style_tags,
+            affiliate_url: item.affiliateUrl
+          }));
+
+        setCustomResult({
+          items: transformedItems,
+          styleConcept: data.look.name || '스타일 추천',
+          styleReasoning: data.look.stylingTips || '',
+          totalPrice: data.look.totalPrice || 0
+        });
+
+        // 자동으로 선택된 상태로
+        setSelectedTrendProducts(transformedItems);
+
+        toast({
+          title: data.cacheHit ? '캐시된 스타일 불러옴!' : '스타일 추천 완료!',
+          description: `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
+        });
+
+        // 히스토리 저장
+        if (user) {
+          try {
+            await supabase.from('recommendation_history').insert({
+              user_id: user.id,
+              prompt: customStylePrompt,
+              gender: customGender === 'female' ? '여성' : '남성',
+              budget: customBudget[0],
+              style_concept: data.look.name || '',
+              style_reasoning: data.look.stylingTips || '',
+              items: transformedItems as any,
+              total_price: data.look.totalPrice || 0
+            });
+          } catch (saveError) {
+            console.error('Failed to save to history:', saveError);
+          }
+        }
+      } else {
+        throw new Error(data.error || '추천 실패');
+      }
+    } catch (error: any) {
+      console.error('Custom style recommendation error:', error);
+      toast({
+        title: '추천 실패',
+        description: error.message || '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCustomSearching(false);
+    }
+  };
+
   const generateStyle = async () => {
     if (!user) return;
 
@@ -394,7 +498,7 @@ const StyleGenerator = () => {
     const useTrendProducts = selectedTrendProducts.length > 0;
     const productsToUse = useTrendProducts ? selectedTrendProducts : selectedProducts;
     
-    if (productsToUse.length === 0 && !selectedTrend) {
+    if (productsToUse.length === 0 && !selectedTrend && !customResult) {
       toast({
         title: '상품을 선택해주세요',
         description: '스타일 생성을 위해 최소 1개의 상품을 선택해주세요.',
@@ -405,7 +509,7 @@ const StyleGenerator = () => {
 
     setIsGenerating(true);
     try {
-      const styleDescription = selectedTrend?.name_ko || '트렌디한';
+      const styleDescription = selectedTrend?.name_ko || customResult?.styleConcept || '트렌디한';
       
       // 상품 정보를 상세하게 구성 (이름, 브랜드, 카테고리 포함)
       const productsWithDetails = useTrendProducts 
@@ -620,31 +724,247 @@ const StyleGenerator = () => {
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Left: Selection */}
             <div className="space-y-6 sm:space-y-8">
-              {/* Trend Selection */}
-              <div>
-                <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">트렌드 스타일 선택</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                  {trends.map((trend) => (
-                    <button
-                      key={trend.id}
-                      onClick={() => handleTrendSelect(trend)}
-                      className={`p-4 rounded-xl border-2 transition-all text-left ${
-                        selectedTrend?.id === trend.id
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border hover:border-accent/50'
-                      }`}
-                    >
-                      <p className="font-medium text-foreground font-korean">{trend.name_ko}</p>
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2 font-korean">
-                        {trend.description}
-                      </p>
-                    </button>
-                  ))}
-                </div>
+              {/* 입력 모드 선택 탭 */}
+              <div className="flex gap-2 p-1 bg-secondary rounded-xl">
+                <button
+                  onClick={() => {
+                    setInputMode('trend');
+                    setCustomResult(null);
+                  }}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-korean text-sm transition-all ${
+                    inputMode === 'trend'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  🎨 트렌드 선택
+                </button>
+                <button
+                  onClick={() => {
+                    setInputMode('custom');
+                    setSelectedTrend(null);
+                    setTrendProducts([]);
+                    setSelectedTrendProducts([]);
+                  }}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-korean text-sm transition-all ${
+                    inputMode === 'custom'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  ✍️ 주관식 입력
+                </button>
               </div>
 
-              {/* Trend-based Product Selection (실시간 검색 결과) */}
-              {selectedTrend && (
+              {/* 트렌드 모드 */}
+              {inputMode === 'trend' && (
+                <>
+                  {/* Trend Selection */}
+                  <div>
+                    <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">트렌드 스타일 선택</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                      {trends.map((trend) => (
+                        <button
+                          key={trend.id}
+                          onClick={() => handleTrendSelect(trend)}
+                          className={`p-4 rounded-xl border-2 transition-all text-left ${
+                            selectedTrend?.id === trend.id
+                              ? 'border-accent bg-accent/5'
+                              : 'border-border hover:border-accent/50'
+                          }`}
+                        >
+                          <p className="font-medium text-foreground font-korean">{trend.name_ko}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2 font-korean">
+                            {trend.description}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* 주관식 입력 모드 */}
+              {inputMode === 'custom' && (
+                <div className="space-y-6">
+                  <div className="p-5 rounded-2xl border-2 border-border bg-secondary/30">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles className="w-5 h-5 text-accent" />
+                      <h2 className="font-korean text-lg font-medium text-foreground">원하는 스타일 설명</h2>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* 스타일 프롬프트 */}
+                      <div className="space-y-2">
+                        <Label className="font-korean text-sm">스타일 프롬프트</Label>
+                        <Textarea
+                          placeholder="예: 봄 데이트룩, 화사하고 로맨틱한 느낌으로 원피스나 블라우스 위주로 추천해줘"
+                          value={customStylePrompt}
+                          onChange={(e) => setCustomStylePrompt(e.target.value)}
+                          className="min-h-[100px] resize-none font-korean"
+                          disabled={isCustomSearching}
+                        />
+                      </div>
+
+                      {/* 성별 선택 */}
+                      <div className="space-y-2">
+                        <Label className="font-korean text-sm">성별</Label>
+                        <RadioGroup
+                          value={customGender}
+                          onValueChange={(value) => setCustomGender(value as 'female' | 'male')}
+                          className="flex gap-4"
+                          disabled={isCustomSearching}
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="female" id="custom-female" />
+                            <Label htmlFor="custom-female" className="cursor-pointer font-korean">여성</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="male" id="custom-male" />
+                            <Label htmlFor="custom-male" className="cursor-pointer font-korean">남성</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {/* 예산 슬라이더 */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <Label className="font-korean text-sm">예산</Label>
+                          <span className="text-lg font-semibold text-accent font-korean">
+                            {new Intl.NumberFormat('ko-KR').format(customBudget[0])}원
+                          </span>
+                        </div>
+                        <Slider
+                          value={customBudget}
+                          onValueChange={setCustomBudget}
+                          min={50000}
+                          max={1000000}
+                          step={10000}
+                          disabled={isCustomSearching}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground font-korean">
+                          <span>5만원</span>
+                          <span>100만원</span>
+                        </div>
+                      </div>
+
+                      {/* 추천 버튼 */}
+                      <Button
+                        variant="hero"
+                        size="lg"
+                        className="w-full font-korean"
+                        onClick={handleCustomStyleSearch}
+                        disabled={isCustomSearching || !customStylePrompt.trim()}
+                      >
+                        {isCustomSearching ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            AI가 스타일을 분석중...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            스타일 추천받기
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* 주관식 추천 결과 */}
+                  {customResult && (
+                    <div className="space-y-4 animate-in fade-in-50 duration-500">
+                      {/* 스타일 컨셉 */}
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-accent/5 to-accent/10 border border-accent/20">
+                        <h3 className="font-korean text-lg font-medium text-foreground mb-2">
+                          🎨 {customResult.styleConcept}
+                        </h3>
+                        <p className="text-sm text-muted-foreground font-korean">{customResult.styleReasoning}</p>
+                      </div>
+
+                      {/* 추천 아이템 그리드 */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {customResult.items.map((product) => (
+                          <div
+                            key={product.id}
+                            className={`p-3 rounded-xl border-2 transition-all ${
+                              selectedTrendProducts.find(p => p.id === product.id)
+                                ? 'border-accent bg-accent/5'
+                                : 'border-border'
+                            }`}
+                          >
+                            <div className="aspect-square bg-secondary rounded-lg mb-2 overflow-hidden">
+                              {product.image_url ? (
+                                <img 
+                                  src={product.image_url} 
+                                  alt={product.name}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground font-korean mb-0.5">{product.category}</p>
+                            <p className="font-medium text-foreground text-sm truncate font-korean">{product.name}</p>
+                            {product.brand && (
+                              <p className="text-xs text-accent truncate">{product.brand}</p>
+                            )}
+                            <p className="text-sm font-bold text-foreground mt-1">
+                              ₩{product.price.toLocaleString()}
+                            </p>
+                            <div className="flex gap-1 mt-2">
+                              <button
+                                onClick={() => toggleTrendProduct(product)}
+                                className={`flex-1 text-xs py-1.5 px-2 rounded-lg transition-colors font-korean ${
+                                  selectedTrendProducts.find(p => p.id === product.id)
+                                    ? 'bg-accent text-white'
+                                    : 'bg-secondary text-foreground hover:bg-accent/20'
+                                }`}
+                              >
+                                {selectedTrendProducts.find(p => p.id === product.id) ? (
+                                  <>
+                                    <Check className="w-3 h-3 inline mr-1" />
+                                    선택됨
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-3 h-3 inline mr-1" />
+                                    선택
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const url = product.affiliate_url || product.product_url;
+                                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                                }}
+                                className="text-xs py-1.5 px-2 rounded-lg bg-secondary text-foreground hover:bg-accent/20 transition-colors font-korean"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* 총 금액 */}
+                      <div className="p-3 rounded-xl bg-secondary/50 flex justify-between items-center">
+                        <span className="font-korean text-sm text-muted-foreground">총 예상 금액</span>
+                        <span className="font-korean font-bold text-lg text-accent">
+                          ₩{customResult.totalPrice.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Trend-based Product Selection (트렌드 모드에서만 표시) */}
+              {inputMode === 'trend' && selectedTrend && (
                 <div>
                   <div className="flex items-center gap-2 mb-3 sm:mb-4">
                     <h2 className="font-korean text-xl sm:text-2xl text-foreground">
@@ -792,8 +1112,8 @@ const StyleGenerator = () => {
                 </div>
               )}
 
-              {/* 기본 아이템 선택 (트렌드 상품이 없을 때만 표시) */}
-              {!selectedTrend && products.length > 0 && (
+              {/* 기본 아이템 선택 (트렌드 모드에서 트렌드 상품이 없을 때만 표시) */}
+              {inputMode === 'trend' && !selectedTrend && products.length > 0 && (
                 <div>
                   <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">아이템 선택</h2>
                   <div className="space-y-4 sm:space-y-6">

@@ -441,7 +441,7 @@ const Landing = () => {
                 무료로 시작하기
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button variant="hero-outline" size="lg" onClick={() => navigate('/recommend')} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3 group">
+              <Button variant="hero-outline" size="lg" onClick={() => navigate('/style')} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3 group">
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-1 group-hover:animate-twinkle" />
                 AI 스타일 추천
               </Button>

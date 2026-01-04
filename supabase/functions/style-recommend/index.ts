@@ -109,12 +109,12 @@ serve(async (req) => {
             .in('id', cached.product_ids);
 
           if (cachedProducts) {
-            items = cachedProducts.map((product: CachedProduct) => ({
+            items = await Promise.all(cachedProducts.map(async (product: CachedProduct) => ({
               category: product.category,
               product: product,
-              affiliateUrl: generateAffiliateUrl(product, [], LINKPRICE_AFFILIATE_ID),
+              affiliateUrl: await generateAffiliateUrl(product, [], LINKPRICE_AFFILIATE_ID),
               source: 'cache' as const
-            }));
+            })));
           }
         }
 
@@ -285,7 +285,7 @@ serve(async (req) => {
         })).sort((a, b) => b.score - a.score);
 
         const best = scored[0].product;
-        const affiliateUrl = generateAffiliateUrl(best, merchants || [], LINKPRICE_AFFILIATE_ID);
+        const affiliateUrl = await generateAffiliateUrl(best, merchants || [], LINKPRICE_AFFILIATE_ID);
 
         lookItems.push({
           category: item.category,
@@ -391,7 +391,7 @@ serve(async (req) => {
                     console.log(`[style-recommend] Product already in cache or insert error`);
                   }
 
-                  const affiliateUrl = generateAffiliateUrl(newProduct, merchants || [], LINKPRICE_AFFILIATE_ID);
+                  const affiliateUrl = await generateAffiliateUrl(newProduct, merchants || [], LINKPRICE_AFFILIATE_ID);
 
                   // Update lookItems
                   const idx = lookItems.findIndex(l => l.category === item.category);
@@ -512,9 +512,33 @@ function calculateMatchScore(product: CachedProduct, guide: StyleGuideItem): num
   return score;
 }
 
-function generateAffiliateUrl(product: CachedProduct, merchants: any[], affiliateId: string): string | null {
+async function generateAffiliateUrl(product: CachedProduct, merchants: any[], affiliateId: string): Promise<string | null> {
   if (!product.product_url) return null;
 
+  try {
+    // Call LinkPrice API to get actual deeplink
+    const encodedUrl = encodeURIComponent(product.product_url);
+    const apiUrl = `https://api.linkprice.com/ci/service/custom_link_xml?a_id=${affiliateId}&url=${encodedUrl}&mode=json`;
+    
+    const response = await fetch(apiUrl);
+    
+    if (response.ok) {
+      const responseText = await response.text();
+      try {
+        const linkPriceData = JSON.parse(responseText);
+        if (linkPriceData.result === 'S' && linkPriceData.url) {
+          console.log(`[style-recommend] LinkPrice deeplink success for: ${product.name}`);
+          return linkPriceData.url;
+        }
+      } catch (e) {
+        console.log(`[style-recommend] LinkPrice parse error:`, e);
+      }
+    }
+  } catch (e) {
+    console.log(`[style-recommend] LinkPrice API error:`, e);
+  }
+
+  // Fallback: Use merchant deeplink template if available
   const merchant = merchants.find(m => product.merchant_id === m.id || 
     product.product_url.includes(m.base_url.replace('https://', '').replace('http://', '')));
 
@@ -524,8 +548,9 @@ function generateAffiliateUrl(product: CachedProduct, merchants: any[], affiliat
       .replace('{product_url}', encodeURIComponent(product.product_url));
   }
 
-  // Fallback: LinkPrice generic template
-  return `https://click.linkprice.com/click.php?m=default&a=${affiliateId}&l=0&lc=1&url=${encodeURIComponent(product.product_url)}`;
+  // Final fallback: Return original URL (not affiliate, but at least works)
+  console.log(`[style-recommend] No affiliate URL available, using original URL`);
+  return product.product_url;
 }
 
 function extractBrand(title: string): string | null {
