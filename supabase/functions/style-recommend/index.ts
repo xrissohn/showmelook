@@ -259,25 +259,57 @@ serve(async (req) => {
     const lookItems: LookItem[] = [];
     const missingCategories: StyleGuideItem[] = [];
 
-    for (const item of styleGuide.items) {
-      // Search in cache
-      let query = supabase
-        .from('products_cache')
-        .select('*')
-        .eq('is_active', true)
-        .eq('category', item.category)
-        .gte('price', item.priceRange.min)
-        .lte('price', item.priceRange.max)
-        .not('image_url', 'is', null);
+    // Category mapping (Korean <-> English)
+    const categoryMap: Record<string, string[]> = {
+      '상의': ['상의', 'top', 'tops'],
+      '하의': ['하의', 'bottom', 'bottoms', 'pants'],
+      '아우터': ['아우터', 'outerwear', 'outer', 'jacket'],
+      '신발': ['신발', 'shoes', 'footwear'],
+      '가방': ['가방', 'bag', 'bags', 'accessory'],
+      '원피스': ['원피스', 'dress', 'dresses'],
+    };
+    
+    const getCategoryVariants = (category: string): string[] => {
+      for (const [key, variants] of Object.entries(categoryMap)) {
+        if (variants.includes(category.toLowerCase()) || key === category) {
+          return variants;
+        }
+      }
+      return [category];
+    };
 
-      // Add gender filter if available
-      if (gender) {
-        query = query.or(`gender.eq.${gender},gender.is.null`);
+    for (const item of styleGuide.items) {
+      // Get all possible category names
+      const categoryVariants = getCategoryVariants(item.category);
+      console.log(`[style-recommend] Searching for category: ${item.category}, variants: ${categoryVariants.join(', ')}`);
+      
+      // Search in cache with multiple category variants
+      let cachedProducts: CachedProduct[] = [];
+      
+      for (const catVariant of categoryVariants) {
+        if (cachedProducts.length > 0) break;
+        
+        let query = supabase
+          .from('products_cache')
+          .select('*')
+          .eq('is_active', true)
+          .ilike('category', catVariant)
+          .gte('price', item.priceRange.min)
+          .lte('price', item.priceRange.max)
+          .not('image_url', 'is', null);
+
+        // Add gender filter if available
+        if (gender) {
+          query = query.or(`gender.eq.${gender},gender.is.null`);
+        }
+
+        const { data } = await query.limit(10);
+        if (data && data.length > 0) {
+          cachedProducts = data;
+        }
       }
 
-      const { data: cachedProducts } = await query.limit(10);
-
-      if (cachedProducts && cachedProducts.length > 0) {
+      if (cachedProducts.length > 0) {
         // Score and select best match
         const scored = cachedProducts.map(p => ({
           product: p,
