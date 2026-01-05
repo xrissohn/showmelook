@@ -394,7 +394,10 @@ serve(async (req) => {
                 });
                 
                 if (validResult) {
-                  const productUrl = validResult.link || validResult.product_link || `${merchant.base_url}/search?q=${encodeURIComponent(validResult.title)}`;
+                  // Priority: product_link (direct merchant URL) > link (Google redirect) > fallback
+                  const productUrl = validResult.product_link || validResult.link || `${merchant.base_url}/search?q=${encodeURIComponent(validResult.title)}`;
+                  console.log(`[style-recommend] Product URL source: ${validResult.product_link ? 'product_link' : validResult.link ? 'link' : 'fallback'}`);
+                  console.log(`[style-recommend] Product URL: ${productUrl}`);
                   const price = validResult.extracted_price || parsePrice(validResult.price);
                   
                   // Save to products_cache
