@@ -259,23 +259,25 @@ serve(async (req) => {
     const lookItems: LookItem[] = [];
     const missingCategories: StyleGuideItem[] = [];
 
-    // Category mapping (Korean <-> English)
+    // Category mapping (Korean <-> English) - comprehensive list
     const categoryMap: Record<string, string[]> = {
-      '상의': ['상의', 'top', 'tops'],
-      '하의': ['하의', 'bottom', 'bottoms', 'pants'],
-      '아우터': ['아우터', 'outerwear', 'outer', 'jacket'],
-      '신발': ['신발', 'shoes', 'footwear'],
-      '가방': ['가방', 'bag', 'bags', 'accessory'],
-      '원피스': ['원피스', 'dress', 'dresses'],
+      '상의': ['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit'],
+      '하의': ['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트'],
+      '아우터': ['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건'],
+      '신발': ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들'],
+      '가방': ['가방', 'bag', 'bags', 'accessory', '백', '클러치', 'clutch', 'tote', '토트백'],
+      '원피스': ['원피스', 'dress', 'dresses', '드레스'],
+      '액세서리': ['액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt'],
     };
     
     const getCategoryVariants = (category: string): string[] => {
+      const lowerCat = category.toLowerCase();
       for (const [key, variants] of Object.entries(categoryMap)) {
-        if (variants.includes(category.toLowerCase()) || key === category) {
-          return variants;
+        if (key === category || variants.some(v => v.toLowerCase() === lowerCat)) {
+          return [...new Set([key, ...variants])]; // Include Korean key first
         }
       }
-      return [category];
+      return [category, category.toLowerCase()];
     };
 
     for (const item of styleGuide.items) {
