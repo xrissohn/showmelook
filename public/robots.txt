@@ -1,5 +1,5 @@
 # 쇼미룩 (ShowMeLook) - robots.txt
-# https://showmelook.lovable.app/
+# https://showmelook.com/
 
 # 모든 검색엔진 허용
 User-agent: *
@@ -54,7 +54,7 @@ User-agent: anthropic-ai
 Disallow: /
 
 # Sitemap location
-Sitemap: https://showmelook.lovable.app/sitemap.xml
+Sitemap: https://showmelook.com/sitemap.xml
 
 # Host
-Host: https://showmelook.lovable.app
+Host: https://showmelook.com
