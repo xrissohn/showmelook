@@ -1355,7 +1355,7 @@ const StyleGenerator = () => {
                   <img
                     src={generatedImage}
                     alt="Generated style"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover animate-fade-in"
                     loading="lazy"
                   />
                 ) : isGenerating ? (
@@ -1381,15 +1381,13 @@ const StyleGenerator = () => {
                         />
                       </div>
                       
-                      {/* 로고 컨테이너 */}
+                      {/* 회전하는 로고 컨테이너 */}
                       <div className="relative w-20 h-20 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-xl border border-accent/20">
                         <img 
                           src={showmelookLogo} 
                           alt="" 
-                          className="w-12 h-12 object-contain"
-                          style={{
-                            animation: 'pulse 1.5s ease-in-out infinite',
-                          }}
+                          className="w-12 h-12 object-contain animate-spin"
+                          style={{ animationDuration: '3s' }}
                         />
                       </div>
                     </div>
