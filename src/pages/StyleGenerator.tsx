@@ -1351,14 +1351,7 @@ const StyleGenerator = () => {
             <div className="lg:sticky lg:top-24 lg:self-start mt-6 lg:mt-0">
               <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">생성된 스타일</h2>
               <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
-                {generatedImage ? (
-                  <img
-                    src={generatedImage}
-                    alt="Generated style"
-                    className="w-full h-full object-cover animate-fade-in"
-                    loading="lazy"
-                  />
-                ) : isGenerating ? (
+                {isGenerating ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
                     {/* 메인 로고 애니메이션 */}
                     <div className="relative">
@@ -1416,6 +1409,13 @@ const StyleGenerator = () => {
                       ))}
                     </div>
                   </div>
+                ) : generatedImage ? (
+                  <img
+                    src={generatedImage}
+                    alt="Generated style"
+                    className="w-full h-full object-cover animate-fade-in"
+                    loading="lazy"
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                     <img src={showmelookLogo} alt="" className="w-16 h-16 mb-4 opacity-50" />
