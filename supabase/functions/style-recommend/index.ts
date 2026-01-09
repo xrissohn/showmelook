@@ -394,11 +394,26 @@ serve(async (req) => {
                 });
                 
                 if (validResult) {
-                  // Priority: product_link (direct merchant URL) > link (Google redirect) > fallback
-                  const productUrl = validResult.product_link || validResult.link || `${merchant.base_url}/search?q=${encodeURIComponent(validResult.title)}`;
-                  console.log(`[style-recommend] Product URL source: ${validResult.product_link ? 'product_link' : validResult.link ? 'link' : 'fallback'}`);
-                  console.log(`[style-recommend] Product URL: ${productUrl}`);
                   const price = validResult.extracted_price || parsePrice(validResult.price);
+                  
+                  // Build proper product URL - NEVER use Google redirect URLs
+                  let productUrl: string;
+                  
+                  if (validResult.product_link && !validResult.product_link.includes('google.com')) {
+                    // Best case: direct product link from SerpAPI
+                    productUrl = validResult.product_link;
+                    console.log(`[style-recommend] Using direct product_link: ${productUrl}`);
+                  } else if (validResult.source && !validResult.source.includes('google.com')) {
+                    // Alternative: source URL from SerpAPI
+                    productUrl = `https://${validResult.source}`;
+                    console.log(`[style-recommend] Using source domain: ${productUrl}`);
+                  } else {
+                    // Fallback: Build search URL on merchant site
+                    // Extract product name for search query
+                    const searchQuery = encodeURIComponent(validResult.title.slice(0, 50));
+                    productUrl = `${merchant.base_url}/search?q=${searchQuery}`;
+                    console.log(`[style-recommend] Using merchant search fallback: ${productUrl}`);
+                  }
                   
                   // Save to products_cache
                   const newProduct: CachedProduct = {
