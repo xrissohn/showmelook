@@ -724,36 +724,48 @@ const StyleGenerator = () => {
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Left: Selection */}
             <div className="space-y-6 sm:space-y-8">
-              {/* 입력 모드 선택 탭 */}
-              <div className="flex gap-2 p-1 bg-secondary rounded-xl">
-                <button
-                  onClick={() => {
-                    setInputMode('trend');
-                    setCustomResult(null);
-                  }}
-                  className={`flex-1 px-4 py-2.5 rounded-lg font-korean text-sm transition-all ${
-                    inputMode === 'trend'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  🎨 트렌드 선택
-                </button>
-                <button
-                  onClick={() => {
-                    setInputMode('custom');
-                    setSelectedTrend(null);
-                    setTrendProducts([]);
-                    setSelectedTrendProducts([]);
-                  }}
-                  className={`flex-1 px-4 py-2.5 rounded-lg font-korean text-sm transition-all ${
-                    inputMode === 'custom'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  ✍️ 주관식 입력
-                </button>
+              {/* 입력 모드 선택 탭 - 개선된 UI */}
+              <div className="relative p-1 bg-gradient-to-r from-accent/20 via-primary/20 to-accent/20 rounded-2xl shadow-lg">
+                <div className="flex gap-2 p-1 bg-background/80 backdrop-blur-sm rounded-xl">
+                  <button
+                    onClick={() => {
+                      setInputMode('trend');
+                      setCustomResult(null);
+                    }}
+                    className={`flex-1 px-4 py-4 rounded-xl font-korean text-sm sm:text-base font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                      inputMode === 'trend'
+                        ? 'bg-gradient-to-r from-accent to-primary text-white shadow-lg scale-[1.02]'
+                        : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <span className="text-lg">🎨</span>
+                    <span>트렌드 선택</span>
+                    {inputMode === 'trend' && <Check className="w-4 h-4 ml-1" />}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setInputMode('custom');
+                      setSelectedTrend(null);
+                      setTrendProducts([]);
+                      setSelectedTrendProducts([]);
+                    }}
+                    className={`flex-1 px-4 py-4 rounded-xl font-korean text-sm sm:text-base font-medium transition-all duration-300 flex items-center justify-center gap-2 ${
+                      inputMode === 'custom'
+                        ? 'bg-gradient-to-r from-primary to-accent text-white shadow-lg scale-[1.02]'
+                        : 'bg-secondary/50 text-muted-foreground hover:text-foreground hover:bg-secondary'
+                    }`}
+                  >
+                    <span className="text-lg">✍️</span>
+                    <span>주관식 입력</span>
+                    {inputMode === 'custom' && <Check className="w-4 h-4 ml-1" />}
+                  </button>
+                </div>
+                {/* 안내 텍스트 */}
+                <p className="text-center text-xs text-muted-foreground mt-2 px-2">
+                  {inputMode === 'trend' 
+                    ? '인기 트렌드에서 스타일을 선택하세요' 
+                    : '원하는 스타일을 자유롭게 설명하세요'}
+                </p>
               </div>
 
               {/* 트렌드 모드 */}
