@@ -399,17 +399,14 @@ serve(async (req) => {
                   // Build proper product URL - NEVER use Google redirect URLs
                   let productUrl: string;
                   
-                  if (validResult.product_link && !validResult.product_link.includes('google.com')) {
+                  if (validResult.product_link && 
+                      !validResult.product_link.includes('google.com') &&
+                      validResult.product_link.startsWith('http')) {
                     // Best case: direct product link from SerpAPI
                     productUrl = validResult.product_link;
                     console.log(`[style-recommend] Using direct product_link: ${productUrl}`);
-                  } else if (validResult.source && !validResult.source.includes('google.com')) {
-                    // Alternative: source URL from SerpAPI
-                    productUrl = `https://${validResult.source}`;
-                    console.log(`[style-recommend] Using source domain: ${productUrl}`);
                   } else {
-                    // Fallback: Build search URL on merchant site
-                    // Extract product name for search query
+                    // Fallback: Build search URL on merchant site using their base_url
                     const searchQuery = encodeURIComponent(validResult.title.slice(0, 50));
                     productUrl = `${merchant.base_url}/search?q=${searchQuery}`;
                     console.log(`[style-recommend] Using merchant search fallback: ${productUrl}`);
@@ -428,7 +425,7 @@ serve(async (req) => {
                     merchant_id: merchant.id
                   };
 
-                  console.log(`[style-recommend] Found product: ${newProduct.name} at ₩${newProduct.price}`);
+                  console.log(`[style-recommend] Found product: ${newProduct.name} at ₩${newProduct.price}, URL: ${productUrl}`);
 
                   // Insert to cache (ignore conflict)
                   try {
@@ -566,6 +563,12 @@ function calculateMatchScore(product: CachedProduct, guide: StyleGuideItem): num
 
 async function generateAffiliateUrl(product: CachedProduct, merchants: any[], affiliateId: string): Promise<string | null> {
   if (!product.product_url) return null;
+  
+  // Skip Google URLs - they don't work with LinkPrice
+  if (product.product_url.includes('google.com')) {
+    console.log(`[style-recommend] Skipping Google URL for affiliate: ${product.name}`);
+    return product.product_url; // Return as-is, user can still click
+  }
 
   try {
     // Call LinkPrice API to get actual deeplink
