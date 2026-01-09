@@ -816,6 +816,27 @@ const StyleGenerator = () => {
                           className="min-h-[100px] resize-none font-korean"
                           disabled={isCustomSearching}
                         />
+                        {/* 추천 검색어 */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {[
+                            { emoji: '☕', text: '편안한 카페 데이트룩' },
+                            { emoji: '💼', text: '캐주얼 오피스룩' },
+                            { emoji: '🌸', text: '봄나들이 페미닌 코디' },
+                            { emoji: '🖤', text: '모던 시크 룩' },
+                            { emoji: '🏃', text: '스포티 캐주얼' },
+                            { emoji: '✨', text: '파티 글램 룩' },
+                          ].map((example) => (
+                            <button
+                              key={example.text}
+                              onClick={() => setCustomStylePrompt(example.text)}
+                              disabled={isCustomSearching}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                            >
+                              <span>{example.emoji}</span>
+                              <span>{example.text}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       {/* 성별 선택 */}
@@ -970,6 +991,19 @@ const StyleGenerator = () => {
                           ₩{customResult.totalPrice.toLocaleString()}
                         </span>
                       </div>
+
+                      {/* 더 추천받기 버튼 */}
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setCustomResult(null);
+                          setCustomStylePrompt('');
+                        }}
+                        className="w-full font-korean gap-2"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        다른 스타일 추천받기
+                      </Button>
                     </div>
                   )}
                 </div>
