@@ -1350,7 +1350,7 @@ const StyleGenerator = () => {
             {/* Right: Generated Result */}
             <div className="lg:sticky lg:top-24 lg:self-start mt-6 lg:mt-0">
               <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">생성된 스타일</h2>
-              <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border">
+              <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
                 {generatedImage ? (
                   <img
                     src={generatedImage}
@@ -1358,6 +1358,66 @@ const StyleGenerator = () => {
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
+                ) : isGenerating ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
+                    {/* 메인 로고 애니메이션 */}
+                    <div className="relative">
+                      {/* 펄스 링 애니메이션 */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-32 h-32 rounded-full border-2 border-accent/30 animate-ping" style={{ animationDuration: '2s' }} />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-24 h-24 rounded-full border-2 border-primary/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+                      </div>
+                      
+                      {/* 회전하는 그라데이션 링 */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div 
+                          className="w-28 h-28 rounded-full"
+                          style={{
+                            background: 'conic-gradient(from 0deg, transparent, hsl(var(--accent)), transparent)',
+                            animation: 'spin 2s linear infinite',
+                          }}
+                        />
+                      </div>
+                      
+                      {/* 로고 컨테이너 */}
+                      <div className="relative w-20 h-20 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-xl border border-accent/20">
+                        <img 
+                          src={showmelookLogo} 
+                          alt="" 
+                          className="w-12 h-12 object-contain"
+                          style={{
+                            animation: 'pulse 1.5s ease-in-out infinite',
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* 로딩 텍스트 */}
+                    <div className="mt-8 text-center">
+                      <p className="text-lg font-medium text-foreground font-korean animate-pulse">
+                        AI가 스타일을 생성중...
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2 font-korean">
+                        잠시만 기다려주세요 ✨
+                      </p>
+                    </div>
+                    
+                    {/* 하단 도트 애니메이션 */}
+                    <div className="flex gap-2 mt-6">
+                      {[0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          className="w-2.5 h-2.5 rounded-full bg-accent"
+                          style={{
+                            animation: 'bounce 1s ease-in-out infinite',
+                            animationDelay: `${i * 0.15}s`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                     <img src={showmelookLogo} alt="" className="w-16 h-16 mb-4 opacity-50" />
