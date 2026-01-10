@@ -317,24 +317,38 @@ function extractFromNextData(
   const products: Product[] = [];
   
   const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/);
-  if (!nextDataMatch) return products;
+  if (!nextDataMatch) {
+    console.log('[NEXT_DATA] No __NEXT_DATA__ script found');
+    return products;
+  }
 
   try {
     const nextData = JSON.parse(nextDataMatch[1]);
     const pageProps = nextData?.props?.pageProps;
+    console.log('[NEXT_DATA] Found pageProps keys:', Object.keys(pageProps || {}));
     
-    // Try multiple possible paths for product data
+    // Try multiple possible paths for product data (extended for various site structures)
     const possiblePaths = [
+      // W Concept specific paths
       pageProps?.initialState?.products?.list,
+      pageProps?.initialState?.category?.goodsList,
+      pageProps?.initialState?.goodsList,
+      pageProps?.categoryData?.goodsList,
+      pageProps?.data?.goodsList,
+      pageProps?.goodsList,
+      // Generic paths
       pageProps?.products,
       pageProps?.items,
       pageProps?.data?.items,
-      pageProps?.goodsList?.items,
       pageProps?.data?.list,
+      pageProps?.data?.products,
+      pageProps?.productList,
+      pageProps?.list,
     ];
 
     for (const items of possiblePaths) {
       if (Array.isArray(items) && items.length > 0) {
+        console.log(`[NEXT_DATA] Found ${items.length} items in one of the paths`);
         for (const item of items.slice(0, 30)) {
           const product = parseNextDataProduct(item, merchantId, baseUrl, defaultGender, defaultCategory);
           if (product && isValidProductUrl(product.product_url)) {
@@ -344,10 +358,65 @@ function extractFromNextData(
         break;
       }
     }
+    
+    // If still no products, try to find product-like objects recursively
+    if (products.length === 0) {
+      console.log('[NEXT_DATA] Trying recursive search for product objects');
+      const foundProducts = findProductsInObject(pageProps, merchantId, baseUrl, defaultGender, defaultCategory, 0);
+      products.push(...foundProducts.slice(0, 30));
+    }
+    
+    console.log(`[NEXT_DATA] Extracted ${products.length} products`);
   } catch (e) {
     console.error('[NEXT_DATA] Parse error:', e);
   }
 
+  return products;
+}
+
+// Recursively find product-like objects in NEXT_DATA
+function findProductsInObject(
+  obj: any,
+  merchantId: string,
+  baseUrl: string,
+  defaultGender: string,
+  defaultCategory: string,
+  depth: number
+): Product[] {
+  if (depth > 5 || !obj) return [];
+  
+  const products: Product[] = [];
+  
+  if (Array.isArray(obj)) {
+    // Check if this looks like a product array
+    const hasProductFields = obj.length > 0 && obj.some((item: any) => 
+      item && (item.goodsNo || item.productId || item.id) && (item.goodsNm || item.name || item.productName)
+    );
+    
+    if (hasProductFields) {
+      for (const item of obj.slice(0, 30)) {
+        const product = parseNextDataProduct(item, merchantId, baseUrl, defaultGender, defaultCategory);
+        if (product && isValidProductUrl(product.product_url)) {
+          products.push(product);
+        }
+      }
+    } else {
+      // Recurse into array items
+      for (const item of obj.slice(0, 10)) {
+        products.push(...findProductsInObject(item, merchantId, baseUrl, defaultGender, defaultCategory, depth + 1));
+        if (products.length >= 30) break;
+      }
+    }
+  } else if (typeof obj === 'object') {
+    // Recurse into object properties
+    for (const key of Object.keys(obj)) {
+      if (['list', 'items', 'products', 'goodsList', 'productList'].includes(key)) {
+        products.push(...findProductsInObject(obj[key], merchantId, baseUrl, defaultGender, defaultCategory, depth + 1));
+      }
+      if (products.length >= 30) break;
+    }
+  }
+  
   return products;
 }
 
