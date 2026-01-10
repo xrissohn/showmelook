@@ -103,6 +103,12 @@ serve(async (req) => {
         // Fetch product details for cached product_ids
         let items: LookItem[] = [];
         if (cached.product_ids && cached.product_ids.length > 0) {
+          // Need to fetch merchants for affiliate URL generation
+          const { data: merchants } = await supabase
+            .from('merchants')
+            .select('*')
+            .eq('is_active', true);
+            
           const { data: cachedProducts } = await supabase
             .from('products_cache')
             .select('*')
@@ -112,7 +118,7 @@ serve(async (req) => {
             items = await Promise.all(cachedProducts.map(async (product: CachedProduct) => ({
               category: product.category,
               product: product,
-              affiliateUrl: await generateAffiliateUrl(product, [], LINKPRICE_AFFILIATE_ID),
+              affiliateUrl: await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID),
               source: 'cache' as const
             })));
           }
@@ -594,17 +600,23 @@ async function generateAffiliateUrl(product: CachedProduct, merchants: any[], af
   }
 
   // Fallback: Use merchant deeplink template if available
+  console.log(`[style-recommend] LinkPrice failed for ${product.name}, trying fallback. merchant_id=${product.merchant_id}, merchants count=${merchants.length}`);
+  
   const merchant = merchants.find(m => product.merchant_id === m.id || 
     product.product_url.includes(m.base_url.replace('https://', '').replace('http://', '')));
 
   if (merchant?.deeplink_template) {
-    return merchant.deeplink_template
+    const encodedProductUrl = encodeURIComponent(product.product_url);
+    const affiliateUrl = merchant.deeplink_template
       .replace('{affiliate_id}', affiliateId)
-      .replace('{product_url}', encodeURIComponent(product.product_url));
+      .replace('{encoded_url}', encodedProductUrl)
+      .replace('{product_url}', encodedProductUrl);
+    console.log(`[style-recommend] Using fallback template for ${product.name}: ${affiliateUrl.substring(0, 100)}...`);
+    return affiliateUrl;
   }
 
   // Final fallback: Return original URL (not affiliate, but at least works)
-  console.log(`[style-recommend] No affiliate URL available, using original URL`);
+  console.log(`[style-recommend] No affiliate URL available for ${product.name}, using original URL`);
   return product.product_url;
 }
 
