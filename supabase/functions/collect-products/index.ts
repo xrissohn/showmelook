@@ -839,12 +839,89 @@ function generateFallbackProducts(
   return products;
 }
 
+// ============= API-based Collection for CSR Sites =============
+async function collectFromWConceptAPI(limit: number): Promise<Product[]> {
+  const products: Product[] = [];
+  const categories = [
+    { categoryId: '10110', gender: 'female', category: 'top' },     // 상의
+    { categoryId: '10130', gender: 'female', category: 'bottom' },  // 하의
+    { categoryId: '10120', gender: 'female', category: 'outerwear' }, // 아우터
+  ];
+
+  for (const cat of categories) {
+    if (products.length >= limit) break;
+    
+    try {
+      // W Concept uses internal API
+      const apiUrl = `https://www.wconcept.co.kr/api/category/list?categoryId=${cat.categoryId}&page=1&pageSize=20&sort=RECOMMEND`;
+      console.log(`[WConceptAPI] Fetching: ${apiUrl}`);
+      
+      const response = await fetch(apiUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'application/json',
+          'Referer': 'https://www.wconcept.co.kr/',
+        }
+      });
+
+      if (!response.ok) {
+        console.log(`[WConceptAPI] Failed: ${response.status}`);
+        continue;
+      }
+
+      const data = await response.json();
+      const items = data?.data?.list || data?.list || [];
+      console.log(`[WConceptAPI] Got ${items.length} items`);
+
+      for (const item of items) {
+        if (products.length >= limit) break;
+        
+        const goodsNo = item.goodsNo || item.id;
+        if (!goodsNo) continue;
+
+        const imageUrl = item.imgUrl || item.imageUrl;
+        const fullImageUrl = imageUrl?.startsWith('//') ? `https:${imageUrl}` :
+                            imageUrl?.startsWith('/') ? `https://www.wconcept.co.kr${imageUrl}` : imageUrl;
+
+        products.push({
+          merchant_id: 'wconcept',
+          product_url: `https://www.wconcept.co.kr/Product/${goodsNo}`,
+          external_id: String(goodsNo),
+          name: item.goodsNm || item.name || '',
+          brand: item.brandNm || item.brand || 'W Concept',
+          price: parseInt(item.sellPrice || item.price) || 0,
+          original_price: parseInt(item.normalPrice) || undefined,
+          image_url: fullImageUrl,
+          category: cat.category,
+          is_in_stock: item.soldOutFl !== 'Y',
+          gender: cat.gender,
+        });
+      }
+    } catch (e) {
+      console.error(`[WConceptAPI] Error:`, e);
+    }
+  }
+
+  return products;
+}
+
 // ============= Main Collection Logic =============
 async function collectWithScrapfly(
   merchant: Merchant,
   limit: number
 ): Promise<Product[]> {
   const allProducts: Product[] = [];
+  
+  // Try API-based collection for CSR sites first
+  if (merchant.id === 'wconcept') {
+    console.log(`[Collect] Using API for ${merchant.id}`);
+    const apiProducts = await collectFromWConceptAPI(limit);
+    if (apiProducts.length > 0) {
+      console.log(`[Collect] API returned ${apiProducts.length} products`);
+      return apiProducts;
+    }
+  }
+
   const config = merchantConfigs[merchant.id];
   
   if (!config) {
