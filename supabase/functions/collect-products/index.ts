@@ -327,39 +327,75 @@ function extractFromNextData(
     const pageProps = nextData?.props?.pageProps;
     console.log('[NEXT_DATA] Found pageProps keys:', Object.keys(pageProps || {}));
     
-    // Try multiple possible paths for product data (extended for various site structures)
-    const possiblePaths = [
-      // W Concept specific paths
-      pageProps?.initialState?.products?.list,
-      pageProps?.initialState?.category?.goodsList,
-      pageProps?.initialState?.goodsList,
-      pageProps?.categoryData?.goodsList,
-      pageProps?.data?.goodsList,
-      pageProps?.goodsList,
-      // Generic paths
-      pageProps?.products,
-      pageProps?.items,
-      pageProps?.data?.items,
-      pageProps?.data?.list,
-      pageProps?.data?.products,
-      pageProps?.productList,
-      pageProps?.list,
-    ];
-
-    for (const items of possiblePaths) {
-      if (Array.isArray(items) && items.length > 0) {
-        console.log(`[NEXT_DATA] Found ${items.length} items in one of the paths`);
-        for (const item of items.slice(0, 30)) {
-          const product = parseNextDataProduct(item, merchantId, baseUrl, defaultGender, defaultCategory);
-          if (product && isValidProductUrl(product.product_url)) {
-            products.push(product);
+    // Check dehydratedState for React Query cached data (W Concept uses this)
+    const dehydratedState = pageProps?.dehydratedState;
+    if (dehydratedState?.queries && Array.isArray(dehydratedState.queries)) {
+      console.log(`[NEXT_DATA] Found ${dehydratedState.queries.length} dehydratedState queries`);
+      for (const query of dehydratedState.queries) {
+        const queryData = query?.state?.data;
+        if (!queryData) continue;
+        
+        // Look for product list in query data
+        const possibleLists = [
+          queryData?.list,
+          queryData?.goodsList,
+          queryData?.products,
+          queryData?.items,
+          queryData?.data?.list,
+          queryData?.data?.goodsList,
+          queryData,  // Sometimes the data itself is the list
+        ];
+        
+        for (const items of possibleLists) {
+          if (Array.isArray(items) && items.length > 0) {
+            console.log(`[NEXT_DATA] Found ${items.length} items in dehydratedState query`);
+            for (const item of items.slice(0, 30)) {
+              const product = parseNextDataProduct(item, merchantId, baseUrl, defaultGender, defaultCategory);
+              if (product && isValidProductUrl(product.product_url)) {
+                products.push(product);
+              }
+            }
+            if (products.length > 0) break;
           }
         }
-        break;
+        if (products.length > 0) break;
       }
     }
     
-    // If still no products, try to find product-like objects recursively
+    // If dehydratedState didn't work, try direct paths
+    if (products.length === 0) {
+      const possiblePaths = [
+        pageProps?.initialState?.products?.list,
+        pageProps?.initialState?.category?.goodsList,
+        pageProps?.initialData?.goodsList,
+        pageProps?.initialData?.list,
+        pageProps?.categoryData?.goodsList,
+        pageProps?.data?.goodsList,
+        pageProps?.goodsList,
+        pageProps?.products,
+        pageProps?.items,
+        pageProps?.data?.items,
+        pageProps?.data?.list,
+        pageProps?.data?.products,
+        pageProps?.productList,
+        pageProps?.list,
+      ];
+
+      for (const items of possiblePaths) {
+        if (Array.isArray(items) && items.length > 0) {
+          console.log(`[NEXT_DATA] Found ${items.length} items in direct path`);
+          for (const item of items.slice(0, 30)) {
+            const product = parseNextDataProduct(item, merchantId, baseUrl, defaultGender, defaultCategory);
+            if (product && isValidProductUrl(product.product_url)) {
+              products.push(product);
+            }
+          }
+          break;
+        }
+      }
+    }
+    
+    // If still no products, try recursive search
     if (products.length === 0) {
       console.log('[NEXT_DATA] Trying recursive search for product objects');
       const foundProducts = findProductsInObject(pageProps, merchantId, baseUrl, defaultGender, defaultCategory, 0);
