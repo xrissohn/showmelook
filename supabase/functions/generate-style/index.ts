@@ -909,24 +909,46 @@ Each product image corresponds to the items listed above in order.`
     // Build prompts using ONLY sanitized/validated values
     if (useFaceComposite && userAvatarUrl) {
       referenceImageUrl = userAvatarUrl;
-      prompt = `Take this person's face and create a professional fashion lookbook photo of them wearing EXACTLY these specific items:
+      
+      // 얼굴 합성 시 상품 이미지를 2개로 제한하여 얼굴에 더 집중
+      const limitedProductImages = productImages.slice(0, 2);
+      if (productImages.length > 2) {
+        console.log(`Face composite mode: limiting product images from ${productImages.length} to 2`);
+        productImages.length = 0;
+        productImages.push(...limitedProductImages);
+      }
+      
+      prompt = `=== FACE PRESERVATION - HIGHEST PRIORITY ===
+[IMAGE 1 - FACE REFERENCE]: The FIRST image below is a photo of a REAL PERSON. 
+You MUST preserve this person's EXACT facial features including:
+- Face shape, jawline, and complete facial structure
+- Eyes, eyebrows, nose, mouth, and lips EXACTLY as shown
+- Skin tone, complexion, and any unique facial characteristics  
+- Hair style, color, and texture
+- Any distinctive features like moles, dimples, or facial hair
+
+The person in your output image MUST be immediately recognizable as the SAME PERSON from the reference photo.
+DO NOT alter, beautify, or modify the face in ANY way.
+DO NOT generate a different person or a generic model face.
+
+=== OUTFIT INSTRUCTIONS ===
+[IMAGE 2+ - PRODUCT REFERENCES]: The subsequent images show clothing items.
+Dress this EXACT PERSON in the following outfit:
 ${detailedProductsDescription}
 
-CRITICAL INSTRUCTIONS:
-- The model MUST wear these EXACT items as specified above, not similar or generic items
-- Each clothing category (top, bottom, outerwear, shoes, accessory) must match the product names exactly
-- Style: ${sanitizedStyle}
-${genderDescription ? `- Fashion suited for ${genderDescription} body and preferences` : ''}
-- Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
-- Style preferences: ${stylePreferences || 'modern and trendy'}
-${visualReferenceInstruction}
+Style: ${sanitizedStyle}
+${genderDescription ? `Fashion suited for ${genderDescription}` : ''}
+Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
+Style preferences: ${stylePreferences || 'modern and trendy'}
 
-Create a full body shot with this exact person's face, clean white studio background, professional fashion photography lighting.
-High fashion editorial style, ultra high resolution, 4K quality.
-Keep the person's face exactly as shown in the FIRST reference photo while generating the specified outfit on their body.
-The subsequent product images show the EXACT items that must appear on the model.`;
+=== OUTPUT REQUIREMENTS ===
+- Full body shot showing the EXACT PERSON from image 1 wearing the outfit
+- Clean white studio background
+- Professional fashion photography lighting
+- High fashion editorial style, ultra high resolution, 4K quality
+- The face MUST match the reference photo - this is NON-NEGOTIABLE`;
 
-      console.log('Generating face composite image with exact products and visual references');
+      console.log('Generating face composite image with STRENGTHENED face preservation');
     } else {
       prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing EXACTLY these specific items:
 ${detailedProductsDescription}
