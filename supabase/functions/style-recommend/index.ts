@@ -27,6 +27,7 @@ interface LookItem {
   product: CachedProduct | null;
   affiliateUrl: string | null;
   source: 'cache' | 'none';
+  isAutoSelected: boolean; // 예산 내 자동 선택 여부
 }
 
 interface RAGStyleResponse {
@@ -36,6 +37,9 @@ interface RAGStyleResponse {
   selectedProductIds: string[];
   stylingTips: string;
 }
+
+// Category priority for auto-selection (top priority first)
+const CATEGORY_PRIORITY = ['상의', '하의', '아우터', '액세서리'];
 
 // Generate cache key from request parameters (handles Unicode)
 function generateCacheKey(gender: string, style: string, occasion: string, budget: number): string {
@@ -47,6 +51,49 @@ function generateCacheKey(gender: string, style: string, occasion: string, budge
     hash = hash & hash;
   }
   return `style_${Math.abs(hash).toString(36)}`;
+}
+
+// Map product category to priority category
+function mapToPriorityCategory(category: string): string {
+  const cat = category.toLowerCase();
+  
+  // 상의
+  if (['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'shirts', 'polo shirts'].some(v => cat.includes(v.toLowerCase()))) {
+    return '상의';
+  }
+  
+  // 하의 (원피스 포함)
+  if (['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'trousers', '원피스', 'dress', 'dresses', '드레스'].some(v => cat.includes(v.toLowerCase()))) {
+    return '하의';
+  }
+  
+  // 아우터
+  if (['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'jackets', 'coats'].some(v => cat.includes(v.toLowerCase()))) {
+    return '아우터';
+  }
+  
+  // 액세서리 (신발, 가방, 기타 액세서리 포함)
+  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers',
+       '가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks',
+       '액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt', 'ties', 'scarves', 'hats', 'gloves', '목걸이', '반지', '귀걸이', '팔찌', '시계', '워치', 'watch', 'jewelry', 'necklace', 'bracelet', 'ring'].some(v => cat.includes(v.toLowerCase()))) {
+    return '액세서리';
+  }
+  
+  return '액세서리'; // Default to accessory if unknown
+}
+
+// Get specific sub-category for display
+function getDisplayCategory(category: string): string {
+  const cat = category.toLowerCase();
+  
+  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers'].some(v => cat.includes(v.toLowerCase()))) {
+    return '신발';
+  }
+  if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks'].some(v => cat.includes(v.toLowerCase()))) {
+    return '가방';
+  }
+  
+  return mapToPriorityCategory(category);
 }
 
 serve(async (req) => {
@@ -80,29 +127,32 @@ serve(async (req) => {
     
     console.log(`[style-recommend] RAG Request: "${userRequest}", Gender: ${gender}, Budget: ${budget}, Age: ${age || 'N/A'}, Target: ${targetGender}`);
 
-    // Step 1: Check style_cache (skip for now to always use RAG)
-    // TODO: Implement smarter caching later
-
-    // Step 2: Get merchants list
+    // Step 1: Get merchants list
     const { data: merchants } = await supabase
       .from('merchants')
       .select('*')
       .eq('is_active', true);
 
-    // Step 3: RAG - First, fetch ALL relevant products from products_cache
-    console.log(`[style-recommend] Step 1: Fetching products from DB for RAG context...`);
+    // Step 2: Fetch ALL relevant products from products_cache for each priority category
+    console.log(`[style-recommend] Step 1: Fetching products by priority categories...`);
     
-    const categories = ['상의', '하의', '아우터', '신발', '가방', '원피스', '액세서리'];
+    const productsByPriority: Record<string, CachedProduct[]> = {
+      '상의': [],
+      '하의': [],
+      '아우터': [],
+      '액세서리': [],
+    };
+    
+    const allCategories = ['상의', '하의', '아우터', '신발', '가방', '원피스', '액세서리', '니트', '셔츠', '블라우스', '코트', '자켓'];
     const allProducts: CachedProduct[] = [];
     
-    for (const category of categories) {
+    for (const category of allCategories) {
       let query = supabase
         .from('products_cache')
         .select('*')
         .eq('is_active', true)
         .eq('is_in_stock', true)
-        .not('image_url', 'is', null)
-        .lte('price', budget * 0.6); // 각 아이템이 예산의 60% 이하
+        .not('image_url', 'is', null);
       
       // Category filter using ILIKE for flexible matching
       const categoryVariants = getCategoryVariants(category);
@@ -117,16 +167,29 @@ serve(async (req) => {
         query = query.or(`gender.eq.${genderEn},gender.eq.${gender},gender.is.null`);
       }
       
-      const { data } = await query.order('collected_at', { ascending: false }).limit(15);
+      const { data } = await query.order('price', { ascending: true }).limit(20);
       
       if (data && data.length > 0) {
         allProducts.push(...data);
       }
     }
     
-    // Remove duplicates
+    // Remove duplicates and categorize by priority
     const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
-    console.log(`[style-recommend] Found ${uniqueProducts.length} products for RAG context`);
+    
+    for (const product of uniqueProducts) {
+      const priorityCat = mapToPriorityCategory(product.category);
+      if (productsByPriority[priorityCat]) {
+        productsByPriority[priorityCat].push(product);
+      }
+    }
+    
+    // Sort each category by price (ascending)
+    for (const cat of CATEGORY_PRIORITY) {
+      productsByPriority[cat].sort((a, b) => a.price - b.price);
+    }
+    
+    console.log(`[style-recommend] Products by category: 상의=${productsByPriority['상의'].length}, 하의=${productsByPriority['하의'].length}, 아우터=${productsByPriority['아우터'].length}, 액세서리=${productsByPriority['액세서리'].length}`);
 
     if (uniqueProducts.length === 0) {
       return new Response(JSON.stringify({
@@ -138,13 +201,14 @@ serve(async (req) => {
       });
     }
 
-    // Step 4: Create product context for AI (RAG)
+    // Step 3: Create product context for AI (RAG) - include all products
     const productContext = uniqueProducts.map(p => ({
       id: p.id,
       name: p.name,
       brand: p.brand,
       price: p.price,
       category: p.category,
+      priorityCategory: mapToPriorityCategory(p.category),
       sub_category: p.sub_category,
       color: p.color,
       style_tags: p.style_tags,
@@ -152,7 +216,7 @@ serve(async (req) => {
 
     console.log(`[style-recommend] Step 2: Sending ${productContext.length} products to AI for selection...`);
 
-    // Step 5: RAG - Ask AI to select products AND generate description
+    // Step 4: RAG - Ask AI to select products AND generate description
     let ragResponse: RAGStyleResponse | null = null;
     let geminiCalls = 0;
     
@@ -162,17 +226,18 @@ serve(async (req) => {
 
 중요 규칙:
 1. 반드시 제공된 상품 목록의 ID 중에서만 선택해
-2. 상의, 하의(또는 원피스), 신발을 기본으로 포함하고, 예산에 따라 가방이나 아우터 추가
-3. 선택한 상품들의 가격 합계가 총 예산을 넘지 않아야 해
-4. styleConcept은 선택한 실제 상품들을 기반으로 작성해야 해 (상품명, 브랜드, 특징 언급)
-5. styleReasoning은 왜 이 상품들이 요청에 적합한지 설명해
-6. 반드시 유효한 JSON만 응답해`;
+2. 필수 카테고리: 상의, 하의, 아우터, 액세서리(신발/가방/기타) - 최소 4개 이상 선택
+3. 다양한 액세서리를 포함해 (신발 + 가방 또는 신발 + 기타 액세서리 등)
+4. 선택한 상품들의 가격 합계가 총 예산을 넘어도 괜찮지만, 예산에 가깝게 맞추려고 노력해
+5. styleConcept은 선택한 실제 상품들을 기반으로 작성해야 해 (상품명, 브랜드, 특징 언급)
+6. styleReasoning은 왜 이 상품들이 요청에 적합한지 설명해
+7. 반드시 유효한 JSON만 응답해`;
 
       const userPrompt = `사용자 요청: "${userRequest}"
 성별: ${gender}
 총 예산: ${budget}원
 
-아래는 현재 구매 가능한 상품 목록이야. 이 중에서만 선택해서 코디를 구성해줘:
+아래는 현재 구매 가능한 상품 목록이야. 최소 4개 이상 (상의, 하의, 아우터, 액세서리 각 1개씩 필수) 선택해서 코디를 구성해줘:
 
 ${JSON.stringify(productContext, null, 2)}
 
@@ -181,12 +246,12 @@ ${JSON.stringify(productContext, null, 2)}
   "lookName": "코디 이름 (예: 봄 데이트를 위한 로맨틱 룩)",
   "styleConcept": "🎨 [성별] [요청] - [스타일 포인트]\n선택한 상품들을 기반으로 한 구체적인 스타일 설명. 실제 상품명과 브랜드를 언급하며 왜 이 조합이 좋은지 설명. 2-3문장.",
   "styleReasoning": "이 코디가 사용자 요청에 적합한 이유와 스타일링 팁. 선택한 각 아이템이 어떻게 조화를 이루는지 설명.",
-  "selectedProductIds": ["product-id-1", "product-id-2", "product-id-3"],
+  "selectedProductIds": ["product-id-1", "product-id-2", "product-id-3", "product-id-4"],
   "stylingTips": "추가 스타일링 팁이나 액세서리 제안"
 }
 
-선택한 상품 가격의 합이 ${budget}원을 넘지 않도록 해.
-반드시 selectedProductIds에는 위 목록에 있는 실제 id만 포함해야 해.`;
+반드시 selectedProductIds에는 위 목록에 있는 실제 id만 포함해야 해.
+최소 4개 (상의, 하의, 아우터, 액세서리) 이상 선택해야 해!`;
 
       try {
         const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -224,63 +289,81 @@ ${JSON.stringify(productContext, null, 2)}
       }
     }
 
-    // Fallback if AI fails
+    // Fallback if AI fails - use priority-based selection
     if (!ragResponse) {
-      console.log(`[style-recommend] AI failed, using fallback selection`);
+      console.log(`[style-recommend] AI failed, using priority-based fallback selection`);
       
-      // Simple fallback: pick one from each category within budget
       const selectedIds: string[] = [];
       let remainingBudget = budget;
-      const categoryOrder = ['상의', '하의', '신발', '가방', '아우터'];
       
-      for (const cat of categoryOrder) {
-        const catProducts = uniqueProducts.filter(p => 
-          p.category.toLowerCase().includes(cat.toLowerCase()) &&
-          p.price <= remainingBudget
-        );
+      // Select one from each priority category
+      for (const cat of CATEGORY_PRIORITY) {
+        const catProducts = productsByPriority[cat].filter(p => p.price <= remainingBudget);
         
         if (catProducts.length > 0) {
           const selected = catProducts[0];
           selectedIds.push(selected.id);
           remainingBudget -= selected.price;
+        } else if (productsByPriority[cat].length > 0) {
+          // If no product within budget, still add the cheapest one
+          selectedIds.push(productsByPriority[cat][0].id);
         }
-        
-        if (selectedIds.length >= 4) break;
       }
       
       ragResponse = {
         lookName: `${occasion} 추천 룩`,
         styleConcept: `🎨 ${gender} ${occasion} 스타일\n예산에 맞춘 기본 코디 추천입니다.`,
-        styleReasoning: '각 카테고리에서 예산에 맞는 아이템을 선택했습니다.',
+        styleReasoning: '상의, 하의, 아우터, 액세서리 순서로 예산에 맞는 아이템을 선택했습니다.',
         selectedProductIds: selectedIds,
         stylingTips: '자신만의 스타일로 연출해보세요.'
       };
     }
 
-    // Step 6: Get selected products
+    // Step 5: Get selected products
     const { data: selectedProducts } = await supabase
       .from('products_cache')
       .select('*')
       .in('id', ragResponse.selectedProductIds);
 
+    // Create look items with auto-selection info
     const lookItems: LookItem[] = [];
+    let runningTotal = 0;
     
     if (selectedProducts) {
-      for (const product of selectedProducts) {
+      // Sort products by priority category order
+      const sortedProducts = selectedProducts.sort((a, b) => {
+        const aPriority = CATEGORY_PRIORITY.indexOf(mapToPriorityCategory(a.category));
+        const bPriority = CATEGORY_PRIORITY.indexOf(mapToPriorityCategory(b.category));
+        return aPriority - bPriority;
+      });
+      
+      for (const product of sortedProducts) {
         const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
+        
+        // Auto-select if within budget (by priority order)
+        const wouldBeWithinBudget = runningTotal + product.price <= budget;
+        const isAutoSelected = wouldBeWithinBudget;
+        
+        if (isAutoSelected) {
+          runningTotal += product.price;
+        }
+        
         lookItems.push({
-          category: product.category,
+          category: getDisplayCategory(product.category),
           product: product,
           affiliateUrl,
-          source: 'cache'
+          source: 'cache',
+          isAutoSelected
         });
       }
     }
 
-    // Step 7: Calculate total price and create response
+    // Step 6: Calculate total price and auto-selected total
     const totalPrice = lookItems.reduce((sum, item) => sum + (item.product?.price || 0), 0);
+    const autoSelectedTotal = lookItems.filter(i => i.isAutoSelected).reduce((sum, item) => sum + (item.product?.price || 0), 0);
+    const autoSelectedCount = lookItems.filter(i => i.isAutoSelected).length;
 
-    // Step 8: Save to style_cache if we have items
+    // Step 7: Save to style_cache if we have items
     if (lookItems.length >= 2) {
       const lookData = {
         cache_key: cacheKey,
@@ -303,6 +386,9 @@ ${JSON.stringify(productContext, null, 2)}
         styleReasoning: ragResponse.styleReasoning,
         items: lookItems,
         totalPrice,
+        autoSelectedTotal,
+        autoSelectedCount,
+        budget,
         stylingTips: ragResponse.stylingTips,
       },
       apiCalls: {
@@ -312,10 +398,11 @@ ${JSON.stringify(productContext, null, 2)}
       stats: {
         productsInContext: uniqueProducts.length,
         selectedProducts: lookItems.length,
+        autoSelectedProducts: autoSelectedCount,
       }
     };
 
-    console.log(`[style-recommend] RAG Complete. Selected ${lookItems.length} products, Total: ₩${totalPrice}`);
+    console.log(`[style-recommend] RAG Complete. Selected ${lookItems.length} products (${autoSelectedCount} auto-selected), Total: ₩${totalPrice}, Auto-selected Total: ₩${autoSelectedTotal}`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -344,7 +431,7 @@ function extractOccasion(request: string): string {
 // Category mapping
 const categoryMap: Record<string, string[]> = {
   '상의': ['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'Shirts', 'Polo Shirts'],
-  '하의': ['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'Trousers'],
+  '하의': ['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'Trousers', '원피스', 'dress', 'dresses'],
   '아우터': ['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'Jackets', 'Coats'],
   '신발': ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'Trainers', 'Loafers'],
   '가방': ['가방', 'bag', 'bags', 'accessory', '백', '클러치', 'clutch', 'tote', '토트백', 'Holdalls', 'Backpacks'],
