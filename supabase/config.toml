@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.brightdata-collect]
 verify_jwt = false
+
+[functions.firecrawl-test]
+verify_jwt = false
