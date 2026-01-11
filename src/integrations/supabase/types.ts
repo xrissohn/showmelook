@@ -124,6 +124,48 @@ export type Database = {
           },
         ]
       }
+      liked_products: {
+        Row: {
+          created_at: string
+          id: string
+          product_brand: string | null
+          product_category: string | null
+          product_id: string
+          product_image_url: string | null
+          product_name: string
+          product_price: number
+          product_url: string
+          style_tags: string[] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_brand?: string | null
+          product_category?: string | null
+          product_id: string
+          product_image_url?: string | null
+          product_name: string
+          product_price: number
+          product_url: string
+          style_tags?: string[] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_brand?: string | null
+          product_category?: string | null
+          product_id?: string
+          product_image_url?: string | null
+          product_name?: string
+          product_price?: number
+          product_url?: string
+          style_tags?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       merchants: {
         Row: {
           base_url: string
