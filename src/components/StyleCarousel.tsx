@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
 // Style images imports
@@ -60,104 +60,153 @@ const styles: StyleData[] = [
 ];
 
 const StyleCarousel = () => {
-  const [currentStyleIndex, setCurrentStyleIndex] = useState(0);
-  const [prevStyleIndex, setPrevStyleIndex] = useState(0);
-  const [isStyleTransitioning, setIsStyleTransitioning] = useState(false);
-  
-  // Each card tracks its own gender and rotation state
-  const [cardStates, setCardStates] = useState([
-    { isMale: true, isFlipping: false },
-    { isMale: false, isFlipping: false },
-    { isMale: true, isFlipping: false },
-  ]);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<number | null>(null);
+  const scrollPositionRef = useRef(0);
 
-  // Rotate styles every 5 seconds with smooth crossfade
+  // Gender states for flip animation
+  const [cardGenders, setCardGenders] = useState<boolean[]>(
+    Array(styles.length * 3).fill(true).map((_, i) => i % 2 === 0)
+  );
+  const [flippingCards, setFlippingCards] = useState<boolean[]>(
+    Array(styles.length * 3).fill(false)
+  );
+
+  // Duplicate styles for seamless infinite scroll
+  const duplicatedStyles = [...styles, ...styles, ...styles];
+
+  // Auto-scroll animation
+  const animate = useCallback(() => {
+    if (!containerRef.current || isPaused || isDragging) {
+      animationRef.current = requestAnimationFrame(animate);
+      return;
+    }
+
+    scrollPositionRef.current += 0.5; // Speed of scroll
+    const container = containerRef.current;
+    const singleSetWidth = container.scrollWidth / 3;
+
+    // Reset position for seamless loop
+    if (scrollPositionRef.current >= singleSetWidth * 2) {
+      scrollPositionRef.current = singleSetWidth;
+    }
+
+    container.scrollLeft = scrollPositionRef.current;
+    animationRef.current = requestAnimationFrame(animate);
+  }, [isPaused, isDragging]);
+
   useEffect(() => {
-    const styleInterval = setInterval(() => {
-      setIsStyleTransitioning(true);
-      setPrevStyleIndex(currentStyleIndex);
-      
-      setTimeout(() => {
-        setCurrentStyleIndex((prev) => (prev + 1) % styles.length);
-      }, 50);
-      
-      setTimeout(() => {
-        setIsStyleTransitioning(false);
-      }, 800);
-    }, 5000);
+    // Initialize scroll position to middle set
+    if (containerRef.current) {
+      const singleSetWidth = containerRef.current.scrollWidth / 3;
+      scrollPositionRef.current = singleSetWidth;
+      containerRef.current.scrollLeft = singleSetWidth;
+    }
 
-    return () => clearInterval(styleInterval);
-  }, [currentStyleIndex]);
+    animationRef.current = requestAnimationFrame(animate);
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [animate]);
 
-  // Rotate gender images with 3D flip effect (staggered)
+  // Random gender flip effect
   useEffect(() => {
-    const genderInterval = setInterval(() => {
-      const cardToRotate = Math.floor(Math.random() * 3);
+    const flipInterval = setInterval(() => {
+      if (isPaused) return;
       
-      setCardStates((prev) => {
-        const newStates = [...prev];
-        newStates[cardToRotate] = { ...newStates[cardToRotate], isFlipping: true };
-        return newStates;
+      const cardIndex = Math.floor(Math.random() * duplicatedStyles.length);
+      
+      setFlippingCards(prev => {
+        const newState = [...prev];
+        newState[cardIndex] = true;
+        return newState;
       });
 
-      // Toggle gender at midpoint of flip
       setTimeout(() => {
-        setCardStates((prev) => {
-          const newStates = [...prev];
-          newStates[cardToRotate] = { 
-            ...newStates[cardToRotate], 
-            isMale: !newStates[cardToRotate].isMale 
-          };
-          return newStates;
+        setCardGenders(prev => {
+          const newState = [...prev];
+          newState[cardIndex] = !newState[cardIndex];
+          return newState;
         });
       }, 400);
 
-      // End flip animation
       setTimeout(() => {
-        setCardStates((prev) => {
-          const newStates = [...prev];
-          newStates[cardToRotate] = { ...newStates[cardToRotate], isFlipping: false };
-          return newStates;
+        setFlippingCards(prev => {
+          const newState = [...prev];
+          newState[cardIndex] = false;
+          return newState;
         });
       }, 800);
-    }, 3000);
+    }, 2000);
 
-    return () => clearInterval(genderInterval);
-  }, []);
+    return () => clearInterval(flipInterval);
+  }, [isPaused, duplicatedStyles.length]);
 
-  // Get 3 visible styles
-  const getVisibleStyles = (index: number) => {
-    const visibleStyles: StyleData[] = [];
-    for (let i = 0; i < 3; i++) {
-      const styleIndex = (index + i) % styles.length;
-      visibleStyles.push(styles[styleIndex]);
-    }
-    return visibleStyles;
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - containerRef.current.offsetLeft);
+    setScrollLeft(containerRef.current.scrollLeft);
+    containerRef.current.style.cursor = 'grabbing';
   };
 
-  const currentStyles = getVisibleStyles(currentStyleIndex);
-  const prevStyles = getVisibleStyles(prevStyleIndex);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !containerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    containerRef.current.scrollLeft = scrollLeft - walk;
+    scrollPositionRef.current = containerRef.current.scrollLeft;
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grab';
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setIsDragging(false);
+    setIsPaused(false);
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grab';
+    }
+  };
 
   return (
-    <div className="mt-10 sm:mt-16 md:mt-20 max-w-4xl mx-auto">
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 relative">
-        {currentStyles.map((style, i) => {
-          const { isMale, isFlipping } = cardStates[i];
+    <div className="mt-10 sm:mt-16 md:mt-20 max-w-6xl mx-auto overflow-hidden">
+      <div
+        ref={containerRef}
+        className="flex gap-4 sm:gap-6 overflow-x-hidden cursor-grab select-none py-4"
+        onMouseEnter={() => setIsPaused(true)}
+        onMouseLeave={handleMouseLeave}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
+        {duplicatedStyles.map((style, i) => {
+          const isMale = cardGenders[i];
+          const isFlipping = flippingCards[i];
           const currentImage = isMale ? style.maleImage : style.femaleImage;
-          const prevStyle = prevStyles[i];
-          const prevImage = isMale ? prevStyle.maleImage : prevStyle.femaleImage;
 
           return (
             <div
               key={i}
-              className="bg-card rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border border-border group overflow-hidden relative"
+              className="flex-shrink-0 w-[140px] sm:w-[200px] md:w-[260px] bg-card rounded-xl sm:rounded-2xl p-2 sm:p-4 md:p-6 shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border border-border group overflow-hidden relative"
             >
               {/* Image container with 3D flip effect */}
               <div 
                 className="aspect-[3/4] rounded-lg sm:rounded-xl mb-2 sm:mb-4 relative overflow-hidden"
                 style={{ perspective: '1000px' }}
               >
-                {/* 3D flip container */}
                 <div
                   className="w-full h-full relative transition-transform duration-700 ease-in-out"
                   style={{
@@ -167,36 +216,21 @@ const StyleCarousel = () => {
                 >
                   {/* Front face */}
                   <div
-                    className="absolute inset-0 backface-hidden"
+                    className="absolute inset-0"
                     style={{ backfaceVisibility: 'hidden' }}
                   >
-                    {/* Crossfade between style transitions */}
-                    <div className="relative w-full h-full">
-                      {/* Previous image (fading out) */}
-                      <img
-                        src={prevImage}
-                        alt={`${prevStyle.title} 모델`}
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                          isStyleTransitioning ? 'opacity-100' : 'opacity-0'
-                        }`}
-                      />
-                      {/* Current image (fading in) */}
-                      <img
-                        src={currentImage}
-                        alt={`${style.title} 모델`}
-                        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
-                          isStyleTransitioning ? 'opacity-0' : 'opacity-100'
-                        }`}
-                      />
-                    </div>
-                    
-                    {/* Gradient overlay */}
+                    <img
+                      src={currentImage}
+                      alt={`${style.title} 모델`}
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
                     <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-20 group-hover:opacity-10 transition-opacity duration-300`} />
                   </div>
 
-                  {/* Back face (shown during flip) */}
+                  {/* Back face */}
                   <div
-                    className="absolute inset-0 backface-hidden"
+                    className="absolute inset-0"
                     style={{ 
                       backfaceVisibility: 'hidden',
                       transform: 'rotateY(180deg)',
@@ -206,14 +240,15 @@ const StyleCarousel = () => {
                       src={isMale ? style.femaleImage : style.maleImage}
                       alt={`${style.title} 모델`}
                       className="w-full h-full object-cover"
+                      draggable={false}
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-20`} />
                   </div>
                 </div>
               </div>
 
-              {/* Text content with smooth transition */}
-              <div className={`transition-all duration-500 ${isStyleTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
+              {/* Text content */}
+              <div>
                 <h3 className="font-korean text-xs sm:text-sm md:text-lg text-foreground mb-0.5 sm:mb-1 group-hover:text-primary transition-colors truncate">
                   {style.title}
                 </h3>
@@ -231,33 +266,6 @@ const StyleCarousel = () => {
             </div>
           );
         })}
-      </div>
-
-      {/* Carousel indicators */}
-      <div className="flex justify-center gap-2 mt-6">
-        {styles.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => {
-              if (index !== currentStyleIndex) {
-                setIsStyleTransitioning(true);
-                setPrevStyleIndex(currentStyleIndex);
-                setTimeout(() => {
-                  setCurrentStyleIndex(index);
-                }, 50);
-                setTimeout(() => {
-                  setIsStyleTransitioning(false);
-                }, 800);
-              }
-            }}
-            className={`h-2 rounded-full transition-all duration-500 ${
-              index === currentStyleIndex
-                ? 'bg-gradient-to-r from-coral to-magenta w-8'
-                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2'
-            }`}
-            aria-label={`스타일 ${index + 1}로 이동`}
-          />
-        ))}
       </div>
     </div>
   );
