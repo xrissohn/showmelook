@@ -143,8 +143,27 @@ serve(async (req) => {
       '액세서리': [],
     };
     
+    // 계절 계산 (상품 필터링에 사용)
+    const currentMonth = new Date().getMonth() + 1;
+    const currentSeason = currentMonth >= 3 && currentMonth <= 5 ? '봄' 
+      : currentMonth >= 6 && currentMonth <= 8 ? '여름'
+      : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
+    const requestedSeason = detectSeason(userRequest) || currentSeason;
+    
     const allCategories = ['상의', '하의', '아우터', '신발', '가방', '원피스', '액세서리', '니트', '셔츠', '블라우스', '코트', '자켓'];
     const allProducts: CachedProduct[] = [];
+    
+    // 계절별 금지 아이템 키워드
+    const seasonExcludeKeywords: Record<string, string[]> = {
+      '겨울': ['shorts', '반바지', '샌들', 'sandal', '민소매', 'sleeveless', 'crop', '크롭', '린넨', 'linen', '슬리퍼', 'slipper', '플립플롭', 'flip'],
+      '여름': ['패딩', 'padding', 'puffer', '퍼퍼', '코트', 'coat', '기모', '털', 'fur', '울', 'wool', '캐시미어', 'cashmere', '다운', 'down'],
+      '봄': ['패딩', 'padding', 'puffer', '퍼퍼', '기모', '털', 'fur'],
+      '가을': ['샌들', 'sandal', '슬리퍼', 'slipper', '플립플롭', 'flip', '반바지', 'shorts'],
+    };
+    
+    const excludeKeywords = seasonExcludeKeywords[requestedSeason] || [];
+    
+    console.log(`[style-recommend] Season filter: ${requestedSeason}, excluding keywords: ${excludeKeywords.join(', ')}`);
     
     for (const category of allCategories) {
       let query = supabase
@@ -167,10 +186,25 @@ serve(async (req) => {
         query = query.or(`gender.eq.${genderEn},gender.eq.${gender},gender.is.null`);
       }
       
-      const { data } = await query.order('price', { ascending: true }).limit(20);
+      const { data } = await query.order('price', { ascending: true }).limit(30);
       
       if (data && data.length > 0) {
-        allProducts.push(...data);
+        // 계절에 맞지 않는 상품 필터링
+        const filteredData = data.filter(product => {
+          const productName = (product.name || '').toLowerCase();
+          const productCategory = (product.category || '').toLowerCase();
+          const subCategory = (product.sub_category || '').toLowerCase();
+          const combined = `${productName} ${productCategory} ${subCategory}`;
+          
+          // 금지 키워드가 포함되어 있으면 제외
+          const isExcluded = excludeKeywords.some(keyword => combined.includes(keyword.toLowerCase()));
+          if (isExcluded) {
+            console.log(`[style-recommend] Excluded (season): ${product.name}`);
+          }
+          return !isExcluded;
+        });
+        
+        allProducts.push(...filteredData);
       }
     }
     
@@ -221,14 +255,7 @@ serve(async (req) => {
     let geminiCalls = 0;
     
     if (LOVABLE_API_KEY) {
-      // 현재 계절 계산
-      const currentMonth = new Date().getMonth() + 1;
-      const currentSeason = currentMonth >= 3 && currentMonth <= 5 ? '봄' 
-        : currentMonth >= 6 && currentMonth <= 8 ? '여름'
-        : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
-      
-      // 사용자 요청에서 계절 감지
-      const requestedSeason = detectSeason(userRequest) || currentSeason;
+      // 이미 위에서 계산한 requestedSeason 사용
       const seasonClothingGuide = getSeasonClothingGuide(requestedSeason);
       
       const systemPrompt = `너는 서울 청담동에서 15년 경력의 셀럽 전담 스타일리스트야. 
