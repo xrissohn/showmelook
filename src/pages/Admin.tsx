@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Search, Plus, Save, Trash2 } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -54,30 +54,6 @@ interface CachedProduct {
   collected_at: string;
 }
 
-interface SerpAPIProduct {
-  title: string;
-  thumbnail: string;
-  link: string;
-  price: number | null;
-  priceText: string;
-  source: string;
-}
-
-interface SerpAPIResult {
-  success: boolean;
-  query?: string;
-  merchant?: string;
-  domain?: string;
-  totalCount?: number;
-  count?: number;
-  filteredCount?: number;
-  savedCount?: number;
-  responseTime?: number;
-  registeredDomains?: string[];
-  products?: SerpAPIProduct[];
-  error?: string;
-  details?: string;
-}
 
 interface StyleV1Result {
   success: boolean;
@@ -189,13 +165,6 @@ const Admin = () => {
   const [productsLoading, setProductsLoading] = useState(false);
   const [productStats, setProductStats] = useState<{ total: number; byMerchant: Record<string, number> }>({ total: 0, byMerchant: {} });
 
-  // SerpAPI test state
-  const [serpQuery, setSerpQuery] = useState("");
-  const [serpMerchant, setSerpMerchant] = useState("wconcept");
-  const [serpResult, setSerpResult] = useState<SerpAPIResult | null>(null);
-  const [isSerpSearching, setIsSerpSearching] = useState(false);
-  const [serpSaveToCache, setSerpSaveToCache] = useState(false);
-  const [serpFilterByDomain, setSerpFilterByDomain] = useState(true);
 
   // Style v1 test state
   const [styleOccasion, setStyleOccasion] = useState("캐주얼");
@@ -218,24 +187,6 @@ const Admin = () => {
   const [webUnlockerResult, setWebUnlockerResult] = useState<WebUnlockerResult | null>(null);
   const [isWebUnlockerLoading, setIsWebUnlockerLoading] = useState(false);
 
-  // Manual product entry state
-  const [manualProduct, setManualProduct] = useState({
-    name: "",
-    brand: "",
-    price: "",
-    original_price: "",
-    image_url: "",
-    product_url: "",
-    category: "상의",
-    merchant_id: "",
-    gender: "unisex",
-    color: "",
-    style_tags: [] as string[],
-  });
-  const [isSavingManual, setIsSavingManual] = useState(false);
-  const [manualStyleTagInput, setManualStyleTagInput] = useState("");
-
-  // Load merchants on mount
   useEffect(() => {
     loadMerchants();
   }, []);
@@ -416,63 +367,6 @@ const Admin = () => {
     }
   };
 
-  const testSerpAPI = async () => {
-    if (!serpQuery.trim()) {
-      toast({
-        title: "검색어 입력 필요",
-        description: "검색어를 입력해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSerpSearching(true);
-    setSerpResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('test-serpapi', {
-        body: { 
-          query: serpQuery, 
-          merchant: serpMerchant, 
-          saveToCache: serpSaveToCache,
-          filterByMerchantDomain: serpFilterByDomain,
-        },
-      });
-
-      if (error) throw error;
-      
-      setSerpResult(data);
-      
-      if (data.success) {
-        const savedMsg = data.savedCount > 0 ? ` (${data.savedCount}개 저장됨)` : '';
-        toast({
-          title: "SerpAPI 검색 완료",
-          description: `${data.count}개 상품 발견 (${data.responseTime}ms)${savedMsg}`,
-        });
-        // Reload products if saved
-        if (data.savedCount > 0) {
-          loadCachedProducts();
-        }
-      } else {
-        toast({
-          title: "SerpAPI 검색 실패",
-          description: data.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error: unknown) {
-      console.error('SerpAPI test error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setSerpResult({ success: false, error: errorMessage });
-      toast({
-        title: "SerpAPI 검색 실패",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsSerpSearching(false);
-    }
-  };
 
   const testStyleV1 = async () => {
     setIsStyleLoading(true);
@@ -629,40 +523,6 @@ const Admin = () => {
     }
   };
 
-  // Save manual product
-  const saveManualProduct = async () => {
-    if (!manualProduct.name || !manualProduct.price || !manualProduct.product_url) {
-      toast({ title: "필수 필드 누락", description: "상품명, 가격, URL은 필수입니다.", variant: "destructive" });
-      return;
-    }
-    setIsSavingManual(true);
-    try {
-      const { error } = await supabase.from('products_cache').upsert({
-        name: manualProduct.name,
-        brand: manualProduct.brand || null,
-        price: parseInt(manualProduct.price),
-        original_price: manualProduct.original_price ? parseInt(manualProduct.original_price) : null,
-        image_url: manualProduct.image_url || null,
-        product_url: manualProduct.product_url,
-        category: manualProduct.category,
-        merchant_id: manualProduct.merchant_id || null,
-        gender: manualProduct.gender,
-        color: manualProduct.color || null,
-        style_tags: manualProduct.style_tags.length > 0 ? manualProduct.style_tags : null,
-        is_active: true,
-        is_in_stock: true,
-        collected_at: new Date().toISOString(),
-      }, { onConflict: 'product_url' });
-      if (error) throw error;
-      toast({ title: "저장 성공", description: "상품이 products_cache에 저장되었습니다." });
-      setManualProduct({ name: "", brand: "", price: "", original_price: "", image_url: "", product_url: "", category: "상의", merchant_id: "", gender: "unisex", color: "", style_tags: [] });
-      loadProductStats();
-    } catch (error: any) {
-      toast({ title: "저장 실패", description: error.message, variant: "destructive" });
-    } finally {
-      setIsSavingManual(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -730,12 +590,10 @@ const Admin = () => {
         </Card>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="manual" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-9">
-            <TabsTrigger value="manual">수동입력</TabsTrigger>
+        <Tabs defaultValue="style-recommend" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
             <TabsTrigger value="brightdata">BrightData</TabsTrigger>
-            <TabsTrigger value="serpapi">SerpAPI</TabsTrigger>
             <TabsTrigger value="style-v1">규칙 추천</TabsTrigger>
             <TabsTrigger value="deeplink">딥링크</TabsTrigger>
             <TabsTrigger value="merchants">머천트</TabsTrigger>
@@ -743,94 +601,6 @@ const Admin = () => {
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
 
-          {/* Manual Product Entry Tab */}
-          <TabsContent value="manual" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Plus className="w-5 h-5" />
-                  수동 상품 입력
-                </CardTitle>
-                <CardDescription>스크래핑이 안 되는 쇼핑몰의 상품을 직접 입력합니다.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">상품명 *</label>
-                    <Input placeholder="예: 오버사이즈 울 코트" value={manualProduct.name} onChange={(e) => setManualProduct({...manualProduct, name: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">브랜드</label>
-                    <Input placeholder="예: ARKET" value={manualProduct.brand} onChange={(e) => setManualProduct({...manualProduct, brand: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">가격 *</label>
-                    <Input type="number" placeholder="299000" value={manualProduct.price} onChange={(e) => setManualProduct({...manualProduct, price: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">원가 (할인 전)</label>
-                    <Input type="number" placeholder="399000" value={manualProduct.original_price} onChange={(e) => setManualProduct({...manualProduct, original_price: e.target.value})} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium mb-1 block">상품 URL *</label>
-                    <Input placeholder="https://www.arket.com/ko-kr/product/..." value={manualProduct.product_url} onChange={(e) => setManualProduct({...manualProduct, product_url: e.target.value})} />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium mb-1 block">이미지 URL</label>
-                    <Input placeholder="https://..." value={manualProduct.image_url} onChange={(e) => setManualProduct({...manualProduct, image_url: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">카테고리</label>
-                    <Select value={manualProduct.category} onValueChange={(v) => setManualProduct({...manualProduct, category: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="상의">상의</SelectItem>
-                        <SelectItem value="하의">하의</SelectItem>
-                        <SelectItem value="아우터">아우터</SelectItem>
-                        <SelectItem value="원피스">원피스</SelectItem>
-                        <SelectItem value="신발">신발</SelectItem>
-                        <SelectItem value="가방">가방</SelectItem>
-                        <SelectItem value="악세서리">악세서리</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">머천트</label>
-                    <Select value={manualProduct.merchant_id} onValueChange={(v) => setManualProduct({...manualProduct, merchant_id: v})}>
-                      <SelectTrigger><SelectValue placeholder="선택" /></SelectTrigger>
-                      <SelectContent>
-                        {merchants.map(m => <SelectItem key={m.id} value={m.id}>{m.name_ko}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">성별</label>
-                    <Select value={manualProduct.gender} onValueChange={(v) => setManualProduct({...manualProduct, gender: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="male">남성</SelectItem>
-                        <SelectItem value="female">여성</SelectItem>
-                        <SelectItem value="unisex">공용</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">색상</label>
-                    <Input placeholder="블랙, 화이트..." value={manualProduct.color} onChange={(e) => setManualProduct({...manualProduct, color: e.target.value})} />
-                  </div>
-                </div>
-                <div className="flex gap-2 pt-4">
-                  <Button onClick={saveManualProduct} disabled={isSavingManual}>
-                    {isSavingManual ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                    저장하기
-                  </Button>
-                  <Button variant="outline" onClick={() => setManualProduct({ name: "", brand: "", price: "", original_price: "", image_url: "", product_url: "", category: "상의", merchant_id: "", gender: "unisex", color: "", style_tags: [] })}>
-                    <Trash2 className="w-4 h-4 mr-2" /> 초기화
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Style Recommend (AI) Test Tab */}
           <TabsContent value="style-recommend" className="space-y-4">
@@ -1254,172 +1024,6 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* SerpAPI Test Tab */}
-          <TabsContent value="serpapi" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="w-5 h-5" />
-                  SerpAPI Google Shopping 테스트
-                </CardTitle>
-                <CardDescription>
-                  Google Shopping API를 통해 머천트 사이트의 상품과 이미지를 검색합니다. (무료 플랜: 월 250회)
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={serpMerchant} onValueChange={setSerpMerchant}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="머천트 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="wconcept">W Concept</SelectItem>
-                      <SelectItem value="hfashion">H Fashion</SelectItem>
-                      <SelectItem value="musinsa">Musinsa</SelectItem>
-                      <SelectItem value="posty">Posty</SelectItem>
-                      <SelectItem value="jestina">J.Estina</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    placeholder="검색어 (예: 여성 상의 캐주얼)"
-                    value={serpQuery}
-                    onChange={(e) => setSerpQuery(e.target.value)}
-                    className="flex-1"
-                    onKeyDown={(e) => e.key === 'Enter' && testSerpAPI()}
-                  />
-                  <Button onClick={testSerpAPI} disabled={isSerpSearching}>
-                    {isSerpSearching ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4" />
-                    )}
-                    검색
-                  </Button>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={serpFilterByDomain}
-                      onChange={(e) => setSerpFilterByDomain(e.target.checked)}
-                      className="rounded"
-                    />
-                    머천트 필터
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={serpSaveToCache}
-                      onChange={(e) => setSerpSaveToCache(e.target.checked)}
-                      className="rounded"
-                    />
-                    캐시에 저장
-                  </label>
-                </div>
-
-                {/* Sample Queries */}
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium mb-2">테스트 검색어 예시:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {["여성 상의", "캐주얼 원피스", "남성 아우터", "스니커즈", "미니멀 백"].map((q) => (
-                      <button 
-                        key={q}
-                        onClick={() => setSerpQuery(q)}
-                        className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Result */}
-                {serpResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    serpResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                  }`}>
-                    {serpResult.success ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span className="font-medium">검색 성공</span>
-                          <Badge variant="secondary">{serpResult.count}개 상품</Badge>
-                          {serpResult.filteredCount !== undefined && serpResult.filteredCount > 0 && (
-                            <Badge variant="outline">{serpResult.filteredCount}개 제외됨</Badge>
-                          )}
-                          {serpResult.savedCount !== undefined && serpResult.savedCount > 0 && (
-                            <Badge variant="default">{serpResult.savedCount}개 저장됨</Badge>
-                          )}
-                          <Badge variant="outline">{serpResult.responseTime}ms</Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          <span>검색 쿼리: </span>
-                          <code className="bg-muted px-1 rounded">{serpResult.query}</code>
-                        </div>
-                        
-                        {/* Product Grid */}
-                        {serpResult.products && serpResult.products.length > 0 && (
-                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-4">
-                            {serpResult.products.map((product, idx) => (
-                              <div key={idx} className="border rounded-lg overflow-hidden bg-card">
-                                <div className="aspect-square bg-muted relative">
-                                  {product.thumbnail ? (
-                                    <img 
-                                      src={product.thumbnail} 
-                                      alt={product.title}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = '/placeholder.svg';
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                      <Package className="w-8 h-8 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                  <Badge className="absolute top-1 right-1 text-xs" variant="secondary">
-                                    {idx + 1}
-                                  </Badge>
-                                </div>
-                                <div className="p-2">
-                                  <p className="text-xs font-medium line-clamp-2 mb-1">{product.title}</p>
-                                  <p className="text-sm font-bold text-primary">
-                                    {product.price ? `₩${product.price.toLocaleString()}` : product.priceText || '-'}
-                                  </p>
-                                  <a 
-                                    href={product.link} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                    상품 보기
-                                  </a>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">검색 실패: {serpResult.error}</span>
-                        </div>
-                        {serpResult.details && (
-                          <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-32">
-                            {serpResult.details}
-                          </pre>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
 
           {/* Style V1 Test Tab */}
           <TabsContent value="style-v1" className="space-y-4">
