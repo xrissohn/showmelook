@@ -834,7 +834,7 @@ const StyleGenerator = () => {
                                 setSelectedTrend(trend);
                               }}
                               disabled={isCustomSearching}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent/10 hover:bg-accent/20 rounded-full text-xs font-korean transition-colors disabled:opacity-50 border border-accent/30"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
                             >
                               <span>{trendEmojis[trend.name] || '🎨'}</span>
                               <span>{trend.name_ko}</span>
