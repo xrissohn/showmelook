@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.style-recommend]
 verify_jwt = false
+
+[functions.brightdata-collect]
+verify_jwt = false
