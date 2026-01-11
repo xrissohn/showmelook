@@ -288,23 +288,17 @@ const Landing = () => {
         <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           <button 
             onClick={() => navigate('/')} 
-            className={`flex items-center gap-0 hover:opacity-80 transition-all duration-300 ${
-              isScrolled ? 'scale-90' : 'scale-100'
-            }`}
+            className="flex items-center gap-0 hover:opacity-80 transition-all duration-300"
           >
             <img 
               src={showmelookLogo} 
               alt="쇼미룩 로고" 
-              className={`object-contain transition-all duration-300 ${
-                isScrolled ? 'w-7 h-7 sm:w-8 sm:h-8' : 'w-8 h-8 sm:w-10 sm:h-10'
-              }`} 
+              className="object-contain w-8 h-8 sm:w-10 sm:h-10" 
             />
             <img 
               src={showmelookKoreanLogo} 
               alt="쇼미룩" 
-              className={`object-contain -ml-2 sm:-ml-3 transition-all duration-300 ${
-                isScrolled ? 'h-[50px] sm:h-[70px]' : 'h-[60px] sm:h-[90px]'
-              }`} 
+              className="object-contain -ml-2 sm:-ml-3 h-[60px] sm:h-[90px]" 
             />
           </button>
           <div className="flex items-center gap-1.5 sm:gap-3">
