@@ -333,38 +333,48 @@ ${JSON.stringify(productContext, null, 2)}
 - ${gender}에 맞는 스타일링 필수`;
 
       try {
-        const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        // GPT-5 사용 (Lovable AI) - 스타일 추론/RAG용, 더 강력한 추론 능력
+        console.log('[style-recommend] Using GPT-5 for style reasoning...');
+        
+        const gptResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'openai/gpt-5',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
             ],
-            temperature: 0.7,
           }),
         });
 
         geminiCalls++;
 
-        if (geminiResponse.ok) {
-          const geminiData = await geminiResponse.json();
-          const content = geminiData.choices?.[0]?.message?.content || '';
+        if (gptResponse.ok) {
+          const gptData = await gptResponse.json();
+          const content = gptData.choices?.[0]?.message?.content || '';
           
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
-            console.log(`[style-recommend] AI selected ${ragResponse.selectedProductIds.length} products`);
+            console.log(`[style-recommend] GPT-5 selected ${ragResponse.selectedProductIds.length} products`);
           }
         } else {
-          console.error('[style-recommend] Gemini API error:', await geminiResponse.text());
+          const errorText = await gptResponse.text();
+          console.error('[style-recommend] GPT-5 API error:', gptResponse.status, errorText);
+          
+          // 429/402 에러 특별 처리
+          if (gptResponse.status === 429) {
+            console.warn('[style-recommend] Rate limit hit, will use fallback');
+          } else if (gptResponse.status === 402) {
+            console.warn('[style-recommend] Payment required, will use fallback');
+          }
         }
       } catch (e) {
-        console.error('[style-recommend] Gemini parsing error:', e);
+        console.error('[style-recommend] GPT-5 parsing error:', e);
       }
     }
 
