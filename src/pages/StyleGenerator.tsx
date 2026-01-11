@@ -263,6 +263,20 @@ const StyleGenerator = () => {
           body_type: profileData.body_type || '',
           style_preferences: profileData.style_preferences || [],
         });
+        
+        // 프로필의 성별 정보로 초기 성별 설정
+        if (profileData.gender) {
+          const genderMap: Record<string, 'female' | 'male' | 'kids'> = {
+            'female': 'female',
+            'male': 'male',
+            '여성': 'female',
+            '남성': 'male',
+            'kids': 'kids',
+            '키즈': 'kids',
+          };
+          const mappedGender = genderMap[profileData.gender.toLowerCase()] || 'female';
+          setCustomGender(mappedGender);
+        }
       }
     }
   };
