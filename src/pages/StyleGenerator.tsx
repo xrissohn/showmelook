@@ -797,19 +797,19 @@ const StyleGenerator = () => {
                         disabled={isCustomSearching}
                       />
                       
-                      {/* 추천 검색어 */}
+                      {/* 추천 키워드 (기존 + 트렌드 통합) */}
                       <div className="flex flex-wrap gap-1.5">
                         {[
-                          { emoji: '☕', text: '편안한 카페 데이트룩' },
-                          { emoji: '💼', text: '캐주얼 오피스룩' },
-                          { emoji: '🌸', text: '봄나들이 페미닌 코디' },
-                          { emoji: '🖤', text: '모던 시크 룩' },
-                          { emoji: '🏃', text: '스포티 캐주얼' },
-                          { emoji: '✨', text: '파티 글램 룩' },
+                          { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디' },
+                          { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼' },
+                          { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일' },
+                          { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일' },
+                          { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩' },
+                          { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일' },
                         ].map((example) => (
                           <button
                             key={example.text}
-                            onClick={() => setCustomStylePrompt(example.text)}
+                            onClick={() => setCustomStylePrompt(`${example.text} - ${example.desc}`)}
                             disabled={isCustomSearching}
                             className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
                           >
@@ -817,31 +817,30 @@ const StyleGenerator = () => {
                             <span>{example.text}</span>
                           </button>
                         ))}
-                      </div>
-                    </div>
-                    
-                    {/* 추천 트렌드 키워드 */}
-                    <div className="space-y-2 pt-2 border-t border-border/50">
-                      <Label className="font-korean text-sm text-muted-foreground">추천 트렌드</Label>
-                      <div className="flex flex-wrap gap-2">
-                        {trends.map((trend) => (
-                          <button
-                            key={trend.id}
-                            onClick={() => {
-                              const newPrompt = `${trend.name_ko} - ${trend.description || ''}`;
-                              setCustomStylePrompt(newPrompt);
-                              setSelectedTrend(trend);
-                            }}
-                            disabled={isCustomSearching}
-                            className={`px-3 py-2 rounded-xl border-2 transition-all font-korean text-sm ${
-                              selectedTrend?.id === trend.id
-                                ? 'border-accent bg-accent/10 text-accent-foreground'
-                                : 'border-border hover:border-accent/50 bg-background hover:bg-secondary/50'
-                            }`}
-                          >
-                            <span className="font-medium">{trend.name_ko}</span>
-                          </button>
-                        ))}
+                        {/* 트렌드 키워드 */}
+                        {trends.map((trend) => {
+                          const trendEmojis: Record<string, string> = {
+                            'Minimalist': '🤍',
+                            'Street Style': '🔥',
+                            'Classic Elegance': '👔',
+                            'Athleisure': '⚡',
+                            'Bohemian': '🌺',
+                          };
+                          return (
+                            <button
+                              key={trend.id}
+                              onClick={() => {
+                                setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
+                                setSelectedTrend(trend);
+                              }}
+                              disabled={isCustomSearching}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-accent/10 hover:bg-accent/20 rounded-full text-xs font-korean transition-colors disabled:opacity-50 border border-accent/30"
+                            >
+                              <span>{trendEmojis[trend.name] || '🎨'}</span>
+                              <span>{trend.name_ko}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
