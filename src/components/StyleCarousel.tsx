@@ -167,6 +167,8 @@ const StyleCarousel = () => {
     setIsDragging(false);
     if (containerRef.current) {
       containerRef.current.style.cursor = 'grab';
+      // 현재 스크롤 위치를 저장하여 그 자리에서 자연스럽게 이어서 스크롤
+      scrollPositionRef.current = containerRef.current.scrollLeft;
     }
   };
 
