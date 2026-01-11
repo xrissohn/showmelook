@@ -1654,47 +1654,6 @@ const StyleGenerator = () => {
                         </div>
                       </div>
 
-                      {/* 액션 버튼들 */}
-                      <div className="flex flex-col gap-3">
-                        <div className="flex gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setCustomResult(null);
-                              setCustomStylePrompt('');
-                            }}
-                            className="flex-1 font-korean gap-2 rounded-xl h-12"
-                          >
-                            <Sparkles className="w-4 h-4" />
-                            다른 스타일
-                          </Button>
-                          {selectedTrendProducts.length > 0 && (
-                            <Button
-                              variant="outline"
-                              onClick={addAllToCart}
-                              className="flex-1 font-korean gap-2 rounded-xl h-12"
-                            >
-                              <ShoppingBag className="w-4 h-4" />
-                              장바구니 담기
-                            </Button>
-                          )}
-                        </div>
-                        {selectedTrendProducts.length > 0 && (
-                          <Button
-                            variant="hero"
-                            onClick={() => {
-                              // 선택된 모든 아이템 구매 페이지 열기
-                              selectedTrendProducts.forEach((product, index) => {
-                                setTimeout(() => handlePurchase(product), index * 300);
-                              });
-                            }}
-                            className="w-full font-korean gap-2 rounded-xl h-12"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            전체 구매하기
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   )}
                 </div>
