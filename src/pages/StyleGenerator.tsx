@@ -153,6 +153,16 @@ const StyleGenerator = () => {
   const [alternativeProducts, setAlternativeProducts] = useState<CachedProduct[]>([]);
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
 
+  // 동적 트렌드 키워드 상태
+  const [trendKeywords, setTrendKeywords] = useState<{ emoji: string; text: string; desc: string }[]>([
+    { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디' },
+    { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼' },
+    { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일' },
+    { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일' },
+    { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩' },
+    { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일' },
+  ]);
+  const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
   // Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     loop: false, 
@@ -518,6 +528,9 @@ const StyleGenerator = () => {
     
     if (trendsData) setTrends(trendsData);
 
+    // Fetch dynamic trend keywords from AI analysis
+    fetchTrendKeywords();
+
     // Fetch products
     const { data: productsData } = await supabase
       .from('products')
@@ -589,6 +602,30 @@ const StyleGenerator = () => {
           setCustomGender(mappedGender);
         }
       }
+    }
+  };
+
+  // 트렌드 키워드 AI 분석 불러오기
+  const fetchTrendKeywords = async () => {
+    setIsLoadingKeywords(true);
+    try {
+      const response = await supabase.functions.invoke('analyze-trends');
+      
+      if (response.error) {
+        console.error('Trend keywords fetch error:', response.error);
+        return;
+      }
+
+      const data = response.data;
+      if (data?.keywords && Array.isArray(data.keywords) && data.keywords.length > 0) {
+        setTrendKeywords(data.keywords);
+        console.log('Loaded', data.keywords.length, 'trend keywords from AI analysis');
+      }
+    } catch (error) {
+      console.error('Error fetching trend keywords:', error);
+      // 에러 시 기본 키워드 유지
+    } finally {
+      setIsLoadingKeywords(false);
     }
   };
 
@@ -1127,50 +1164,52 @@ const StyleGenerator = () => {
                         disabled={isCustomSearching}
                       />
                       
-                      {/* 추천 키워드 (기존 + 트렌드 통합) */}
+                      {/* AI 분석 기반 추천 키워드 */}
                       <div className="flex flex-wrap gap-1.5">
-                        {[
-                          { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디' },
-                          { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼' },
-                          { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일' },
-                          { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일' },
-                          { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩' },
-                          { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일' },
-                        ].map((example) => (
-                          <button
-                            key={example.text}
-                            onClick={() => setCustomStylePrompt(`${example.text} - ${example.desc}`)}
-                            disabled={isCustomSearching}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
-                          >
-                            <span>{example.emoji}</span>
-                            <span>{example.text}</span>
-                          </button>
-                        ))}
-                        {/* 트렌드 키워드 */}
-                        {trends.map((trend) => {
-                          const trendEmojis: Record<string, string> = {
-                            'Minimalist': '🤍',
-                            'Street Style': '🔥',
-                            'Classic Elegance': '👔',
-                            'Athleisure': '⚡',
-                            'Bohemian': '🌺',
-                          };
-                          return (
-                            <button
-                              key={trend.id}
-                              onClick={() => {
-                                setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
-                                setSelectedTrend(trend);
-                              }}
-                              disabled={isCustomSearching}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
-                            >
-                              <span>{trendEmojis[trend.name] || '🎨'}</span>
-                              <span>{trend.name_ko}</span>
-                            </button>
-                          );
-                        })}
+                        {isLoadingKeywords ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            <span>인기 키워드 분석 중...</span>
+                          </div>
+                        ) : (
+                          <>
+                            {trendKeywords.map((keyword, index) => (
+                              <button
+                                key={`trend-${index}-${keyword.text}`}
+                                onClick={() => setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`)}
+                                disabled={isCustomSearching}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                              >
+                                <span>{keyword.emoji}</span>
+                                <span>{keyword.text}</span>
+                              </button>
+                            ))}
+                            {/* DB 트렌드 키워드 */}
+                            {trends.map((trend) => {
+                              const trendEmojis: Record<string, string> = {
+                                'Minimalist': '🤍',
+                                'Street Style': '🔥',
+                                'Classic Elegance': '👔',
+                                'Athleisure': '⚡',
+                                'Bohemian': '🌺',
+                              };
+                              return (
+                                <button
+                                  key={trend.id}
+                                  onClick={() => {
+                                    setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
+                                    setSelectedTrend(trend);
+                                  }}
+                                  disabled={isCustomSearching}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                                >
+                                  <span>{trendEmojis[trend.name] || '🎨'}</span>
+                                  <span>{trend.name_ko}</span>
+                                </button>
+                              );
+                            })}
+                          </>
+                        )}
                       </div>
                     </div>
 
