@@ -282,10 +282,11 @@ const Landing = () => {
       {/* Navigation with scroll effect */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         isScrolled 
-          ? 'bg-background/95 backdrop-blur-lg border-b border-border shadow-lg py-1 sm:py-2' 
-          : 'bg-background/60 backdrop-blur-md border-b border-transparent py-0'
+          ? 'bg-background/95 backdrop-blur-lg border-b border-border shadow-lg' 
+          : 'bg-background/60 backdrop-blur-md border-b border-transparent'
       }`}>
-        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+        <div className="container mx-auto px-3 sm:px-6 h-12 sm:h-16 flex items-center justify-between">
+          {/* Logo - 모바일에서 더 컴팩트하게 */}
           <button 
             onClick={() => navigate('/')} 
             className="flex items-center gap-0 hover:opacity-80 transition-all duration-300"
@@ -293,15 +294,18 @@ const Landing = () => {
             <img 
               src={showmelookLogo} 
               alt="쇼미룩 로고" 
-              className="object-contain w-8 h-8 sm:w-10 sm:h-10" 
+              className="object-contain w-7 h-7 sm:w-10 sm:h-10" 
             />
             <img 
               src={showmelookKoreanLogo} 
               alt="쇼미룩" 
-              className="object-contain -ml-2 sm:-ml-3 h-[60px] sm:h-[90px]" 
+              className="object-contain -ml-1.5 sm:-ml-3 h-[50px] sm:h-[90px]" 
             />
           </button>
-          <div className="flex items-center gap-1.5 sm:gap-3">
+          
+          {/* 네비게이션 버튼들 */}
+          <div className="flex items-center gap-1 sm:gap-3">
+            {/* 앱 설치 - 데스크탑 */}
             <Button 
               variant="ghost" 
               size="sm" 
@@ -311,43 +315,56 @@ const Landing = () => {
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
               앱 설치
             </Button>
+            
+            {/* 앱 설치 - 모바일 아이콘 */}
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => navigate('/install')} 
-              className="sm:hidden w-8 h-8"
+              className="sm:hidden w-8 h-8 rounded-full"
             >
               <Download className="w-4 h-4" />
             </Button>
+            
             {user ? (
               <Button 
                 variant="hero" 
                 size="sm"
                 onClick={() => navigate('/style')}
-                className={`transition-all duration-300 font-korean text-xs sm:text-sm px-3 sm:px-4 ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                className="font-korean text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-9 rounded-full shadow-md"
               >
-                <Sparkles className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 transition-opacity ${isScrolled ? 'opacity-100 animate-twinkle' : 'opacity-0'}`} />
-                <span className="hidden xs:inline">내 스타일 만들기</span>
-                <span className="xs:hidden">시작</span>
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                <span className="hidden sm:inline">내 스타일 만들기</span>
+                <span className="sm:hidden">시작</span>
               </Button>
             ) : (
               <>
-                <Button variant="ghost" size="sm" onClick={() => navigate('/auth')} className="font-korean text-xs sm:text-sm px-2 sm:px-4">
+                {/* 로그인 버튼 - 모바일에서 더 컴팩트 */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/auth')} 
+                  className="font-korean text-xs sm:text-sm px-2 sm:px-4 h-8 sm:h-9"
+                >
                   로그인
                 </Button>
+                
+                {/* 시작하기 버튼 - 모바일 최적화 */}
                 <Button 
                   variant="hero" 
                   size="sm"
                   onClick={() => navigate('/auth')}
-                  className={`transition-all duration-300 font-korean text-xs sm:text-sm px-3 sm:px-4 ${isScrolled ? 'scale-95' : 'scale-100'}`}
+                  className="font-korean text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-9 rounded-full shadow-md"
                 >
-                  {isScrolled && <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 animate-twinkle" />}
-                  시작하기
+                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                  <span className="hidden sm:inline">시작하기</span>
+                  <span className="sm:hidden">시작</span>
                 </Button>
               </>
             )}
           </div>
         </div>
+        
         {/* Animated gradient line at bottom of nav when scrolled */}
         <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-brand transition-opacity duration-300 ${
           isScrolled ? 'opacity-100' : 'opacity-0'
