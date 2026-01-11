@@ -66,6 +66,7 @@ const StyleCarousel = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | null>(null);
   const scrollPositionRef = useRef(0);
+  const isDraggingRef = useRef(false);
 
   // Gender states for flip animation
   const [cardGenders, setCardGenders] = useState<boolean[]>(
@@ -80,7 +81,13 @@ const StyleCarousel = () => {
 
   // Auto-scroll animation
   const animate = useCallback(() => {
-    if (!containerRef.current || isDragging) {
+    if (!containerRef.current) {
+      animationRef.current = requestAnimationFrame(animate);
+      return;
+    }
+
+    // isDragging 중에는 스크롤 위치만 동기화하고 자동 스크롤은 하지 않음
+    if (isDraggingRef.current) {
       animationRef.current = requestAnimationFrame(animate);
       return;
     }
@@ -93,17 +100,26 @@ const StyleCarousel = () => {
     if (scrollPositionRef.current >= singleSetWidth * 2) {
       scrollPositionRef.current = singleSetWidth;
     }
+    if (scrollPositionRef.current < singleSetWidth) {
+      scrollPositionRef.current = singleSetWidth * 2 - (singleSetWidth - scrollPositionRef.current);
+    }
 
     container.scrollLeft = scrollPositionRef.current;
     animationRef.current = requestAnimationFrame(animate);
-  }, [isDragging]);
+  }, []);
 
+  // 초기화는 한 번만 실행
+  const isInitializedRef = useRef(false);
+  
   useEffect(() => {
+    if (isInitializedRef.current) return;
+    
     // Initialize scroll position to middle set
     if (containerRef.current) {
       const singleSetWidth = containerRef.current.scrollWidth / 3;
       scrollPositionRef.current = singleSetWidth;
       containerRef.current.scrollLeft = singleSetWidth;
+      isInitializedRef.current = true;
     }
 
     animationRef.current = requestAnimationFrame(animate);
@@ -149,13 +165,14 @@ const StyleCarousel = () => {
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
     setIsDragging(true);
+    isDraggingRef.current = true;
     setStartX(e.pageX - containerRef.current.offsetLeft);
     setScrollLeft(containerRef.current.scrollLeft);
     containerRef.current.style.cursor = 'grabbing';
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !containerRef.current) return;
+    if (!isDraggingRef.current || !containerRef.current) return;
     e.preventDefault();
     const x = e.pageX - containerRef.current.offsetLeft;
     const walk = (x - startX) * 1.5;
@@ -165,6 +182,7 @@ const StyleCarousel = () => {
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    isDraggingRef.current = false;
     if (containerRef.current) {
       containerRef.current.style.cursor = 'grab';
       // 현재 스크롤 위치를 저장하여 그 자리에서 자연스럽게 이어서 스크롤
@@ -174,8 +192,10 @@ const StyleCarousel = () => {
 
   const handleMouseLeave = () => {
     setIsDragging(false);
+    isDraggingRef.current = false;
     if (containerRef.current) {
       containerRef.current.style.cursor = 'grab';
+      scrollPositionRef.current = containerRef.current.scrollLeft;
     }
   };
 
