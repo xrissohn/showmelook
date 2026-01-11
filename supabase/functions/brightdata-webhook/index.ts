@@ -36,19 +36,24 @@ interface BrightDataProduct {
   [key: string]: unknown;
 }
 
-// DB 저장용 형식
+// DB 저장용 형식 (products_cache 테이블에 맞춤)
 interface ProductForDB {
   external_id: string;
   merchant_id: string;
   product_url: string;
   name: string;
   price: number;
-  currency: string;
+  original_price?: number;
   image_url: string | null;
   category: string;
+  sub_category?: string;
   style_tags: string[];
-  is_available: boolean;
-  raw_data: Record<string, unknown>;
+  brand?: string;
+  sizes?: Record<string, unknown>;
+  gender?: string;
+  color?: string;
+  is_in_stock: boolean;
+  is_active: boolean;
 }
 
 // 머천트 ID 추출
@@ -197,13 +202,43 @@ function transformProduct(product: BrightDataProduct): ProductForDB | null {
   const styleTags = extractStyleTags(name, category);
   
   // 재고 상태 확인
-  let isAvailable = true;
+  let isInStock = true;
   if (product.availability) {
     const avail = product.availability.toLowerCase();
-    isAvailable = !avail.includes('out') && !avail.includes('품절') && !avail.includes('sold');
+    isInStock = !avail.includes('out') && !avail.includes('품절') && !avail.includes('sold');
   }
   if (product.in_stock !== undefined) {
-    isAvailable = product.in_stock;
+    isInStock = product.in_stock;
+  }
+  
+  // 원가 추출
+  let originalPrice: number | undefined;
+  if (product.original_price?.value) {
+    originalPrice = Math.round(product.original_price.value);
+  }
+  
+  // 카테고리 분리 (예: "남성의류 > 니트/스웨터")
+  let mainCategory = category;
+  let subCategory: string | undefined;
+  if (category.includes('>')) {
+    const parts = category.split('>').map(s => s.trim());
+    mainCategory = parts[0];
+    subCategory = parts[1];
+  }
+  
+  // 성별 추출
+  const gender = product.gender as string | undefined;
+  
+  // 색상 추출 (첫 번째 색상)
+  let color: string | undefined;
+  if (product.colors && product.colors.length > 0) {
+    color = product.colors[0];
+  }
+  
+  // 사이즈 정보
+  let sizes: Record<string, unknown> | undefined;
+  if (product.sizes && product.sizes.length > 0) {
+    sizes = { available: product.sizes };
   }
   
   return {
@@ -212,12 +247,17 @@ function transformProduct(product: BrightDataProduct): ProductForDB | null {
     product_url: url,
     name: name.slice(0, 500),
     price,
-    currency: product.currency || 'KRW',
+    original_price: originalPrice,
     image_url: extractImageUrl(product),
-    category,
+    category: mainCategory,
+    sub_category: subCategory,
     style_tags: styleTags,
-    is_available: isAvailable,
-    raw_data: product as Record<string, unknown>,
+    brand: product.brand,
+    sizes,
+    gender,
+    color,
+    is_in_stock: isInStock,
+    is_active: true,
   };
 }
 
