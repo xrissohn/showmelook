@@ -19,7 +19,13 @@ export type Database = {
           created_at: string
           generated_look_id: string | null
           id: string
+          product_brand: string | null
           product_id: string
+          product_image_url: string | null
+          product_name: string | null
+          product_price: number | null
+          product_source: string | null
+          product_url: string | null
           quantity: number
           user_id: string
         }
@@ -27,7 +33,13 @@ export type Database = {
           created_at?: string
           generated_look_id?: string | null
           id?: string
+          product_brand?: string | null
           product_id: string
+          product_image_url?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_source?: string | null
+          product_url?: string | null
           quantity?: number
           user_id: string
         }
@@ -35,7 +47,13 @@ export type Database = {
           created_at?: string
           generated_look_id?: string | null
           id?: string
+          product_brand?: string | null
           product_id?: string
+          product_image_url?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_source?: string | null
+          product_url?: string | null
           quantity?: number
           user_id?: string
         }
@@ -45,13 +63,6 @@ export type Database = {
             columns: ["generated_look_id"]
             isOneToOne: false
             referencedRelation: "generated_looks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]

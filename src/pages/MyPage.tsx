@@ -183,6 +183,14 @@ const MyPage = () => {
         user_id: user.id,
         product_id: product.product_id,
         quantity: 1,
+        product_source: 'cache',
+        product_name: product.product_name,
+        product_brand: product.product_brand,
+        product_price: product.product_price,
+        product_image_url: product.product_image_url,
+        product_url: product.product_url,
+      }, {
+        onConflict: 'user_id,product_id'
       });
 
       if (error) throw error;

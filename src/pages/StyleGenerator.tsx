@@ -257,6 +257,14 @@ const StyleGenerator = () => {
         user_id: user.id,
         product_id: product.id,
         quantity: 1,
+        product_source: 'cache',
+        product_name: product.name,
+        product_brand: product.brand,
+        product_price: product.price,
+        product_image_url: product.image_url,
+        product_url: product.product_url,
+      }, {
+        onConflict: 'user_id,product_id'
       });
 
       if (error) throw error;
@@ -291,6 +299,14 @@ const StyleGenerator = () => {
           user_id: user.id,
           product_id: product.id,
           quantity: 1,
+          product_source: 'cache',
+          product_name: product.name,
+          product_brand: product.brand,
+          product_price: product.price,
+          product_image_url: product.image_url,
+          product_url: product.product_url,
+        }, {
+          onConflict: 'user_id,product_id'
         })
       );
 
