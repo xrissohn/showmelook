@@ -959,105 +959,185 @@ const StyleGenerator = () => {
 
                   {/* 주관식 추천 결과 */}
                   {customResult && (
-                    <div className="space-y-4 animate-in fade-in-50 duration-500">
-                      {/* 스타일 컨셉 */}
-                      <div className="p-4 rounded-xl bg-gradient-to-br from-accent/5 to-accent/10 border border-accent/20">
-                        <h3 className="font-korean text-lg font-medium text-foreground mb-2">
-                          🎨 {customResult.styleConcept}
-                        </h3>
-                        <p className="text-sm text-muted-foreground font-korean">{customResult.styleReasoning}</p>
-                      </div>
-
-                      {/* 추천 아이템 그리드 */}
-                      <div className="grid grid-cols-2 gap-3">
-                        {customResult.items.map((product) => (
-                          <div
-                            key={product.id}
-                            className={`p-3 rounded-xl border-2 transition-all ${
-                              selectedTrendProducts.find(p => p.id === product.id)
-                                ? 'border-accent bg-accent/5'
-                                : 'border-border'
-                            }`}
-                          >
-                            <div className="aspect-square bg-secondary rounded-lg mb-2 overflow-hidden">
-                              {product.image_url ? (
-                                <img 
-                                  src={product.image_url} 
-                                  alt={product.name}
-                                  className="w-full h-full object-cover"
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <ShoppingBag className="w-6 h-6 text-muted-foreground/50" />
-                                </div>
-                              )}
+                    <div className="space-y-5 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
+                      {/* 스타일 컨셉 헤더 */}
+                      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent/10 via-accent/5 to-transparent border border-accent/20 p-5">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-accent/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                        <div className="relative">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
+                              <Sparkles className="w-4 h-4 text-accent" />
                             </div>
-                            <p className="text-xs text-muted-foreground font-korean mb-0.5">{product.category}</p>
-                            <p className="font-medium text-foreground text-sm truncate font-korean">{product.name}</p>
-                            {product.brand && (
-                              <p className="text-xs text-accent truncate">{product.brand}</p>
-                            )}
-                            <p className="text-sm font-bold text-foreground mt-1">
-                              ₩{product.price.toLocaleString()}
-                            </p>
-                            <div className="flex gap-1 mt-2">
-                              <button
-                                onClick={() => toggleTrendProduct(product)}
-                                className={`flex-1 text-xs py-1.5 px-2 rounded-lg transition-colors font-korean ${
-                                  selectedTrendProducts.find(p => p.id === product.id)
-                                    ? 'bg-accent text-white'
-                                    : 'bg-secondary text-foreground hover:bg-accent/20'
-                                }`}
-                              >
-                                {selectedTrendProducts.find(p => p.id === product.id) ? (
-                                  <>
-                                    <Check className="w-3 h-3 inline mr-1" />
-                                    선택됨
-                                  </>
-                                ) : (
-                                  <>
-                                    <Plus className="w-3 h-3 inline mr-1" />
-                                    선택
-                                  </>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => handlePurchase(product)}
-                                disabled={purchasingProductId === product.id}
-                                className="text-xs py-1.5 px-2 rounded-lg bg-secondary text-foreground hover:bg-accent/20 transition-colors font-korean disabled:opacity-50"
-                              >
-                                {purchasingProductId === product.id ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                ) : (
-                                  <ExternalLink className="w-3 h-3" />
-                                )}
-                              </button>
-                            </div>
+                            <span className="text-xs font-medium text-accent uppercase tracking-wider">AI 스타일 추천</span>
                           </div>
-                        ))}
+                          <h3 className="font-display text-xl font-semibold text-foreground mb-3 leading-tight">
+                            {customResult.styleConcept}
+                          </h3>
+                          <p className="text-sm text-muted-foreground font-korean leading-relaxed">
+                            {customResult.styleReasoning}
+                          </p>
+                        </div>
                       </div>
 
-                      {/* 총 금액 */}
-                      <div className="p-3 rounded-xl bg-secondary/50 flex justify-between items-center">
-                        <span className="font-korean text-sm text-muted-foreground">총 예상 금액</span>
-                        <span className="font-korean font-bold text-lg text-accent">
-                          ₩{customResult.totalPrice.toLocaleString()}
-                        </span>
+                      {/* 추천 아이템 섹션 */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                          <h4 className="font-korean text-sm font-medium text-foreground flex items-center gap-2">
+                            <ShoppingBag className="w-4 h-4 text-accent" />
+                            추천 아이템
+                            <span className="text-xs text-muted-foreground">({customResult.items.length}개)</span>
+                          </h4>
+                        </div>
+
+                        {/* 추천 아이템 그리드 */}
+                        <div className="grid grid-cols-2 gap-3">
+                          {customResult.items.map((product, index) => (
+                            <div
+                              key={product.id}
+                              className={`group relative rounded-2xl border-2 transition-all duration-300 overflow-hidden hover:shadow-lg ${
+                                selectedTrendProducts.find(p => p.id === product.id)
+                                  ? 'border-accent bg-accent/5 shadow-md shadow-accent/10'
+                                  : 'border-border/50 bg-card hover:border-accent/50'
+                              }`}
+                              style={{ animationDelay: `${index * 100}ms` }}
+                            >
+                              {/* 이미지 영역 */}
+                              <div className="relative aspect-square bg-gradient-to-br from-secondary to-secondary/50 overflow-hidden">
+                                {product.image_url ? (
+                                  <img 
+                                    src={product.image_url} 
+                                    alt={product.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
+                                  </div>
+                                )}
+                                {/* 카테고리 배지 */}
+                                <div className="absolute top-2 left-2">
+                                  <span className="px-2 py-0.5 text-[10px] font-medium bg-background/80 backdrop-blur-sm rounded-full text-muted-foreground">
+                                    {product.category}
+                                  </span>
+                                </div>
+                                {/* 선택 체크 아이콘 */}
+                                {selectedTrendProducts.find(p => p.id === product.id) && (
+                                  <div className="absolute top-2 right-2">
+                                    <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center shadow-lg">
+                                      <Check className="w-3.5 h-3.5 text-white" />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* 정보 영역 */}
+                              <div className="p-3 space-y-2">
+                                {product.brand && (
+                                  <p className="text-[11px] font-medium text-accent uppercase tracking-wide truncate">
+                                    {product.brand}
+                                  </p>
+                                )}
+                                <p className="font-medium text-foreground text-sm leading-tight line-clamp-2 font-korean min-h-[2.5rem]">
+                                  {product.name}
+                                </p>
+                                <p className="text-base font-bold text-foreground">
+                                  ₩{product.price.toLocaleString()}
+                                </p>
+
+                                {/* 액션 버튼들 */}
+                                <div className="flex gap-2 pt-1">
+                                  <button
+                                    onClick={() => toggleTrendProduct(product)}
+                                    className={`flex-1 text-xs py-2 px-3 rounded-xl font-medium transition-all duration-200 font-korean flex items-center justify-center gap-1 ${
+                                      selectedTrendProducts.find(p => p.id === product.id)
+                                        ? 'bg-accent text-white shadow-md shadow-accent/30'
+                                        : 'bg-secondary hover:bg-accent/10 text-foreground'
+                                    }`}
+                                  >
+                                    {selectedTrendProducts.find(p => p.id === product.id) ? (
+                                      <>
+                                        <Check className="w-3.5 h-3.5" />
+                                        선택됨
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Plus className="w-3.5 h-3.5" />
+                                        선택
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => handlePurchase(product)}
+                                    disabled={purchasingProductId === product.id}
+                                    className="p-2 rounded-xl bg-secondary hover:bg-accent/10 text-foreground transition-all duration-200 disabled:opacity-50"
+                                    title="구매하기"
+                                  >
+                                    {purchasingProductId === product.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <ExternalLink className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
-                      {/* 더 추천받기 버튼 */}
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setCustomResult(null);
-                          setCustomStylePrompt('');
-                        }}
-                        className="w-full font-korean gap-2"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                        다른 스타일 추천받기
-                      </Button>
+                      {/* 총 금액 카드 */}
+                      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-secondary via-secondary/80 to-secondary p-4">
+                        <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent" />
+                        <div className="relative flex justify-between items-center">
+                          <div className="space-y-0.5">
+                            <span className="text-xs text-muted-foreground font-korean">선택한 아이템 총 금액</span>
+                            <p className="text-sm text-muted-foreground font-korean">
+                              {selectedTrendProducts.length}개 아이템
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-display font-bold text-2xl text-accent">
+                              ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                            </span>
+                            {customResult.totalPrice !== selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) && (
+                              <p className="text-xs text-muted-foreground font-korean line-through">
+                                전체: ₩{customResult.totalPrice.toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 액션 버튼들 */}
+                      <div className="flex gap-3">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCustomResult(null);
+                            setCustomStylePrompt('');
+                          }}
+                          className="flex-1 font-korean gap-2 rounded-xl h-12"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          다른 스타일
+                        </Button>
+                        {selectedTrendProducts.length > 0 && (
+                          <Button
+                            variant="hero"
+                            onClick={() => {
+                              // 선택된 모든 아이템 구매 페이지 열기
+                              selectedTrendProducts.forEach((product, index) => {
+                                setTimeout(() => handlePurchase(product), index * 300);
+                              });
+                            }}
+                            className="flex-1 font-korean gap-2 rounded-xl h-12"
+                          >
+                            <ShoppingBag className="w-4 h-4" />
+                            전체 구매하기
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
