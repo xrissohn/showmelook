@@ -959,30 +959,22 @@ The reference product images show the EXACT items that must appear on the model.
     const accessToken = await getGoogleAccessToken(serviceAccount);
     console.log('Access token obtained');
 
-    // Call Vertex AI for image generation with Lovable AI fallback
+    // Call image generation API
+    // Face composite with 3+ items uses Gemini 3.0 (better face preservation)
+    // Otherwise use Vertex AI with Lovable AI fallback
     let result;
     let usedFallback = false;
+    const useGemini3Direct = useFaceComposite && productImages.length >= 3;
     
-    try {
-      result = await generateImageWithVertexAI(
-        accessToken,
-        GOOGLE_CLOUD_PROJECT_ID,
-        prompt,
-        referenceImageUrl,
-        productImages
-      );
-      console.log('Image generated with Vertex AI');
-    } catch (vertexError) {
-      // Vertex AI 실패 시 (429 포함) Lovable AI로 폴백
-      const errorMessage = vertexError instanceof Error ? vertexError.message : String(vertexError);
-      console.warn('Vertex AI failed, falling back to Lovable AI:', errorMessage);
-      
+    if (useGemini3Direct) {
+      // 상품 3개 이상 + 얼굴 합성 시 Gemini 3.0 직접 사용
+      console.log(`Using Gemini 3.0 (nacho banana) directly for face composite with ${productImages.length} products`);
       try {
         result = await generateImageWithLovableAI(prompt, referenceImageUrl, productImageUrls);
         usedFallback = true;
-        console.log('Image generated with Lovable AI (fallback)');
+        console.log('Image generated with Gemini 3.0 (nacho banana)');
       } catch (lovableError) {
-        console.error('Lovable AI fallback also failed:', lovableError);
+        console.error('Gemini 3.0 failed:', lovableError);
         
         // Lovable AI 특수 에러 처리
         if (lovableError instanceof Error) {
@@ -999,8 +991,49 @@ The reference product images show the EXACT items that must appear on the model.
             );
           }
         }
+        throw lovableError;
+      }
+    } else {
+      // 일반 생성 또는 상품 2개 이하 얼굴 합성: Vertex AI 시도
+      try {
+        result = await generateImageWithVertexAI(
+          accessToken,
+          GOOGLE_CLOUD_PROJECT_ID,
+          prompt,
+          referenceImageUrl,
+          productImages
+        );
+        console.log('Image generated with Vertex AI');
+      } catch (vertexError) {
+        // Vertex AI 실패 시 (429 포함) Lovable AI로 폴백
+        const errorMessage = vertexError instanceof Error ? vertexError.message : String(vertexError);
+        console.warn('Vertex AI failed, falling back to Lovable AI:', errorMessage);
         
-        throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        try {
+          result = await generateImageWithLovableAI(prompt, referenceImageUrl, productImageUrls);
+          usedFallback = true;
+          console.log('Image generated with Lovable AI (fallback)');
+        } catch (lovableError) {
+          console.error('Lovable AI fallback also failed:', lovableError);
+          
+          // Lovable AI 특수 에러 처리
+          if (lovableError instanceof Error) {
+            if (lovableError.message === 'LOVABLE_RATE_LIMIT') {
+              return new Response(
+                JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
+                { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+            if (lovableError.message === 'LOVABLE_PAYMENT_REQUIRED') {
+              return new Response(
+                JSON.stringify({ error: '서비스 이용이 일시 중단되었습니다. 관리자에게 문의해주세요.' }),
+                { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          }
+          
+          throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        }
       }
     }
 
