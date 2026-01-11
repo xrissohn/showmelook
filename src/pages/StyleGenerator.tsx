@@ -182,7 +182,52 @@ const ProgressiveImage = ({
   );
 };
 
-// 메인 생성 이미지용 컴포넌트 (로고 워터마크 포함)
+// 파티클 컴포넌트
+const CelebrationParticles = ({ show }: { show: boolean }) => {
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; color: string; size: number; delay: number }>>([]);
+  
+  useEffect(() => {
+    if (show) {
+      const colors = ['#f472b6', '#a855f7', '#3b82f6', '#22c55e', '#eab308', '#ef4444'];
+      const newParticles = Array.from({ length: 40 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 8 + 4,
+        delay: Math.random() * 0.5,
+      }));
+      setParticles(newParticles);
+      
+      // 파티클 제거
+      const timer = setTimeout(() => setParticles([]), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [show]);
+
+  if (!show || particles.length === 0) return null;
+
+  return (
+    <div className="absolute inset-0 pointer-events-none z-30 overflow-hidden">
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className="absolute rounded-full animate-particle"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            width: particle.size,
+            height: particle.size,
+            backgroundColor: particle.color,
+            animationDelay: `${particle.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// 메인 생성 이미지용 컴포넌트 (로고 워터마크 + 퍼센트 로딩 + 파티클)
 const GeneratedStyleImage = ({ 
   src, 
   alt,
@@ -192,36 +237,138 @@ const GeneratedStyleImage = ({
   alt: string;
   logoSrc: string;
 }) => {
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+
+  useEffect(() => {
+    if (!src) return;
+    
+    setIsLoading(true);
+    setLoadingProgress(0);
+    setHasError(false);
+    setShowCelebration(false);
+    
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', src, true);
+    xhr.responseType = 'blob';
+    
+    xhr.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        setLoadingProgress(percent);
+      } else {
+        // 진행률을 알 수 없는 경우 시뮬레이션
+        setLoadingProgress((prev) => Math.min(prev + 5, 90));
+      }
+    };
+    
+    xhr.onload = () => {
+      if (xhr.status === 200) {
+        const blob = xhr.response;
+        const url = URL.createObjectURL(blob);
+        setImageUrl(url);
+        setLoadingProgress(100);
+        
+        // 이미지 완전 로드 후 파티클 효과
+        setTimeout(() => {
+          setIsLoading(false);
+          setShowCelebration(true);
+        }, 300);
+      } else {
+        setHasError(true);
+        setIsLoading(false);
+      }
+    };
+    
+    xhr.onerror = () => {
+      setHasError(true);
+      setIsLoading(false);
+    };
+    
+    xhr.send();
+    
+    return () => {
+      xhr.abort();
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
+    };
+  }, [src]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
+      {/* 축하 파티클 */}
+      <CelebrationParticles show={showCelebration} />
+      
       {/* 로딩 중 브랜드 표시 */}
       {isLoading && (
         <div className="absolute inset-0 bg-gradient-to-br from-secondary via-background to-muted overflow-hidden z-10 flex flex-col items-center justify-center">
           {/* 배경 패턴 */}
-          <div className="absolute inset-0 opacity-30">
+          <div className="absolute inset-0 opacity-20">
             <div className="absolute inset-0 animate-shimmer" />
           </div>
           
-          {/* 로고 애니메이션 */}
-          <div className="relative z-20 flex flex-col items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl bg-white/80 dark:bg-black/40 backdrop-blur-sm shadow-xl flex items-center justify-center animate-pulse">
-              <img 
-                src={logoSrc} 
-                alt="ShowMeLook" 
-                className="w-14 h-14 object-contain"
-              />
+          {/* 로고 및 진행률 */}
+          <div className="relative z-20 flex flex-col items-center gap-5">
+            {/* 로고 with 원형 프로그레스 */}
+            <div className="relative">
+              <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  className="text-muted"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="url(#progressGradient)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${2 * Math.PI * 45}`}
+                  strokeDashoffset={`${2 * Math.PI * 45 * (1 - loadingProgress / 100)}`}
+                  className="transition-all duration-300 ease-out"
+                />
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="hsl(10 85% 65%)" />
+                    <stop offset="50%" stopColor="hsl(280 70% 55%)" />
+                    <stop offset="100%" stopColor="hsl(200 85% 55%)" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-20 h-20 rounded-2xl bg-white/90 dark:bg-black/60 backdrop-blur-sm shadow-xl flex items-center justify-center">
+                  <img 
+                    src={logoSrc} 
+                    alt="ShowMeLook" 
+                    className="w-12 h-12 object-contain"
+                  />
+                </div>
+              </div>
             </div>
+            
+            {/* 퍼센트 표시 */}
             <div className="text-center">
-              <p className="text-sm font-semibold text-foreground/80 font-korean">이미지 로딩 중...</p>
-              <p className="text-xs text-muted-foreground mt-1">ShowMeLook</p>
+              <p className="text-3xl font-bold bg-gradient-to-r from-accent via-primary to-sky-500 bg-clip-text text-transparent">
+                {loadingProgress}%
+              </p>
+              <p className="text-sm text-muted-foreground mt-1 font-korean">스타일 이미지 로딩 중...</p>
             </div>
-            {/* 로딩 바 */}
-            <div className="w-32 h-1 bg-muted rounded-full overflow-hidden mt-2">
-              <div className="h-full bg-gradient-to-r from-accent via-primary to-accent animate-gradient rounded-full" 
-                style={{ width: '60%', animation: 'shimmer 1.5s ease-in-out infinite' }} 
+            
+            {/* 하단 로딩 바 */}
+            <div className="w-48 h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-accent via-primary to-sky-500 rounded-full transition-all duration-300 ease-out"
+                style={{ width: `${loadingProgress}%` }}
               />
             </div>
           </div>
@@ -233,20 +380,15 @@ const GeneratedStyleImage = ({
           <ImageOff className="w-16 h-16 text-muted-foreground/30 mb-3" />
           <span className="text-sm text-muted-foreground font-korean">이미지를 불러올 수 없습니다</span>
         </div>
-      ) : (
+      ) : imageUrl && (
         <img 
-          src={src} 
+          src={imageUrl} 
           alt={alt}
           className={`w-full h-full object-cover transition-all duration-1000 ease-out ${
             isLoading 
               ? 'blur-2xl scale-110 opacity-0' 
               : 'blur-0 scale-100 opacity-100'
           }`}
-          onLoad={() => setIsLoading(false)}
-          onError={() => {
-            setIsLoading(false);
-            setHasError(true);
-          }}
         />
       )}
     </div>
