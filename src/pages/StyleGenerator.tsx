@@ -84,15 +84,16 @@ const bodyTypes = [
   { id: 'curvy', label: '볼륨 체형' },
 ];
 
-// 이미지 스켈레톤 로딩 컴포넌트
-const ProductImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+// 이미지 스켈레톤 로딩 컴포넌트 with Progressive Loading (블러 -> 선명)
+const ProductImage = ({ src, alt, className, rounded }: { src: string; alt: string; className?: string; rounded?: string }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   return (
-    <div className="relative w-full h-full">
+    <div className={`relative w-full h-full overflow-hidden ${rounded || ''}`}>
+      {/* 스켈레톤 로딩 */}
       {isLoading && (
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted to-secondary overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted to-secondary overflow-hidden z-10">
           <div className="absolute inset-0 animate-shimmer" />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-muted-foreground/10 animate-pulse" />
@@ -112,7 +113,63 @@ const ProductImage = ({ src, alt, className }: { src: string; alt: string; class
         <img 
           src={src} 
           alt={alt}
-          className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100 animate-fade-in'} transition-opacity duration-500`}
+          className={`${className} transition-all duration-700 ease-out ${
+            isLoading 
+              ? 'blur-xl scale-110 opacity-0' 
+              : 'blur-0 scale-100 opacity-100'
+          }`}
+          loading="lazy"
+          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            setIsLoading(false);
+            setHasError(true);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// 프로필/갤러리용 이미지 컴포넌트 (원형 지원)
+const ProgressiveImage = ({ 
+  src, 
+  alt, 
+  className,
+  fallback
+}: { 
+  src: string; 
+  alt: string; 
+  className?: string;
+  fallback?: React.ReactNode;
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError && fallback) {
+    return <>{fallback}</>;
+  }
+
+  return (
+    <div className="relative w-full h-full">
+      {/* 스켈레톤 */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted to-secondary overflow-hidden z-10">
+          <div className="absolute inset-0 animate-shimmer" />
+        </div>
+      )}
+      {hasError ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
+          <ImageOff className="w-8 h-8 text-muted-foreground/30" />
+        </div>
+      ) : (
+        <img 
+          src={src} 
+          alt={alt}
+          className={`${className} transition-all duration-700 ease-out ${
+            isLoading 
+              ? 'blur-lg scale-105 opacity-0' 
+              : 'blur-0 scale-100 opacity-100'
+          }`}
           loading="lazy"
           onLoad={() => setIsLoading(false)}
           onError={() => {
@@ -2088,11 +2145,10 @@ const StyleGenerator = () => {
                     key={look.id}
                     className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group"
                   >
-                    <img
+                    <ProgressiveImage
                       src={look.image_url}
                       alt="Generated look"
                       className="w-full h-full object-cover"
-                      loading="lazy"
                     />
                     <div className="absolute inset-0 bg-gradient-overlay opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                       <p className="text-sm text-primary-foreground/80">
@@ -2115,11 +2171,15 @@ const StyleGenerator = () => {
               <div className="relative group">
                 <div className="w-32 h-32 rounded-full overflow-hidden bg-secondary border-4 border-accent/20">
                   {userProfile?.avatar_url ? (
-                    <img 
+                    <ProgressiveImage 
                       src={userProfile.avatar_url} 
                       alt="Profile" 
                       className="w-full h-full object-cover"
-                      loading="lazy"
+                      fallback={
+                        <div className="w-full h-full flex items-center justify-center bg-secondary">
+                          <User className="w-12 h-12 text-muted-foreground" />
+                        </div>
+                      }
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
