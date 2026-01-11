@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.web-unlocker]
 verify_jwt = false
+
+[functions.batch-collect]
+verify_jwt = false
