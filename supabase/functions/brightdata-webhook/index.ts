@@ -378,30 +378,52 @@ serve(async (req) => {
       });
     }
 
-    // DB에 Upsert (중복 제외)
-    const { data, error } = await supabase
-      .from('products_cache')
-      .upsert(
-        transformedProducts.map(p => ({
-          ...p,
-          updated_at: new Date().toISOString(),
-        })),
-        { 
-          onConflict: 'external_id,merchant_id',
-          ignoreDuplicates: false  // 기존 데이터 업데이트
+    // DB에 저장 (개별 upsert로 중복 처리)
+    let savedCount = 0;
+    let errorCount = 0;
+    
+    for (const p of transformedProducts) {
+      // 먼저 기존 상품 확인
+      const { data: existing } = await supabase
+        .from('products_cache')
+        .select('id')
+        .eq('external_id', p.external_id)
+        .eq('merchant_id', p.merchant_id)
+        .maybeSingle();
+      
+      if (existing) {
+        // 기존 상품 업데이트
+        const { error } = await supabase
+          .from('products_cache')
+          .update({
+            ...p,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existing.id);
+        
+        if (error) {
+          console.error('Update error:', error);
+          errorCount++;
+        } else {
+          savedCount++;
         }
-      )
-      .select('id, external_id, name');
-
-    if (error) {
-      console.error('DB upsert error:', error);
-      return new Response(JSON.stringify({ 
-        error: 'Database error', 
-        details: error.message 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      } else {
+        // 새 상품 삽입
+        const { error } = await supabase
+          .from('products_cache')
+          .insert({
+            ...p,
+            collected_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+        
+        if (error) {
+          console.error('Insert error:', error);
+          errorCount++;
+        } else {
+          savedCount++;
+        }
+      }
     }
 
     const result = {
@@ -409,7 +431,8 @@ serve(async (req) => {
       received: products.length,
       processed: transformedProducts.length,
       skipped,
-      saved: data?.length || 0,
+      saved: savedCount,
+      errors: errorCount,
       timestamp: new Date().toISOString(),
     };
 
