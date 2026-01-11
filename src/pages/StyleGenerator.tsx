@@ -439,7 +439,7 @@ const StyleGenerator = () => {
   // 주관식 스타일 입력 모드 상태
   const [inputMode, setInputMode] = useState<'trend' | 'custom'>('custom'); // 기본값을 custom으로 변경
   const [customStylePrompt, setCustomStylePrompt] = useState('');
-  const [customGender, setCustomGender] = useState<'female' | 'male' | 'kids'>('female');
+  const [customGender, setCustomGender] = useState<'female' | 'male' | 'unisex' | 'kids'>('female');
   const [customAge, setCustomAge] = useState<number | undefined>(undefined);
   const [customBudget, setCustomBudget] = useState([200000]);
   const [isCustomSearching, setIsCustomSearching] = useState(false);
@@ -758,9 +758,9 @@ const StyleGenerator = () => {
       const currentProduct = customResult?.items.find(item => item.id === currentProductId);
       const priorityCategory = mapToPriorityCategory(category);
       
-      // 성별 매핑
-      const genderKo = customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : null;
-      const genderEn = customGender === 'male' ? 'male' : customGender === 'female' ? 'female' : null;
+      // 성별 매핑 (유니섹스 지원)
+      const genderKo = customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender === 'unisex' ? '유니섹스' : null;
+      const genderEn = customGender === 'male' ? 'male' : customGender === 'female' ? 'female' : customGender === 'unisex' ? 'unisex' : null;
       
       console.log(`[Alternatives] Category: ${category} -> Priority: ${priorityCategory}, Gender: ${genderKo}/${genderEn}`);
       
@@ -792,11 +792,20 @@ const StyleGenerator = () => {
 
       if (error) throw error;
 
-      // 성별 필터링 (클라이언트 측)
+      // 성별 필터링 (클라이언트 측) - 반대 성별 명시적 제외
       let filteredData = (data || []).filter(item => {
         if (!genderKo && !genderEn) return true;
+        if (genderKo === '유니섹스' || genderEn === 'unisex') return true; // 유니섹스는 모든 상품 포함
         if (!item.gender) return true; // 성별 정보 없으면 포함
-        return item.gender === genderKo || item.gender === genderEn;
+        
+        // 반대 성별 명시적 제외
+        const oppositeGenderEn = genderEn === 'male' ? 'female' : 'male';
+        const oppositeGenderKo = genderKo === '남성' ? '여성' : '남성';
+        if (item.gender === oppositeGenderEn || item.gender === oppositeGenderKo) {
+          return false; // 반대 성별 제외
+        }
+        
+        return true;
       });
 
       let products: CachedProduct[] = filteredData.map(item => ({
@@ -1219,10 +1228,19 @@ const StyleGenerator = () => {
     setSelectedTrendProducts([]);
 
     try {
+      // 성별 매핑
+      const genderMapping: Record<string, string> = {
+        'female': '여성',
+        'male': '남성',
+        'unisex': '유니섹스',
+        'kids': '여성' // 키즈는 기본 여성으로 처리하고 age로 구분
+      };
+      const genderKo = genderMapping[customGender] || '여성';
+      
       const { data, error } = await supabase.functions.invoke('style-recommend', {
         body: {
           userRequest: customStylePrompt,
-          gender: customGender === 'kids' ? '여성' : (customGender === 'female' ? '여성' : '남성'),
+          gender: genderKo,
           budget: customBudget[0],
           forceRefresh: false,
           age: customGender === 'kids' ? (customAge || 10) : customAge
@@ -1272,7 +1290,7 @@ const StyleGenerator = () => {
             await supabase.from('recommendation_history').insert({
               user_id: user.id,
               prompt: customStylePrompt,
-              gender: customGender === 'kids' ? '키즈' : (customGender === 'female' ? '여성' : '남성'),
+              gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
               budget: customBudget[0],
               style_concept: data.look.name || '',
               style_reasoning: data.look.stylingTips || '',
@@ -1616,7 +1634,7 @@ const StyleGenerator = () => {
                         <RadioGroup
                           value={customGender}
                           onValueChange={(value) => {
-                            setCustomGender(value as 'female' | 'male' | 'kids');
+                            setCustomGender(value as 'female' | 'male' | 'unisex' | 'kids');
                             // 키즈 선택 시 기본 나이 설정
                             if (value === 'kids' && !customAge) {
                               setCustomAge(10);
@@ -1632,6 +1650,10 @@ const StyleGenerator = () => {
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="male" id="custom-male" />
                             <Label htmlFor="custom-male" className="cursor-pointer font-korean">남성</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="unisex" id="custom-unisex" />
+                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean">🌈 유니섹스</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="kids" id="custom-kids" />

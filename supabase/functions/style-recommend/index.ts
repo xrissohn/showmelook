@@ -178,23 +178,45 @@ serve(async (req) => {
       const categoryFilter = categoryVariants.map(v => `category.ilike.%${v}%`).join(',');
       query = query.or(categoryFilter);
       
-      // Gender filter
+      // Gender filter - 더 엄격한 성별 필터링
       if (isKids) {
         query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
+      } else if (gender === '유니섹스' || gender === 'unisex') {
+        // 유니섹스: 성별 무관하게 모든 상품 포함 (단, 반대 성별 전용 제외)
+        query = query.or(`gender.eq.unisex,gender.eq.유니섹스,gender.is.null`);
       } else {
+        // 남성 또는 여성: 해당 성별 + 유니섹스 + null만 허용
         const genderEn = gender === '남성' ? 'male' : 'female';
-        query = query.or(`gender.eq.${genderEn},gender.eq.${gender},gender.is.null`);
+        const genderKo = gender === '남성' ? '남성' : '여성';
+        const oppositeGenderEn = gender === '남성' ? 'female' : 'male';
+        const oppositeGenderKo = gender === '남성' ? '여성' : '남성';
+        
+        // 반대 성별 명시적 제외
+        query = query.or(`gender.eq.${genderEn},gender.eq.${genderKo},gender.eq.unisex,gender.eq.유니섹스,gender.is.null`);
       }
       
       const { data } = await query.order('price', { ascending: true }).limit(30);
       
       if (data && data.length > 0) {
-        // 계절에 맞지 않는 상품 필터링
+        // 성별 + 계절 필터링
         const filteredData = data.filter(product => {
           const productName = (product.name || '').toLowerCase();
           const productCategory = (product.category || '').toLowerCase();
           const subCategory = (product.sub_category || '').toLowerCase();
+          const productGender = (product.gender || '').toLowerCase();
           const combined = `${productName} ${productCategory} ${subCategory}`;
+          
+          // 성별 필터링 (반대 성별 명시적 제외)
+          if (!isKids && gender !== '유니섹스' && gender !== 'unisex') {
+            const oppositeGenderEn = gender === '남성' ? 'female' : 'male';
+            const oppositeGenderKo = gender === '남성' ? '여성' : '남성';
+            
+            // 반대 성별이 명시되어 있으면 제외
+            if (productGender === oppositeGenderEn || productGender === oppositeGenderKo) {
+              console.log(`[style-recommend] Excluded (wrong gender ${productGender} for ${gender}): ${product.name}`);
+              return false;
+            }
+          }
           
           // 금지 키워드가 포함되어 있으면 제외
           const isExcluded = excludeKeywords.some(keyword => combined.includes(keyword.toLowerCase()));
