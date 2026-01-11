@@ -970,16 +970,9 @@ The reference product images show the EXACT items that must appear on the model.
       );
       console.log('Image generated with Vertex AI');
     } catch (vertexError) {
-      // RATE_LIMIT은 폴백하지 않고 그대로 반환
-      if (vertexError instanceof Error && vertexError.message === 'RATE_LIMIT') {
-        return new Response(
-          JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // Vertex AI 실패 시 Lovable AI로 폴백
-      console.warn('Vertex AI failed, falling back to Lovable AI:', vertexError instanceof Error ? vertexError.message : vertexError);
+      // Vertex AI 실패 시 (429 포함) Lovable AI로 폴백
+      const errorMessage = vertexError instanceof Error ? vertexError.message : String(vertexError);
+      console.warn('Vertex AI failed, falling back to Lovable AI:', errorMessage);
       
       try {
         result = await generateImageWithLovableAI(prompt, referenceImageUrl, productImageUrls);
