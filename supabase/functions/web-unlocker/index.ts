@@ -653,38 +653,118 @@ function extractExternalId(url: string): string | null {
   return null;
 }
 
-// Main scraping function using Bright Data Web Unlocker
-async function scrapeWithWebUnlocker(url: string, apiKey: string): Promise<{ html: string | null; error: string | null }> {
+// Main scraping function using Bright Data Proxy
+async function scrapeWithProxy(url: string): Promise<{ html: string | null; error: string | null }> {
+  const proxyHost = Deno.env.get('BRIGHTDATA_PROXY_HOST');
+  const proxyUser = Deno.env.get('BRIGHTDATA_PROXY_USER');
+  const proxyPass = Deno.env.get('BRIGHTDATA_PROXY_PASS');
+  const apiKey = Deno.env.get('BRIGHTDATA_API_KEY');
+  
+  // Method 1: Use Web Unlocker API with correct parameters
+  if (apiKey) {
+    try {
+      console.log(`[Method 1] Scraping with Web Unlocker API: ${url}`);
+      
+      const response = await fetch('https://api.brightdata.com/request', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          zone: 'linkprice_web_unlocker',
+          url: url,
+          format: 'raw',
+          country: 'kr', // Korean IP for better access
+        }),
+      });
+      
+      if (response.ok) {
+        const html = await response.text();
+        if (html && html.length > 1000 && html.includes('<')) {
+          console.log(`[Method 1] Success! HTML length: ${html.length}`);
+          return { html, error: null };
+        }
+        console.log(`[Method 1] Invalid response, trying Method 2...`);
+      } else {
+        const errorText = await response.text();
+        console.log(`[Method 1] API returned ${response.status}: ${errorText.substring(0, 200)}`);
+      }
+    } catch (error) {
+      console.log(`[Method 1] Error: ${error}`);
+    }
+  }
+  
+  // Method 2: Direct proxy using Deno.createHttpClient
+  if (proxyHost && proxyUser && proxyPass) {
+    try {
+      console.log(`[Method 2] Scraping with Direct Proxy: ${url}`);
+      
+      // Deno supports HTTP proxy via Deno.createHttpClient
+      const proxyUrl = `http://${proxyUser}:${proxyPass}@${proxyHost}`;
+      console.log(`[Method 2] Proxy: ${proxyHost}`);
+      
+      // Create HTTP client with proxy
+      const client = Deno.createHttpClient({
+        proxy: {
+          url: proxyUrl,
+        },
+      });
+      
+      const response = await fetch(url, {
+        client,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          'Cache-Control': 'max-age=0',
+        },
+      });
+      
+      client.close();
+      
+      if (response.ok) {
+        const html = await response.text();
+        if (html && html.length > 1000) {
+          console.log(`[Method 2] Success! HTML length: ${html.length}`);
+          return { html, error: null };
+        }
+      } else {
+        console.log(`[Method 2] Response status: ${response.status}`);
+      }
+    } catch (error) {
+      console.log(`[Method 2] Error: ${error}`);
+    }
+  }
+  
+  // Method 3: Simple fetch without proxy (for sites that don't block)
   try {
-    console.log(`Scraping URL with Web Unlocker: ${url}`);
+    console.log(`[Method 3] Simple fetch: ${url}`);
     
-    const response = await fetch('https://api.brightdata.com/request', {
-      method: 'POST',
+    const response = await fetch(url, {
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
       },
-      body: JSON.stringify({
-        zone: 'linkprice_web_unlocker',
-        url: url,
-        format: 'raw',
-      }),
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Web Unlocker API error: ${response.status} - ${errorText}`);
-      return { html: null, error: `API error: ${response.status}` };
+    if (response.ok) {
+      const html = await response.text();
+      if (html && html.length > 500) {
+        console.log(`[Method 3] Success! HTML length: ${html.length}`);
+        return { html, error: null };
+      }
     }
-    
-    const html = await response.text();
-    console.log(`Received HTML length: ${html.length} characters`);
-    
-    return { html, error: null };
+    console.log(`[Method 3] Response status: ${response.status}`);
   } catch (error) {
-    console.error('Web Unlocker fetch error:', error);
-    return { html: null, error: error instanceof Error ? error.message : String(error) };
+    console.log(`[Method 3] Error: ${error}`);
   }
+  
+  return { html: null, error: 'All scraping methods failed' };
 }
 
 serve(async (req) => {
@@ -713,7 +793,7 @@ serve(async (req) => {
     for (const url of urls) {
       console.log(`\n=== Processing: ${url} ===`);
       
-      const { html, error } = await scrapeWithWebUnlocker(url, apiKey);
+      const { html, error } = await scrapeWithProxy(url);
       
       if (error || !html) {
         errors.push({ url, error: error || 'No HTML returned' });
