@@ -916,37 +916,20 @@ Each product image corresponds to the items listed above in order.`
       // 상품 이미지 제한 없음 - 여러 제품 가상피팅이 핵심 기능
       console.log(`Face composite mode with ${productImages.length} product images (no limit)`);
       
-      prompt = `=== FACE PRESERVATION - HIGHEST PRIORITY ===
-[IMAGE 1 - FACE REFERENCE]: The FIRST image below is a photo of a REAL PERSON. 
-You MUST preserve this person's EXACT facial features including:
-- Face shape, jawline, and complete facial structure
-- Eyes, eyebrows, nose, mouth, and lips EXACTLY as shown
-- Skin tone, complexion, and any unique facial characteristics  
-- Hair style, color, and texture
-- Any distinctive features like moles, dimples, or facial hair
+      // 간단하고 명확한 프롬프트 - 이전에 잘 동작했던 스타일
+      prompt = `Create a fashion photo using the person in the first image.
 
-The person in your output image MUST be immediately recognizable as the SAME PERSON from the reference photo.
-DO NOT alter, beautify, or modify the face in ANY way.
-DO NOT generate a different person or a generic model face.
+CRITICAL: Keep the EXACT same face, hair, and skin tone from the first image. This person must be recognizable.
 
-=== OUTFIT INSTRUCTIONS ===
-[IMAGE 2+ - PRODUCT REFERENCES]: The subsequent images show clothing items.
-Dress this EXACT PERSON in the following outfit:
+Dress this person in:
 ${detailedProductsDescription}
 
 Style: ${sanitizedStyle}
-${genderDescription ? `Fashion suited for ${genderDescription}` : ''}
-Body type: ${bodyTypeVal}, approximately ${heightVal}cm tall
-Style preferences: ${stylePreferences || 'modern and trendy'}
+${genderDescription ? `${genderDescription} fashion` : ''}
 
-=== OUTPUT REQUIREMENTS ===
-- Full body shot showing the EXACT PERSON from image 1 wearing the outfit
-- Clean white studio background
-- Professional fashion photography lighting
-- High fashion editorial style, ultra high resolution, 4K quality
-- The face MUST match the reference photo - this is NON-NEGOTIABLE`;
+Full body shot, white background, fashion photography, high quality.`;
 
-      console.log('Generating face composite image with STRENGTHENED face preservation');
+      console.log('Generating face composite image with simplified prompt');
     } else {
       prompt = `Create a professional fashion lookbook photo of ${personDescription} wearing EXACTLY these specific items:
 ${detailedProductsDescription}
