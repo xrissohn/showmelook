@@ -294,12 +294,12 @@ const Landing = () => {
             <img 
               src={showmelookLogo} 
               alt="쇼미룩 로고" 
-              className="object-contain w-7 h-7 sm:w-10 sm:h-10" 
+              className="object-contain w-10 h-10 sm:w-10 sm:h-10" 
             />
             <img 
               src={showmelookKoreanLogo} 
               alt="쇼미룩" 
-              className="object-contain -ml-1.5 sm:-ml-3 h-[50px] sm:h-[90px]" 
+              className="object-contain -ml-2 sm:-ml-3 h-[75px] sm:h-[90px]" 
             />
           </button>
           
