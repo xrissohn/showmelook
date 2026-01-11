@@ -221,37 +221,67 @@ serve(async (req) => {
     let geminiCalls = 0;
     
     if (LOVABLE_API_KEY) {
-      const systemPrompt = `너는 최고의 패션 스타일리스트야. 
-고객의 요청에 맞는 코디를 제공된 상품 목록에서만 선택해야 해.
+      // 현재 계절 계산
+      const currentMonth = new Date().getMonth() + 1;
+      const currentSeason = currentMonth >= 3 && currentMonth <= 5 ? '봄' 
+        : currentMonth >= 6 && currentMonth <= 8 ? '여름'
+        : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
+      
+      // 사용자 요청에서 계절 감지
+      const requestedSeason = detectSeason(userRequest) || currentSeason;
+      const seasonClothingGuide = getSeasonClothingGuide(requestedSeason);
+      
+      const systemPrompt = `너는 서울 청담동에서 15년 경력의 셀럽 전담 스타일리스트야. 
+패션위크 런웨이 분석, 트렌드 예측, 체형별 스타일링이 전문이고 수많은 연예인과 인플루언서의 룩을 담당해왔어.
 
-중요 규칙:
-1. 반드시 제공된 상품 목록의 ID 중에서만 선택해
-2. 필수 카테고리: 상의, 하의, 아우터, 액세서리(신발/가방/기타) - 최소 4개 이상 선택
-3. 다양한 액세서리를 포함해 (신발 + 가방 또는 신발 + 기타 액세서리 등)
-4. 선택한 상품들의 가격 합계가 총 예산을 넘어도 괜찮지만, 예산에 가깝게 맞추려고 노력해
-5. styleConcept은 선택한 실제 상품들을 기반으로 작성해야 해 (상품명, 브랜드, 특징 언급)
-6. styleReasoning은 왜 이 상품들이 요청에 적합한지 설명해
-7. 반드시 유효한 JSON만 응답해`;
+🎯 핵심 미션:
+고객의 요청을 깊이 분석하고, 제공된 상품 목록에서 완벽한 코디를 큐레이션해야 해.
 
-      const userPrompt = `사용자 요청: "${userRequest}"
-성별: ${gender}
-총 예산: ${budget}원
+⚠️ 절대 규칙:
+1. 반드시 제공된 상품 목록의 ID 중에서만 선택
+2. 필수 구성: 상의 + 하의 + 아우터 + 액세서리(신발/가방 등) = 최소 4개 이상
+3. 계절감 필수 준수: 
+   - 봄/가을: 가디건, 가벼운 자켓, 니트, 긴 바지
+   - 여름: 반팔, 린넨, 면 소재, 샌들, 통기성 좋은 옷
+   - 겨울: 코트, 패딩, 긴 바지, 두꺼운 니트, 부츠 (반바지/샌들 절대 금지!)
+4. 성별에 맞는 스타일링 (남성/여성 구분 명확히)
+5. TPO(Time, Place, Occasion) 완벽 분석
 
-아래는 현재 구매 가능한 상품 목록이야. 최소 4개 이상 (상의, 하의, 아우터, 액세서리 각 1개씩 필수) 선택해서 코디를 구성해줘:
+📝 스타일 설명 작성 가이드:
+- styleConcept: 3-4문장으로 전체 룩의 컨셉과 분위기를 감성적으로 설명
+- styleReasoning: 5-6문장으로 각 아이템 선택 이유, 컬러 조화, 실루엣 밸런스를 전문가답게 분석
+- 실제 선택한 상품명과 브랜드를 반드시 언급
+- 어떤 상황에서 빛날지, 어떤 인상을 줄지 구체적으로 서술
+
+${seasonClothingGuide}`;
+
+      const userPrompt = `🗓️ 현재 시점: ${new Date().toLocaleDateString('ko-KR')} (${currentSeason})
+👤 고객 정보: ${gender}, ${age ? `${age}세` : '성인'}
+💰 예산: ${budget.toLocaleString()}원
+📍 요청 분석 필요: "${userRequest}"
+
+먼저 고객의 요청을 분석해줘:
+- 어떤 계절/날씨를 위한 옷인가? ${requestedSeason ? `(감지됨: ${requestedSeason})` : '(분석 필요)'}
+- 어떤 상황/장소를 위한 옷인가? (데이트, 출근, 운동, 여행 등)
+- 어떤 스타일/분위기를 원하는가? (캐주얼, 포멀, 스포티 등)
+
+아래는 현재 구매 가능한 상품 목록이야. 고객 요청에 가장 적합한 4개 이상의 아이템으로 완벽한 코디를 구성해줘:
 
 ${JSON.stringify(productContext, null, 2)}
 
 다음 JSON 형식으로만 응답해:
 {
-  "lookName": "코디 이름 (예: 봄 데이트를 위한 로맨틱 룩)",
-  "styleConcept": "🎨 [성별] [요청] - [스타일 포인트]\n선택한 상품들을 기반으로 한 구체적인 스타일 설명. 실제 상품명과 브랜드를 언급하며 왜 이 조합이 좋은지 설명. 2-3문장.",
-  "styleReasoning": "이 코디가 사용자 요청에 적합한 이유와 스타일링 팁. 선택한 각 아이템이 어떻게 조화를 이루는지 설명.",
-  "selectedProductIds": ["product-id-1", "product-id-2", "product-id-3", "product-id-4"],
-  "stylingTips": "추가 스타일링 팁이나 액세서리 제안"
+  "lookName": "[상황/계절을 반영한 매력적인 코디 이름]",
+  "styleConcept": "🎨 [성별] [핵심 스타일 키워드]\n\n[3-4문장의 감성적인 스타일 설명. 전체 룩의 분위기, 컨셉, 어떤 느낌을 연출하는지 상세히. 선택한 브랜드와 상품명을 자연스럽게 녹여서 설명. 이 룩을 입으면 어떤 인상을 줄 수 있는지까지 포함.]",
+  "styleReasoning": "[5-6문장의 전문가 분석. 각 아이템을 왜 선택했는지, 컬러 팔레트가 어떻게 조화를 이루는지, 실루엣 밸런스는 어떤지, 계절감과 TPO에 어떻게 부합하는지 전문 스타일리스트 관점에서 상세 분석.]",
+  "selectedProductIds": ["상품ID-1", "상품ID-2", "상품ID-3", "상품ID-4"],
+  "stylingTips": "[실제 착용 시 팁: 어떻게 연출하면 좋을지, 추가하면 좋을 아이템, 헤어/메이크업 제안 등 2-3문장]"
 }
 
-반드시 selectedProductIds에는 위 목록에 있는 실제 id만 포함해야 해.
-최소 4개 (상의, 하의, 아우터, 액세서리) 이상 선택해야 해!`;
+⚠️ 중요:
+- selectedProductIds에는 위 목록에 있는 실제 id만 포함
+- 계절이 ${requestedSeason}이므로 ${requestedSeason === '겨울' ? '반바지, 샌들, 민소매 등 여름 아이템 절대 금지!' : requestedSeason === '여름' ? '두꺼운 코트, 패딩, 목도리 등 겨울 아이템 금지!' : '계절에 맞는 레이어링 고려'}
+- ${gender}에 맞는 스타일링 필수`;
 
       try {
         const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -289,7 +319,7 @@ ${JSON.stringify(productContext, null, 2)}
       }
     }
 
-    // Fallback if AI fails - use priority-based selection
+    // Fallback if AI fails - use priority-based selection with season awareness
     if (!ragResponse) {
       console.log(`[style-recommend] AI failed, using priority-based fallback selection`);
       
@@ -305,17 +335,16 @@ ${JSON.stringify(productContext, null, 2)}
           selectedIds.push(selected.id);
           remainingBudget -= selected.price;
         } else if (productsByPriority[cat].length > 0) {
-          // If no product within budget, still add the cheapest one
           selectedIds.push(productsByPriority[cat][0].id);
         }
       }
       
       ragResponse = {
-        lookName: `${occasion} 추천 룩`,
-        styleConcept: `🎨 ${gender} ${occasion} 스타일\n예산에 맞춘 기본 코디 추천입니다.`,
-        styleReasoning: '상의, 하의, 아우터, 액세서리 순서로 예산에 맞는 아이템을 선택했습니다.',
+        lookName: `${gender} ${occasion} 추천 룩`,
+        styleConcept: `🎨 ${gender} ${occasion} 스타일\n\n요청하신 "${userRequest}"에 맞춰 예산 내에서 기본 코디를 구성했습니다. 상의, 하의, 아우터, 액세서리를 조화롭게 매칭하여 실용적이면서도 스타일리시한 룩을 완성했습니다.`,
+        styleReasoning: `${gender}의 ${occasion} 상황에 적합한 아이템들을 선택했습니다. 상의부터 시작해 하의, 아우터, 액세서리 순서로 예산 범위 내에서 가장 조화로운 조합을 찾았습니다. 각 아이템은 서로 색상과 스타일이 자연스럽게 어울리도록 배치했으며, 전체적인 실루엣 밸런스를 고려했습니다.`,
         selectedProductIds: selectedIds,
-        stylingTips: '자신만의 스타일로 연출해보세요.'
+        stylingTips: '자신만의 개성을 더해 스타일링해보세요. 액세서리나 작은 소품으로 포인트를 주면 더욱 세련된 룩을 완성할 수 있습니다.'
       };
     }
 
@@ -421,11 +450,52 @@ ${JSON.stringify(productContext, null, 2)}
 
 // Helper functions
 function extractOccasion(request: string): string {
-  const occasions = ['데이트', '출근', '비즈니스', '캐주얼', '파티', '여행', '운동', '결혼식'];
+  const occasions = ['데이트', '출근', '비즈니스', '캐주얼', '파티', '여행', '운동', '결혼식', '활동', '야외', '등산', '소풍'];
   for (const occ of occasions) {
     if (request.includes(occ)) return occ;
   }
   return '캐주얼';
+}
+
+// 계절 감지 함수
+function detectSeason(request: string): string | null {
+  const seasonKeywords: Record<string, string[]> = {
+    '봄': ['봄', '봄철', '3월', '4월', '5월', '벚꽃', '나들이', '산뜻'],
+    '여름': ['여름', '여름철', '6월', '7월', '8월', '더운', '시원한', '바캉스', '휴가', '해변'],
+    '가을': ['가을', '가을철', '9월', '10월', '11월', '단풍', '선선한'],
+    '겨울': ['겨울', '겨울철', '12월', '1월', '2월', '추운', '따뜻한', '크리스마스', '눈', '스키'],
+  };
+  
+  for (const [season, keywords] of Object.entries(seasonKeywords)) {
+    if (keywords.some(kw => request.includes(kw))) {
+      return season;
+    }
+  }
+  return null;
+}
+
+// 계절별 의류 가이드
+function getSeasonClothingGuide(season: string): string {
+  const guides: Record<string, string> = {
+    '봄': `🌸 봄 스타일링 가이드:
+- 추천: 가디건, 가벼운 자켓, 트렌치코트, 니트, 블라우스, 청바지, 면바지, 로퍼, 스니커즈
+- 피해야 할 것: 두꺼운 패딩, 털 코트, 두꺼운 기모 제품`,
+
+    '여름': `☀️ 여름 스타일링 가이드:
+- 추천: 반팔 티셔츠, 린넨 셔츠, 반바지, 면바지, 샌들, 가벼운 스니커즈, 밀짚 모자
+- 피해야 할 것: 두꺼운 코트, 패딩, 니트, 부츠, 기모 제품`,
+
+    '가을': `🍂 가을 스타일링 가이드:
+- 추천: 가디건, 자켓, 트렌치코트, 니트, 긴 바지, 앵클부츠, 로퍼
+- 피해야 할 것: 샌들, 반바지, 민소매, 여름용 얇은 옷`,
+
+    '겨울': `❄️ 겨울 스타일링 가이드 (필수 준수!):
+- 필수 추천: 코트, 패딩, 두꺼운 니트, 기모 제품, 긴 바지, 부츠, 목도리, 장갑
+- 절대 금지: 반바지, 샌들, 민소매, 얇은 여름 옷, 크롭탑
+- 레이어링 필수: 이너 + 미드레이어 + 아우터 구성`,
+  };
+  
+  return guides[season] || guides['봄'];
 }
 
 // Category mapping
