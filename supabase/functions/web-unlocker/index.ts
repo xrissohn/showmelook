@@ -199,6 +199,389 @@ function parse29CM(html: string, url: string): ProductData | null {
   }
 }
 
+// H Fashion Mall parser
+function parseHFashion(html: string, url: string): ProductData | null {
+  try {
+    // Try JSON-LD first
+    const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonLdMatch) {
+      try {
+        const jsonLd = JSON.parse(jsonLdMatch[1]);
+        if (jsonLd['@type'] === 'Product' || jsonLd.name) {
+          return {
+            name: jsonLd.name || '',
+            brand: jsonLd.brand?.name || jsonLd.brand || null,
+            price: parseInt(String(jsonLd.offers?.price || jsonLd.price || 0).replace(/,/g, '')),
+            original_price: null,
+            image_url: jsonLd.image?.[0] || jsonLd.image || null,
+            category: inferCategory(jsonLd.name || ''),
+            sizes: null,
+            is_in_stock: jsonLd.offers?.availability !== 'OutOfStock',
+            color: extractColor(jsonLd.name || ''),
+          };
+        }
+      } catch (e) {
+        console.log('H Fashion JSON-LD parsing failed');
+      }
+    }
+    
+    // Fallback to regex - look for specific H Fashion patterns
+    const nameMatch = html.match(/<h1[^>]*class="[^"]*goods-name[^"]*"[^>]*>([^<]+)<\/h1>/i) ||
+                      html.match(/goodsNm\s*[=:]\s*["']([^"']+)["']/i) ||
+                      html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    
+    const priceMatch = html.match(/salePrice\s*[=:]\s*["']?([\d,]+)["']?/i) ||
+                       html.match(/goodsPrice\s*[=:]\s*["']?([\d,]+)["']?/i) ||
+                       html.match(/"price":\s*"?([\d,]+)"?/i);
+    
+    const imageMatch = html.match(/goodsImg\s*[=:]\s*["']([^"']+)["']/i) ||
+                       html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const brandMatch = html.match(/brandNm\s*[=:]\s*["']([^"']+)["']/i) ||
+                       html.match(/"brand":\s*"([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|].*$/, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: brandMatch ? brandMatch[1].trim() : null,
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('H Fashion parsing error:', error);
+    return null;
+  }
+}
+
+// Posty parser (Zigzag/Kakao Style based)
+function parsePosty(html: string, url: string): ProductData | null {
+  try {
+    // Posty uses NEXT_DATA like Zigzag
+    const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/i);
+    
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const product = nextData?.props?.pageProps?.product || 
+                        nextData?.props?.pageProps?.initialData?.product ||
+                        nextData?.props?.pageProps?.dehydratedState?.queries?.[0]?.state?.data;
+        
+        if (product) {
+          return {
+            name: product.name || product.title || '',
+            brand: product.brandName || product.brand?.name || product.shopName || null,
+            price: product.salePrice || product.price || product.finalPrice || 0,
+            original_price: product.originPrice || product.originalPrice || null,
+            image_url: product.imageUrl || product.thumbnailUrl || product.mainImage || null,
+            category: inferCategory(product.name || product.title || ''),
+            sizes: product.options?.map((o: any) => o.name) || null,
+            is_in_stock: product.isSoldOut !== true,
+            color: extractColor(product.name || ''),
+          };
+        }
+      } catch (e) {
+        console.log('Posty NEXT_DATA parsing failed:', e);
+      }
+    }
+    
+    // Fallback to meta tags
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/"salePrice":\s*(\d+)/i);
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|].*$/, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: null,
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('Posty parsing error:', error);
+    return null;
+  }
+}
+
+// J.ESTINA parser (jewelry brand)
+function parseJestina(html: string, url: string): ProductData | null {
+  try {
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i) ||
+                      html.match(/<h3[^>]*class="[^"]*product-name[^"]*"[^>]*>([^<]+)<\/h3>/i);
+    
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/class="[^"]*price[^"]*"[^>]*>[\s\S]*?([\d,]+)/i);
+    
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|].*$/, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: 'J.ESTINA',
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: 'accessory',
+      sizes: null,
+      is_in_stock: !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('J.ESTINA parsing error:', error);
+    return null;
+  }
+}
+
+// ARKET parser (H&M group - uses JSON-LD)
+function parseArket(html: string, url: string): ProductData | null {
+  try {
+    // Try JSON-LD first (H&M group sites use this)
+    const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+    for (const match of jsonLdMatches) {
+      try {
+        const jsonLd = JSON.parse(match[1]);
+        if (jsonLd['@type'] === 'Product') {
+          return {
+            name: jsonLd.name || '',
+            brand: 'ARKET',
+            price: parseInt(String(jsonLd.offers?.price || jsonLd.offers?.[0]?.price || 0).replace(/,/g, '')),
+            original_price: null,
+            image_url: Array.isArray(jsonLd.image) ? jsonLd.image[0] : jsonLd.image || null,
+            category: inferCategory(jsonLd.name || ''),
+            sizes: null,
+            is_in_stock: jsonLd.offers?.availability !== 'OutOfStock',
+            color: extractColor(jsonLd.name || jsonLd.color || ''),
+          };
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    // Fallback: look for product data in window object
+    const productDataMatch = html.match(/window\.__PRELOADED_STATE__\s*=\s*({[\s\S]*?});/i) ||
+                             html.match(/productData\s*[=:]\s*({[\s\S]*?});/i);
+    if (productDataMatch) {
+      try {
+        const data = JSON.parse(productDataMatch[1]);
+        const product = data.product || data;
+        if (product.name) {
+          return {
+            name: product.name,
+            brand: 'ARKET',
+            price: product.price || product.salePrice || 0,
+            original_price: product.originalPrice || null,
+            image_url: product.image || product.imageUrl || null,
+            category: inferCategory(product.name),
+            sizes: null,
+            is_in_stock: true,
+            color: extractColor(product.name),
+          };
+        }
+      } catch (e) {
+        console.log('ARKET preloaded state parsing failed');
+      }
+    }
+    
+    // Last fallback: meta tags
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/₩\s*([\d,]+)/);
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|–].*ARKET.*$/i, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: 'ARKET',
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.toLowerCase().includes('out of stock') && !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('ARKET parsing error:', error);
+    return null;
+  }
+}
+
+// & Other Stories parser (H&M group)
+function parseStories(html: string, url: string): ProductData | null {
+  try {
+    // Try JSON-LD first
+    const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+    for (const match of jsonLdMatches) {
+      try {
+        const jsonLd = JSON.parse(match[1]);
+        if (jsonLd['@type'] === 'Product') {
+          return {
+            name: jsonLd.name || '',
+            brand: '& Other Stories',
+            price: parseInt(String(jsonLd.offers?.price || jsonLd.offers?.[0]?.price || 0).replace(/,/g, '')),
+            original_price: null,
+            image_url: Array.isArray(jsonLd.image) ? jsonLd.image[0] : jsonLd.image || null,
+            category: inferCategory(jsonLd.name || ''),
+            sizes: null,
+            is_in_stock: jsonLd.offers?.availability !== 'OutOfStock',
+            color: extractColor(jsonLd.name || jsonLd.color || ''),
+          };
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/₩\s*([\d,]+)/);
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|–].*$/i, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: '& Other Stories',
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.toLowerCase().includes('out of stock'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('& Other Stories parsing error:', error);
+    return null;
+  }
+}
+
+// & Other Stories parser
+function parseStories(html: string, url: string): ProductData | null {
+  try {
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/class="[^"]*price[^"]*"[^>]*>[\s\S]*?₩?\s*([\d,]+)/i);
+    
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|–].*$/, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: '& Other Stories',
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.toLowerCase().includes('out of stock') && !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('& Other Stories parsing error:', error);
+    return null;
+  }
+}
+
+// Paul Smith parser
+function parsePaulSmith(html: string, url: string): ProductData | null {
+  try {
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/₩\s*([\d,]+)/);
+    
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|].*$/, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: 'Paul Smith',
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('Paul Smith parsing error:', error);
+    return null;
+  }
+}
+
+// Benetton parser
+function parseBenetton(html: string, url: string): ProductData | null {
+  try {
+    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    
+    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
+                       html.match(/class="[^"]*price[^"]*"[^>]*>[\s\S]*?([\d,]+)/i);
+    
+    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    
+    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|].*$/, '') : null;
+    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
+    
+    if (!name || !price) return null;
+    
+    return {
+      name,
+      brand: 'United Colors of Benetton',
+      price,
+      original_price: null,
+      image_url: imageMatch ? imageMatch[1] : null,
+      category: inferCategory(name),
+      sizes: null,
+      is_in_stock: !html.includes('품절'),
+      color: extractColor(name),
+    };
+  } catch (error) {
+    console.error('Benetton parsing error:', error);
+    return null;
+  }
+}
+
 // Generic parser for other sites
 function parseGeneric(html: string, url: string): ProductData | null {
   try {
@@ -270,13 +653,15 @@ function extractColor(name: string): string | null {
 // Identify merchant from URL
 function identifyMerchant(url: string): string {
   if (url.includes('wconcept.co.kr')) return 'wconcept';
+  if (url.includes('hfashionmall.com') || url.includes('hfashion.co.kr')) return 'hfashion';
+  if (url.includes('posty.kr')) return 'posty';
+  if (url.includes('jestina.co.kr')) return 'jestina';
+  if (url.includes('arket.com')) return 'arket';
+  if (url.includes('stories.com')) return 'stories';
+  if (url.includes('paulsmith.co.kr')) return 'paulsmith';
+  if (url.includes('benettonmall.co.kr')) return 'benetton1';
   if (url.includes('musinsa.com')) return 'musinsa';
   if (url.includes('29cm.co.kr')) return '29cm';
-  if (url.includes('lfmall.co.kr')) return 'lfmall';
-  if (url.includes('hm.com')) return 'hm';
-  if (url.includes('zara.com')) return 'zara';
-  if (url.includes('uniqlo.com')) return 'uniqlo';
-  if (url.includes('arket.com')) return 'arket';
   return 'unknown';
 }
 
@@ -377,6 +762,27 @@ serve(async (req) => {
       switch (merchant) {
         case 'wconcept':
           productData = parseWConcept(html, url);
+          break;
+        case 'hfashion':
+          productData = parseHFashion(html, url);
+          break;
+        case 'posty':
+          productData = parsePosty(html, url);
+          break;
+        case 'jestina':
+          productData = parseJestina(html, url);
+          break;
+        case 'arket':
+          productData = parseArket(html, url);
+          break;
+        case 'stories':
+          productData = parseStories(html, url);
+          break;
+        case 'paulsmith':
+          productData = parsePaulSmith(html, url);
+          break;
+        case 'benetton1':
+          productData = parseBenetton(html, url);
           break;
         case 'musinsa':
           productData = parseMusinsa(html, url);
