@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import useEmblaCarousel from 'embla-carousel-react';
@@ -146,6 +146,12 @@ const StyleGenerator = () => {
 
   // 좋아요 상태
   const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+
+  // 대체 상품 모달 상태
+  const [alternativeModalOpen, setAlternativeModalOpen] = useState(false);
+  const [alternativeCategory, setAlternativeCategory] = useState<string>('');
+  const [alternativeProducts, setAlternativeProducts] = useState<CachedProduct[]>([]);
+  const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
 
   // Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
@@ -368,6 +374,74 @@ const StyleGenerator = () => {
       '데일리': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
     };
     return colorMap[tag] || 'bg-secondary text-muted-foreground';
+  };
+
+  // 대체 상품 조회 함수
+  const handleShowAlternatives = async (category: string, currentProductId: string) => {
+    setAlternativeCategory(category);
+    setAlternativeModalOpen(true);
+    setIsLoadingAlternatives(true);
+    setAlternativeProducts([]);
+
+    try {
+      // 같은 카테고리의 다른 상품들 조회
+      const { data, error } = await supabase
+        .from('products_cache')
+        .select('id, name, brand, price, image_url, product_url, category, style_tags')
+        .eq('category', category)
+        .neq('id', currentProductId)
+        .limit(12);
+
+      if (error) throw error;
+
+      const products: CachedProduct[] = (data || []).map(item => ({
+        id: item.id,
+        name: item.name,
+        brand: item.brand,
+        price: item.price,
+        image_url: item.image_url,
+        product_url: item.product_url,
+        category: item.category,
+        style_tags: item.style_tags,
+      }));
+
+      setAlternativeProducts(products);
+    } catch (error) {
+      console.error('Error fetching alternatives:', error);
+      toast({
+        title: '대체 상품 조회 실패',
+        description: '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingAlternatives(false);
+    }
+  };
+
+  // 대체 상품 선택하여 교체
+  const handleSelectAlternative = (newProduct: CachedProduct) => {
+    // 기존 같은 카테고리 상품 제거 후 새 상품 추가
+    setSelectedTrendProducts(prev => {
+      const filtered = prev.filter(p => p.category !== newProduct.category);
+      return [...filtered, newProduct];
+    });
+
+    // customResult의 items도 업데이트
+    if (customResult) {
+      setCustomResult(prev => {
+        if (!prev) return prev;
+        const updatedItems = prev.items.map(item => 
+          item.category === newProduct.category ? newProduct : item
+        );
+        return { ...prev, items: updatedItems };
+      });
+    }
+
+    setAlternativeModalOpen(false);
+    toast({
+      title: '상품 교체됨',
+      description: `${newProduct.name}(으)로 변경되었습니다.`,
+    });
   };
   // 딥링크 변환 후 구매 페이지로 이동하는 함수
   const handlePurchase = async (product: CachedProduct) => {
@@ -1356,38 +1430,48 @@ const StyleGenerator = () => {
                                     )}
 
                                     {/* 액션 버튼들 */}
-                                    <div className="flex gap-2">
+                                    <div className="flex flex-col gap-2">
+                                      <div className="flex gap-2">
+                                        <button
+                                          onClick={() => toggleTrendProduct(product)}
+                                          className={`flex-1 text-sm py-2.5 px-4 rounded-xl font-medium transition-all duration-200 font-korean flex items-center justify-center gap-1.5 ${
+                                            selectedTrendProducts.find(p => p.id === product.id)
+                                              ? 'bg-accent text-white shadow-md shadow-accent/30'
+                                              : 'bg-secondary hover:bg-accent/10 text-foreground'
+                                          }`}
+                                        >
+                                          {selectedTrendProducts.find(p => p.id === product.id) ? (
+                                            <>
+                                              <Check className="w-4 h-4" />
+                                              선택됨
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Plus className="w-4 h-4" />
+                                              담기
+                                            </>
+                                          )}
+                                        </button>
+                                        <button
+                                          onClick={() => handlePurchase(product)}
+                                          disabled={purchasingProductId === product.id}
+                                          className="p-2.5 rounded-xl bg-secondary hover:bg-accent/10 text-foreground transition-all duration-200 disabled:opacity-50"
+                                          title="구매하기"
+                                        >
+                                          {purchasingProductId === product.id ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                          ) : (
+                                            <ExternalLink className="w-5 h-5" />
+                                          )}
+                                        </button>
+                                      </div>
+                                      {/* 다른 상품 보기 버튼 */}
                                       <button
-                                        onClick={() => toggleTrendProduct(product)}
-                                        className={`flex-1 text-sm py-2.5 px-4 rounded-xl font-medium transition-all duration-200 font-korean flex items-center justify-center gap-1.5 ${
-                                          selectedTrendProducts.find(p => p.id === product.id)
-                                            ? 'bg-accent text-white shadow-md shadow-accent/30'
-                                            : 'bg-secondary hover:bg-accent/10 text-foreground'
-                                        }`}
+                                        onClick={() => handleShowAlternatives(product.category, product.id)}
+                                        className="w-full text-xs py-2 px-3 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-200 font-korean flex items-center justify-center gap-1.5"
                                       >
-                                        {selectedTrendProducts.find(p => p.id === product.id) ? (
-                                          <>
-                                            <Check className="w-4 h-4" />
-                                            선택됨
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Plus className="w-4 h-4" />
-                                            담기
-                                          </>
-                                        )}
-                                      </button>
-                                      <button
-                                        onClick={() => handlePurchase(product)}
-                                        disabled={purchasingProductId === product.id}
-                                        className="p-2.5 rounded-xl bg-secondary hover:bg-accent/10 text-foreground transition-all duration-200 disabled:opacity-50"
-                                        title="구매하기"
-                                      >
-                                        {purchasingProductId === product.id ? (
-                                          <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                          <ExternalLink className="w-5 h-5" />
-                                        )}
+                                        <RefreshCw className="w-3.5 h-3.5" />
+                                        다른 {product.category} 보기
                                       </button>
                                     </div>
                                   </div>
@@ -2037,6 +2121,82 @@ const StyleGenerator = () => {
           </div>
         )}
       </div>
+
+      {/* 대체 상품 모달 */}
+      {alternativeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-2xl max-h-[80vh] bg-background rounded-2xl border border-border shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+            {/* 모달 헤더 */}
+            <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background/95 backdrop-blur-sm">
+              <div>
+                <h3 className="font-semibold text-lg font-korean text-foreground">다른 {alternativeCategory} 보기</h3>
+                <p className="text-xs text-muted-foreground font-korean">원하는 상품을 선택해 교체하세요</p>
+              </div>
+              <button
+                onClick={() => setAlternativeModalOpen(false)}
+                className="w-9 h-9 rounded-full bg-secondary hover:bg-muted flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* 모달 콘텐츠 */}
+            <div className="p-4 overflow-y-auto max-h-[calc(80vh-80px)]">
+              {isLoadingAlternatives ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-accent mb-3" />
+                  <p className="text-muted-foreground font-korean text-sm">대체 상품을 찾고 있어요...</p>
+                </div>
+              ) : alternativeProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <ShoppingBag className="w-12 h-12 text-muted-foreground/30 mb-3" />
+                  <p className="text-muted-foreground font-korean">같은 카테고리의 다른 상품이 없습니다.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {alternativeProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleSelectAlternative(product)}
+                      className="group text-left rounded-xl border border-border hover:border-accent/50 bg-card overflow-hidden transition-all duration-200 hover:shadow-lg"
+                    >
+                      <div className="relative aspect-square bg-secondary overflow-hidden">
+                        {product.image_url ? (
+                          <img 
+                            src={product.image_url} 
+                            alt={product.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
+                          </div>
+                        )}
+                        {/* 오버레이 */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <p className="text-white font-semibold text-sm">
+                            ₩{product.price.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="p-2.5">
+                        {product.brand && (
+                          <p className="text-[10px] text-accent uppercase tracking-wide truncate">{product.brand}</p>
+                        )}
+                        <p className="text-xs font-medium text-foreground line-clamp-2 font-korean leading-tight mt-0.5">
+                          {product.name}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
