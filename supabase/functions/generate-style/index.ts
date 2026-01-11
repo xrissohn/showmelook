@@ -910,13 +910,8 @@ Each product image corresponds to the items listed above in order.`
     if (useFaceComposite && userAvatarUrl) {
       referenceImageUrl = userAvatarUrl;
       
-      // 얼굴 합성 시 상품 이미지를 2개로 제한하여 얼굴에 더 집중
-      const limitedProductImages = productImages.slice(0, 2);
-      if (productImages.length > 2) {
-        console.log(`Face composite mode: limiting product images from ${productImages.length} to 2`);
-        productImages.length = 0;
-        productImages.push(...limitedProductImages);
-      }
+      // 상품 이미지 제한 없음 - 여러 제품 가상피팅이 핵심 기능
+      console.log(`Face composite mode with ${productImages.length} product images (no limit)`);
       
       prompt = `=== FACE PRESERVATION - HIGHEST PRIORITY ===
 [IMAGE 1 - FACE REFERENCE]: The FIRST image below is a photo of a REAL PERSON. 
