@@ -8,13 +8,19 @@ const corsHeaders = {
 
 // Bright Data에서 보내는 상품 데이터 형식
 interface BrightDataProduct {
+  // 다양한 필드명 지원
   url?: string;
+  product_url?: string;
   title?: string;
   name?: string;
+  product_name?: string;
   price?: number | string;
+  original_price?: { value?: number; currency?: string };
+  final_price?: { value?: number; currency?: string };
   currency?: string;
   image?: string;
   images?: string[];
+  image_urls?: string[];
   main_image?: string;
   brand?: string;
   category?: string;
@@ -25,6 +31,8 @@ interface BrightDataProduct {
   merchant?: string;
   sku?: string;
   product_id?: string;
+  sizes?: string[];
+  colors?: string[];
   [key: string]: unknown;
 }
 
@@ -150,24 +158,34 @@ function extractImageUrl(product: BrightDataProduct): string | null {
   if (product.main_image) return product.main_image;
   if (product.image) return product.image;
   if (product.images && product.images.length > 0) return product.images[0];
+  if (product.image_urls && product.image_urls.length > 0) return product.image_urls[0];
   return null;
 }
 
 // 상품 데이터 변환
 function transformProduct(product: BrightDataProduct): ProductForDB | null {
-  const url = product.url;
+  // URL 추출 (다양한 필드명 지원)
+  const url = product.url || product.product_url;
   if (!url) {
-    console.log('Skipping product without URL');
+    console.log('Skipping product without URL:', JSON.stringify(product).slice(0, 200));
     return null;
   }
   
-  const name = product.title || product.name || '';
+  // 이름 추출 (다양한 필드명 지원)
+  const name = product.title || product.name || product.product_name || '';
   if (!name) {
     console.log('Skipping product without name:', url);
     return null;
   }
   
-  const price = parsePrice(product.price);
+  // 가격 추출 (다양한 형식 지원)
+  let price = parsePrice(product.price);
+  if (price <= 0 && product.final_price?.value) {
+    price = Math.round(product.final_price.value);
+  }
+  if (price <= 0 && product.original_price?.value) {
+    price = Math.round(product.original_price.value);
+  }
   if (price <= 0) {
     console.log('Skipping product with invalid price:', name);
     return null;
