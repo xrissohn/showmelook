@@ -10,7 +10,8 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import useEmblaCarousel from 'embla-carousel-react';
@@ -82,6 +83,47 @@ const bodyTypes = [
   { id: 'muscular', label: '근육질' },
   { id: 'curvy', label: '볼륨 체형' },
 ];
+
+// 이미지 스켈레톤 로딩 컴포넌트
+const ProductImage = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  return (
+    <div className="relative w-full h-full">
+      {isLoading && (
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-muted to-secondary overflow-hidden">
+          <div className="absolute inset-0 animate-shimmer" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-muted-foreground/10 animate-pulse" />
+            <div className="space-y-2 w-2/3">
+              <div className="h-3 bg-muted-foreground/10 rounded-full animate-pulse" />
+              <div className="h-3 bg-muted-foreground/10 rounded-full w-1/2 mx-auto animate-pulse" />
+            </div>
+          </div>
+        </div>
+      )}
+      {hasError ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted">
+          <ImageOff className="w-12 h-12 text-muted-foreground/30 mb-2" />
+          <span className="text-xs text-muted-foreground">이미지를 불러올 수 없습니다</span>
+        </div>
+      ) : (
+        <img 
+          src={src} 
+          alt={alt}
+          className={`${className} ${isLoading ? 'opacity-0' : 'opacity-100 animate-fade-in'} transition-opacity duration-500`}
+          loading="lazy"
+          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            setIsLoading(false);
+            setHasError(true);
+          }}
+        />
+      )}
+    </div>
+  );
+};
 
 const StyleGenerator = () => {
   const navigate = useNavigate();
@@ -1492,11 +1534,10 @@ const StyleGenerator = () => {
                                   {/* 이미지 영역 */}
                                   <div className="relative aspect-[3/4] bg-gradient-to-br from-secondary via-secondary/80 to-muted overflow-hidden">
                                     {product.image_url ? (
-                                      <img 
+                                      <ProductImage 
                                         src={product.image_url} 
                                         alt={product.name}
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                                        loading="lazy"
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
@@ -1912,11 +1953,13 @@ const StyleGenerator = () => {
                         className="flex items-center gap-3 p-3 bg-secondary rounded-xl"
                       >
                         {product.image_url && (
-                          <img 
-                            src={product.image_url} 
-                            alt={product.name}
-                            className="w-12 h-12 rounded-lg object-cover"
-                          />
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
+                            <ProductImage 
+                              src={product.image_url} 
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground font-korean text-sm truncate">{product.name}</p>
@@ -2315,11 +2358,10 @@ const StyleGenerator = () => {
                     >
                       <div className="relative aspect-square bg-secondary overflow-hidden">
                         {product.image_url ? (
-                          <img 
+                          <ProductImage 
                             src={product.image_url} 
                             alt={product.name}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            loading="lazy"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
