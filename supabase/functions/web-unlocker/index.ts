@@ -485,39 +485,6 @@ function parseStories(html: string, url: string): ProductData | null {
     return null;
   }
 }
-
-// & Other Stories parser
-function parseStories(html: string, url: string): ProductData | null {
-  try {
-    const nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
-    
-    const priceMatch = html.match(/"price":\s*"?([\d,]+)"?/i) ||
-                       html.match(/class="[^"]*price[^"]*"[^>]*>[\s\S]*?₩?\s*([\d,]+)/i);
-    
-    const imageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
-    
-    const name = nameMatch ? nameMatch[1].trim().replace(/\s*[-|–].*$/, '') : null;
-    const price = priceMatch ? parseInt(priceMatch[1].replace(/,/g, '')) : null;
-    
-    if (!name || !price) return null;
-    
-    return {
-      name,
-      brand: '& Other Stories',
-      price,
-      original_price: null,
-      image_url: imageMatch ? imageMatch[1] : null,
-      category: inferCategory(name),
-      sizes: null,
-      is_in_stock: !html.toLowerCase().includes('out of stock') && !html.includes('품절'),
-      color: extractColor(name),
-    };
-  } catch (error) {
-    console.error('& Other Stories parsing error:', error);
-    return null;
-  }
-}
-
 // Paul Smith parser
 function parsePaulSmith(html: string, url: string): ProductData | null {
   try {
