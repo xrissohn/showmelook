@@ -136,6 +136,57 @@ const StyleGenerator = () => {
     totalPrice: number;
   } | null>(null);
 
+  // 구매 버튼 로딩 상태
+  const [purchasingProductId, setPurchasingProductId] = useState<string | null>(null);
+
+  // 딥링크 변환 후 구매 페이지로 이동하는 함수
+  const handlePurchase = async (product: CachedProduct) => {
+    // affiliate_url이 이미 있으면 바로 이동
+    if (product.affiliate_url) {
+      window.open(product.affiliate_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    // product_url이 없으면 에러
+    if (!product.product_url) {
+      toast({
+        title: '구매 링크 없음',
+        description: '이 상품의 구매 링크가 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setPurchasingProductId(product.id);
+
+    try {
+      // deeplink 함수 호출하여 제휴 링크 변환
+      const { data, error } = await supabase.functions.invoke('deeplink', {
+        body: { product_url: product.product_url }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.affiliate_url) {
+        // 변환된 제휴 링크로 이동
+        window.open(data.affiliate_url, '_blank', 'noopener,noreferrer');
+        toast({
+          title: '구매 페이지 이동',
+          description: `${product.name} 구매 페이지로 이동합니다.`,
+        });
+      } else {
+        // 딥링크 실패 시 원본 URL로 이동
+        window.open(product.product_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Deeplink error:', error);
+      // 에러 시에도 원본 URL로 이동
+      window.open(product.product_url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setPurchasingProductId(null);
+    }
+  };
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate('/auth');
@@ -971,13 +1022,15 @@ const StyleGenerator = () => {
                                 )}
                               </button>
                               <button
-                                onClick={() => {
-                                  const url = product.affiliate_url || product.product_url;
-                                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
-                                }}
-                                className="text-xs py-1.5 px-2 rounded-lg bg-secondary text-foreground hover:bg-accent/20 transition-colors font-korean"
+                                onClick={() => handlePurchase(product)}
+                                disabled={purchasingProductId === product.id}
+                                className="text-xs py-1.5 px-2 rounded-lg bg-secondary text-foreground hover:bg-accent/20 transition-colors font-korean disabled:opacity-50"
                               >
-                                <ExternalLink className="w-3 h-3" />
+                                {purchasingProductId === product.id ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <ExternalLink className="w-3 h-3" />
+                                )}
                               </button>
                             </div>
                           </div>
@@ -1454,13 +1507,15 @@ const StyleGenerator = () => {
                         <Button
                           variant="minimal"
                           size="sm"
-                          onClick={() => {
-                            const url = product.affiliate_url || product.product_url;
-                            if (url) window.open(url, '_blank');
-                          }}
+                          onClick={() => handlePurchase(product)}
+                          disabled={purchasingProductId === product.id}
                           className="font-korean"
                         >
-                          구매
+                          {purchasingProductId === product.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            '구매'
+                          )}
                         </Button>
                       </div>
                     ))}
