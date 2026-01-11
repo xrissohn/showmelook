@@ -182,6 +182,77 @@ const ProgressiveImage = ({
   );
 };
 
+// 메인 생성 이미지용 컴포넌트 (로고 워터마크 포함)
+const GeneratedStyleImage = ({ 
+  src, 
+  alt,
+  logoSrc
+}: { 
+  src: string; 
+  alt: string;
+  logoSrc: string;
+}) => {
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  return (
+    <div className="relative w-full h-full overflow-hidden">
+      {/* 로딩 중 브랜드 표시 */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-background to-muted overflow-hidden z-10 flex flex-col items-center justify-center">
+          {/* 배경 패턴 */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute inset-0 animate-shimmer" />
+          </div>
+          
+          {/* 로고 애니메이션 */}
+          <div className="relative z-20 flex flex-col items-center gap-4">
+            <div className="w-20 h-20 rounded-2xl bg-white/80 dark:bg-black/40 backdrop-blur-sm shadow-xl flex items-center justify-center animate-pulse">
+              <img 
+                src={logoSrc} 
+                alt="ShowMeLook" 
+                className="w-14 h-14 object-contain"
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-semibold text-foreground/80 font-korean">이미지 로딩 중...</p>
+              <p className="text-xs text-muted-foreground mt-1">ShowMeLook</p>
+            </div>
+            {/* 로딩 바 */}
+            <div className="w-32 h-1 bg-muted rounded-full overflow-hidden mt-2">
+              <div className="h-full bg-gradient-to-r from-accent via-primary to-accent animate-gradient rounded-full" 
+                style={{ width: '60%', animation: 'shimmer 1.5s ease-in-out infinite' }} 
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {hasError ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted">
+          <ImageOff className="w-16 h-16 text-muted-foreground/30 mb-3" />
+          <span className="text-sm text-muted-foreground font-korean">이미지를 불러올 수 없습니다</span>
+        </div>
+      ) : (
+        <img 
+          src={src} 
+          alt={alt}
+          className={`w-full h-full object-cover transition-all duration-1000 ease-out ${
+            isLoading 
+              ? 'blur-2xl scale-110 opacity-0' 
+              : 'blur-0 scale-100 opacity-100'
+          }`}
+          onLoad={() => setIsLoading(false)}
+          onError={() => {
+            setIsLoading(false);
+            setHasError(true);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
 const StyleGenerator = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
@@ -1984,11 +2055,10 @@ const StyleGenerator = () => {
                     </div>
                   </div>
                 ) : generatedImage ? (
-                  <img
+                  <GeneratedStyleImage
                     src={generatedImage}
                     alt="Generated style"
-                    className="w-full h-full object-cover animate-fade-in"
-                    loading="lazy"
+                    logoSrc={showmelookLogo}
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
