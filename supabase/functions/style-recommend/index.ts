@@ -7,20 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-interface StyleGuideItem {
-  category: string;
-  searchKeywords: string;
-  styleTags: string[];
-  priceRange: { min: number; max: number };
-  colorSuggestion: string;
-}
-
-interface GeminiStyleResponse {
-  lookName: string;
-  items: StyleGuideItem[];
-  stylingTips: string;
-}
-
 interface CachedProduct {
   id: string;
   name: string;
@@ -33,6 +19,7 @@ interface CachedProduct {
   merchant_id: string | null;
   color: string | null;
   gender: string | null;
+  sub_category: string | null;
 }
 
 interface LookItem {
@@ -40,6 +27,14 @@ interface LookItem {
   product: CachedProduct | null;
   affiliateUrl: string | null;
   source: 'cache' | 'none';
+}
+
+interface RAGStyleResponse {
+  lookName: string;
+  styleConcept: string;
+  styleReasoning: string;
+  selectedProductIds: string[];
+  stylingTips: string;
 }
 
 // Generate cache key from request parameters (handles Unicode)
@@ -80,63 +75,13 @@ serve(async (req) => {
     const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
 
     // Determine target gender for product filtering
-    // If age is 12 or under, use 'kids' gender filter
     const isKids = age !== undefined && age <= 12;
     const targetGender = isKids ? 'kids' : gender;
     
-    console.log(`[style-recommend] Request: "${userRequest}", Gender: ${gender}, Budget: ${budget}, Age: ${age || 'N/A'}, Target: ${targetGender}`);
-    console.log(`[style-recommend] Cache key: ${cacheKey}`);
+    console.log(`[style-recommend] RAG Request: "${userRequest}", Gender: ${gender}, Budget: ${budget}, Age: ${age || 'N/A'}, Target: ${targetGender}`);
 
-    // Step 1: Check style_cache
-    if (!forceRefresh) {
-      const { data: cached } = await supabase
-        .from('style_cache')
-        .select('*')
-        .eq('cache_key', cacheKey)
-        .gt('expires_at', new Date().toISOString())
-        .maybeSingle();
-
-      if (cached) {
-        console.log(`[style-recommend] Cache HIT`);
-        await supabase
-          .from('style_cache')
-          .update({ use_count: (cached.use_count || 0) + 1, last_used_at: new Date().toISOString() })
-          .eq('id', cached.id);
-
-        let items: LookItem[] = [];
-        if (cached.product_ids && cached.product_ids.length > 0) {
-          const { data: merchants } = await supabase
-            .from('merchants')
-            .select('*')
-            .eq('is_active', true);
-            
-          const { data: cachedProducts } = await supabase
-            .from('products_cache')
-            .select('*')
-            .in('id', cached.product_ids);
-
-          if (cachedProducts) {
-            items = await Promise.all(cachedProducts.map(async (product: CachedProduct) => ({
-              category: product.category,
-              product: product,
-              affiliateUrl: await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID),
-              source: 'cache' as const
-            })));
-          }
-        }
-
-        return new Response(JSON.stringify({
-          success: true,
-          cacheHit: true,
-          look: { ...cached, items },
-          apiCalls: { gemini: 0, serpapi: 0 }
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    console.log(`[style-recommend] Cache MISS, proceeding with Gemini`);
+    // Step 1: Check style_cache (skip for now to always use RAG)
+    // TODO: Implement smarter caching later
 
     // Step 2: Get merchants list
     const { data: merchants } = await supabase
@@ -144,59 +89,104 @@ serve(async (req) => {
       .select('*')
       .eq('is_active', true);
 
-    const merchantNames = merchants?.map(m => m.name_ko) || [];
+    // Step 3: RAG - First, fetch ALL relevant products from products_cache
+    console.log(`[style-recommend] Step 1: Fetching products from DB for RAG context...`);
+    
+    const categories = ['상의', '하의', '아우터', '신발', '가방', '원피스', '액세서리'];
+    const allProducts: CachedProduct[] = [];
+    
+    for (const category of categories) {
+      let query = supabase
+        .from('products_cache')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_in_stock', true)
+        .not('image_url', 'is', null)
+        .lte('price', budget * 0.6); // 각 아이템이 예산의 60% 이하
+      
+      // Category filter using ILIKE for flexible matching
+      const categoryVariants = getCategoryVariants(category);
+      const categoryFilter = categoryVariants.map(v => `category.ilike.%${v}%`).join(',');
+      query = query.or(categoryFilter);
+      
+      // Gender filter
+      if (isKids) {
+        query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
+      } else {
+        const genderEn = gender === '남성' ? 'male' : 'female';
+        query = query.or(`gender.eq.${genderEn},gender.eq.${gender},gender.is.null`);
+      }
+      
+      const { data } = await query.order('collected_at', { ascending: false }).limit(15);
+      
+      if (data && data.length > 0) {
+        allProducts.push(...data);
+      }
+    }
+    
+    // Remove duplicates
+    const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
+    console.log(`[style-recommend] Found ${uniqueProducts.length} products for RAG context`);
 
-    // Step 3: Gemini Style Director
+    if (uniqueProducts.length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: '추천할 수 있는 상품이 없습니다. 상품 데이터가 수집되면 다시 시도해주세요.',
+        look: null
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Step 4: Create product context for AI (RAG)
+    const productContext = uniqueProducts.map(p => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      price: p.price,
+      category: p.category,
+      sub_category: p.sub_category,
+      color: p.color,
+      style_tags: p.style_tags,
+    }));
+
+    console.log(`[style-recommend] Step 2: Sending ${productContext.length} products to AI for selection...`);
+
+    // Step 5: RAG - Ask AI to select products AND generate description
+    let ragResponse: RAGStyleResponse | null = null;
     let geminiCalls = 0;
-    let styleGuide: GeminiStyleResponse | null = null;
-
-    const expectedItems = 4;
-    const maxItemBudget = Math.floor(budget / expectedItems * 1.2);
     
     if (LOVABLE_API_KEY) {
-      const systemPrompt = `너는 이 지구상 최고의 패션 MD이자 스타일리스트야. 
-수십 년간 패션 업계에서 일하며 W컨셉, 한섬, 무신사 등 한국 최고의 패션 플랫폼에서 MD로 활동해왔어.
-트렌드를 읽는 눈과 고객의 니즈를 정확히 파악하는 능력이 탁월해.
+      const systemPrompt = `너는 최고의 패션 스타일리스트야. 
+고객의 요청에 맞는 코디를 제공된 상품 목록에서만 선택해야 해.
 
 중요 규칙:
-1. 카테고리와 상품이 반드시 일치해야 해 (상의=탑/블라우스/셔츠/니트, 하의=팬츠/스커트/청바지, 신발=구두/스니커즈/부츠, 가방=백/클러치, 아우터=자켓/코트/점퍼)
-2. 검색 키워드에 반드시 해당 카테고리 한글명을 포함해 (예: "여성 화이트 블라우스 상의 캐주얼")
-3. 총 예산을 절대 초과하면 안 돼. 각 아이템 가격의 합이 총 예산 이하가 되도록 설정해
-4. 반드시 유효한 JSON만 응답해`;
+1. 반드시 제공된 상품 목록의 ID 중에서만 선택해
+2. 상의, 하의(또는 원피스), 신발을 기본으로 포함하고, 예산에 따라 가방이나 아우터 추가
+3. 선택한 상품들의 가격 합계가 총 예산을 넘지 않아야 해
+4. styleConcept은 선택한 실제 상품들을 기반으로 작성해야 해 (상품명, 브랜드, 특징 언급)
+5. styleReasoning은 왜 이 상품들이 요청에 적합한지 설명해
+6. 반드시 유효한 JSON만 응답해`;
 
-      const stylePrompt = `사용자 요청: "${userRequest}"
+      const userPrompt = `사용자 요청: "${userRequest}"
 성별: ${gender}
-총 예산: ${budget}원 (모든 아이템 가격 합계가 이 금액 이하여야 함)
-아이템당 최대 예산: ${maxItemBudget}원
+총 예산: ${budget}원
 
-참고 쇼핑몰: ${merchantNames.join(', ')}
+아래는 현재 구매 가능한 상품 목록이야. 이 중에서만 선택해서 코디를 구성해줘:
+
+${JSON.stringify(productContext, null, 2)}
 
 다음 JSON 형식으로만 응답해:
 {
-  "lookName": "코디 이름",
-  "items": [
-    {
-      "category": "상의",
-      "categoryKeyword": "블라우스",
-      "searchKeywords": "여성 화이트 블라우스 상의 캐주얼",
-      "styleTags": ["캐주얼", "로맨틱"],
-      "priceRange": { "min": 20000, "max": 50000 },
-      "colorSuggestion": "화이트"
-    },
-    {
-      "category": "하의",
-      "categoryKeyword": "청바지",
-      "searchKeywords": "여성 하이웨이스트 청바지 하의",
-      "styleTags": ["캐주얼"],
-      "priceRange": { "min": 30000, "max": 60000 },
-      "colorSuggestion": "블루"
-    }
-  ],
-  "stylingTips": "스타일링 팁"
+  "lookName": "코디 이름 (예: 봄 데이트를 위한 로맨틱 룩)",
+  "styleConcept": "🎨 [성별] [요청] - [스타일 포인트]\n선택한 상품들을 기반으로 한 구체적인 스타일 설명. 실제 상품명과 브랜드를 언급하며 왜 이 조합이 좋은지 설명. 2-3문장.",
+  "styleReasoning": "이 코디가 사용자 요청에 적합한 이유와 스타일링 팁. 선택한 각 아이템이 어떻게 조화를 이루는지 설명.",
+  "selectedProductIds": ["product-id-1", "product-id-2", "product-id-3"],
+  "stylingTips": "추가 스타일링 팁이나 액세서리 제안"
 }
 
-카테고리는 상의, 하의, 아우터, 신발, 가방 중에서만 선택하고, categoryKeyword에 구체적인 품목명을 넣어.
-3~5개 아이템을 추천하되, 각 아이템 priceRange.max 합계가 ${budget}원을 넘지 않도록 해.`;
+선택한 상품 가격의 합이 ${budget}원을 넘지 않도록 해.
+반드시 selectedProductIds에는 위 목록에 있는 실제 id만 포함해야 해.`;
 
       try {
         const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -209,8 +199,9 @@ serve(async (req) => {
             model: 'google/gemini-2.5-flash',
             messages: [
               { role: 'system', content: systemPrompt },
-              { role: 'user', content: stylePrompt }
+              { role: 'user', content: userPrompt }
             ],
+            temperature: 0.7,
           }),
         });
 
@@ -222,19 +213,8 @@ serve(async (req) => {
           
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]) as GeminiStyleResponse;
-            console.log(`[style-recommend] Gemini style guide:`, JSON.stringify(parsed, null, 2));
-            
-            const totalMaxPrice = parsed.items.reduce((sum: number, item: StyleGuideItem) => sum + item.priceRange.max, 0);
-            if (totalMaxPrice > budget * 1.5) {
-              console.log(`[style-recommend] Budget exceeded, adjusting price ranges`);
-              const scaleFactor = budget / totalMaxPrice;
-              parsed.items.forEach((item: StyleGuideItem) => {
-                item.priceRange.min = Math.floor(item.priceRange.min * scaleFactor);
-                item.priceRange.max = Math.floor(item.priceRange.max * scaleFactor);
-              });
-            }
-            styleGuide = parsed;
+            ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
+            console.log(`[style-recommend] AI selected ${ragResponse.selectedProductIds.length} products`);
           }
         } else {
           console.error('[style-recommend] Gemini API error:', await geminiResponse.text());
@@ -244,141 +224,68 @@ serve(async (req) => {
       }
     }
 
-    // Fallback style guide if Gemini fails
-    if (!styleGuide) {
-      styleGuide = {
+    // Fallback if AI fails
+    if (!ragResponse) {
+      console.log(`[style-recommend] AI failed, using fallback selection`);
+      
+      // Simple fallback: pick one from each category within budget
+      const selectedIds: string[] = [];
+      let remainingBudget = budget;
+      const categoryOrder = ['상의', '하의', '신발', '가방', '아우터'];
+      
+      for (const cat of categoryOrder) {
+        const catProducts = uniqueProducts.filter(p => 
+          p.category.toLowerCase().includes(cat.toLowerCase()) &&
+          p.price <= remainingBudget
+        );
+        
+        if (catProducts.length > 0) {
+          const selected = catProducts[0];
+          selectedIds.push(selected.id);
+          remainingBudget -= selected.price;
+        }
+        
+        if (selectedIds.length >= 4) break;
+      }
+      
+      ragResponse = {
         lookName: `${occasion} 추천 룩`,
-        items: [
-          { category: '상의', searchKeywords: `${gender} ${occasion} 상의`, styleTags: ['캐주얼'], priceRange: { min: 20000, max: budget * 0.3 }, colorSuggestion: '화이트' },
-          { category: '하의', searchKeywords: `${gender} ${occasion} 하의`, styleTags: ['캐주얼'], priceRange: { min: 30000, max: budget * 0.4 }, colorSuggestion: '블랙' },
-          { category: '신발', searchKeywords: `${gender} ${occasion} 신발`, styleTags: ['캐주얼'], priceRange: { min: 30000, max: budget * 0.3 }, colorSuggestion: '화이트' },
-        ],
-        stylingTips: '편안하면서도 세련된 스타일을 연출해보세요.'
+        styleConcept: `🎨 ${gender} ${occasion} 스타일\n예산에 맞춘 기본 코디 추천입니다.`,
+        styleReasoning: '각 카테고리에서 예산에 맞는 아이템을 선택했습니다.',
+        selectedProductIds: selectedIds,
+        stylingTips: '자신만의 스타일로 연출해보세요.'
       };
     }
 
-    // Step 4: Search products_cache ONLY for each category
+    // Step 6: Get selected products
+    const { data: selectedProducts } = await supabase
+      .from('products_cache')
+      .select('*')
+      .in('id', ragResponse.selectedProductIds);
+
     const lookItems: LookItem[] = [];
-
-    // Category mapping (Korean <-> English) - comprehensive list
-    const categoryMap: Record<string, string[]> = {
-      '상의': ['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'Shirts', 'Polo Shirts'],
-      '하의': ['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'Trousers'],
-      '아우터': ['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'Jackets', 'Coats'],
-      '신발': ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'Trainers', 'Loafers'],
-      '가방': ['가방', 'bag', 'bags', 'accessory', '백', '클러치', 'clutch', 'tote', '토트백', 'Holdalls', 'Backpacks'],
-      '원피스': ['원피스', 'dress', 'dresses', '드레스'],
-      '액세서리': ['액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt', 'Ties', 'Scarves', 'Hats', 'Gloves'],
-    };
     
-    const getCategoryVariants = (category: string): string[] => {
-      const lowerCat = category.toLowerCase();
-      for (const [key, variants] of Object.entries(categoryMap)) {
-        if (key === category || variants.some(v => v.toLowerCase() === lowerCat)) {
-          return [...new Set([key, ...variants])];
-        }
-      }
-      return [category, category.toLowerCase()];
-    };
-
-    for (const item of styleGuide.items) {
-      const categoryVariants = getCategoryVariants(item.category);
-      console.log(`[style-recommend] Searching for category: ${item.category}, variants: ${categoryVariants.join(', ')}`);
-      
-      let cachedProducts: CachedProduct[] = [];
-      
-      // 1. 가격 범위 내에서 검색
-      for (const catVariant of categoryVariants) {
-        if (cachedProducts.length > 0) break;
-        
-        let query = supabase
-          .from('products_cache')
-          .select('*')
-          .eq('is_active', true)
-          .ilike('category', `%${catVariant}%`)
-          .gte('price', item.priceRange.min * 0.5) // 좀 더 유연한 가격 범위
-          .lte('price', item.priceRange.max * 1.5)
-          .not('image_url', 'is', null);
-
-        // Add gender filter - use targetGender which considers kids
-        if (isKids) {
-          query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
-        } else {
-          const genderEn = gender === '남성' ? 'male' : 'female';
-          query = query.or(`gender.eq.${genderEn},gender.is.null`);
-        }
-
-        const { data } = await query.limit(20);
-        if (data && data.length > 0) {
-          cachedProducts = data;
-        }
-      }
-
-      // 2. 가격 범위 없이 카테고리만으로 검색 (폴백)
-      if (cachedProducts.length === 0) {
-        for (const catVariant of categoryVariants) {
-          if (cachedProducts.length > 0) break;
-          
-          let query = supabase
-            .from('products_cache')
-            .select('*')
-            .eq('is_active', true)
-            .ilike('category', `%${catVariant}%`)
-            .not('image_url', 'is', null);
-
-          // Add gender filter - use targetGender which considers kids
-          if (isKids) {
-            query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
-          } else {
-            const genderEn = gender === '남성' ? 'male' : 'female';
-            query = query.or(`gender.eq.${genderEn},gender.is.null`);
-          }
-
-          const { data } = await query.limit(20);
-          if (data && data.length > 0) {
-            cachedProducts = data;
-          }
-        }
-      }
-
-      if (cachedProducts.length > 0) {
-        // Score and select best match
-        const scored = cachedProducts.map(p => ({
-          product: p,
-          score: calculateMatchScore(p, item)
-        })).sort((a, b) => b.score - a.score);
-
-        const best = scored[0].product;
-        const affiliateUrl = await generateAffiliateUrl(best, merchants || [], LINKPRICE_AFFILIATE_ID);
-
+    if (selectedProducts) {
+      for (const product of selectedProducts) {
+        const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
         lookItems.push({
-          category: item.category,
-          product: best,
+          category: product.category,
+          product: product,
           affiliateUrl,
           source: 'cache'
         });
-        console.log(`[style-recommend] ${item.category}: Found in cache - ${best.name} (₩${best.price})`);
-      } else {
-        lookItems.push({
-          category: item.category,
-          product: null,
-          affiliateUrl: null,
-          source: 'none'
-        });
-        console.log(`[style-recommend] ${item.category}: Not found in products_cache`);
       }
     }
 
-    // Step 5: Calculate total price and create response
+    // Step 7: Calculate total price and create response
     const totalPrice = lookItems.reduce((sum, item) => sum + (item.product?.price || 0), 0);
-    const foundItems = lookItems.filter(l => l.product !== null);
 
-    // Step 6: Save to style_cache if we have at least 2 items
-    if (foundItems.length >= 2) {
+    // Step 8: Save to style_cache if we have items
+    if (lookItems.length >= 2) {
       const lookData = {
         cache_key: cacheKey,
-        product_ids: foundItems.map(l => l.product!.id),
-        image_url: foundItems[0].product!.image_url || '',
+        product_ids: lookItems.map(l => l.product!.id),
+        image_url: lookItems[0].product!.image_url || '',
         use_count: 1,
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       };
@@ -391,24 +298,24 @@ serve(async (req) => {
       success: true,
       cacheHit: false,
       look: {
-        name: styleGuide.lookName,
+        name: ragResponse.lookName,
+        styleConcept: ragResponse.styleConcept,
+        styleReasoning: ragResponse.styleReasoning,
         items: lookItems,
         totalPrice,
-        stylingTips: styleGuide.stylingTips,
-        styleTags: [...new Set(styleGuide.items.flatMap(i => i.styleTags))]
+        stylingTips: ragResponse.stylingTips,
       },
       apiCalls: {
         gemini: geminiCalls,
-        serpapi: 0 // No longer using SerpAPI
+        serpapi: 0
       },
       stats: {
-        requestedItems: styleGuide.items.length,
-        foundInCache: foundItems.length,
-        notFound: lookItems.filter(l => l.source === 'none').length
+        productsInContext: uniqueProducts.length,
+        selectedProducts: lookItems.length,
       }
     };
 
-    console.log(`[style-recommend] Complete. Stats:`, response.stats);
+    console.log(`[style-recommend] RAG Complete. Selected ${lookItems.length} products, Total: ₩${totalPrice}`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -434,41 +341,25 @@ function extractOccasion(request: string): string {
   return '캐주얼';
 }
 
-function calculateMatchScore(product: CachedProduct, guide: StyleGuideItem): number {
-  let score = 0;
-  
-  // Style tag matching
-  if (product.style_tags && guide.styleTags) {
-    const matches = product.style_tags.filter(tag => 
-      guide.styleTags.some(gt => gt.toLowerCase() === tag.toLowerCase())
-    );
-    score += matches.length * 20;
-  }
-  
-  // Color matching
-  if (product.color && guide.colorSuggestion) {
-    if (product.color.toLowerCase().includes(guide.colorSuggestion.toLowerCase()) ||
-        guide.colorSuggestion.toLowerCase().includes(product.color.toLowerCase())) {
-      score += 15;
+// Category mapping
+const categoryMap: Record<string, string[]> = {
+  '상의': ['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'Shirts', 'Polo Shirts'],
+  '하의': ['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'Trousers'],
+  '아우터': ['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'Jackets', 'Coats'],
+  '신발': ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'Trainers', 'Loafers'],
+  '가방': ['가방', 'bag', 'bags', 'accessory', '백', '클러치', 'clutch', 'tote', '토트백', 'Holdalls', 'Backpacks'],
+  '원피스': ['원피스', 'dress', 'dresses', '드레스'],
+  '액세서리': ['액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt', 'Ties', 'Scarves', 'Hats', 'Gloves', '목걸이', '반지', '귀걸이', '팔찌', '시계'],
+};
+
+function getCategoryVariants(category: string): string[] {
+  const lowerCat = category.toLowerCase();
+  for (const [key, variants] of Object.entries(categoryMap)) {
+    if (key === category || variants.some(v => v.toLowerCase() === lowerCat)) {
+      return [...new Set([key, ...variants])];
     }
   }
-  
-  // Price preference (closer to mid-range = higher score)
-  const midPrice = (guide.priceRange.min + guide.priceRange.max) / 2;
-  const priceDiff = Math.abs(product.price - midPrice);
-  const priceScore = Math.max(0, 10 - (priceDiff / midPrice) * 10);
-  score += priceScore;
-  
-  // Image availability bonus
-  if (product.image_url) score += 10;
-  
-  // Brand bonus
-  if (product.brand) score += 5;
-  
-  // Small random factor for variety
-  score += Math.random() * 5;
-  
-  return score;
+  return [category, category.toLowerCase()];
 }
 
 async function generateAffiliateUrl(
@@ -490,7 +381,6 @@ async function generateAffiliateUrl(
       try {
         const linkPriceData = JSON.parse(responseText);
         if (linkPriceData.result === 'S' && linkPriceData.url) {
-          console.log(`[style-recommend] LinkPrice deeplink success for: ${product.name}`);
           return linkPriceData.url;
         }
       } catch (e) {
@@ -502,8 +392,6 @@ async function generateAffiliateUrl(
   }
 
   // Fallback: Use merchant deeplink template if available
-  console.log(`[style-recommend] LinkPrice failed for ${product.name}, trying fallback`);
-  
   const merchant = merchants.find(m => product.merchant_id === m.id || 
     product.product_url.includes(m.base_url.replace('https://', '').replace('http://', '')));
 
@@ -513,7 +401,6 @@ async function generateAffiliateUrl(
       .replace('{affiliate_id}', affiliateId)
       .replace('{encoded_url}', encodedProductUrl)
       .replace('{product_url}', encodedProductUrl);
-    console.log(`[style-recommend] Using fallback template for ${product.name}`);
     return affiliateUrl;
   }
 
