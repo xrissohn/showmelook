@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -142,6 +142,21 @@ interface WebUnlockerResult {
   error?: string;
 }
 
+interface BatchCollectResult {
+  success: boolean;
+  merchants_processed: number;
+  total_saved: number;
+  results: Array<{
+    merchant_id: string;
+    merchant_name: string;
+    urls_tried: number;
+    success_count: number;
+    saved_count: number;
+    errors: string[];
+  }>;
+  error?: string;
+}
+
 const Admin = () => {
   const { toast } = useToast();
   
@@ -186,6 +201,12 @@ const Admin = () => {
   const [webUnlockerMode, setWebUnlockerMode] = useState<"preview" | "save">("preview");
   const [webUnlockerResult, setWebUnlockerResult] = useState<WebUnlockerResult | null>(null);
   const [isWebUnlockerLoading, setIsWebUnlockerLoading] = useState(false);
+
+  // Batch collect state
+  const [selectedMerchants, setSelectedMerchants] = useState<string[]>([]);
+  const [batchUrlsPerMerchant, setBatchUrlsPerMerchant] = useState("3");
+  const [batchResult, setBatchResult] = useState<BatchCollectResult | null>(null);
+  const [isBatchLoading, setIsBatchLoading] = useState(false);
 
   useEffect(() => {
     loadMerchants();
@@ -523,6 +544,74 @@ const Admin = () => {
     }
   };
 
+  const runBatchCollect = async () => {
+    if (selectedMerchants.length === 0) {
+      toast({
+        title: "머천트 선택 필요",
+        description: "수집할 머천트를 1개 이상 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBatchLoading(true);
+    setBatchResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-collect', {
+        body: { 
+          merchantIds: selectedMerchants,
+          urlsPerMerchant: parseInt(batchUrlsPerMerchant) || 3,
+        },
+      });
+
+      if (error) throw error;
+      
+      setBatchResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "배치 수집 완료",
+          description: `${data.merchants_processed}개 머천트에서 ${data.total_saved}개 상품 저장됨`,
+        });
+        loadMerchants();
+        loadProductStats();
+      } else {
+        toast({
+          title: "배치 수집 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Batch collect error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setBatchResult({ success: false, merchants_processed: 0, total_saved: 0, results: [], error: errorMessage });
+      toast({
+        title: "배치 수집 오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBatchLoading(false);
+    }
+  };
+
+  const toggleMerchantSelection = (merchantId: string) => {
+    setSelectedMerchants(prev => 
+      prev.includes(merchantId) 
+        ? prev.filter(id => id !== merchantId)
+        : [...prev, merchantId]
+    );
+  };
+
+  const selectAllMerchants = () => {
+    setSelectedMerchants(merchants.map(m => m.id));
+  };
+
+  const deselectAllMerchants = () => {
+    setSelectedMerchants([]);
+  };
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -590,8 +679,9 @@ const Admin = () => {
         </Card>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="style-recommend" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7">
+        <Tabs defaultValue="batch-collect" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-8">
+            <TabsTrigger value="batch-collect">배치 수집</TabsTrigger>
             <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
             <TabsTrigger value="brightdata">BrightData</TabsTrigger>
             <TabsTrigger value="style-v1">규칙 추천</TabsTrigger>
@@ -600,6 +690,140 @@ const Admin = () => {
             <TabsTrigger value="collect">상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
+
+          {/* Batch Collect Tab */}
+          <TabsContent value="batch-collect" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Play className="w-5 h-5" />
+                  8개 머천트 배치 수집
+                </CardTitle>
+                <CardDescription>
+                  선택한 머천트에서 Bright Data Proxy를 사용하여 상품을 일괄 수집합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Merchant Selection */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">머천트 선택</label>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={selectAllMerchants}>
+                        전체 선택
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={deselectAllMerchants}>
+                        전체 해제
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {merchants.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => toggleMerchantSelection(m.id)}
+                        className={`p-3 rounded-lg border text-left transition-colors ${
+                          selectedMerchants.includes(m.id)
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-card hover:bg-muted border-border'
+                        }`}
+                      >
+                        <p className="font-medium text-sm">{m.name_ko}</p>
+                        <p className="text-xs opacity-80">{m.name}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedMerchants.length}개 머천트 선택됨
+                  </p>
+                </div>
+
+                {/* URLs per merchant */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">머천트별 URL 수</label>
+                  <Select value={batchUrlsPerMerchant} onValueChange={setBatchUrlsPerMerchant}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="URL 수 선택" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">2개</SelectItem>
+                      <SelectItem value="3">3개</SelectItem>
+                      <SelectItem value="5">5개</SelectItem>
+                      <SelectItem value="10">10개</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button 
+                  onClick={runBatchCollect} 
+                  disabled={isBatchLoading || selectedMerchants.length === 0} 
+                  className="w-full"
+                  size="lg"
+                >
+                  {isBatchLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  {isBatchLoading 
+                    ? `수집 중... (${selectedMerchants.length}개 머천트)` 
+                    : `${selectedMerchants.length}개 머천트에서 수집 시작`}
+                </Button>
+
+                {/* Batch Result */}
+                {batchResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    batchResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {batchResult.success ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-medium">
+                            {batchResult.merchants_processed}개 머천트 처리 완료, 
+                            총 {batchResult.total_saved}개 상품 저장
+                          </span>
+                        </div>
+                        
+                        {/* Results per merchant */}
+                        <div className="space-y-2">
+                          {batchResult.results.map((r) => (
+                            <div key={r.merchant_id} className="p-3 bg-card rounded border">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{r.merchant_name}</span>
+                                <div className="flex gap-2 text-sm">
+                                  <Badge variant="outline">시도: {r.urls_tried}</Badge>
+                                  <Badge variant="secondary">성공: {r.success_count}</Badge>
+                                  <Badge variant="default">저장: {r.saved_count}</Badge>
+                                </div>
+                              </div>
+                              {r.errors.length > 0 && (
+                                <div className="mt-2 text-xs text-red-600 dark:text-red-400">
+                                  {r.errors.slice(0, 2).map((e, i) => (
+                                    <p key={i} className="truncate">{e}</p>
+                                  ))}
+                                  {r.errors.length > 2 && (
+                                    <p>... +{r.errors.length - 2}개 더</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                        <XCircle className="w-5 h-5" />
+                        <span className="font-medium">배치 수집 실패: {batchResult.error}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
 
           {/* Style Recommend (AI) Test Tab */}
