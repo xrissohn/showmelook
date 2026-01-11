@@ -386,7 +386,55 @@ const StyleGenerator = () => {
     return colorMap[tag] || 'bg-secondary text-muted-foreground';
   };
 
-  // 대체 상품 조회 함수
+  // 카테고리를 priority category로 매핑하는 함수
+  const mapToPriorityCategory = (category: string): string => {
+    const cat = category.toLowerCase();
+    
+    // 상의
+    if (['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'shirts', 'polo shirts'].some(v => cat.includes(v.toLowerCase()))) {
+      return '상의';
+    }
+    
+    // 하의 (원피스 포함)
+    if (['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'trousers', '원피스', 'dress', 'dresses', '드레스'].some(v => cat.includes(v.toLowerCase()))) {
+      return '하의';
+    }
+    
+    // 아우터
+    if (['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'jackets', 'coats', '패딩', '다운'].some(v => cat.includes(v.toLowerCase()))) {
+      return '아우터';
+    }
+    
+    // 신발
+    if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers'].some(v => cat.includes(v.toLowerCase()))) {
+      return '신발';
+    }
+    
+    // 가방
+    if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks'].some(v => cat.includes(v.toLowerCase()))) {
+      return '가방';
+    }
+    
+    // 액세서리
+    if (['액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt', 'ties', 'scarves', 'hats', 'gloves', '목걸이', '반지', '귀걸이', '팔찌', '시계', 'watch', 'jewelry'].some(v => cat.includes(v.toLowerCase()))) {
+      return '액세서리';
+    }
+    
+    return '액세서리';
+  };
+
+  // 현재 선택된 상품과의 유사도 계산 (style_tags 기반)
+  const calculateSimilarity = (product: CachedProduct, currentProduct: CachedProduct): number => {
+    const currentTags = currentProduct.style_tags || [];
+    const productTags = product.style_tags || [];
+    
+    if (currentTags.length === 0 || productTags.length === 0) return 0;
+    
+    const commonTags = currentTags.filter(tag => productTags.includes(tag));
+    return commonTags.length / Math.max(currentTags.length, productTags.length);
+  };
+
+  // 대체 상품 조회 함수 (개선됨)
   const handleShowAlternatives = async (category: string, currentProductId: string) => {
     setAlternativeCategory(category);
     setAlternativeModalOpen(true);
@@ -394,25 +442,52 @@ const StyleGenerator = () => {
     setAlternativeProducts([]);
 
     try {
-      // 성별 매핑
-      const genderFilter = customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : null;
+      // 현재 상품 정보 가져오기
+      const currentProduct = customResult?.items.find(item => item.id === currentProductId);
+      const priorityCategory = mapToPriorityCategory(category);
       
-      // 같은 카테고리 + 성별의 다른 상품들 조회
+      // 성별 매핑
+      const genderKo = customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : null;
+      const genderEn = customGender === 'male' ? 'male' : customGender === 'female' ? 'female' : null;
+      
+      console.log(`[Alternatives] Category: ${category} -> Priority: ${priorityCategory}, Gender: ${genderKo}/${genderEn}`);
+      
+      // priority category에 해당하는 모든 카테고리 키워드
+      const categoryKeywords: Record<string, string[]> = {
+        '상의': ['상의', 'top', '블라우스', '셔츠', '니트', '티셔츠', '후디', '맨투맨'],
+        '하의': ['하의', 'bottom', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'trousers', '원피스', 'dress'],
+        '아우터': ['아우터', 'outerwear', 'jacket', '자켓', '코트', 'coat', '점퍼', '패딩', '다운', '가디건'],
+        '신발': ['신발', 'shoes', '스니커즈', '부츠', 'boots', 'trainers', 'loafers', '로퍼'],
+        '가방': ['가방', 'bag', '백', '클러치', 'tote', '토트백'],
+        '액세서리': ['액세서리', 'accessory', '스카프', '모자', '벨트', '시계', '목걸이', '팔찌'],
+      };
+      
+      const keywords = categoryKeywords[priorityCategory] || [category];
+      
+      // OR 조건으로 모든 키워드에 해당하는 상품 조회
+      const orFilters = keywords.map(kw => `category.ilike.%${kw}%`).join(',');
+      
       let query = supabase
         .from('products_cache')
-        .select('id, name, brand, price, image_url, product_url, category, style_tags')
-        .eq('category', category)
-        .neq('id', currentProductId);
+        .select('id, name, brand, price, image_url, product_url, category, style_tags, gender')
+        .eq('is_active', true)
+        .eq('is_in_stock', true)
+        .not('image_url', 'is', null)
+        .neq('id', currentProductId)
+        .or(orFilters);
       
-      if (genderFilter) {
-        query = query.eq('gender', genderFilter);
-      }
-      
-      const { data, error } = await query.limit(12);
+      const { data, error } = await query.order('price', { ascending: true }).limit(50);
 
       if (error) throw error;
 
-      const products: CachedProduct[] = (data || []).map(item => ({
+      // 성별 필터링 (클라이언트 측)
+      let filteredData = (data || []).filter(item => {
+        if (!genderKo && !genderEn) return true;
+        if (!item.gender) return true; // 성별 정보 없으면 포함
+        return item.gender === genderKo || item.gender === genderEn;
+      });
+
+      let products: CachedProduct[] = filteredData.map(item => ({
         id: item.id,
         name: item.name,
         brand: item.brand,
@@ -423,6 +498,16 @@ const StyleGenerator = () => {
         style_tags: item.style_tags,
       }));
 
+      // 현재 상품과의 유사도순 정렬 (style_tags 기반)
+      if (currentProduct) {
+        products = products.sort((a, b) => {
+          const simA = calculateSimilarity(a, currentProduct);
+          const simB = calculateSimilarity(b, currentProduct);
+          return simB - simA; // 유사도 높은 순
+        });
+      }
+
+      console.log(`[Alternatives] Found ${products.length} products for ${priorityCategory}`);
       setAlternativeProducts(products);
     } catch (error) {
       console.error('Error fetching alternatives:', error);
