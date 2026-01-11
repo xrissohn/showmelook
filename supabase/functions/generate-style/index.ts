@@ -442,91 +442,124 @@ async function generateImageWithVertexAI(
   return { imageBase64: imageBase64Result, text: textResult };
 }
 
-// Generate image using Lovable AI (fallback) - uses gemini-3-pro for better face compositing
-async function generateImageWithLovableAI(
+// Generate image using Google Gemini API directly with user's API key
+// This uses the user's own Google API key for billing separation
+async function generateImageWithUserGoogleAPI(
+  accessToken: string,
+  projectId: string,
   prompt: string,
   imageUrl?: string,
-  productImageUrls?: string[]
+  productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY is not configured');
-  }
+  const region = 'us-west1';
+  const modelId = 'gemini-2.5-flash-image'; // nanobanana model
+  const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
 
-  console.log('Calling Lovable AI (fallback) with gemini-3-pro-image-preview...');
+  console.log('Calling User Google API (Vertex AI) with nanobanana model...');
 
-  // Build message content
-  let content: any[] = [{ type: 'text', text: prompt }];
+  // Build content parts - FACE IMAGE FIRST for better face preservation
+  const parts: any[] = [];
   
-  // Add reference face image if provided
+  // Add reference face image FIRST if provided (critical for face composite)
   if (imageUrl) {
-    content.push({ type: 'image_url', image_url: { url: imageUrl } });
-    console.log('Including reference image for face composite');
+    console.log('Downloading reference image for face composite (placing FIRST)...');
+    const imageBase64 = await imageUrlToBase64(imageUrl);
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: imageBase64
+      }
+    });
   }
   
-  // Add product reference images
-  if (productImageUrls && productImageUrls.length > 0) {
-    const limitedUrls = productImageUrls.slice(0, 4);
-    for (const url of limitedUrls) {
-      if (url && url.startsWith('http')) {
-        content.push({ type: 'image_url', image_url: { url } });
-      }
+  // Add text prompt AFTER face image
+  parts.push({ text: prompt });
+  
+  // Add product reference images LAST
+  if (productImages && productImages.length > 0) {
+    console.log(`Adding ${productImages.length} product images for visual reference...`);
+    for (const product of productImages) {
+      parts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: product.base64
+        }
+      });
     }
-    console.log(`Including ${limitedUrls.length} product images for visual reference`);
   }
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const requestBody = {
+    contents: [{
+      role: 'user',
+      parts
+    }],
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT']
+    }
+  };
+
+  console.log('Calling Vertex AI (nanobanana) for face composite:', endpoint);
+
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      model: 'google/gemini-3-pro-image-preview',
-      messages: [{ role: 'user', content }],
-      modalities: ['image', 'text']
-    })
+    body: JSON.stringify(requestBody)
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('Lovable AI error:', response.status, errorText);
+    console.error('User Google API (Vertex AI) error:', response.status, errorText);
     
     if (response.status === 429) {
-      throw new Error('LOVABLE_RATE_LIMIT');
+      throw new Error('GOOGLE_RATE_LIMIT');
     }
-    if (response.status === 402) {
-      throw new Error('LOVABLE_PAYMENT_REQUIRED');
+    if (response.status === 404) {
+      throw new Error(`Vertex AI 모델을 찾을 수 없습니다: ${modelId} in ${region}`);
+    }
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Google API 인증 실패');
     }
     
-    throw new Error(`Lovable AI 오류: ${response.status}`);
+    throw new Error(`Google API 오류: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('Lovable AI response received');
+  console.log('User Google API (Vertex AI) response received');
 
-  // Extract image from response
-  const images = data.choices?.[0]?.message?.images;
-  if (!images || images.length === 0) {
-    console.error('No images in Lovable AI response:', JSON.stringify(data));
-    throw new Error('Lovable AI 이미지 생성 실패');
+  // Parse Vertex AI response
+  const candidates = data.candidates;
+  if (!candidates || candidates.length === 0) {
+    console.error('No candidates in response:', JSON.stringify(data));
+    throw new Error('이미지 생성에 실패했습니다.');
   }
 
-  const imageDataUrl = images[0]?.image_url?.url;
-  if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
-    console.error('Invalid image data URL:', imageDataUrl?.substring(0, 100));
-    throw new Error('Lovable AI 이미지 형식 오류');
+  const content = candidates[0].content;
+  if (!content || !content.parts) {
+    console.error('No content parts in response:', JSON.stringify(candidates[0]));
+    throw new Error('이미지 생성에 실패했습니다.');
   }
 
-  // Extract base64 from data URL (format: data:image/png;base64,...)
-  const base64Match = imageDataUrl.match(/^data:image\/[^;]+;base64,(.+)$/);
-  if (!base64Match) {
-    throw new Error('Lovable AI base64 추출 실패');
+  let imageBase64Result: string | null = null;
+  let textResult: string | undefined;
+
+  for (const part of content.parts) {
+    if (part.inlineData && part.inlineData.data) {
+      imageBase64Result = part.inlineData.data;
+    }
+    if (part.text) {
+      textResult = part.text;
+    }
   }
 
-  const textContent = data.choices?.[0]?.message?.content;
-  
-  return { imageBase64: base64Match[1], text: textContent };
+  if (!imageBase64Result) {
+    console.error('No image data in response parts:', JSON.stringify(content.parts));
+    throw new Error('이미지 생성에 실패했습니다.');
+  }
+
+  return { imageBase64: imageBase64Result, text: textResult };
 }
 
 // Try to find cached image with multi-level cache strategy
@@ -960,41 +993,40 @@ The reference product images show the EXACT items that must appear on the model.
     console.log('Access token obtained');
 
     // Call image generation API
-    // Face composite with 3+ items uses Gemini 3.0 (better face preservation)
-    // Otherwise use Vertex AI with Lovable AI fallback
+    // 모든 이미지 생성은 사용자의 Google API 키로 처리 (비용 분리)
+    // 얼굴 합성: generateImageWithUserGoogleAPI (nanobanana)
+    // 일반 생성: generateImageWithVertexAI
     let result;
     let usedFallback = false;
-    const useGemini3Direct = useFaceComposite && productImages.length >= 3;
     
-    if (useGemini3Direct) {
-      // 상품 3개 이상 + 얼굴 합성 시 Gemini 3.0 직접 사용
-      console.log(`Using Gemini 3.0 (nacho banana) directly for face composite with ${productImages.length} products`);
+    if (useFaceComposite && referenceImageUrl) {
+      // 얼굴 합성 - 사용자 Google API 키로 nanobanana 모델 사용
+      console.log(`Using User Google API (nanobanana) for face composite with ${productImages.length} products`);
       try {
-        result = await generateImageWithLovableAI(prompt, referenceImageUrl, productImageUrls);
-        usedFallback = true;
-        console.log('Image generated with Gemini 3.0 (nacho banana)');
-      } catch (lovableError) {
-        console.error('Gemini 3.0 failed:', lovableError);
+        result = await generateImageWithUserGoogleAPI(
+          accessToken,
+          GOOGLE_CLOUD_PROJECT_ID,
+          prompt,
+          referenceImageUrl,
+          productImages
+        );
+        console.log('Image generated with User Google API (nanobanana)');
+      } catch (googleError) {
+        console.error('User Google API failed:', googleError);
         
-        // Lovable AI 특수 에러 처리
-        if (lovableError instanceof Error) {
-          if (lovableError.message === 'LOVABLE_RATE_LIMIT') {
+        // Google API 특수 에러 처리
+        if (googleError instanceof Error) {
+          if (googleError.message === 'GOOGLE_RATE_LIMIT') {
             return new Response(
-              JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
+              JSON.stringify({ error: 'Google API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' }),
               { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-          if (lovableError.message === 'LOVABLE_PAYMENT_REQUIRED') {
-            return new Response(
-              JSON.stringify({ error: '서비스 이용이 일시 중단되었습니다. 관리자에게 문의해주세요.' }),
-              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
         }
-        throw lovableError;
+        throw googleError;
       }
     } else {
-      // 일반 생성 또는 상품 2개 이하 얼굴 합성: Vertex AI 시도
+      // 일반 생성 (얼굴 합성 없음): Vertex AI 사용
       try {
         result = await generateImageWithVertexAI(
           accessToken,
@@ -1005,35 +1037,19 @@ The reference product images show the EXACT items that must appear on the model.
         );
         console.log('Image generated with Vertex AI');
       } catch (vertexError) {
-        // Vertex AI 실패 시 (429 포함) Lovable AI로 폴백
-        const errorMessage = vertexError instanceof Error ? vertexError.message : String(vertexError);
-        console.warn('Vertex AI failed, falling back to Lovable AI:', errorMessage);
+        // Vertex AI 실패 시 에러 처리
+        console.error('Vertex AI failed:', vertexError);
         
-        try {
-          result = await generateImageWithLovableAI(prompt, referenceImageUrl, productImageUrls);
-          usedFallback = true;
-          console.log('Image generated with Lovable AI (fallback)');
-        } catch (lovableError) {
-          console.error('Lovable AI fallback also failed:', lovableError);
-          
-          // Lovable AI 특수 에러 처리
-          if (lovableError instanceof Error) {
-            if (lovableError.message === 'LOVABLE_RATE_LIMIT') {
-              return new Response(
-                JSON.stringify({ error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' }),
-                { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
-            }
-            if (lovableError.message === 'LOVABLE_PAYMENT_REQUIRED') {
-              return new Response(
-                JSON.stringify({ error: '서비스 이용이 일시 중단되었습니다. 관리자에게 문의해주세요.' }),
-                { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-              );
-            }
+        if (vertexError instanceof Error) {
+          if (vertexError.message === 'RATE_LIMIT') {
+            return new Response(
+              JSON.stringify({ error: 'Google API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
           }
-          
-          throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
         }
+        
+        throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
       }
     }
 
