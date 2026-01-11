@@ -137,24 +137,32 @@ interface StyleRecommendResult {
   error?: string;
 }
 
-interface BrightDataResult {
+interface WebUnlockerResult {
   success: boolean;
   mode?: string;
   total_urls?: number;
-  scraped?: number;
-  valid?: number;
-  inserted?: number;
-  errors?: number;
-  products?: Array<{
+  success_count?: number;
+  error_count?: number;
+  saved_count?: number;
+  results?: Array<{
     name: string;
     brand: string | null;
     price: number;
+    original_price: number | null;
     image_url: string | null;
     category: string;
     merchant_id: string;
     product_url: string;
+    sizes: string[] | null;
+    is_in_stock: boolean;
+    color: string | null;
+    html_length?: number;
   }>;
-  raw_sample?: any[];
+  errors?: Array<{
+    url: string;
+    error: string;
+    html_sample?: string;
+  }>;
   error?: string;
 }
 
@@ -204,11 +212,11 @@ const Admin = () => {
   const [aiResult, setAiResult] = useState<StyleRecommendResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // BrightData test state
-  const [brightDataUrls, setBrightDataUrls] = useState("");
-  const [brightDataMode, setBrightDataMode] = useState<"preview" | "save">("preview");
-  const [brightDataResult, setBrightDataResult] = useState<BrightDataResult | null>(null);
-  const [isBrightDataLoading, setIsBrightDataLoading] = useState(false);
+  // Web Unlocker test state
+  const [webUnlockerUrls, setWebUnlockerUrls] = useState("");
+  const [webUnlockerMode, setWebUnlockerMode] = useState<"preview" | "save">("preview");
+  const [webUnlockerResult, setWebUnlockerResult] = useState<WebUnlockerResult | null>(null);
+  const [isWebUnlockerLoading, setIsWebUnlockerLoading] = useState(false);
 
   // Load merchants on mount
   useEffect(() => {
@@ -549,8 +557,8 @@ const Admin = () => {
     }
   };
 
-  const testBrightData = async () => {
-    if (!brightDataUrls.trim()) {
+  const testWebUnlocker = async () => {
+    if (!webUnlockerUrls.trim()) {
       toast({
         title: "URL 입력 필요",
         description: "상품 URL을 한 줄에 하나씩 입력해주세요.",
@@ -559,29 +567,29 @@ const Admin = () => {
       return;
     }
 
-    setIsBrightDataLoading(true);
-    setBrightDataResult(null);
+    setIsWebUnlockerLoading(true);
+    setWebUnlockerResult(null);
 
     try {
-      const urls = brightDataUrls
+      const urls = webUnlockerUrls
         .split('\n')
         .map(u => u.trim())
         .filter(u => u.length > 0);
 
-      const { data, error } = await supabase.functions.invoke('brightdata-collect', {
-        body: { urls, mode: brightDataMode },
+      const { data, error } = await supabase.functions.invoke('web-unlocker', {
+        body: { urls, mode: webUnlockerMode },
       });
 
       if (error) throw error;
       
-      setBrightDataResult(data);
+      setWebUnlockerResult(data);
       
       if (data.success) {
         toast({
-          title: "Bright Data 수집 완료",
-          description: brightDataMode === 'preview' 
-            ? `${data.valid}개 상품 미리보기 완료`
-            : `${data.inserted}개 상품 저장됨 (오류: ${data.errors})`,
+          title: "Web Unlocker 수집 완료",
+          description: webUnlockerMode === 'preview' 
+            ? `${data.success_count}개 상품 추출 성공 (오류: ${data.error_count})`
+            : `${data.saved_count}개 상품 저장됨`,
         });
       } else {
         toast({
@@ -591,16 +599,16 @@ const Admin = () => {
         });
       }
     } catch (error: unknown) {
-      console.error('BrightData test error:', error);
+      console.error('Web Unlocker test error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setBrightDataResult({ success: false, error: errorMessage });
+      setWebUnlockerResult({ success: false, error: errorMessage });
       toast({
-        title: "Bright Data 오류",
+        title: "Web Unlocker 오류",
         description: errorMessage,
         variant: "destructive",
       });
     } finally {
-      setIsBrightDataLoading(false);
+      setIsWebUnlockerLoading(false);
     }
   };
 
@@ -642,7 +650,7 @@ const Admin = () => {
                 title="상품 자동 수집" 
                 items={[
                   { done: true, label: "collect-products Edge Function" },
-                  { done: true, label: "brightdata-collect Edge Function" },
+                  { done: true, label: "web-unlocker Edge Function" },
                   { done: true, label: "스타일 태그 자동 분류" },
                   { done: false, label: "CRON 스케줄 설정" },
                 ]}
@@ -895,33 +903,33 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* BrightData Collect Test Tab */}
+          {/* Web Unlocker Test Tab */}
           <TabsContent value="brightdata" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="w-5 h-5" />
-                  Bright Data 상품 수집
+                  Bright Data Web Unlocker
                 </CardTitle>
                 <CardDescription>
-                  Bright Data Web Scraper API를 사용하여 상품 정보를 수집하고 products_cache 테이블에 저장합니다.
+                  Bright Data Web Unlocker API를 사용하여 봇 차단을 우회하고 상품 정보를 수집합니다.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">상품 URL (한 줄에 하나씩, 최대 20개)</label>
+                    <label className="text-sm font-medium mb-2 block">상품 URL (한 줄에 하나씩, 최대 10개)</label>
                     <textarea
                       className="w-full h-40 p-3 border rounded-lg font-mono text-sm resize-none"
-                      placeholder={`https://www.wconcept.co.kr/Product/12345678\nhttps://www.musinsa.com/app/goods/123456\nhttps://hfashion.co.kr/product/12345`}
-                      value={brightDataUrls}
-                      onChange={(e) => setBrightDataUrls(e.target.value)}
+                      placeholder={`https://www.wconcept.co.kr/Product/300124178\nhttps://www.musinsa.com/app/goods/2994785\nhttps://www.29cm.co.kr/products/12345`}
+                      value={webUnlockerUrls}
+                      onChange={(e) => setWebUnlockerUrls(e.target.value)}
                     />
                   </div>
                   <div className="flex items-center gap-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">모드</label>
-                      <Select value={brightDataMode} onValueChange={(v) => setBrightDataMode(v as "preview" | "save")}>
+                      <Select value={webUnlockerMode} onValueChange={(v) => setWebUnlockerMode(v as "preview" | "save")}>
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="모드 선택" />
                         </SelectTrigger>
@@ -932,84 +940,94 @@ const Admin = () => {
                       </Select>
                     </div>
                     <div className="flex-1 text-sm text-muted-foreground">
-                      <p>• <strong>미리보기</strong>: 스크래핑 결과만 확인 (DB 저장 X)</p>
-                      <p>• <strong>저장</strong>: 결과를 products_cache 테이블에 UPSERT</p>
+                      <p>• <strong>미리보기</strong>: HTML 파싱 결과 확인 (DB 저장 X)</p>
+                      <p>• <strong>저장</strong>: 결과를 products_cache 테이블에 저장</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Sample URLs */}
                 <div className="text-sm text-muted-foreground">
-                  <p className="font-medium mb-2">예시 URL:</p>
+                  <p className="font-medium mb-2">테스트 URL:</p>
                   <div className="flex flex-wrap gap-2">
                     <button 
-                      onClick={() => setBrightDataUrls("https://www.wconcept.co.kr/Product/300124178")}
+                      onClick={() => setWebUnlockerUrls("https://www.wconcept.co.kr/Product/300124178")}
                       className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
                     >
                       W Concept
                     </button>
                     <button 
-                      onClick={() => setBrightDataUrls("https://www.musinsa.com/app/goods/2994785")}
+                      onClick={() => setWebUnlockerUrls("https://www.musinsa.com/app/goods/2994785")}
                       className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
                     >
                       Musinsa
                     </button>
+                    <button 
+                      onClick={() => setWebUnlockerUrls("https://www.29cm.co.kr/products/2794631")}
+                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
+                    >
+                      29CM
+                    </button>
                   </div>
                 </div>
 
-                <Button onClick={testBrightData} disabled={isBrightDataLoading} className="w-full">
-                  {isBrightDataLoading ? (
+                <Button onClick={testWebUnlocker} disabled={isWebUnlockerLoading} className="w-full">
+                  {isWebUnlockerLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
                   ) : (
                     <Database className="w-4 h-4 mr-2" />
                   )}
-                  {brightDataMode === 'preview' ? '미리보기 실행' : '수집 및 저장'}
+                  {webUnlockerMode === 'preview' ? 'HTML 파싱 테스트' : '수집 및 저장'}
                 </Button>
 
                 {/* Result */}
-                {brightDataResult && (
+                {webUnlockerResult && (
                   <div className={`p-4 rounded-lg border ${
-                    brightDataResult.success 
+                    webUnlockerResult.success 
                       ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
                       : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
                   }`}>
-                    {brightDataResult.success ? (
+                    {webUnlockerResult.success ? (
                       <div className="space-y-4">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                           <CheckCircle2 className="w-5 h-5" />
                           <span className="font-medium">
-                            {brightDataResult.mode === 'preview' ? '미리보기 완료' : '수집 완료'}
+                            {webUnlockerResult.mode === 'preview' ? '파싱 완료' : '저장 완료'}
                           </span>
+                          <Badge variant="secondary">성공: {webUnlockerResult.success_count}</Badge>
+                          {webUnlockerResult.error_count && webUnlockerResult.error_count > 0 && (
+                            <Badge variant="destructive">실패: {webUnlockerResult.error_count}</Badge>
+                          )}
                         </div>
                         
                         {/* Stats */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                           <div className="p-2 bg-muted rounded">
                             <p className="text-muted-foreground">요청 URL</p>
-                            <p className="font-bold">{brightDataResult.total_urls}개</p>
+                            <p className="font-bold">{webUnlockerResult.total_urls}개</p>
                           </div>
                           <div className="p-2 bg-muted rounded">
-                            <p className="text-muted-foreground">스크래핑 성공</p>
-                            <p className="font-bold">{brightDataResult.scraped}개</p>
+                            <p className="text-muted-foreground">파싱 성공</p>
+                            <p className="font-bold">{webUnlockerResult.success_count}개</p>
                           </div>
                           <div className="p-2 bg-muted rounded">
-                            <p className="text-muted-foreground">유효 상품</p>
-                            <p className="font-bold">{brightDataResult.valid}개</p>
+                            <p className="text-muted-foreground">파싱 실패</p>
+                            <p className="font-bold">{webUnlockerResult.error_count}개</p>
                           </div>
-                          {brightDataResult.mode === 'save' && (
+                          {webUnlockerResult.mode === 'save' && (
                             <div className="p-2 bg-muted rounded">
                               <p className="text-muted-foreground">DB 저장</p>
-                              <p className="font-bold">{brightDataResult.inserted}개</p>
+                              <p className="font-bold">{webUnlockerResult.saved_count}개</p>
                             </div>
                           )}
                         </div>
 
                         {/* Products Grid */}
-                        {brightDataResult.products && brightDataResult.products.length > 0 && (
+                        {webUnlockerResult.results && webUnlockerResult.results.length > 0 && (
                           <div className="space-y-2">
-                            <p className="text-sm font-medium">수집된 상품:</p>
+                            <p className="text-sm font-medium">추출된 상품:</p>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
-                              {brightDataResult.products.map((product, idx) => (
+                              {webUnlockerResult.results.map((product, idx) => (
                                 <div key={idx} className="border rounded-lg overflow-hidden bg-card">
                                   <div className="aspect-square bg-muted relative">
                                     {product.image_url ? (
@@ -1030,12 +1048,34 @@ const Admin = () => {
                                     <Badge className="absolute top-1 left-1 text-xs" variant="secondary">
                                       {product.merchant_id}
                                     </Badge>
+                                    {product.is_in_stock ? (
+                                      <Badge className="absolute top-1 right-1 text-xs" variant="default">재고</Badge>
+                                    ) : (
+                                      <Badge className="absolute top-1 right-1 text-xs" variant="destructive">품절</Badge>
+                                    )}
                                   </div>
                                   <div className="p-2">
                                     <p className="text-xs font-medium line-clamp-2 mb-1">{product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{product.brand}</p>
-                                    <p className="text-sm font-bold mt-1">₩{product.price?.toLocaleString()}</p>
-                                    <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
+                                    <p className="text-xs text-muted-foreground">{product.brand || '-'}</p>
+                                    <div className="flex items-baseline gap-1 mt-1">
+                                      <p className="text-sm font-bold">₩{product.price?.toLocaleString()}</p>
+                                      {product.original_price && product.original_price > product.price && (
+                                        <p className="text-xs text-muted-foreground line-through">
+                                          ₩{product.original_price.toLocaleString()}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex gap-1 mt-1">
+                                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                                      {product.color && (
+                                        <Badge variant="secondary" className="text-xs">{product.color}</Badge>
+                                      )}
+                                    </div>
+                                    {product.sizes && product.sizes.length > 0 && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        사이즈: {product.sizes.slice(0, 3).join(', ')}{product.sizes.length > 3 ? '...' : ''}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -1043,20 +1083,27 @@ const Admin = () => {
                           </div>
                         )}
 
-                        {/* Raw sample for debugging */}
-                        {brightDataResult.raw_sample && brightDataResult.raw_sample.length > 0 && (
+                        {/* Errors */}
+                        {webUnlockerResult.errors && webUnlockerResult.errors.length > 0 && (
                           <details className="text-xs">
-                            <summary className="cursor-pointer text-muted-foreground">원본 데이터 샘플 보기</summary>
-                            <pre className="mt-2 p-2 bg-muted rounded overflow-auto max-h-40">
-                              {JSON.stringify(brightDataResult.raw_sample, null, 2)}
-                            </pre>
+                            <summary className="cursor-pointer text-red-600 font-medium">
+                              실패한 URL ({webUnlockerResult.errors.length}개)
+                            </summary>
+                            <div className="mt-2 space-y-2">
+                              {webUnlockerResult.errors.map((err, idx) => (
+                                <div key={idx} className="p-2 bg-red-50 dark:bg-red-950 rounded">
+                                  <p className="font-mono text-xs break-all">{err.url}</p>
+                                  <p className="text-red-600">{err.error}</p>
+                                </div>
+                              ))}
+                            </div>
                           </details>
                         )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <XCircle className="w-5 h-5" />
-                        <span>{brightDataResult.error}</span>
+                        <span>{webUnlockerResult.error}</span>
                       </div>
                     )}
                   </div>
