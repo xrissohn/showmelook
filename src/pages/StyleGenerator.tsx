@@ -1903,14 +1903,26 @@ const StyleGenerator = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-col gap-2">
                     <Button
                       variant="outline"
                       onClick={addAllToCart}
-                      className="flex-1 font-korean"
+                      className="w-full font-korean"
                     >
                       <ShoppingBag className="w-4 h-4 mr-2" />
                       전체 장바구니 담기
+                    </Button>
+                    <Button
+                      variant="hero"
+                      onClick={() => {
+                        selectedTrendProducts.forEach((product, index) => {
+                          setTimeout(() => handlePurchase(product), index * 300);
+                        });
+                      }}
+                      className="w-full font-korean"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      전체 구매하기
                     </Button>
                   </div>
                   <div className="mt-3 p-3 bg-accent/10 rounded-xl text-center">
