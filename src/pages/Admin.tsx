@@ -137,6 +137,27 @@ interface StyleRecommendResult {
   error?: string;
 }
 
+interface BrightDataResult {
+  success: boolean;
+  mode?: string;
+  total_urls?: number;
+  scraped?: number;
+  valid?: number;
+  inserted?: number;
+  errors?: number;
+  products?: Array<{
+    name: string;
+    brand: string | null;
+    price: number;
+    image_url: string | null;
+    category: string;
+    merchant_id: string;
+    product_url: string;
+  }>;
+  raw_sample?: any[];
+  error?: string;
+}
+
 const Admin = () => {
   const { toast } = useToast();
   
@@ -182,6 +203,12 @@ const Admin = () => {
   const [aiForceRefresh, setAiForceRefresh] = useState(false);
   const [aiResult, setAiResult] = useState<StyleRecommendResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // BrightData test state
+  const [brightDataUrls, setBrightDataUrls] = useState("");
+  const [brightDataMode, setBrightDataMode] = useState<"preview" | "save">("preview");
+  const [brightDataResult, setBrightDataResult] = useState<BrightDataResult | null>(null);
+  const [isBrightDataLoading, setIsBrightDataLoading] = useState(false);
 
   // Load merchants on mount
   useEffect(() => {
@@ -522,6 +549,61 @@ const Admin = () => {
     }
   };
 
+  const testBrightData = async () => {
+    if (!brightDataUrls.trim()) {
+      toast({
+        title: "URL 입력 필요",
+        description: "상품 URL을 한 줄에 하나씩 입력해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsBrightDataLoading(true);
+    setBrightDataResult(null);
+
+    try {
+      const urls = brightDataUrls
+        .split('\n')
+        .map(u => u.trim())
+        .filter(u => u.length > 0);
+
+      const { data, error } = await supabase.functions.invoke('brightdata-collect', {
+        body: { urls, mode: brightDataMode },
+      });
+
+      if (error) throw error;
+      
+      setBrightDataResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "Bright Data 수집 완료",
+          description: brightDataMode === 'preview' 
+            ? `${data.valid}개 상품 미리보기 완료`
+            : `${data.inserted}개 상품 저장됨 (오류: ${data.errors})`,
+        });
+      } else {
+        toast({
+          title: "수집 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: unknown) {
+      console.error('BrightData test error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setBrightDataResult({ success: false, error: errorMessage });
+      toast({
+        title: "Bright Data 오류",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBrightDataLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -560,6 +642,7 @@ const Admin = () => {
                 title="상품 자동 수집" 
                 items={[
                   { done: true, label: "collect-products Edge Function" },
+                  { done: true, label: "brightdata-collect Edge Function" },
                   { done: true, label: "스타일 태그 자동 분류" },
                   { done: false, label: "CRON 스케줄 설정" },
                 ]}
@@ -588,8 +671,9 @@ const Admin = () => {
 
         {/* Test Tabs */}
         <Tabs defaultValue="style-recommend" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
+            <TabsTrigger value="brightdata">BrightData</TabsTrigger>
             <TabsTrigger value="serpapi">SerpAPI</TabsTrigger>
             <TabsTrigger value="style-v1">규칙 추천</TabsTrigger>
             <TabsTrigger value="deeplink">딥링크</TabsTrigger>
@@ -803,6 +887,176 @@ const Admin = () => {
                           <XCircle className="w-5 h-5" />
                           <span className="font-medium">추천 실패: {aiResult.error}</span>
                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* BrightData Collect Test Tab */}
+          <TabsContent value="brightdata" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  Bright Data 상품 수집
+                </CardTitle>
+                <CardDescription>
+                  Bright Data Web Scraper API를 사용하여 상품 정보를 수집하고 products_cache 테이블에 저장합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">상품 URL (한 줄에 하나씩, 최대 20개)</label>
+                    <textarea
+                      className="w-full h-40 p-3 border rounded-lg font-mono text-sm resize-none"
+                      placeholder={`https://www.wconcept.co.kr/Product/12345678\nhttps://www.musinsa.com/app/goods/123456\nhttps://hfashion.co.kr/product/12345`}
+                      value={brightDataUrls}
+                      onChange={(e) => setBrightDataUrls(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">모드</label>
+                      <Select value={brightDataMode} onValueChange={(v) => setBrightDataMode(v as "preview" | "save")}>
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="모드 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="preview">미리보기 (저장 안함)</SelectItem>
+                          <SelectItem value="save">저장 (DB에 저장)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex-1 text-sm text-muted-foreground">
+                      <p>• <strong>미리보기</strong>: 스크래핑 결과만 확인 (DB 저장 X)</p>
+                      <p>• <strong>저장</strong>: 결과를 products_cache 테이블에 UPSERT</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sample URLs */}
+                <div className="text-sm text-muted-foreground">
+                  <p className="font-medium mb-2">예시 URL:</p>
+                  <div className="flex flex-wrap gap-2">
+                    <button 
+                      onClick={() => setBrightDataUrls("https://www.wconcept.co.kr/Product/300124178")}
+                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
+                    >
+                      W Concept
+                    </button>
+                    <button 
+                      onClick={() => setBrightDataUrls("https://www.musinsa.com/app/goods/2994785")}
+                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
+                    >
+                      Musinsa
+                    </button>
+                  </div>
+                </div>
+
+                <Button onClick={testBrightData} disabled={isBrightDataLoading} className="w-full">
+                  {isBrightDataLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Database className="w-4 h-4 mr-2" />
+                  )}
+                  {brightDataMode === 'preview' ? '미리보기 실행' : '수집 및 저장'}
+                </Button>
+
+                {/* Result */}
+                {brightDataResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    brightDataResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {brightDataResult.success ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <CheckCircle2 className="w-5 h-5" />
+                          <span className="font-medium">
+                            {brightDataResult.mode === 'preview' ? '미리보기 완료' : '수집 완료'}
+                          </span>
+                        </div>
+                        
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground">요청 URL</p>
+                            <p className="font-bold">{brightDataResult.total_urls}개</p>
+                          </div>
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground">스크래핑 성공</p>
+                            <p className="font-bold">{brightDataResult.scraped}개</p>
+                          </div>
+                          <div className="p-2 bg-muted rounded">
+                            <p className="text-muted-foreground">유효 상품</p>
+                            <p className="font-bold">{brightDataResult.valid}개</p>
+                          </div>
+                          {brightDataResult.mode === 'save' && (
+                            <div className="p-2 bg-muted rounded">
+                              <p className="text-muted-foreground">DB 저장</p>
+                              <p className="font-bold">{brightDataResult.inserted}개</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Products Grid */}
+                        {brightDataResult.products && brightDataResult.products.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">수집된 상품:</p>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
+                              {brightDataResult.products.map((product, idx) => (
+                                <div key={idx} className="border rounded-lg overflow-hidden bg-card">
+                                  <div className="aspect-square bg-muted relative">
+                                    {product.image_url ? (
+                                      <img 
+                                        src={product.image_url} 
+                                        alt={product.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.src = '/placeholder.svg';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                        <Package className="w-8 h-8 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <Badge className="absolute top-1 left-1 text-xs" variant="secondary">
+                                      {product.merchant_id}
+                                    </Badge>
+                                  </div>
+                                  <div className="p-2">
+                                    <p className="text-xs font-medium line-clamp-2 mb-1">{product.name}</p>
+                                    <p className="text-xs text-muted-foreground">{product.brand}</p>
+                                    <p className="text-sm font-bold mt-1">₩{product.price?.toLocaleString()}</p>
+                                    <Badge variant="outline" className="text-xs mt-1">{product.category}</Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Raw sample for debugging */}
+                        {brightDataResult.raw_sample && brightDataResult.raw_sample.length > 0 && (
+                          <details className="text-xs">
+                            <summary className="cursor-pointer text-muted-foreground">원본 데이터 샘플 보기</summary>
+                            <pre className="mt-2 p-2 bg-muted rounded overflow-auto max-h-40">
+                              {JSON.stringify(brightDataResult.raw_sample, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                        <XCircle className="w-5 h-5" />
+                        <span>{brightDataResult.error}</span>
                       </div>
                     )}
                   </div>
