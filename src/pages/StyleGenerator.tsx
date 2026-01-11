@@ -170,26 +170,168 @@ const StyleGenerator = () => {
     emblaApi.on('reInit', onSelect);
   }, [emblaApi, onSelect]);
 
-  // 좋아요 토글
-  const toggleLike = (productId: string) => {
-    setLikedProducts(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(productId)) {
-        newSet.delete(productId);
+  // 좋아요 토글 - DB 연동
+  const toggleLike = async (product: CachedProduct) => {
+    if (!user) {
+      toast({
+        title: '로그인이 필요합니다',
+        description: '좋아요 기능을 사용하려면 로그인해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const productId = product.id;
+    const isLiked = likedProducts.has(productId);
+
+    try {
+      if (isLiked) {
+        // 좋아요 취소 - DB에서 삭제
+        const { error } = await supabase
+          .from('liked_products')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', productId);
+
+        if (error) throw error;
+
+        setLikedProducts(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(productId);
+          return newSet;
+        });
         toast({
           title: '좋아요 취소',
           description: '관심 상품에서 제거되었습니다.',
         });
       } else {
-        newSet.add(productId);
+        // 좋아요 - DB에 저장
+        const { error } = await supabase
+          .from('liked_products')
+          .insert({
+            user_id: user.id,
+            product_id: productId,
+            product_name: product.name,
+            product_brand: product.brand,
+            product_price: product.price,
+            product_image_url: product.image_url,
+            product_url: product.product_url,
+            product_category: product.category,
+            style_tags: product.style_tags,
+          });
+
+        if (error) throw error;
+
+        setLikedProducts(prev => {
+          const newSet = new Set(prev);
+          newSet.add(productId);
+          return newSet;
+        });
         toast({
           title: '💕 좋아요!',
           description: '관심 상품에 저장되었습니다.',
         });
       }
-      return newSet;
-    });
+    } catch (error: any) {
+      console.error('Like toggle error:', error);
+      toast({
+        title: '오류 발생',
+        description: error.message || '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    }
   };
+
+  // 장바구니에 추가 - CachedProduct용
+  const addCachedProductToCart = async (product: CachedProduct) => {
+    if (!user) {
+      toast({
+        title: '로그인이 필요합니다',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('cart_items').upsert({
+        user_id: user.id,
+        product_id: product.id,
+        quantity: 1,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: '장바구니에 추가됨',
+        description: `${product.name}이(가) 장바구니에 추가되었습니다.`,
+      });
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: '오류 발생',
+        description: error.message || '장바구니 추가에 실패했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // 선택된 상품 모두 장바구니에 추가
+  const addAllToCart = async () => {
+    if (!user) {
+      toast({
+        title: '로그인이 필요합니다',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const insertPromises = selectedTrendProducts.map(product =>
+        supabase.from('cart_items').upsert({
+          user_id: user.id,
+          product_id: product.id,
+          quantity: 1,
+        })
+      );
+
+      await Promise.all(insertPromises);
+
+      toast({
+        title: '장바구니에 추가됨',
+        description: `${selectedTrendProducts.length}개 상품이 장바구니에 추가되었습니다.`,
+      });
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      toast({
+        title: '오류 발생',
+        description: error.message || '장바구니 추가에 실패했습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  // 좋아요 상품 불러오기
+  useEffect(() => {
+    const fetchLikedProducts = async () => {
+      if (!user) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('liked_products')
+          .select('product_id')
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+
+        const likedIds = new Set(data?.map(item => item.product_id) || []);
+        setLikedProducts(likedIds);
+      } catch (error) {
+        console.error('Error fetching liked products:', error);
+      }
+    };
+
+    fetchLikedProducts();
+  }, [user]);
 
   // 스타일 태그 색상 매핑
   const getTagColor = (tag: string): string => {
@@ -1125,7 +1267,7 @@ const StyleGenerator = () => {
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          toggleLike(product.id);
+                                          toggleLike(product);
                                         }}
                                         className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${
                                           likedProducts.has(product.id)
@@ -1265,18 +1407,30 @@ const StyleGenerator = () => {
                       </div>
 
                       {/* 액션 버튼들 */}
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCustomResult(null);
-                            setCustomStylePrompt('');
-                          }}
-                          className="flex-1 font-korean gap-2 rounded-xl h-12"
-                        >
-                          <Sparkles className="w-4 h-4" />
-                          다른 스타일
-                        </Button>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setCustomResult(null);
+                              setCustomStylePrompt('');
+                            }}
+                            className="flex-1 font-korean gap-2 rounded-xl h-12"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            다른 스타일
+                          </Button>
+                          {selectedTrendProducts.length > 0 && (
+                            <Button
+                              variant="outline"
+                              onClick={addAllToCart}
+                              className="flex-1 font-korean gap-2 rounded-xl h-12"
+                            >
+                              <ShoppingBag className="w-4 h-4" />
+                              장바구니 담기
+                            </Button>
+                          )}
+                        </div>
                         {selectedTrendProducts.length > 0 && (
                           <Button
                             variant="hero"
@@ -1286,9 +1440,9 @@ const StyleGenerator = () => {
                                 setTimeout(() => handlePurchase(product), index * 300);
                               });
                             }}
-                            className="flex-1 font-korean gap-2 rounded-xl h-12"
+                            className="w-full font-korean gap-2 rounded-xl h-12"
                           >
-                            <ShoppingBag className="w-4 h-4" />
+                            <ExternalLink className="w-4 h-4" />
                             전체 구매하기
                           </Button>
                         )}
@@ -1516,21 +1670,41 @@ const StyleGenerator = () => {
                             ₩{product.price.toLocaleString()}
                           </p>
                         </div>
-                        <Button
-                          variant="minimal"
-                          size="sm"
-                          onClick={() => handlePurchase(product)}
-                          disabled={purchasingProductId === product.id}
-                          className="font-korean"
-                        >
-                          {purchasingProductId === product.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            '구매'
-                          )}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addCachedProductToCart(product)}
+                            className="font-korean"
+                          >
+                            <ShoppingBag className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="minimal"
+                            size="sm"
+                            onClick={() => handlePurchase(product)}
+                            disabled={purchasingProductId === product.id}
+                            className="font-korean"
+                          >
+                            {purchasingProductId === product.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              '구매'
+                            )}
+                          </Button>
+                        </div>
                       </div>
                     ))}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={addAllToCart}
+                      className="flex-1 font-korean"
+                    >
+                      <ShoppingBag className="w-4 h-4 mr-2" />
+                      전체 장바구니 담기
+                    </Button>
                   </div>
                   <div className="mt-3 p-3 bg-accent/10 rounded-xl text-center">
                     <p className="text-sm text-accent font-korean">
