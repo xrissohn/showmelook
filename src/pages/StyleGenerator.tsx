@@ -384,13 +384,21 @@ const StyleGenerator = () => {
     setAlternativeProducts([]);
 
     try {
-      // 같은 카테고리의 다른 상품들 조회
-      const { data, error } = await supabase
+      // 성별 매핑
+      const genderFilter = customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : null;
+      
+      // 같은 카테고리 + 성별의 다른 상품들 조회
+      let query = supabase
         .from('products_cache')
         .select('id, name, brand, price, image_url, product_url, category, style_tags')
         .eq('category', category)
-        .neq('id', currentProductId)
-        .limit(12);
+        .neq('id', currentProductId);
+      
+      if (genderFilter) {
+        query = query.eq('gender', genderFilter);
+      }
+      
+      const { data, error } = await query.limit(12);
 
       if (error) throw error;
 
