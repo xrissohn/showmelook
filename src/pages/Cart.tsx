@@ -10,16 +10,14 @@ import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 interface CartItem {
   id: string;
+  product_id: string;
   quantity: number;
-  product: {
-    id: string;
-    name_ko: string;
-    price: number;
-    brand: string | null;
-    image_url: string | null;
-    external_url: string | null;
-    category: string;
-  };
+  product_source: string | null;
+  product_name: string | null;
+  product_brand: string | null;
+  product_price: number | null;
+  product_image_url: string | null;
+  product_url: string | null;
 }
 
 const Cart = () => {
@@ -49,31 +47,13 @@ const Cart = () => {
 
     const { data, error } = await supabase
       .from('cart_items')
-      .select(`
-        id,
-        quantity,
-        product:products (
-          id,
-          name_ko,
-          price,
-          brand,
-          image_url,
-          external_url,
-          category
-        )
-      `)
+      .select('*')
       .eq('user_id', user.id);
 
     if (error) {
       console.error('Error fetching cart:', error);
     } else {
-      // Transform the data to match our CartItem interface
-      const transformedData = (data || []).map(item => ({
-        id: item.id,
-        quantity: item.quantity,
-        product: item.product as unknown as CartItem['product']
-      }));
-      setCartItems(transformedData);
+      setCartItems(data || []);
     }
     setLoading(false);
   };
@@ -117,7 +97,7 @@ const Cart = () => {
   };
 
   const handlePurchase = async (item: CartItem) => {
-    if (!item.product?.external_url) {
+    if (!item.product_url) {
       toast({
         title: '오류',
         description: '상품 URL이 없습니다.',
@@ -130,7 +110,7 @@ const Cart = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: item.product.external_url }
+        body: { product_url: item.product_url }
       });
 
       if (error) throw error;
@@ -139,16 +119,16 @@ const Cart = () => {
         window.open(data.affiliate_url, '_blank');
         toast({
           title: '구매 페이지 열기',
-          description: `${item.product.name_ko} 구매 페이지로 이동합니다.`,
+          description: `${item.product_name} 구매 페이지로 이동합니다.`,
         });
       } else {
         // 딥링크 실패 시 원본 URL로 이동
-        window.open(item.product.external_url, '_blank');
+        window.open(item.product_url, '_blank');
       }
     } catch (error) {
       console.error('Deeplink error:', error);
       // 오류 시에도 원본 URL로 이동
-      window.open(item.product.external_url, '_blank');
+      window.open(item.product_url, '_blank');
     } finally {
       setPurchasingItems(prev => {
         const newSet = new Set(prev);
@@ -159,12 +139,12 @@ const Cart = () => {
   };
 
   const totalPrice = cartItems.reduce(
-    (sum, item) => sum + (item.product?.price || 0) * item.quantity,
+    (sum, item) => sum + (item.product_price || 0) * item.quantity,
     0
   );
 
   const handleBulkPurchase = async () => {
-    const itemsWithUrl = cartItems.filter(item => item.product?.external_url);
+    const itemsWithUrl = cartItems.filter(item => item.product_url);
     
     if (itemsWithUrl.length === 0) {
       toast({
@@ -181,10 +161,10 @@ const Cart = () => {
       // 모든 상품에 대해 딥링크 생성
       const deeplinkPromises = itemsWithUrl.map(item =>
         supabase.functions.invoke('deeplink', {
-          body: { product_url: item.product.external_url }
+          body: { product_url: item.product_url }
         }).then(({ data, error }) => ({
           item,
-          affiliateUrl: data?.success ? data.affiliate_url : item.product.external_url,
+          affiliateUrl: data?.success ? data.affiliate_url : item.product_url,
           error
         }))
       );
@@ -220,7 +200,7 @@ const Cart = () => {
     }
   };
 
-  const purchasableItemsCount = cartItems.filter(item => item.product?.external_url).length;
+  const purchasableItemsCount = cartItems.filter(item => item.product_url).length;
 
   if (authLoading || loading) {
     return (
@@ -265,12 +245,15 @@ const Cart = () => {
                   key={item.id}
                   className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-xl sm:rounded-2xl border border-border"
                 >
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-secondary rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0">
-                    {item.product?.image_url ? (
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-secondary rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {item.product_image_url ? (
                       <img
-                        src={item.product.image_url}
-                        alt={item.product.name_ko}
-                        className="w-full h-full object-cover rounded-xl"
+                        src={item.product_image_url}
+                        alt={item.product_name || '상품'}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/placeholder.svg';
+                        }}
                       />
                     ) : (
                       <ShoppingBag className="w-8 h-8 text-muted-foreground/50" />
@@ -280,14 +263,14 @@ const Cart = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
                       <div>
-                        <p className="text-xs text-muted-foreground">
-                          {item.product?.brand || 'SHOWMELOOK'}
+                        <p className="text-xs text-accent font-medium">
+                          {item.product_brand || 'SHOWMELOOK'}
                         </p>
                         <h3 className="font-medium text-foreground truncate font-korean">
-                          {item.product?.name_ko}
+                          {item.product_name || '상품명 없음'}
                         </h3>
                         <p className="text-lg font-semibold text-foreground mt-1">
-                          ₩{(item.product?.price || 0).toLocaleString()}
+                          ₩{(item.product_price || 0).toLocaleString()}
                         </p>
                       </div>
                       <button
@@ -316,7 +299,7 @@ const Cart = () => {
                         </button>
                       </div>
 
-                      {item.product?.external_url && (
+                      {item.product_url && (
                         <Button
                           variant="gold"
                           size="sm"
