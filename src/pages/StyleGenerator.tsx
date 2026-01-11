@@ -126,7 +126,8 @@ const StyleGenerator = () => {
   // 주관식 스타일 입력 모드 상태
   const [inputMode, setInputMode] = useState<'trend' | 'custom'>('trend');
   const [customStylePrompt, setCustomStylePrompt] = useState('');
-  const [customGender, setCustomGender] = useState<'female' | 'male'>('female');
+  const [customGender, setCustomGender] = useState<'female' | 'male' | 'kids'>('female');
+  const [customAge, setCustomAge] = useState<number | undefined>(undefined);
   const [customBudget, setCustomBudget] = useState([200000]);
   const [isCustomSearching, setIsCustomSearching] = useState(false);
   const [customResult, setCustomResult] = useState<{
@@ -462,9 +463,10 @@ const StyleGenerator = () => {
       const { data, error } = await supabase.functions.invoke('style-recommend', {
         body: {
           userRequest: customStylePrompt,
-          gender: customGender === 'female' ? '여성' : '남성',
+          gender: customGender === 'kids' ? '여성' : (customGender === 'female' ? '여성' : '남성'),
           budget: customBudget[0],
-          forceRefresh: false
+          forceRefresh: false,
+          age: customGender === 'kids' ? (customAge || 10) : customAge
         }
       });
 
@@ -506,7 +508,7 @@ const StyleGenerator = () => {
             await supabase.from('recommendation_history').insert({
               user_id: user.id,
               prompt: customStylePrompt,
-              gender: customGender === 'female' ? '여성' : '남성',
+              gender: customGender === 'kids' ? '키즈' : (customGender === 'female' ? '여성' : '남성'),
               budget: customBudget[0],
               style_concept: data.look.name || '',
               style_reasoning: data.look.stylingTips || '',
@@ -890,13 +892,19 @@ const StyleGenerator = () => {
                         </div>
                       </div>
 
-                      {/* 성별 선택 */}
+                      {/* 성별 선택 (키즈 포함) */}
                       <div className="space-y-2">
-                        <Label className="font-korean text-sm">성별</Label>
+                        <Label className="font-korean text-sm">누구를 위한 스타일인가요?</Label>
                         <RadioGroup
                           value={customGender}
-                          onValueChange={(value) => setCustomGender(value as 'female' | 'male')}
-                          className="flex gap-4"
+                          onValueChange={(value) => {
+                            setCustomGender(value as 'female' | 'male' | 'kids');
+                            // 키즈 선택 시 기본 나이 설정
+                            if (value === 'kids' && !customAge) {
+                              setCustomAge(10);
+                            }
+                          }}
+                          className="flex gap-4 flex-wrap"
                           disabled={isCustomSearching}
                         >
                           <div className="flex items-center space-x-2">
@@ -907,8 +915,35 @@ const StyleGenerator = () => {
                             <RadioGroupItem value="male" id="custom-male" />
                             <Label htmlFor="custom-male" className="cursor-pointer font-korean">남성</Label>
                           </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="kids" id="custom-kids" />
+                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean">👶 키즈 (12세 이하)</Label>
+                          </div>
                         </RadioGroup>
                       </div>
+
+                      {/* 나이 입력 (키즈 선택 시 표시) */}
+                      {customGender === 'kids' && (
+                        <div className="space-y-2">
+                          <Label className="font-korean text-sm">아이 나이</Label>
+                          <div className="flex items-center gap-3">
+                            <Input
+                              type="number"
+                              min={1}
+                              max={12}
+                              value={customAge || ''}
+                              onChange={(e) => setCustomAge(parseInt(e.target.value) || undefined)}
+                              placeholder="예: 8"
+                              className="w-24 font-korean"
+                              disabled={isCustomSearching}
+                            />
+                            <span className="text-sm text-muted-foreground font-korean">세</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground font-korean">
+                            12세 이하일 경우 키즈 전용 상품이 추천됩니다.
+                          </p>
+                        </div>
+                      )}
 
                       {/* 예산 슬라이더 */}
                       <div className="space-y-3">

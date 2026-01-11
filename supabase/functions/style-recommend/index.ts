@@ -60,7 +60,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false } = await req.json();
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age } = await req.json();
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
@@ -79,7 +79,12 @@ serve(async (req) => {
     const occasion = extractOccasion(userRequest);
     const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
 
-    console.log(`[style-recommend] Request: "${userRequest}", Gender: ${gender}, Budget: ${budget}`);
+    // Determine target gender for product filtering
+    // If age is 12 or under, use 'kids' gender filter
+    const isKids = age !== undefined && age <= 12;
+    const targetGender = isKids ? 'kids' : gender;
+    
+    console.log(`[style-recommend] Request: "${userRequest}", Gender: ${gender}, Budget: ${budget}, Age: ${age || 'N/A'}, Target: ${targetGender}`);
     console.log(`[style-recommend] Cache key: ${cacheKey}`);
 
     // Step 1: Check style_cache
@@ -295,9 +300,13 @@ serve(async (req) => {
           .lte('price', item.priceRange.max * 1.5)
           .not('image_url', 'is', null);
 
-        // Add gender filter
-        const genderKo = gender === '남성' ? 'male' : 'female';
-        query = query.or(`gender.eq.${genderKo},gender.is.null`);
+        // Add gender filter - use targetGender which considers kids
+        if (isKids) {
+          query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
+        } else {
+          const genderEn = gender === '남성' ? 'male' : 'female';
+          query = query.or(`gender.eq.${genderEn},gender.is.null`);
+        }
 
         const { data } = await query.limit(20);
         if (data && data.length > 0) {
@@ -317,8 +326,13 @@ serve(async (req) => {
             .ilike('category', `%${catVariant}%`)
             .not('image_url', 'is', null);
 
-          const genderKo = gender === '남성' ? 'male' : 'female';
-          query = query.or(`gender.eq.${genderKo},gender.is.null`);
+          // Add gender filter - use targetGender which considers kids
+          if (isKids) {
+            query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
+          } else {
+            const genderEn = gender === '남성' ? 'male' : 'female';
+            query = query.or(`gender.eq.${genderEn},gender.is.null`);
+          }
 
           const { data } = await query.limit(20);
           if (data && data.length > 0) {
