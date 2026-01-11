@@ -324,7 +324,7 @@ async function downloadProductImages(imageUrls: string[]): Promise<{ url: string
   return results;
 }
 
-// Generate image using Vertex AI (gemini-2.5-flash-image in us-west1)
+// Generate image using Vertex AI (gemini-3-pro-image-preview in us-central1)
 async function generateImageWithVertexAI(
   accessToken: string,
   projectId: string,
@@ -333,8 +333,8 @@ async function generateImageWithVertexAI(
   productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
 
-  const region = 'us-west1';
-  const modelId = 'gemini-2.5-flash-image';
+  const region = 'us-central1';
+  const modelId = 'gemini-3-pro-image-preview';
   const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
 
   // Build content parts - FACE IMAGE FIRST for better face preservation
@@ -451,11 +451,11 @@ async function generateImageWithUserGoogleAPI(
   imageUrl?: string,
   productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
-  const region = 'us-west1';
-  const modelId = 'gemini-2.5-flash-image'; // nanobanana model
+  const region = 'us-central1';
+  const modelId = 'gemini-3-pro-image-preview'; // Gemini 3.0 for better face composite
   const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
 
-  console.log('Calling User Google API (Vertex AI) with nanobanana model...');
+  console.log('Calling User Google API (Vertex AI) with Gemini 3.0 Pro Image...');
 
   // Build content parts - FACE IMAGE FIRST for better face preservation
   const parts: any[] = [];
@@ -498,7 +498,7 @@ async function generateImageWithUserGoogleAPI(
     }
   };
 
-  console.log('Calling Vertex AI (nanobanana) for face composite:', endpoint);
+  console.log('Calling Vertex AI (Gemini 3.0 Pro) for face composite:', endpoint);
 
   const response = await fetch(endpoint, {
     method: 'POST',
