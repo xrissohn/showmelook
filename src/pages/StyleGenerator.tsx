@@ -503,8 +503,8 @@ const StyleGenerator = () => {
 
         setCustomResult({
           items: transformedItems,
-          styleConcept: data.look.name || '스타일 추천',
-          styleReasoning: data.look.stylingTips || '',
+          styleConcept: data.look.styleConcept || data.look.name || '스타일 추천',
+          styleReasoning: data.look.styleReasoning || data.look.stylingTips || '',
           totalPrice: data.look.totalPrice || 0
         });
 
