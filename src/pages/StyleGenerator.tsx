@@ -47,6 +47,7 @@ interface CachedProduct {
   category: string;
   style_tags: string[] | null;
   affiliate_url?: string;
+  isAutoSelected?: boolean; // 예산 내 자동 선택 여부
 }
 
 interface GeneratedLook {
@@ -135,6 +136,9 @@ const StyleGenerator = () => {
     styleConcept: string;
     styleReasoning: string;
     totalPrice: number;
+    autoSelectedTotal?: number;
+    autoSelectedCount?: number;
+    budget?: number;
   } | null>(null);
 
   // 구매 버튼 로딩 상태
@@ -723,18 +727,23 @@ const StyleGenerator = () => {
             product_url: item.product.product_url,
             category: item.category,
             style_tags: item.product.style_tags,
-            affiliate_url: item.affiliateUrl
+            affiliate_url: item.affiliateUrl,
+            isAutoSelected: item.isAutoSelected // 예산 내 자동 선택 여부
           }));
 
         setCustomResult({
           items: transformedItems,
           styleConcept: data.look.styleConcept || data.look.name || '스타일 추천',
           styleReasoning: data.look.styleReasoning || data.look.stylingTips || '',
-          totalPrice: data.look.totalPrice || 0
+          totalPrice: data.look.totalPrice || 0,
+          autoSelectedTotal: data.look.autoSelectedTotal || 0,
+          autoSelectedCount: data.look.autoSelectedCount || 0,
+          budget: data.look.budget || customBudget[0]
         });
 
-        // 자동으로 선택된 상태로
-        setSelectedTrendProducts(transformedItems);
+        // 예산 내 자동 선택된 아이템만 선택 상태로
+        const autoSelectedItems = transformedItems.filter((item: any) => item.isAutoSelected);
+        setSelectedTrendProducts(autoSelectedItems);
 
         toast({
           title: data.cacheHit ? '캐시된 스타일 불러옴!' : '스타일 추천 완료!',
@@ -1402,21 +1411,28 @@ const StyleGenerator = () => {
                       {/* 총 금액 카드 */}
                       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-secondary via-secondary/80 to-secondary p-4">
                         <div className="absolute inset-0 bg-gradient-to-r from-accent/5 to-transparent" />
-                        <div className="relative flex justify-between items-center">
-                          <div className="space-y-0.5">
-                            <span className="text-xs text-muted-foreground font-korean">선택한 아이템 총 금액</span>
-                            <p className="text-sm text-muted-foreground font-korean">
-                              {selectedTrendProducts.length}개 아이템
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-display font-bold text-2xl text-accent">
-                              ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
-                            </span>
-                            {customResult.totalPrice !== selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) && (
-                              <p className="text-xs text-muted-foreground font-korean line-through">
-                                전체: ₩{customResult.totalPrice.toLocaleString()}
+                        <div className="relative">
+                          <div className="flex justify-between items-center mb-2">
+                            <div className="space-y-0.5">
+                              <span className="text-xs text-muted-foreground font-korean">선택한 아이템</span>
+                              <p className="text-sm font-medium text-foreground font-korean">
+                                {selectedTrendProducts.length}개 / {customResult.items.length}개
                               </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-display font-bold text-2xl text-accent">
+                                ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* 예산 비교 */}
+                          <div className="flex items-center justify-between text-xs pt-2 border-t border-border/50">
+                            <span className="text-muted-foreground font-korean">예산: ₩{(customResult.budget || customBudget[0]).toLocaleString()}</span>
+                            {selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0]) ? (
+                              <span className="text-orange-500 font-korean">예산 초과 +₩{(selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) - (customResult.budget || customBudget[0])).toLocaleString()}</span>
+                            ) : (
+                              <span className="text-green-500 font-korean">예산 내 ✓</span>
                             )}
                           </div>
                         </div>
