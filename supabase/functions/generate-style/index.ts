@@ -337,12 +337,12 @@ async function generateImageWithVertexAI(
   const modelId = 'gemini-2.5-flash-image';
   const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
 
-  // Build content parts
-  const parts: any[] = [{ text: prompt }];
+  // Build content parts - FACE IMAGE FIRST for better face preservation
+  const parts: any[] = [];
   
-  // Add reference face image if provided
+  // Add reference face image FIRST if provided (critical for face composite)
   if (imageUrl) {
-    console.log('Downloading reference image for face composite...');
+    console.log('Downloading reference image for face composite (placing FIRST)...');
     const imageBase64 = await imageUrlToBase64(imageUrl);
     parts.push({
       inlineData: {
@@ -352,7 +352,10 @@ async function generateImageWithVertexAI(
     });
   }
   
-  // Add product reference images
+  // Add text prompt AFTER face image
+  parts.push({ text: prompt });
+  
+  // Add product reference images LAST
   if (productImages && productImages.length > 0) {
     console.log(`Adding ${productImages.length} product images for visual reference...`);
     for (const product of productImages) {
