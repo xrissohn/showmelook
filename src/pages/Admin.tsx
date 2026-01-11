@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -680,7 +680,8 @@ const Admin = () => {
 
         {/* Test Tabs */}
         <Tabs defaultValue="batch-collect" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-8">
+          <TabsList className="grid w-full grid-cols-9">
+            <TabsTrigger value="admin-tools">관리도구</TabsTrigger>
             <TabsTrigger value="batch-collect">배치 수집</TabsTrigger>
             <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
             <TabsTrigger value="brightdata">BrightData</TabsTrigger>
@@ -690,6 +691,160 @@ const Admin = () => {
             <TabsTrigger value="collect">상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
+
+          {/* Admin Tools Tab */}
+          <TabsContent value="admin-tools" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  관리 도구
+                </CardTitle>
+                <CardDescription>
+                  시스템 관리 및 테스트를 위한 도구들
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Generation Usage Reset */}
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <RotateCcw className="w-4 h-4" />
+                        일일 생성 횟수 초기화
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        오늘의 스타일 생성 횟수를 0으로 리셋합니다.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="destructive"
+                      onClick={async () => {
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) {
+                            toast({
+                              title: "로그인 필요",
+                              description: "로그인 후 사용해주세요.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          
+                          const today = new Date().toISOString().split('T')[0];
+                          const { error } = await supabase
+                            .from('daily_generation_usage')
+                            .update({ generation_count: 0, updated_at: new Date().toISOString() })
+                            .eq('user_id', user.id)
+                            .eq('usage_date', today);
+                          
+                          if (error) throw error;
+                          
+                          toast({
+                            title: "초기화 완료",
+                            description: "오늘의 생성 횟수가 0으로 초기화되었습니다.",
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "초기화 실패",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      횟수 초기화
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Cache Clear */}
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4" />
+                        추천 캐시 초기화
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        스타일 추천 캐시를 삭제합니다.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('style_cache')
+                            .delete()
+                            .lt('expires_at', new Date().toISOString());
+                          
+                          if (error) throw error;
+                          
+                          toast({
+                            title: "캐시 정리 완료",
+                            description: "만료된 캐시가 삭제되었습니다.",
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "캐시 정리 실패",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      만료 캐시 정리
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Delete All Today's Usage */}
+                <div className="p-4 border border-destructive/30 rounded-lg space-y-4 bg-destructive/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2 text-destructive">
+                        <XCircle className="w-4 h-4" />
+                        전체 사용자 생성 횟수 초기화
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        모든 사용자의 오늘 생성 횟수를 초기화합니다. (주의!)
+                      </p>
+                    </div>
+                    <Button 
+                      variant="destructive"
+                      onClick={async () => {
+                        try {
+                          const today = new Date().toISOString().split('T')[0];
+                          const { error } = await supabase
+                            .from('daily_generation_usage')
+                            .update({ generation_count: 0, updated_at: new Date().toISOString() })
+                            .eq('usage_date', today);
+                          
+                          if (error) throw error;
+                          
+                          toast({
+                            title: "전체 초기화 완료",
+                            description: "모든 사용자의 오늘 생성 횟수가 초기화되었습니다.",
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "초기화 실패",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      전체 초기화
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Batch Collect Tab */}
           <TabsContent value="batch-collect" className="space-y-4">
