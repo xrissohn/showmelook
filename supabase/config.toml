@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.batch-collect]
 verify_jwt = false
+
+[functions.brightdata-webhook]
+verify_jwt = false
