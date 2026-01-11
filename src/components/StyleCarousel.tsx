@@ -60,7 +60,6 @@ const styles: StyleData[] = [
 ];
 
 const StyleCarousel = () => {
-  const [isPaused, setIsPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -81,7 +80,7 @@ const StyleCarousel = () => {
 
   // Auto-scroll animation
   const animate = useCallback(() => {
-    if (!containerRef.current || isPaused || isDragging) {
+    if (!containerRef.current || isDragging) {
       animationRef.current = requestAnimationFrame(animate);
       return;
     }
@@ -97,7 +96,7 @@ const StyleCarousel = () => {
 
     container.scrollLeft = scrollPositionRef.current;
     animationRef.current = requestAnimationFrame(animate);
-  }, [isPaused, isDragging]);
+  }, [isDragging]);
 
   useEffect(() => {
     // Initialize scroll position to middle set
@@ -118,8 +117,6 @@ const StyleCarousel = () => {
   // Random gender flip effect
   useEffect(() => {
     const flipInterval = setInterval(() => {
-      if (isPaused) return;
-      
       const cardIndex = Math.floor(Math.random() * duplicatedStyles.length);
       
       setFlippingCards(prev => {
@@ -146,7 +143,7 @@ const StyleCarousel = () => {
     }, 2000);
 
     return () => clearInterval(flipInterval);
-  }, [isPaused, duplicatedStyles.length]);
+  }, [duplicatedStyles.length]);
 
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -175,7 +172,6 @@ const StyleCarousel = () => {
 
   const handleMouseLeave = () => {
     setIsDragging(false);
-    setIsPaused(false);
     if (containerRef.current) {
       containerRef.current.style.cursor = 'grab';
     }
@@ -186,7 +182,7 @@ const StyleCarousel = () => {
       <div
         ref={containerRef}
         className="flex gap-4 sm:gap-6 overflow-x-hidden cursor-grab select-none py-4"
-        onMouseEnter={() => setIsPaused(true)}
+        
         onMouseLeave={handleMouseLeave}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
