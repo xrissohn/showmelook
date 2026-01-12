@@ -139,7 +139,7 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
     const LINKPRICE_AFFILIATE_ID = Deno.env.get('LINKPRICE_AFFILIATE_ID') || 'A100915488';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -291,7 +291,7 @@ serve(async (req) => {
     let ragResponse: RAGStyleResponse | null = null;
     let geminiCalls = 0;
     
-    if (LOVABLE_API_KEY) {
+    if (GOOGLE_GEMINI_API_KEY) {
       const seasonClothingGuide = getSeasonClothingGuide(requestedSeason);
       
       // Build smarter prompt using DNA if available
@@ -344,33 +344,39 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
 - productDNAs: dna가 null이었던 선택 상품만 DNA 생성`;
 
       try {
-        console.log('[style-recommend] Using GPT-5 for style reasoning...');
+        console.log('[style-recommend] Using Google Gemini for fast style reasoning...');
+        const startTime = Date.now();
         
-        const gptResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'openai/gpt-5',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-          }),
-        });
+        // Use Gemini 2.0 Flash for fastest inference
+        const geminiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }] }
+              ],
+              generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 2048,
+              }
+            }),
+          }
+        );
 
         geminiCalls++;
+        const elapsed = Date.now() - startTime;
+        console.log(`[style-recommend] Gemini response in ${elapsed}ms`);
 
-        if (gptResponse.ok) {
-          const gptData = await gptResponse.json();
-          const content = gptData.choices?.[0]?.message?.content || '';
+        if (geminiResponse.ok) {
+          const geminiData = await geminiResponse.json();
+          const content = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
           
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
-            console.log(`[style-recommend] GPT-5 selected ${ragResponse.selectedProductIds.length} products`);
+            console.log(`[style-recommend] Gemini selected ${ragResponse.selectedProductIds.length} products in ${elapsed}ms`);
             
             // Save generated DNAs to database (async, don't wait)
             if (ragResponse.productDNAs && ragResponse.productDNAs.length > 0) {
@@ -395,11 +401,11 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
             }
           }
         } else {
-          const errorText = await gptResponse.text();
-          console.error('[style-recommend] GPT-5 API error:', gptResponse.status, errorText);
+          const errorText = await geminiResponse.text();
+          console.error('[style-recommend] Gemini API error:', geminiResponse.status, errorText);
         }
       } catch (e) {
-        console.error('[style-recommend] GPT-5 parsing error:', e);
+        console.error('[style-recommend] Gemini parsing error:', e);
       }
     }
 
