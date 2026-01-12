@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
@@ -227,15 +227,277 @@ const CelebrationParticles = ({ show }: { show: boolean }) => {
   );
 };
 
+// 이미지 저장 함수
+const downloadImage = async (imageUrl: string, fileName: string = 'showmelook-style.png') => {
+  try {
+    const response = await fetch(imageUrl);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    return true;
+  } catch (error) {
+    console.error('Download failed:', error);
+    return false;
+  }
+};
+
+// SNS 공유 함수
+const shareToSNS = async (imageUrl: string, platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
+  const shareText = '👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요! #ShowMeLook #AI패션 #스타일추천';
+  const shareUrl = window.location.origin;
+
+  switch (platform) {
+    case 'instagram':
+      // Instagram은 직접 공유가 불가능하므로 이미지 저장 후 안내
+      const downloaded = await downloadImage(imageUrl, 'showmelook-style-instagram.png');
+      if (downloaded) {
+        // 모바일 확인
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+          window.open('instagram://library?AssetPath=', '_blank');
+        }
+        return { success: true, message: '이미지가 저장되었습니다. Instagram 앱에서 업로드해주세요.' };
+      }
+      return { success: false, message: '이미지 저장에 실패했습니다.' };
+
+    case 'twitter':
+      window.open(
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+        '_blank',
+        'width=600,height=400'
+      );
+      return { success: true };
+
+    case 'facebook':
+      window.open(
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
+        '_blank',
+        'width=600,height=400'
+      );
+      return { success: true };
+
+    case 'kakao':
+      // 카카오톡 공유 (SDK 없이 기본 링크 공유)
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'ShowMeLook AI 스타일',
+            text: shareText,
+            url: shareUrl,
+          });
+          return { success: true };
+        } catch (err) {
+          // 사용자가 취소한 경우
+          return { success: false };
+        }
+      }
+      // 카카오톡 링크로 이동
+      window.open(`https://story.kakao.com/share?url=${encodeURIComponent(shareUrl)}`, '_blank');
+      return { success: true };
+
+    case 'copy':
+      try {
+        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        return { success: true, message: '링크가 복사되었습니다!' };
+      } catch (err) {
+        return { success: false, message: '복사에 실패했습니다.' };
+      }
+
+    default:
+      return { success: false };
+  }
+};
+
+// 공유 버튼 컴포넌트
+const ShareButtons = ({ 
+  imageUrl, 
+  onShare, 
+  className = '',
+  compact = false 
+}: { 
+  imageUrl: string; 
+  onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
+  className?: string;
+  compact?: boolean;
+}) => {
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    setIsDownloading(true);
+    const success = await downloadImage(imageUrl, `showmelook-style-${Date.now()}.png`);
+    setIsDownloading(false);
+    onShare?.('download', { success, message: success ? '이미지가 저장되었습니다!' : '저장에 실패했습니다.' });
+  };
+
+  const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
+    const result = await shareToSNS(imageUrl, platform);
+    setIsShareOpen(false);
+    onShare?.(platform, result);
+  };
+
+  if (compact) {
+    return (
+      <div className={`flex gap-2 ${className}`}>
+        <button
+          onClick={handleDownload}
+          disabled={isDownloading}
+          className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+          title="이미지 저장"
+        >
+          {isDownloading ? (
+            <Loader2 className="w-5 h-5 animate-spin text-foreground" />
+          ) : (
+            <Download className="w-5 h-5 text-foreground" />
+          )}
+        </button>
+        <div className="relative">
+          <button
+            onClick={() => setIsShareOpen(!isShareOpen)}
+            className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+            title="공유하기"
+          >
+            <Share2 className="w-5 h-5 text-foreground" />
+          </button>
+          {isShareOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsShareOpen(false)} />
+              <div className="absolute right-0 top-12 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[140px] animate-in slide-in-from-top-2 fade-in duration-200">
+                <button
+                  onClick={() => handleShare('instagram')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                >
+                  <span className="text-lg">📸</span>
+                  <span className="text-sm font-korean text-foreground">Instagram</span>
+                </button>
+                <button
+                  onClick={() => handleShare('twitter')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                >
+                  <span className="text-lg">🐦</span>
+                  <span className="text-sm font-korean text-foreground">Twitter</span>
+                </button>
+                <button
+                  onClick={() => handleShare('facebook')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                >
+                  <span className="text-lg">📘</span>
+                  <span className="text-sm font-korean text-foreground">Facebook</span>
+                </button>
+                <button
+                  onClick={() => handleShare('kakao')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                >
+                  <span className="text-lg">💬</span>
+                  <span className="text-sm font-korean text-foreground">카카오톡</span>
+                </button>
+                <div className="my-1 border-t border-border" />
+                <button
+                  onClick={() => handleShare('copy')}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+                >
+                  <span className="text-lg">🔗</span>
+                  <span className="text-sm font-korean text-foreground">링크 복사</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex gap-2 ${className}`}>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleDownload}
+        disabled={isDownloading}
+        className="font-korean"
+      >
+        {isDownloading ? (
+          <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+        ) : (
+          <Download className="w-4 h-4 mr-1.5" />
+        )}
+        저장
+      </Button>
+      <div className="relative">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsShareOpen(!isShareOpen)}
+          className="font-korean"
+        >
+          <Share2 className="w-4 h-4 mr-1.5" />
+          공유
+        </Button>
+        {isShareOpen && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setIsShareOpen(false)} />
+            <div className="absolute right-0 top-10 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[150px] animate-in slide-in-from-top-2 fade-in duration-200">
+              <button
+                onClick={() => handleShare('instagram')}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+              >
+                <span className="text-lg">📸</span>
+                <span className="text-sm font-korean text-foreground">Instagram</span>
+              </button>
+              <button
+                onClick={() => handleShare('twitter')}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+              >
+                <span className="text-lg">🐦</span>
+                <span className="text-sm font-korean text-foreground">Twitter</span>
+              </button>
+              <button
+                onClick={() => handleShare('facebook')}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+              >
+                <span className="text-lg">📘</span>
+                <span className="text-sm font-korean text-foreground">Facebook</span>
+              </button>
+              <button
+                onClick={() => handleShare('kakao')}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+              >
+                <span className="text-lg">💬</span>
+                <span className="text-sm font-korean text-foreground">카카오톡</span>
+              </button>
+              <div className="my-1 border-t border-border" />
+              <button
+                onClick={() => handleShare('copy')}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+              >
+                <span className="text-lg">🔗</span>
+                <span className="text-sm font-korean text-foreground">링크 복사</span>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // 메인 생성 이미지용 컴포넌트 (로고 워터마크 + 퍼센트 로딩 + 파티클)
 const GeneratedStyleImage = ({ 
   src, 
   alt,
-  logoSrc
+  logoSrc,
+  onShare
 }: { 
   src: string; 
   alt: string;
   logoSrc: string;
+  onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
 }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -299,7 +561,7 @@ const GeneratedStyleImage = ({
   }, [src]);
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden group">
       {/* 축하 파티클 */}
       <CelebrationParticles show={showCelebration} />
       
@@ -381,15 +643,23 @@ const GeneratedStyleImage = ({
           <span className="text-sm text-muted-foreground font-korean">이미지를 불러올 수 없습니다</span>
         </div>
       ) : imageUrl && (
-        <img 
-          src={imageUrl} 
-          alt={alt}
-          className={`w-full h-full object-cover transition-all duration-1000 ease-out ${
-            isLoading 
-              ? 'blur-2xl scale-110 opacity-0' 
-              : 'blur-0 scale-100 opacity-100'
-          }`}
-        />
+        <>
+          <img 
+            src={imageUrl} 
+            alt={alt}
+            className={`w-full h-full object-cover transition-all duration-1000 ease-out ${
+              isLoading 
+                ? 'blur-2xl scale-110 opacity-0' 
+                : 'blur-0 scale-100 opacity-100'
+            }`}
+          />
+          {/* 저장/공유 버튼 오버레이 */}
+          {!isLoading && (
+            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <ShareButtons imageUrl={src} onShare={onShare} compact />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -2223,6 +2493,15 @@ const StyleGenerator = () => {
                     src={generatedImage}
                     alt="Generated style"
                     logoSrc={showmelookLogo}
+                    onShare={(platform, result) => {
+                      if (result.message) {
+                        toast({
+                          title: result.success ? '성공' : '알림',
+                          description: result.message,
+                          variant: result.success ? 'default' : 'destructive',
+                        });
+                      }
+                    }}
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
@@ -2384,14 +2663,56 @@ const StyleGenerator = () => {
                       alt="Generated look"
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-overlay opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                      <p className="text-sm text-primary-foreground/80">
+                    {/* 호버시 오버레이 */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                    
+                    {/* 하단 날짜 */}
+                    <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      <p className="text-sm text-white/90 font-korean">
                         {new Date(look.created_at).toLocaleDateString('ko-KR')}
                       </p>
                     </div>
-                    <button className="absolute top-3 right-3 w-10 h-10 rounded-full bg-background/80 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
-                    </button>
+                    
+                    {/* 상단 버튼들 */}
+                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                      {/* 저장/공유 버튼 */}
+                      <ShareButtons 
+                        imageUrl={look.image_url} 
+                        onShare={(platform, result) => {
+                          if (result.message) {
+                            toast({
+                              title: result.success ? '성공' : '알림',
+                              description: result.message,
+                              variant: result.success ? 'default' : 'destructive',
+                            });
+                          }
+                        }}
+                        compact 
+                      />
+                      {/* 좋아요 버튼 */}
+                      <button 
+                        onClick={async () => {
+                          const newFavorite = !look.is_favorite;
+                          const { error } = await supabase
+                            .from('generated_looks')
+                            .update({ is_favorite: newFavorite })
+                            .eq('id', look.id);
+                          
+                          if (!error) {
+                            setMyLooks(prev => prev.map(l => 
+                              l.id === look.id ? { ...l, is_favorite: newFavorite } : l
+                            ));
+                            toast({
+                              title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
+                              description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
+                            });
+                          }
+                        }}
+                        className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+                      >
+                        <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
