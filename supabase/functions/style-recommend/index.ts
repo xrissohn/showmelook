@@ -347,9 +347,9 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
         console.log('[style-recommend] Using Google Gemini for fast style reasoning...');
         const startTime = Date.now();
         
-        // Use Gemini 2.0 Flash for fastest inference
+        // Use Gemini 2.5 Flash for fast + high quality inference
         const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GOOGLE_GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
