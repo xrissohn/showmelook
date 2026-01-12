@@ -450,11 +450,11 @@ async function generateImageWithUserGoogleAPI(
   imageUrl?: string,
   productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
-  // Use gemini-2.0-flash-exp for best image generation with face composite
-  const modelId = 'gemini-2.0-flash-exp';
+  // Use gemini-2.5-flash for best image generation with face composite
+  const modelId = 'gemini-2.5-flash-preview-05-20';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
 
-  console.log('Calling Google AI Studio Gemini 2.0 Flash Exp...');
+  console.log('Calling Google AI Studio Gemini 2.5 Flash...');
 
   const parts: any[] = [];
   
