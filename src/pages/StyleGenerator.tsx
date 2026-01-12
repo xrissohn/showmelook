@@ -227,7 +227,7 @@ const CelebrationParticles = ({ show }: { show: boolean }) => {
   );
 };
 
-// 이미지에 워터마크 추가 함수
+// 이미지에 워터마크 추가 함수 (중앙, 더 크고 더 여린 투명도)
 const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -253,29 +253,31 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
       logo.crossOrigin = 'anonymous';
       
       logo.onload = () => {
-        // 워터마크 크기 계산 (이미지 너비의 15%)
-        const watermarkWidth = img.width * 0.15;
+        // 워터마크 크기 계산 (이미지 너비의 30% - 더 크게)
+        const watermarkWidth = img.width * 0.30;
         const watermarkHeight = watermarkWidth;
         
-        // 오른쪽 하단 위치
-        const x = img.width - watermarkWidth - 20;
-        const y = img.height - watermarkHeight - 20;
+        // 정중앙 위치
+        const x = (img.width - watermarkWidth) / 2;
+        const y = (img.height - watermarkHeight) / 2;
         
-        // 반투명 배경 원
+        // 더 여린 반투명 배경 원 (투명도 0.25)
         ctx.beginPath();
-        ctx.arc(x + watermarkWidth / 2, y + watermarkHeight / 2, watermarkWidth / 2 + 8, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.arc(img.width / 2, img.height / 2, watermarkWidth / 2 + 15, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
         ctx.fill();
         
-        // 로고 그리기
+        // 로고 그리기 (더 여리게 - 투명도 0.35)
+        ctx.globalAlpha = 0.35;
         ctx.drawImage(logo, x, y, watermarkWidth, watermarkHeight);
+        ctx.globalAlpha = 1.0;
         
-        // 텍스트 워터마크 추가
-        const fontSize = Math.max(12, img.width * 0.02);
+        // 텍스트 워터마크 추가 (더 여리게)
+        const fontSize = Math.max(14, img.width * 0.03);
         ctx.font = `bold ${fontSize}px sans-serif`;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.textAlign = 'center';
-        ctx.fillText('ShowMeLook', x + watermarkWidth / 2, y + watermarkHeight + fontSize + 8);
+        ctx.fillText('ShowMeLook', img.width / 2, y + watermarkHeight + fontSize + 12);
         
         // Blob으로 변환
         canvas.toBlob((blob) => {
@@ -289,26 +291,26 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
       };
       
       logo.onerror = () => {
-        // 로고 로드 실패 시 텍스트 워터마크만 추가
-        const fontSize = Math.max(16, img.width * 0.03);
+        // 로고 로드 실패 시 텍스트 워터마크만 추가 (중앙, 더 크고 여리게)
+        const fontSize = Math.max(24, img.width * 0.05);
         ctx.font = `bold ${fontSize}px sans-serif`;
         
-        // 텍스트 배경
+        // 텍스트 배경 (중앙)
         const text = 'ShowMeLook';
         const textWidth = ctx.measureText(text).width;
-        const padding = 12;
-        const x = img.width - textWidth - padding * 2 - 20;
-        const y = img.height - fontSize - padding * 2 - 20;
+        const padding = 20;
+        const rectX = (img.width - textWidth - padding * 2) / 2;
+        const rectY = (img.height - fontSize - padding * 2) / 2;
         
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
         ctx.beginPath();
-        ctx.roundRect(x, y, textWidth + padding * 2, fontSize + padding * 2, 8);
+        ctx.roundRect(rectX, rectY, textWidth + padding * 2, fontSize + padding * 2, 12);
         ctx.fill();
         
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.textAlign = 'left';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, x + padding, y + fontSize / 2 + padding);
+        ctx.fillText(text, img.width / 2, img.height / 2);
         
         canvas.toBlob((blob) => {
           if (blob) {

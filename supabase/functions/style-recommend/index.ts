@@ -105,7 +105,14 @@ function mapToPriorityCategory(category: string, subCategory?: string | null, pr
 function getDisplaySubCategory(category: string, subCategory?: string | null, productName?: string | null): string {
   const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
-  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'loafers', '로퍼', '힐'].some(v => combined.includes(v))) {
+  // ⚠️ 하의 먼저 체크 - "부츠컷" 같은 경우 하의로 분류
+  if (['하의', 'bottom', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', '원피스', 'dress', '반바지', 'bootcut', '부츠컷', 'trousers', '슬랙스'].some(v => combined.includes(v))) {
+    return '하의';
+  }
+  
+  // 신발 - "부츠컷"이 아닌 순수 신발만
+  const isBootcut = combined.includes('bootcut') || combined.includes('부츠컷');
+  if (!isBootcut && ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'loafers', '로퍼', '힐'].some(v => combined.includes(v))) {
     return '신발';
   }
   if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'backpack', '숄더백', '크로스백'].some(v => combined.includes(v))) {
@@ -122,7 +129,14 @@ function getDisplaySubCategory(category: string, subCategory?: string | null, pr
 function getDisplayCategory(category: string, subCategory?: string | null, productName?: string | null): string {
   const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
-  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers', '로퍼', '힐'].some(v => combined.includes(v))) {
+  // ⚠️ 하의 먼저 체크 - "부츠컷" 같은 경우 하의로 분류
+  if (['하의', 'bottom', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', '원피스', 'dress', '반바지', 'bootcut', '부츠컷', 'trousers', '슬랙스'].some(v => combined.includes(v))) {
+    return '하의';
+  }
+  
+  // 신발 - "부츠컷"이 아닌 순수 신발만
+  const isBootcut = combined.includes('bootcut') || combined.includes('부츠컷');
+  if (!isBootcut && ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers', '로퍼', '힐'].some(v => combined.includes(v))) {
     return '신발';
   }
   if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks', '숄더백', '크로스백'].some(v => combined.includes(v))) {
@@ -133,9 +147,6 @@ function getDisplayCategory(category: string, subCategory?: string | null, produ
   }
   if (['상의', 'top', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'sweater', '스웨터', '맨투맨', '후드'].some(v => combined.includes(v))) {
     return '상의';
-  }
-  if (['하의', 'bottom', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', '원피스', 'dress', '반바지'].some(v => combined.includes(v))) {
-    return '하의';
   }
   
   return mapToPriorityCategory(category, subCategory, productName);
