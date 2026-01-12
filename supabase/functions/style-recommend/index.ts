@@ -202,7 +202,8 @@ serve(async (req) => {
       if (isKids) {
         query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
       } else if (gender === '유니섹스' || gender === 'unisex') {
-        query = query.or(`gender.eq.unisex,gender.eq.유니섹스,gender.is.null`);
+        // 유니섹스: 모든 성별 상품 포함 (남성, 여성, 유니섹스, null)
+        query = query.or(`gender.eq.male,gender.eq.female,gender.eq.남성,gender.eq.여성,gender.eq.unisex,gender.eq.유니섹스,gender.is.null`);
       } else {
         const genderEn = gender === '남성' ? 'male' : 'female';
         const genderKo = gender === '남성' ? '남성' : '여성';
@@ -219,6 +220,7 @@ serve(async (req) => {
           const productGender = (product.gender || '').toLowerCase();
           const combined = `${productName} ${productCategory} ${subCategory}`;
           
+          // 유니섹스 선택 시 반대 성별 필터링 안 함
           if (!isKids && gender !== '유니섹스' && gender !== 'unisex') {
             const oppositeGenderEn = gender === '남성' ? 'female' : 'male';
             const oppositeGenderKo = gender === '남성' ? '여성' : '남성';
@@ -299,38 +301,44 @@ serve(async (req) => {
         return 0;
       });
       
-      // DNA 요약 (상위 15개만, 빠른 컨텍스트)
-      const dnaProducts = sortedProducts.filter(p => p.dna).slice(0, 15);
-      const noDnaProducts = sortedProducts.filter(p => !p.dna).slice(0, 10);
+      // DNA 요약 (상위 20개) + DNA 없는 상품도 충분히 포함
+      const dnaProducts = sortedProducts.filter(p => p.dna).slice(0, 20);
+      const noDnaProducts = sortedProducts.filter(p => !p.dna).slice(0, 30);
       
       const dnaContext = dnaProducts.length > 0 
-        ? `\n🧬 DNA 분석 완료 상품 (우선 선택):\n${dnaProducts.map(p => `• ${p.id.slice(0,8)}: ${p.name} - ${p.dna}`).join('\n')}`
+        ? `\n🧬 DNA 분석 완료 (우선 선택):\n${dnaProducts.map(p => `• ${p.id}: ${p.name} [${p.category}] ₩${p.price} - ${p.dna}`).join('\n')}`
         : '';
       
       const noDnaContext = noDnaProducts.length > 0
-        ? `\n📦 추가 상품:\n${noDnaProducts.map(p => `• ${p.id.slice(0,8)}: ${p.name} (${p.category}, ₩${p.price})`).join('\n')}`
+        ? `\n📦 DNA 미분석 상품 (선택 시 DNA 생성 필수):\n${noDnaProducts.map(p => `• ${p.id}: ${p.name} [${p.category}] ₩${p.price}`).join('\n')}`
         : '';
 
-      // 간결한 시스템 프롬프트
-      const systemPrompt = `셀럽 스타일리스트. ${gender} ${requestedSeason} 룩 큐레이션.
+      // 강화된 시스템 프롬프트
+      const systemPrompt = `당신은 서울 청담동 20년 경력 셀럽 스타일리스트입니다.
 
-규칙:
-- 상의1, 하의1, 신발1, 악세서리1(선택) = 3~4개
-- DNA 있는 상품 우선
-- 예산: ${budget.toLocaleString()}원 이내`;
+🎯 필수 규칙:
+1. 반드시 4개 이상 아이템 선택 (상의+하의+신발+가방 또는 악세서리)
+2. DNA 있는 상품 우선, 없으면 DNA 생성 필수
+3. 컨셉에 맞는 조화로운 코디
+4. 예산: ${budget.toLocaleString()}원 이내
+5. 성별: ${gender}, 시즌: ${requestedSeason}
 
-      // 간결한 사용자 프롬프트
-      const userPrompt = `요청: "${userRequest}"
+📝 DNA 형식: "[스타일태그] | 장점: ... | 코디팁: ..."`;
+
+      // 강화된 사용자 프롬프트
+      const userPrompt = `📍 고객 요청: "${userRequest}"
 ${dnaContext}
 ${noDnaContext}
 
-JSON만 응답:
+⚠️ 중요: 반드시 4개 이상 아이템 선택! DNA 없는 상품 선택 시 DNA 생성 필수!
+
+JSON 응답:
 {
-  "lookName": "코디명(10자내)",
+  "lookName": "코디명",
   "styleConcept": "한줄 스타일 설명",
   "styleReasoning": "2문장 추천 이유",
-  "selectedProductIds": ["id1", "id2", "id3"],
-  "productDNAs": [{"id": "id", "dna": "태그|장점|팁"}]
+  "selectedProductIds": ["id1", "id2", "id3", "id4"],
+  "productDNAs": [{"id": "DNA없던상품id", "dna": "[태그] | 장점: ... | 코디팁: ..."}]
 }`;
 
       try {
