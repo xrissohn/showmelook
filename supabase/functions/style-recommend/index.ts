@@ -490,6 +490,64 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
       }
     }
 
+    // Step 6: ENSURE MINIMUM 4 ITEMS - Auto-fill missing categories from productsByPriority
+    const MIN_ITEMS = 4;
+    const requiredCategories = ['상의', '하의', '신발', '가방']; // 필수 4개 카테고리
+    
+    if (lookItems.length < MIN_ITEMS) {
+      console.log(`[style-recommend] Only ${lookItems.length} items, need ${MIN_ITEMS}. Auto-filling...`);
+      
+      for (const cat of requiredCategories) {
+        if (usedCategories.has(cat)) continue;
+        
+        const catProducts = productsByPriority[cat] || [];
+        if (catProducts.length > 0) {
+          const product = catProducts[0];
+          const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
+          const displayCat = getDisplayCategory(product.category, product.sub_category, product.name);
+          
+          const wouldBeWithinBudget = runningTotal + product.price <= budget;
+          if (wouldBeWithinBudget) {
+            runningTotal += product.price;
+          }
+          
+          lookItems.push({
+            category: displayCat,
+            product: product,
+            affiliateUrl,
+            source: 'cache',
+            isAutoSelected: wouldBeWithinBudget
+          });
+          usedCategories.add(cat);
+          console.log(`[style-recommend] Auto-added ${cat}: ${product.name}`);
+          
+          if (lookItems.length >= MIN_ITEMS) break;
+        }
+      }
+      
+      // If still less than 4, try adding 아우터
+      if (lookItems.length < MIN_ITEMS && !usedCategories.has('아우터')) {
+        const outerProducts = productsByPriority['아우터'] || [];
+        if (outerProducts.length > 0) {
+          const product = outerProducts[0];
+          const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
+          const displayCat = getDisplayCategory(product.category, product.sub_category, product.name);
+          
+          lookItems.push({
+            category: displayCat,
+            product: product,
+            affiliateUrl,
+            source: 'cache',
+            isAutoSelected: runningTotal + product.price <= budget
+          });
+          usedCategories.add('아우터');
+          console.log(`[style-recommend] Auto-added 아우터: ${product.name}`);
+        }
+      }
+    }
+
+    console.log(`[style-recommend] Final item count: ${lookItems.length}, Categories: ${Array.from(usedCategories).join(', ')}`);
+
     const totalPrice = lookItems.reduce((sum, item) => sum + (item.product?.price || 0), 0);
     const autoSelectedTotal = lookItems.filter(i => i.isAutoSelected).reduce((sum, item) => sum + (item.product?.price || 0), 0);
     const autoSelectedCount = lookItems.filter(i => i.isAutoSelected).length;
