@@ -544,14 +544,15 @@ async function generateImageWithUserGoogleAPI(
   return { imageBase64: imageBase64Result, text: textResult };
 }
 
-// Generate image using Lovable AI Gemini 3.0 for 3+ products (multi-product fitting)
-async function generateImageWithLovableAI(
+// Generate image using Lovable AI with configurable model
+async function generateImageWithLovableAIModel(
   lovableApiKey: string,
+  model: string,
   prompt: string,
   imageUrl?: string,
   productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
-  console.log('Calling Lovable AI Gemini 3.0 for multi-product fitting...');
+  console.log(`Calling Lovable AI ${model}...`);
 
   const parts: any[] = [];
   
@@ -593,7 +594,7 @@ async function generateImageWithLovableAI(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-3-pro-image-preview',
+      model: model,
       messages: [
         {
           role: 'user',
@@ -639,6 +640,16 @@ async function generateImageWithLovableAI(
     imageBase64: base64Match[1], 
     text: message.content || undefined 
   };
+}
+
+// Legacy function for backward compatibility
+async function generateImageWithLovableAI(
+  lovableApiKey: string,
+  prompt: string,
+  imageUrl?: string,
+  productImages?: { url: string; base64: string }[]
+): Promise<{ imageBase64: string; text?: string }> {
+  return generateImageWithLovableAIModel(lovableApiKey, 'google/gemini-3-pro-image-preview', prompt, imageUrl, productImages);
 }
 
 // Try to find cached image with multi-level cache strategy
@@ -1079,34 +1090,39 @@ The reference product images show the EXACT items that must appear on the model.
     console.log('Access token obtained');
 
     // ============================================
-    // VIRTUAL FITTING LOGIC - ALWAYS USE LOVABLE AI FOR FACE COMPOSITE
+    // VIRTUAL FITTING LOGIC
     // ============================================
-    // Face composite always uses Lovable AI Gemini 3.0 for best quality
-    // Standard generation uses Vertex AI
+    // 아이템 3개 이상: Lovable AI gemini-3-pro-image-preview (고품질)
+    // 아이템 2개 이하: Lovable AI gemini-2.5-flash (빠른 속도)
+    // Face composite: 항상 Lovable AI 사용
     // ============================================
     
     const productCount = productImages.length;
+    const useGemini3 = productCount >= 3; // 3개 이상일 때 Gemini 3.0 사용
     
-    console.log(`[Virtual Fitting] Product count: ${productCount}, Face composite: ${useFaceComposite ? 'YES' : 'NO'}`);
+    console.log(`[Virtual Fitting] Product count: ${productCount}, Face composite: ${useFaceComposite ? 'YES' : 'NO'}, Use Gemini 3.0: ${useGemini3}`);
     
     let result;
     let apiUsed = 'unknown';
     
+    if (!LOVABLE_API_KEY) {
+      throw new Error('Lovable API 키가 설정되지 않았습니다.');
+    }
+    
     if (useFaceComposite && referenceImageUrl) {
-      // Face composite mode - ALWAYS use Lovable AI Gemini 3.0 for best face preservation
-      if (!LOVABLE_API_KEY) {
-        throw new Error('Lovable API 키가 설정되지 않았습니다.');
-      }
+      // Face composite mode - use appropriate Gemini model based on product count
+      const modelToUse = useGemini3 ? 'google/gemini-3-pro-image-preview' : 'google/gemini-2.5-flash-image-preview';
       
-      console.log(`Using Lovable AI Gemini 3.0 for face composite (${productCount} products)`);
+      console.log(`Using Lovable AI ${modelToUse} for face composite (${productCount} products)`);
       try {
-        result = await generateImageWithLovableAI(
+        result = await generateImageWithLovableAIModel(
           LOVABLE_API_KEY,
+          modelToUse,
           prompt,
           referenceImageUrl,
           productImages
         );
-        apiUsed = 'Lovable AI Gemini 3.0';
+        apiUsed = `Lovable AI ${modelToUse}`;
         console.log('Image generated with Lovable AI - face composite success');
       } catch (lovableError) {
         console.error('Lovable AI failed:', lovableError);
@@ -1143,28 +1159,53 @@ The reference product images show the EXACT items that must appear on the model.
         }
       }
     } else {
-      // Standard generation (no face composite): Use Vertex AI
+      // Standard generation (no face composite): Use appropriate model
+      const modelToUse = useGemini3 ? 'google/gemini-3-pro-image-preview' : 'google/gemini-2.5-flash-image-preview';
+      
+      console.log(`Using Lovable AI ${modelToUse} for standard generation (${productCount} products)`);
       try {
-        result = await generateImageWithVertexAI(
-          accessToken,
-          GOOGLE_CLOUD_PROJECT_ID,
+        result = await generateImageWithLovableAIModel(
+          LOVABLE_API_KEY,
+          modelToUse,
           prompt,
-          referenceImageUrl,
+          undefined,
           productImages
         );
-        apiUsed = 'Vertex AI';
-        console.log('Image generated with Vertex AI');
-      } catch (vertexError) {
-        console.error('Vertex AI failed:', vertexError);
+        apiUsed = `Lovable AI ${modelToUse}`;
+        console.log('Image generated with Lovable AI');
+      } catch (lovableError) {
+        console.error('Lovable AI failed:', lovableError);
         
-        if (vertexError instanceof Error && vertexError.message === 'RATE_LIMIT') {
-          return new Response(
-            JSON.stringify({ error: 'Google API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' }),
-            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
+        if (lovableError instanceof Error) {
+          if (lovableError.message === 'LOVABLE_RATE_LIMIT') {
+            return new Response(
+              JSON.stringify({ error: 'API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
         
-        throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        // Fallback to Vertex AI
+        console.log('Lovable AI failed, trying Vertex AI as fallback...');
+        try {
+          result = await generateImageWithVertexAI(
+            accessToken,
+            GOOGLE_CLOUD_PROJECT_ID,
+            prompt,
+            referenceImageUrl,
+            productImages
+          );
+          apiUsed = 'Vertex AI (fallback)';
+          console.log('Image generated with Vertex AI fallback');
+        } catch (vertexError) {
+          if (vertexError instanceof Error && vertexError.message === 'RATE_LIMIT') {
+            return new Response(
+              JSON.stringify({ error: 'Google API 요청 한도에 도달했습니다. 잠시 후 다시 시도해주세요.' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw new Error('이미지 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        }
       }
     }
     
