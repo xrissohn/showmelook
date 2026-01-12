@@ -442,20 +442,19 @@ async function generateImageWithVertexAI(
   return { imageBase64: imageBase64Result, text: textResult };
 }
 
-// Generate image using Google Gemini API directly with user's API key
+// Generate image using Google AI Studio Gemini API directly with user's API key
 // This uses the user's own Google API key for billing separation
 async function generateImageWithUserGoogleAPI(
-  accessToken: string,
-  projectId: string,
+  apiKey: string,
   prompt: string,
   imageUrl?: string,
   productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
-  const region = 'us-central1';
-  const modelId = 'gemini-2.0-flash-exp'; // Gemini 2.0 Flash for better face composite
-  const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
+  // Use gemini-2.0-flash-exp-image-generation for image generation
+  const modelId = 'gemini-2.0-flash-exp-image-generation';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
 
-  console.log('Calling User Google API (Vertex AI) with Gemini 2.0 Flash Exp...');
+  console.log('Calling Google AI Studio Gemini API with', modelId, '...');
 
   // Build content parts - FACE IMAGE FIRST for better face preservation
   const parts: any[] = [];
@@ -498,12 +497,11 @@ async function generateImageWithUserGoogleAPI(
     }
   };
 
-  console.log('Calling Vertex AI (Gemini 2.0 Flash) for face composite:', endpoint);
+  console.log('Calling Gemini API for face composite:', endpoint.replace(apiKey, '***'));
 
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(requestBody)
@@ -511,25 +509,28 @@ async function generateImageWithUserGoogleAPI(
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('User Google API (Vertex AI) error:', response.status, errorText);
+    console.error('Google AI Studio error:', response.status, errorText);
     
     if (response.status === 429) {
       throw new Error('GOOGLE_RATE_LIMIT');
     }
     if (response.status === 404) {
-      throw new Error(`Vertex AI 모델을 찾을 수 없습니다: ${modelId} in ${region}`);
+      throw new Error(`Gemini 모델을 찾을 수 없습니다: ${modelId}`);
     }
     if (response.status === 401 || response.status === 403) {
-      throw new Error('Google API 인증 실패');
+      throw new Error('Google API 키 인증 실패');
+    }
+    if (response.status === 400) {
+      throw new Error(`Gemini API 요청 오류: ${errorText}`);
     }
     
     throw new Error(`Google API 오류: ${response.status}`);
   }
 
   const data = await response.json();
-  console.log('User Google API (Vertex AI) response received');
+  console.log('Google AI Studio response received');
 
-  // Parse Vertex AI response
+  // Parse response
   const candidates = data.candidates;
   if (!candidates || candidates.length === 0) {
     console.error('No candidates in response:', JSON.stringify(data));
@@ -987,32 +988,37 @@ The reference product images show the EXACT items that must appear on the model.
     console.log('Product images count:', productImages.length);
     console.log('Prompt length:', prompt.length, 'chars');
 
-    // Get Google Access Token
+    // Get Google Gemini API Key from secrets
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
+    if (!GOOGLE_GEMINI_API_KEY) {
+      console.error('GOOGLE_GEMINI_API_KEY is not configured');
+      throw new Error('Google Gemini API 키가 설정되지 않았습니다.');
+    }
+    console.log('Google Gemini API key found');
+
+    // Get Google Access Token for Vertex AI (fallback)
     console.log('Getting Google access token...');
     const accessToken = await getGoogleAccessToken(serviceAccount);
     console.log('Access token obtained');
 
     // Call image generation API
-    // 모든 이미지 생성은 사용자의 Google API 키로 처리 (비용 분리)
-    // 얼굴 합성: generateImageWithUserGoogleAPI (nanobanana)
-    // 일반 생성: generateImageWithVertexAI
+    // 모든 얼굴 합성 이미지 생성은 사용자의 Google Gemini API 키로 처리 (비용 분리)
     let result;
     let usedFallback = false;
     
     if (useFaceComposite && referenceImageUrl) {
-      // 얼굴 합성 - 사용자 Google API 키로 nanobanana 모델 사용
-      console.log(`Using User Google API (nanobanana) for face composite with ${productImages.length} products`);
+      // 얼굴 합성 - 사용자 Google Gemini API 키 사용
+      console.log(`Using Google Gemini API for face composite with ${productImages.length} products`);
       try {
         result = await generateImageWithUserGoogleAPI(
-          accessToken,
-          GOOGLE_CLOUD_PROJECT_ID,
+          GOOGLE_GEMINI_API_KEY,
           prompt,
           referenceImageUrl,
           productImages
         );
-        console.log('Image generated with User Google API (nanobanana)');
+        console.log('Image generated with Google Gemini API');
       } catch (googleError) {
-        console.error('User Google API failed:', googleError);
+        console.error('Google Gemini API failed:', googleError);
         
         // Google API 특수 에러 처리
         if (googleError instanceof Error) {
