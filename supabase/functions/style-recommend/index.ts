@@ -56,55 +56,70 @@ function generateCacheKey(gender: string, style: string, occasion: string, budge
   return `style_${Math.abs(hash).toString(36)}`;
 }
 
-// Map product category to priority category
-function mapToPriorityCategory(category: string): string {
-  const cat = category.toLowerCase();
+// Map product category AND sub_category AND name to priority category
+function mapToPriorityCategory(category: string, subCategory?: string | null, productName?: string | null): string {
+  // Combine all text for matching
+  const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
-  // 상의
-  if (['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'shirts', 'polo shirts'].some(v => cat.includes(v.toLowerCase()))) {
+  // 상의 - check first as it's most common
+  if (['상의', 'top', 'tops', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'shirts', 'polo', 'sweater', '스웨터', '맨투맨', '후드', 'hoodie', '조끼', 'vest'].some(v => combined.includes(v))) {
     return '상의';
   }
   
-  // 하의 (원피스 포함)
-  if (['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'trousers', '원피스', 'dress', 'dresses', '드레스'].some(v => cat.includes(v.toLowerCase()))) {
-    return '하의';
-  }
-  
-  // 아우터
-  if (['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'jackets', 'coats'].some(v => cat.includes(v.toLowerCase()))) {
+  // 아우터 - check before 하의 because coats are important
+  if (['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'jackets', 'coats', '패딩', 'padding', 'blazer', '블레이저'].some(v => combined.includes(v))) {
     return '아우터';
   }
   
+  // 하의 (includes dresses/원피스)
+  if (['하의', 'bottom', 'bottoms', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', 'trousers', '원피스', 'dress', 'dresses', '드레스', 'shorts', '반바지', 'leggings', '레깅스'].some(v => combined.includes(v))) {
+    return '하의';
+  }
+  
   // 신발
-  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers'].some(v => cat.includes(v.toLowerCase()))) {
+  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers', '로퍼', '슬리퍼', 'heels', '힐'].some(v => combined.includes(v))) {
     return '신발';
   }
   
   // 가방
-  if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks'].some(v => cat.includes(v.toLowerCase()))) {
+  if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks', '백팩', '숄더백', 'shoulder', 'crossbody', '크로스백'].some(v => combined.includes(v))) {
     return '가방';
   }
   
   // 액세서리
-  if (['액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt', 'ties', 'scarves', 'hats', 'gloves', '목걸이', '반지', '귀걸이', '팔찌', '시계', 'watch', 'jewelry', 'necklace', 'bracelet', 'ring'].some(v => cat.includes(v.toLowerCase()))) {
+  if (['액세서리', 'accessory', 'accessories', '스카프', 'scarf', '모자', 'hat', '벨트', 'belt', 'ties', 'scarves', 'hats', 'gloves', '목걸이', '반지', '귀걸이', '팔찌', '시계', 'watch', 'jewelry', 'necklace', 'bracelet', 'ring', '선글라스', 'sunglasses'].some(v => combined.includes(v))) {
     return '액세서리';
   }
   
-  return '액세서리';
+  // If category is just gender (여성, 남성), return null to handle specially
+  if (['여성', '남성', '여성의류', '남성의류', '라이프', '뷰티', '키즈', '골프', '스포츠', '명품'].includes(category)) {
+    return 'unknown';
+  }
+  
+  return 'unknown'; // Mark as unknown instead of defaulting to 액세서리
 }
 
-// Get specific sub-category for display
-function getDisplayCategory(category: string): string {
-  const cat = category.toLowerCase();
+// Get specific sub-category for display (uses all available info)
+function getDisplayCategory(category: string, subCategory?: string | null, productName?: string | null): string {
+  const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
-  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers'].some(v => cat.includes(v.toLowerCase()))) {
+  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'trainers', 'loafers', '로퍼', '힐'].some(v => combined.includes(v))) {
     return '신발';
   }
-  if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks'].some(v => cat.includes(v.toLowerCase()))) {
+  if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'holdalls', 'backpacks', '숄더백', '크로스백'].some(v => combined.includes(v))) {
     return '가방';
   }
+  if (['아우터', 'outerwear', 'jacket', '자켓', '코트', 'coat', '점퍼', 'cardigan', '가디건', '패딩', 'blazer'].some(v => combined.includes(v))) {
+    return '아우터';
+  }
+  if (['상의', 'top', '블라우스', '셔츠', '니트', '티셔츠', 't-shirt', 'shirt', 'blouse', 'knit', 'sweater', '스웨터', '맨투맨', '후드'].some(v => combined.includes(v))) {
+    return '상의';
+  }
+  if (['하의', 'bottom', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', '원피스', 'dress', '반바지'].some(v => combined.includes(v))) {
+    return '하의';
+  }
   
-  return mapToPriorityCategory(category);
+  return mapToPriorityCategory(category, subCategory, productName);
 }
 
 serve(async (req) => {
@@ -220,24 +235,27 @@ serve(async (req) => {
       }
     }
     
-    // Remove duplicates and categorize
+    // Remove duplicates and categorize using enhanced mapping (category + sub_category + name)
     const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
     
+    // Add unknown category to priority map
+    productsByPriority['unknown'] = [];
+    
     for (const product of uniqueProducts) {
-      const priorityCat = mapToPriorityCategory(product.category);
+      const priorityCat = mapToPriorityCategory(product.category, product.sub_category, product.name);
       if (productsByPriority[priorityCat]) {
         productsByPriority[priorityCat].push(product);
       }
     }
     
     // Sort each category by price
-    for (const cat of [...CATEGORY_PRIORITY, '액세서리']) {
+    for (const cat of [...CATEGORY_PRIORITY, '액세서리', 'unknown']) {
       if (productsByPriority[cat]) {
         productsByPriority[cat].sort((a, b) => a.price - b.price);
       }
     }
     
-    console.log(`[style-recommend] Products: 상의=${productsByPriority['상의']?.length || 0}, 하의=${productsByPriority['하의']?.length || 0}, 아우터=${productsByPriority['아우터']?.length || 0}, 신발=${productsByPriority['신발']?.length || 0}, 가방=${productsByPriority['가방']?.length || 0}`);
+    console.log(`[style-recommend] Products: 상의=${productsByPriority['상의']?.length || 0}, 하의=${productsByPriority['하의']?.length || 0}, 아우터=${productsByPriority['아우터']?.length || 0}, 신발=${productsByPriority['신발']?.length || 0}, 가방=${productsByPriority['가방']?.length || 0}, unknown=${productsByPriority['unknown']?.length || 0}`);
 
     if (uniqueProducts.length === 0) {
       return new Response(JSON.stringify({
@@ -249,18 +267,18 @@ serve(async (req) => {
       });
     }
 
-    // Step 3: Create product context with existing DNA if available
+    // Step 3: Create product context with existing DNA and computed priority category
     const productContext = uniqueProducts.map(p => ({
       id: p.id,
       name: p.name,
       brand: p.brand,
       price: p.price,
       category: p.category,
-      priorityCategory: mapToPriorityCategory(p.category),
+      priorityCategory: mapToPriorityCategory(p.category, p.sub_category, p.name),
       sub_category: p.sub_category,
       color: p.color,
       style_tags: p.style_tags,
-      dna: p.dna_text || null, // Include existing DNA for faster reasoning
+      dna: p.dna_text || null,
     }));
 
     // Split products with/without DNA
@@ -423,18 +441,29 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
     const usedCategories = new Set<string>();
     
     if (selectedProducts) {
-      // Sort by priority
+      // Sort by priority using enhanced mapping
       const sortedProducts = selectedProducts.sort((a, b) => {
-        const aPriority = CATEGORY_PRIORITY.indexOf(mapToPriorityCategory(a.category));
-        const bPriority = CATEGORY_PRIORITY.indexOf(mapToPriorityCategory(b.category));
-        return aPriority - bPriority;
+        const aPriorityCat = mapToPriorityCategory(a.category, a.sub_category, a.name);
+        const bPriorityCat = mapToPriorityCategory(b.category, b.sub_category, b.name);
+        const aPriority = CATEGORY_PRIORITY.indexOf(aPriorityCat);
+        const bPriority = CATEGORY_PRIORITY.indexOf(bPriorityCat);
+        // Unknown categories go last
+        const aIdx = aPriority === -1 ? 999 : aPriority;
+        const bIdx = bPriority === -1 ? 999 : bPriority;
+        return aIdx - bIdx;
       });
       
       for (const product of sortedProducts) {
-        const displayCat = getDisplayCategory(product.category);
-        const priorityCat = mapToPriorityCategory(product.category);
+        const priorityCat = mapToPriorityCategory(product.category, product.sub_category, product.name);
+        const displayCat = getDisplayCategory(product.category, product.sub_category, product.name);
         
-        // Skip if we already have one from this priority category
+        // Skip unknown categories
+        if (priorityCat === 'unknown') {
+          console.log(`[style-recommend] Skipping unknown category: ${product.name} (${product.category})`);
+          continue;
+        }
+        
+        // Skip if we already have one from this priority category (STRICT: 1 per category)
         if (usedCategories.has(priorityCat)) {
           console.log(`[style-recommend] Skipping duplicate ${priorityCat}: ${product.name}`);
           continue;
