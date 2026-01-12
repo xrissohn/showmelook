@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -208,8 +209,28 @@ const Admin = () => {
   const [batchResult, setBatchResult] = useState<BatchCollectResult | null>(null);
   const [isBatchLoading, setIsBatchLoading] = useState(false);
 
+  // DNA management state
+  const [dnaStats, setDnaStats] = useState<{
+    total: number;
+    withDna: number;
+    withoutDna: number;
+    byCategory: Record<string, { total: number; withDna: number }>;
+    byBrand: Record<string, { total: number; withDna: number }>;
+  } | null>(null);
+  const [isDnaLoading, setIsDnaLoading] = useState(false);
+  const [dnaBatchResult, setDnaBatchResult] = useState<{
+    success: boolean;
+    processed?: number;
+    updated?: number;
+    remaining?: number;
+    error?: string;
+    sampleDNA?: { id: string; dna: string }[];
+  } | null>(null);
+  const [dnaBatchSize, setDnaBatchSize] = useState("50");
+
   useEffect(() => {
     loadMerchants();
+    loadDnaStats();
   }, []);
 
   const testDeeplink = async () => {
@@ -613,6 +634,93 @@ const Admin = () => {
     setSelectedMerchants([]);
   };
 
+  const loadDnaStats = async () => {
+    try {
+      // Get total and DNA counts
+      const { data: products } = await supabase
+        .from('products_cache')
+        .select('id, dna_text, category, brand')
+        .eq('is_active', true);
+
+      if (!products) return;
+
+      const total = products.length;
+      const withDna = products.filter(p => p.dna_text).length;
+      const withoutDna = total - withDna;
+
+      // Group by category
+      const byCategory: Record<string, { total: number; withDna: number }> = {};
+      products.forEach(p => {
+        const cat = p.category || '미분류';
+        if (!byCategory[cat]) byCategory[cat] = { total: 0, withDna: 0 };
+        byCategory[cat].total++;
+        if (p.dna_text) byCategory[cat].withDna++;
+      });
+
+      // Group by brand (top 10)
+      const brandCounts: Record<string, { total: number; withDna: number }> = {};
+      products.forEach(p => {
+        const brand = p.brand || '알 수 없음';
+        if (!brandCounts[brand]) brandCounts[brand] = { total: 0, withDna: 0 };
+        brandCounts[brand].total++;
+        if (p.dna_text) brandCounts[brand].withDna++;
+      });
+      
+      // Sort and take top 10
+      const byBrand = Object.fromEntries(
+        Object.entries(brandCounts)
+          .sort((a, b) => b[1].total - a[1].total)
+          .slice(0, 10)
+      );
+
+      setDnaStats({ total, withDna, withoutDna, byCategory, byBrand });
+    } catch (error) {
+      console.error('Error loading DNA stats:', error);
+    }
+  };
+
+  const runDnaBatch = async () => {
+    setIsDnaLoading(true);
+    setDnaBatchResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('dna-batch', {
+        body: { 
+          batchSize: parseInt(dnaBatchSize) || 50,
+          mode: 'generate'
+        },
+      });
+
+      if (error) throw error;
+      
+      setDnaBatchResult(data);
+      
+      if (data.success) {
+        toast({
+          title: "DNA 생성 완료",
+          description: `${data.updated}개 상품 DNA 생성됨, ${data.remaining}개 남음`,
+        });
+        loadDnaStats();
+      } else {
+        toast({
+          title: "DNA 생성 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('DNA batch error:', error);
+      setDnaBatchResult({ success: false, error: error.message });
+      toast({
+        title: "DNA 배치 오류",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDnaLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -669,8 +777,9 @@ const Admin = () => {
                 phase={4} 
                 title="DNA + RAG 고도화" 
                 items={[
-                  { done: false, label: "product_dna 테이블" },
-                  { done: false, label: "dna_batch Edge Function" },
+                  { done: true, label: "dna_text 컬럼 (products_cache)" },
+                  { done: true, label: "dna_batch Edge Function" },
+                  { done: true, label: "카테고리/성별 정규화" },
                   { done: false, label: "style_v2 Edge Function" },
                 ]}
               />
@@ -679,8 +788,9 @@ const Admin = () => {
         </Card>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="batch-collect" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-9">
+        <Tabs defaultValue="dna-management" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-10">
+            <TabsTrigger value="dna-management">DNA 관리</TabsTrigger>
             <TabsTrigger value="admin-tools">관리도구</TabsTrigger>
             <TabsTrigger value="batch-collect">배치 수집</TabsTrigger>
             <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
@@ -691,6 +801,186 @@ const Admin = () => {
             <TabsTrigger value="collect">상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
+
+          {/* DNA Management Tab */}
+          <TabsContent value="dna-management" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Dna className="w-5 h-5" />
+                  상품 DNA 관리
+                </CardTitle>
+                <CardDescription>
+                  상품 DNA(스타일 태그/특징/코디팁)를 배치로 생성하고 관리합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* DNA Stats Overview */}
+                {dnaStats && (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4" />
+                        DNA 현황
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={loadDnaStats}>
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        새로고침
+                      </Button>
+                    </div>
+                    
+                    {/* Overall Progress */}
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span>전체 DNA 커버리지</span>
+                        <span className="font-bold">
+                          {dnaStats.withDna} / {dnaStats.total} ({Math.round((dnaStats.withDna / dnaStats.total) * 100)}%)
+                        </span>
+                      </div>
+                      <Progress value={(dnaStats.withDna / dnaStats.total) * 100} className="h-3" />
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-primary rounded-full" />
+                          DNA 있음: {dnaStats.withDna}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-muted rounded-full" />
+                          DNA 없음: {dnaStats.withoutDna}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Category Breakdown */}
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <h4 className="text-sm font-medium">카테고리별 DNA 현황</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {Object.entries(dnaStats.byCategory)
+                          .sort((a, b) => b[1].total - a[1].total)
+                          .slice(0, 8)
+                          .map(([cat, stats]) => (
+                            <div key={cat} className="p-2 bg-muted/50 rounded text-sm">
+                              <p className="font-medium truncate">{cat}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {stats.withDna}/{stats.total} ({Math.round((stats.withDna / stats.total) * 100)}%)
+                              </p>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Brand Breakdown */}
+                    <div className="p-4 border rounded-lg space-y-3">
+                      <h4 className="text-sm font-medium">브랜드별 DNA 현황 (Top 10)</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                        {Object.entries(dnaStats.byBrand).map(([brand, stats]) => (
+                          <div key={brand} className="p-2 bg-muted/50 rounded text-xs">
+                            <p className="font-medium truncate" title={brand}>{brand}</p>
+                            <p className="text-muted-foreground">
+                              {stats.withDna}/{stats.total}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* DNA Batch Generation */}
+                <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <Dna className="w-4 h-4" />
+                        DNA 배치 생성
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        AI를 사용하여 DNA가 없는 상품에 스타일 DNA를 생성합니다.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">배치 크기</label>
+                      <Select value={dnaBatchSize} onValueChange={setDnaBatchSize}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10개</SelectItem>
+                          <SelectItem value="25">25개</SelectItem>
+                          <SelectItem value="50">50개</SelectItem>
+                          <SelectItem value="100">100개</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      onClick={runDnaBatch}
+                      disabled={isDnaLoading}
+                      className="mt-auto"
+                    >
+                      {isDnaLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <Play className="w-4 h-4 mr-2" />
+                      )}
+                      {isDnaLoading ? 'DNA 생성 중...' : 'DNA 생성 시작'}
+                    </Button>
+                  </div>
+
+                  {/* Batch Result */}
+                  {dnaBatchResult && (
+                    <div className={`p-4 rounded-lg border ${
+                      dnaBatchResult.success 
+                        ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                        : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                    }`}>
+                      {dnaBatchResult.success ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            <span className="font-medium">DNA 생성 완료</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">처리됨:</span>{' '}
+                              <span className="font-medium">{dnaBatchResult.processed}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">성공:</span>{' '}
+                              <span className="font-medium text-green-600">{dnaBatchResult.updated}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">남은 상품:</span>{' '}
+                              <span className="font-medium">{dnaBatchResult.remaining}</span>
+                            </div>
+                          </div>
+                          {dnaBatchResult.sampleDNA && dnaBatchResult.sampleDNA.length > 0 && (
+                            <div className="mt-3 pt-3 border-t">
+                              <p className="text-xs font-medium mb-2">생성된 DNA 샘플:</p>
+                              <div className="space-y-2">
+                                {dnaBatchResult.sampleDNA.map((sample) => (
+                                  <div key={sample.id} className="text-xs bg-white/50 dark:bg-black/20 p-2 rounded">
+                                    <code className="break-all">{sample.dna}</code>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle className="w-5 h-5 text-red-600" />
+                          <span className="font-medium">오류: {dnaBatchResult.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Admin Tools Tab */}
           <TabsContent value="admin-tools" className="space-y-4">
