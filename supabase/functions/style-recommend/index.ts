@@ -287,75 +287,64 @@ serve(async (req) => {
     
     console.log(`[style-recommend] Products with DNA: ${productsWithDNA.length}, without DNA: ${productsWithoutDNA.length}`);
 
-    // Step 4: RAG with GPT-5
+    // Step 4: RAG with GPT-5 (DNA 우선 활용으로 빠른 추론)
     let ragResponse: RAGStyleResponse | null = null;
-    let geminiCalls = 0;
+    let gptCalls = 0;
     
     if (LOVABLE_API_KEY) {
-      const seasonClothingGuide = getSeasonClothingGuide(requestedSeason);
+      // DNA가 있는 상품을 우선 정렬 (DNA 있는 상품 먼저)
+      const sortedProducts = [...productContext].sort((a, b) => {
+        if (a.dna && !b.dna) return -1;
+        if (!a.dna && b.dna) return 1;
+        return 0;
+      });
       
-      // Build smarter prompt using DNA if available
-      const dnaContext = productsWithDNA.length > 0 
-        ? `\n\n📊 이미 분석된 상품 DNA (빠른 참고용):\n${productsWithDNA.slice(0, 10).map(p => `- ${p.name}: ${p.dna}`).join('\n')}`
+      // DNA 요약 (상위 15개만, 빠른 컨텍스트)
+      const dnaProducts = sortedProducts.filter(p => p.dna).slice(0, 15);
+      const noDnaProducts = sortedProducts.filter(p => !p.dna).slice(0, 10);
+      
+      const dnaContext = dnaProducts.length > 0 
+        ? `\n🧬 DNA 분석 완료 상품 (우선 선택):\n${dnaProducts.map(p => `• ${p.id.slice(0,8)}: ${p.name} - ${p.dna}`).join('\n')}`
         : '';
       
-      const systemPrompt = `너는 서울 청담동 15년 경력 셀럽 전담 스타일리스트야.
+      const noDnaContext = noDnaProducts.length > 0
+        ? `\n📦 추가 상품:\n${noDnaProducts.map(p => `• ${p.id.slice(0,8)}: ${p.name} (${p.category}, ₩${p.price})`).join('\n')}`
+        : '';
 
-🎯 핵심 미션:
-고객 요청을 분석하고, 제공된 상품에서 완벽한 1개 룩을 큐레이션해.
+      // 간결한 시스템 프롬프트
+      const systemPrompt = `셀럽 스타일리스트. ${gender} ${requestedSeason} 룩 큐레이션.
 
-⚠️ 절대 규칙:
-1. 제공된 상품 ID 중에서만 선택
-2. ⭐ 카테고리당 1개씩만 선택: 상의 1개, 하의 1개, 아우터 1개(선택), 신발 1개, 가방 1개(선택) = 총 3~5개
-3. 계절감 필수: ${requestedSeason}
-4. 성별 구분 명확히: ${gender}
+규칙:
+- 상의1, 하의1, 신발1, 악세서리1(선택) = 3~4개
+- DNA 있는 상품 우선
+- 예산: ${budget.toLocaleString()}원 이내`;
 
-📋 DNA 생성 요청:
-선택한 상품 중 dna가 없는 상품은 아래 형식으로 DNA를 생성해줘:
-"[스타일태그1,스타일태그2] | 장점: ... | 코디팁: ..."
-
-${seasonClothingGuide}`;
-
-      const userPrompt = `🗓️ 현재: ${new Date().toLocaleDateString('ko-KR')} (${currentSeason})
-👤 고객: ${gender}${age ? `, ${age}세` : ''}
-💰 예산: ${budget.toLocaleString()}원
-📍 요청: "${userRequest}"
+      // 간결한 사용자 프롬프트
+      const userPrompt = `요청: "${userRequest}"
 ${dnaContext}
+${noDnaContext}
 
-📦 구매 가능한 상품 (카테고리당 1개씩만 선택해야 함):
-${JSON.stringify(productContext.slice(0, 50), null, 1)}
-
-다음 JSON 형식으로만 응답해:
+JSON만 응답:
 {
-  "lookName": "[상황/계절 반영 코디명]",
-  "styleConcept": "🎨 [성별] [스타일]\n\n[3-4문장 스타일 설명]",
-  "styleReasoning": "[5-6문장 전문가 분석]",
-  "selectedProductIds": ["상품ID-1", "상품ID-2", "상품ID-3"],
-  "stylingTips": "[착용 팁 2-3문장]",
-  "productDNAs": [
-    {"id": "dna가 없던 상품ID", "dna": "[스타일태그] | 장점: ... | 코디팁: ..."}
-  ]
-}
-
-⚠️ 중요:
-- 상의는 반드시 1개만!
-- 하의도 반드시 1개만!
-- 아우터는 ${requestedSeason === '겨울' ? '필수' : '선택'}
-- productDNAs: dna가 null이었던 선택 상품만 DNA 생성`;
+  "lookName": "코디명(10자내)",
+  "styleConcept": "한줄 스타일 설명",
+  "styleReasoning": "2문장 추천 이유",
+  "selectedProductIds": ["id1", "id2", "id3"],
+  "productDNAs": [{"id": "id", "dna": "태그|장점|팁"}]
+}`;
 
       try {
-        console.log('[style-recommend] Using Lovable AI gemini-2.5-flash for style reasoning...');
+        console.log('[style-recommend] Using GPT-5 for fast style reasoning (DNA-first)...');
         const startTime = Date.now();
         
-        // Use Lovable AI with gemini-2.5-flash
-        const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const gptResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'openai/gpt-5',
             messages: [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: userPrompt }
@@ -363,18 +352,18 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
           }),
         });
 
-        geminiCalls++;
+        gptCalls++;
         const elapsed = Date.now() - startTime;
-        console.log(`[style-recommend] Lovable AI response in ${elapsed}ms`);
+        console.log(`[style-recommend] GPT-5 response in ${elapsed}ms`);
 
-        if (geminiResponse.ok) {
-          const geminiData = await geminiResponse.json();
-          const content = geminiData.choices?.[0]?.message?.content || '';
+        if (gptResponse.ok) {
+          const gptData = await gptResponse.json();
+          const content = gptData.choices?.[0]?.message?.content || '';
           
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
-            console.log(`[style-recommend] Lovable AI selected ${ragResponse.selectedProductIds.length} products in ${elapsed}ms`);
+            console.log(`[style-recommend] GPT-5 selected ${ragResponse.selectedProductIds.length} products in ${elapsed}ms`);
             
             // Save generated DNAs to database (async, don't wait)
             if (ragResponse.productDNAs && ragResponse.productDNAs.length > 0) {
@@ -399,11 +388,11 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
             }
           }
         } else {
-          const errorText = await geminiResponse.text();
-          console.error('[style-recommend] Lovable AI error:', geminiResponse.status, errorText);
+          const errorText = await gptResponse.text();
+          console.error('[style-recommend] GPT-5 error:', gptResponse.status, errorText);
         }
       } catch (e) {
-        console.error('[style-recommend] Lovable AI parsing error:', e);
+        console.error('[style-recommend] GPT-5 parsing error:', e);
       }
     }
 
@@ -583,7 +572,7 @@ ${JSON.stringify(productContext.slice(0, 50), null, 1)}
         budget,
         stylingTips: ragResponse.stylingTips,
       },
-      apiCalls: { gemini: geminiCalls, serpapi: 0 },
+      apiCalls: { gpt5: gptCalls, serpapi: 0 },
       stats: {
         productsInContext: uniqueProducts.length,
         selectedProducts: lookItems.length,
