@@ -227,10 +227,128 @@ const CelebrationParticles = ({ show }: { show: boolean }) => {
   );
 };
 
+// 이미지에 워터마크 추가 함수
+const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        reject(new Error('Canvas context not available'));
+        return;
+      }
+      
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // 원본 이미지 그리기
+      ctx.drawImage(img, 0, 0);
+      
+      // 워터마크 로고 로드
+      const logo = new Image();
+      logo.crossOrigin = 'anonymous';
+      
+      logo.onload = () => {
+        // 워터마크 크기 계산 (이미지 너비의 15%)
+        const watermarkWidth = img.width * 0.15;
+        const watermarkHeight = watermarkWidth;
+        
+        // 오른쪽 하단 위치
+        const x = img.width - watermarkWidth - 20;
+        const y = img.height - watermarkHeight - 20;
+        
+        // 반투명 배경 원
+        ctx.beginPath();
+        ctx.arc(x + watermarkWidth / 2, y + watermarkHeight / 2, watermarkWidth / 2 + 8, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fill();
+        
+        // 로고 그리기
+        ctx.drawImage(logo, x, y, watermarkWidth, watermarkHeight);
+        
+        // 텍스트 워터마크 추가
+        const fontSize = Math.max(12, img.width * 0.02);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.textAlign = 'center';
+        ctx.fillText('ShowMeLook', x + watermarkWidth / 2, y + watermarkHeight + fontSize + 8);
+        
+        // Blob으로 변환
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const watermarkedUrl = URL.createObjectURL(blob);
+            resolve(watermarkedUrl);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/png', 1.0);
+      };
+      
+      logo.onerror = () => {
+        // 로고 로드 실패 시 텍스트 워터마크만 추가
+        const fontSize = Math.max(16, img.width * 0.03);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        
+        // 텍스트 배경
+        const text = 'ShowMeLook';
+        const textWidth = ctx.measureText(text).width;
+        const padding = 12;
+        const x = img.width - textWidth - padding * 2 - 20;
+        const y = img.height - fontSize - padding * 2 - 20;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(x, y, textWidth + padding * 2, fontSize + padding * 2, 8);
+        ctx.fill();
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x + padding, y + fontSize / 2 + padding);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const watermarkedUrl = URL.createObjectURL(blob);
+            resolve(watermarkedUrl);
+          } else {
+            reject(new Error('Failed to create blob'));
+          }
+        }, 'image/png', 1.0);
+      };
+      
+      logo.src = logoUrl;
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = imageUrl;
+  });
+};
+
 // 이미지 저장 함수
-const downloadImage = async (imageUrl: string, fileName: string = 'showmelook-style.png') => {
+const downloadImage = async (
+  imageUrl: string, 
+  fileName: string = 'showmelook-style.png',
+  addWatermark: boolean = false,
+  logoUrl?: string
+) => {
   try {
-    const response = await fetch(imageUrl);
+    let urlToDownload = imageUrl;
+    
+    // 워터마크 추가 (비프리미엄 사용자)
+    if (addWatermark && logoUrl) {
+      try {
+        urlToDownload = await addWatermarkToImage(imageUrl, logoUrl);
+      } catch (error) {
+        console.error('Watermark failed, downloading original:', error);
+        // 워터마크 실패 시 원본 다운로드
+      }
+    }
+    
+    const response = await fetch(urlToDownload);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -240,6 +358,12 @@ const downloadImage = async (imageUrl: string, fileName: string = 'showmelook-st
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    // 워터마크 URL 정리
+    if (addWatermark && urlToDownload !== imageUrl) {
+      URL.revokeObjectURL(urlToDownload);
+    }
+    
     return true;
   } catch (error) {
     console.error('Download failed:', error);
@@ -248,14 +372,24 @@ const downloadImage = async (imageUrl: string, fileName: string = 'showmelook-st
 };
 
 // SNS 공유 함수
-const shareToSNS = async (imageUrl: string, platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
+const shareToSNS = async (
+  imageUrl: string, 
+  platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy',
+  addWatermark: boolean = false,
+  logoUrl?: string
+) => {
   const shareText = '👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요! #ShowMeLook #AI패션 #스타일추천';
   const shareUrl = window.location.origin;
 
   switch (platform) {
     case 'instagram':
       // Instagram은 직접 공유가 불가능하므로 이미지 저장 후 안내
-      const downloaded = await downloadImage(imageUrl, 'showmelook-style-instagram.png');
+      const downloaded = await downloadImage(
+        imageUrl, 
+        'showmelook-style-instagram.png',
+        addWatermark,
+        logoUrl
+      );
       if (downloaded) {
         // 모바일 확인
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -319,25 +453,42 @@ const ShareButtons = ({
   imageUrl, 
   onShare, 
   className = '',
-  compact = false 
+  compact = false,
+  isPremium = false,
+  logoUrl
 }: { 
   imageUrl: string; 
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
   className?: string;
   compact?: boolean;
+  isPremium?: boolean;
+  logoUrl?: string;
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
+  // 비프리미엄 사용자는 워터마크 추가
+  const shouldAddWatermark = !isPremium;
+
   const handleDownload = async () => {
     setIsDownloading(true);
-    const success = await downloadImage(imageUrl, `showmelook-style-${Date.now()}.png`);
+    const success = await downloadImage(
+      imageUrl, 
+      `showmelook-style-${Date.now()}.png`,
+      shouldAddWatermark,
+      logoUrl
+    );
     setIsDownloading(false);
-    onShare?.('download', { success, message: success ? '이미지가 저장되었습니다!' : '저장에 실패했습니다.' });
+    const message = success 
+      ? isPremium 
+        ? '이미지가 저장되었습니다!' 
+        : '이미지가 저장되었습니다! (워터마크 포함)'
+      : '저장에 실패했습니다.';
+    onShare?.('download', { success, message });
   };
 
   const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
-    const result = await shareToSNS(imageUrl, platform);
+    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl);
     setIsShareOpen(false);
     onShare?.(platform, result);
   };
@@ -349,7 +500,7 @@ const ShareButtons = ({
           onClick={handleDownload}
           disabled={isDownloading}
           className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-          title="이미지 저장"
+          title={isPremium ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
         >
           {isDownloading ? (
             <Loader2 className="w-5 h-5 animate-spin text-foreground" />
@@ -368,7 +519,15 @@ const ShareButtons = ({
           {isShareOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsShareOpen(false)} />
-              <div className="absolute right-0 top-12 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[140px] animate-in slide-in-from-top-2 fade-in duration-200">
+              <div className="absolute right-0 top-12 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200">
+                {!isPremium && (
+                  <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
+                    <p className="text-[10px] text-accent font-korean flex items-center gap-1">
+                      <Crown className="w-3 h-3" />
+                      프리미엄 회원은 워터마크 없이 저장
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={() => handleShare('instagram')}
                   className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
@@ -421,13 +580,14 @@ const ShareButtons = ({
         onClick={handleDownload}
         disabled={isDownloading}
         className="font-korean"
+        title={isPremium ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
       >
         {isDownloading ? (
           <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
         ) : (
           <Download className="w-4 h-4 mr-1.5" />
         )}
-        저장
+        저장{!isPremium && ' 🏷️'}
       </Button>
       <div className="relative">
         <Button
@@ -442,7 +602,15 @@ const ShareButtons = ({
         {isShareOpen && (
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsShareOpen(false)} />
-            <div className="absolute right-0 top-10 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[150px] animate-in slide-in-from-top-2 fade-in duration-200">
+            <div className="absolute right-0 top-10 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200">
+              {!isPremium && (
+                <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
+                  <p className="text-[10px] text-accent font-korean flex items-center gap-1">
+                    <Crown className="w-3 h-3" />
+                    프리미엄 회원은 워터마크 없이 저장
+                  </p>
+                </div>
+              )}
               <button
                 onClick={() => handleShare('instagram')}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
@@ -492,12 +660,14 @@ const GeneratedStyleImage = ({
   src, 
   alt,
   logoSrc,
-  onShare
+  onShare,
+  isPremium = false
 }: { 
   src: string; 
   alt: string;
   logoSrc: string;
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
+  isPremium?: boolean;
 }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -656,7 +826,7 @@ const GeneratedStyleImage = ({
           {/* 저장/공유 버튼 오버레이 */}
           {!isLoading && (
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <ShareButtons imageUrl={src} onShare={onShare} compact />
+              <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} />
             </div>
           )}
         </>
@@ -2493,6 +2663,7 @@ const StyleGenerator = () => {
                     src={generatedImage}
                     alt="Generated style"
                     logoSrc={showmelookLogo}
+                    isPremium={isPremium}
                     onShare={(platform, result) => {
                       if (result.message) {
                         toast({
@@ -2687,7 +2858,9 @@ const StyleGenerator = () => {
                             });
                           }
                         }}
-                        compact 
+                        compact
+                        isPremium={isPremium}
+                        logoUrl={showmelookLogo}
                       />
                       {/* 좋아요 버튼 */}
                       <button 
