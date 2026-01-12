@@ -188,8 +188,8 @@ serve(async (req) => {
       .select('*')
       .eq('is_active', true);
 
-    // Step 2: Fetch products - one from each category
-    console.log(`[style-recommend] Fetching products by category...`);
+    // Step 2: Fetch products - 다양한 브랜드에서 더 많은 상품 가져오기
+    console.log(`[style-recommend] Fetching products with brand diversity...`);
     
     // 새 구조: 상의, 하의, 아우터, 기타 (기타=신발/가방/액세서리 통합)
     const productsByPriority: Record<string, CachedProduct[]> = {
@@ -206,9 +206,6 @@ serve(async (req) => {
       : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
     const requestedSeason = detectSeason(userRequest) || currentSeason;
     
-    const allCategories = ['상의', '하의', '아우터', '신발', '가방', '원피스', '액세서리', '니트', '셔츠', '블라우스', '코트', '자켓'];
-    const allProducts: CachedProduct[] = [];
-    
     const seasonExcludeKeywords: Record<string, string[]> = {
       '겨울': ['shorts', '반바지', '샌들', 'sandal', '민소매', 'sleeveless', 'crop', '크롭', '린넨', 'linen', '슬리퍼', 'slipper', '플립플롭', 'flip'],
       '여름': ['패딩', 'padding', 'puffer', '퍼퍼', '코트', 'coat', '기모', '털', 'fur', '울', 'wool', '캐시미어', 'cashmere', '다운', 'down'],
@@ -220,71 +217,126 @@ serve(async (req) => {
     
     console.log(`[style-recommend] Season: ${requestedSeason}, excluding: ${excludeKeywords.join(', ')}`);
     
-    for (const category of allCategories) {
-      let query = supabase
-        .from('products_cache')
-        .select('*, dna_text, dna_generated_at')
-        .eq('is_active', true)
-        .eq('is_in_stock', true)
-        .not('image_url', 'is', null);
+    // 🔥 더 포괄적인 상품 쿼리 - 카테고리와 성별 필터 개선
+    // 성별 필터 확장: "여성", "남성" 한글 값도 포함 (DB에 이렇게 저장된 상품이 많음)
+    let genderFilter = '';
+    if (isKids) {
+      genderFilter = `gender.eq.kids,gender.eq.키즈,gender.is.null`;
+    } else if (gender === '유니섹스' || gender === 'unisex') {
+      genderFilter = `gender.eq.male,gender.eq.female,gender.eq.남성,gender.eq.여성,gender.eq.unisex,gender.eq.유니섹스,gender.is.null`;
+    } else {
+      const genderEn = gender === '남성' ? 'male' : 'female';
+      const genderKo = gender === '남성' ? '남성' : '여성';
+      genderFilter = `gender.eq.${genderEn},gender.eq.${genderKo},gender.eq.unisex,gender.eq.유니섹스,gender.is.null`;
+    }
+    
+    // 한 번의 쿼리로 모든 상품 가져오기 (최대 500개)
+    const { data: allProductsRaw, error: productError } = await supabase
+      .from('products_cache')
+      .select('*, dna_text, dna_generated_at')
+      .eq('is_active', true)
+      .eq('is_in_stock', true)
+      .not('image_url', 'is', null)
+      .or(genderFilter)
+      .lte('price', budget * 1.5) // 예산의 1.5배까지
+      .order('collected_at', { ascending: false }) // 최신 수집 순
+      .limit(500);
+    
+    if (productError) {
+      console.error('[style-recommend] Product fetch error:', productError);
+    }
+    
+    const allProducts: CachedProduct[] = [];
+    
+    if (allProductsRaw && allProductsRaw.length > 0) {
+      console.log(`[style-recommend] Raw products fetched: ${allProductsRaw.length}`);
       
-      const categoryVariants = getCategoryVariants(category);
-      const categoryFilter = categoryVariants.map(v => `category.ilike.%${v}%`).join(',');
-      query = query.or(categoryFilter);
-      
-      if (isKids) {
-        query = query.or(`gender.eq.kids,gender.eq.키즈,gender.is.null`);
-      } else if (gender === '유니섹스' || gender === 'unisex') {
-        query = query.or(`gender.eq.male,gender.eq.female,gender.eq.남성,gender.eq.여성,gender.eq.unisex,gender.eq.유니섹스,gender.is.null`);
-      } else {
-        const genderEn = gender === '남성' ? 'male' : 'female';
-        const genderKo = gender === '남성' ? '남성' : '여성';
-        query = query.or(`gender.eq.${genderEn},gender.eq.${genderKo},gender.eq.unisex,gender.eq.유니섹스,gender.is.null`);
-      }
-      
-      const { data } = await query.order('price', { ascending: true }).limit(30);
-      
-      if (data && data.length > 0) {
-        const filteredData = data.filter(product => {
-          const productName = (product.name || '').toLowerCase();
-          const productCategory = (product.category || '').toLowerCase();
-          const subCategory = (product.sub_category || '').toLowerCase();
-          const productGender = (product.gender || '').toLowerCase();
-          const combined = `${productName} ${productCategory} ${subCategory}`;
-          
-          if (!isKids && gender !== '유니섹스' && gender !== 'unisex') {
-            const oppositeGenderEn = gender === '남성' ? 'female' : 'male';
-            const oppositeGenderKo = gender === '남성' ? '여성' : '남성';
-            if (productGender === oppositeGenderEn || productGender === oppositeGenderKo) {
-              return false;
-            }
-          }
-          
-          const isExcluded = excludeKeywords.some(keyword => combined.includes(keyword.toLowerCase()));
-          return !isExcluded;
-        });
+      // 시즌 필터링 + 반대 성별 제외
+      const filteredData = allProductsRaw.filter(product => {
+        const productName = (product.name || '').toLowerCase();
+        const productCategory = (product.category || '').toLowerCase();
+        const subCategory = (product.sub_category || '').toLowerCase();
+        const productGender = (product.gender || '').toLowerCase();
+        const combined = `${productName} ${productCategory} ${subCategory}`;
         
-        allProducts.push(...filteredData);
+        // 반대 성별 제외 (더 느슨하게 - 명확한 반대 성별만 제외)
+        if (!isKids && gender !== '유니섹스' && gender !== 'unisex') {
+          const oppositeGenderEn = gender === '남성' ? 'female' : 'male';
+          // 명확하게 반대 성별인 경우만 제외 (women, 여성의류 등은 유지)
+          if (productGender === oppositeGenderEn) {
+            return false;
+          }
+        }
+        
+        // 시즌 필터
+        const isExcluded = excludeKeywords.some(keyword => combined.includes(keyword.toLowerCase()));
+        return !isExcluded;
+      });
+      
+      allProducts.push(...filteredData);
+    }
+    
+    // 🔥 브랜드 다양성을 위한 셔플 함수
+    function shuffleArray<T>(array: T[]): T[] {
+      const shuffled = [...array];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
+      return shuffled;
+    }
+    
+    // 🔥 브랜드별로 그룹화 후 균등 분배
+    function diversifyByBrand(products: CachedProduct[], maxPerBrand: number = 5): CachedProduct[] {
+      const byBrand: Record<string, CachedProduct[]> = {};
+      
+      for (const p of products) {
+        const brand = p.brand || 'unknown';
+        if (!byBrand[brand]) byBrand[brand] = [];
+        byBrand[brand].push(p);
+      }
+      
+      // 각 브랜드에서 랜덤하게 maxPerBrand개씩 선택
+      const diversified: CachedProduct[] = [];
+      for (const brand of Object.keys(byBrand)) {
+        const brandProducts = shuffleArray(byBrand[brand]).slice(0, maxPerBrand);
+        diversified.push(...brandProducts);
+      }
+      
+      return shuffleArray(diversified);
     }
     
     // Remove duplicates and categorize (상의/하의/아우터/기타)
     const uniqueProducts = Array.from(new Map(allProducts.map(p => [p.id, p])).values());
+    console.log(`[style-recommend] Unique products after dedup: ${uniqueProducts.length}`);
     
+    // 카테고리별로 분류
     for (const product of uniqueProducts) {
       const priorityCat = mapToPriorityCategory(product.category, product.sub_category, product.name);
       if (productsByPriority[priorityCat]) {
         productsByPriority[priorityCat].push(product);
+      } else {
+        productsByPriority['unknown'].push(product);
       }
     }
     
-    // Sort each category by price
+    // 🔥 각 카테고리에서 브랜드 다양성 적용 + 랜덤 셔플
     for (const cat of CATEGORY_PRIORITY) {
       if (productsByPriority[cat]) {
-        productsByPriority[cat].sort((a, b) => a.price - b.price);
+        productsByPriority[cat] = diversifyByBrand(productsByPriority[cat], 8);
       }
     }
-    productsByPriority['unknown']?.sort((a, b) => a.price - b.price);
+    productsByPriority['unknown'] = diversifyByBrand(productsByPriority['unknown'] || [], 5);
+    
+    // 브랜드 통계 로깅
+    const brandStats: Record<string, number> = {};
+    for (const cat of [...CATEGORY_PRIORITY, 'unknown']) {
+      for (const p of productsByPriority[cat] || []) {
+        brandStats[p.brand || 'unknown'] = (brandStats[p.brand || 'unknown'] || 0) + 1;
+      }
+    }
+    const topBrands = Object.entries(brandStats).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    console.log(`[style-recommend] Top brands: ${topBrands.map(([b, c]) => `${b}(${c})`).join(', ')}`);
     
     console.log(`[style-recommend] Products: 상의=${productsByPriority['상의']?.length || 0}, 하의=${productsByPriority['하의']?.length || 0}, 아우터=${productsByPriority['아우터']?.length || 0}, 기타=${productsByPriority['기타']?.length || 0}, unknown=${productsByPriority['unknown']?.length || 0}`);
 
@@ -323,26 +375,68 @@ serve(async (req) => {
     let gptCalls = 0;
     
     if (LOVABLE_API_KEY) {
-      // DNA가 있는 상품을 우선 정렬 (DNA 있는 상품 먼저)
-      const sortedProducts = [...productContext].sort((a, b) => {
-        if (a.dna && !b.dna) return -1;
-        if (!a.dna && b.dna) return 1;
-        return 0;
-      });
+      // 🔥 카테고리별로 브랜드 다양성 보장하며 상품 선택
+      const getProductsForGPT = () => {
+        const result: typeof productContext = [];
+        const usedBrands = new Set<string>();
+        
+        // 각 카테고리에서 다양한 브랜드의 상품 선택
+        for (const cat of CATEGORY_PRIORITY) {
+          const catProducts = productsByPriority[cat] || [];
+          let selectedFromCat = 0;
+          const maxPerCategory = 12;
+          
+          // 먼저 DNA 있는 상품 중 다양한 브랜드
+          const withDNA = catProducts.filter(p => p.dna_text);
+          const withoutDNA = catProducts.filter(p => !p.dna_text);
+          
+          for (const p of [...shuffleArray(withDNA), ...shuffleArray(withoutDNA)]) {
+            if (selectedFromCat >= maxPerCategory) break;
+            
+            const brand = p.brand || 'unknown';
+            // 같은 브랜드는 카테고리당 최대 2개
+            const brandCountInCat = result.filter(r => r.brand === brand && r.priorityCategory === cat).length;
+            if (brandCountInCat < 2) {
+              result.push({
+                id: p.id,
+                name: p.name,
+                brand: p.brand,
+                price: p.price,
+                category: p.category,
+                priorityCategory: mapToPriorityCategory(p.category, p.sub_category, p.name),
+                sub_category: p.sub_category,
+                color: p.color,
+                style_tags: p.style_tags,
+                dna: p.dna_text || null,
+              });
+              selectedFromCat++;
+            }
+          }
+        }
+        
+        return result;
+      };
       
-      // DNA 요약 (상위 20개) + DNA 없는 상품도 충분히 포함
-      const dnaProducts = sortedProducts.filter(p => p.dna).slice(0, 20);
-      const noDnaProducts = sortedProducts.filter(p => !p.dna).slice(0, 30);
+      const gptProducts = getProductsForGPT();
+      console.log(`[style-recommend] Products for GPT: ${gptProducts.length} (diverse brands)`);
+      
+      // DNA 분리
+      const dnaProducts = gptProducts.filter(p => p.dna).slice(0, 25);
+      const noDnaProducts = gptProducts.filter(p => !p.dna).slice(0, 25);
+      
+      // 브랜드 목록 표시
+      const brandsInContext = [...new Set(gptProducts.map(p => p.brand))].filter(Boolean).slice(0, 15);
+      console.log(`[style-recommend] Brands in GPT context: ${brandsInContext.join(', ')}`);
       
       const dnaContext = dnaProducts.length > 0 
-        ? `\n🧬 DNA 분석 완료 (우선 선택):\n${dnaProducts.map(p => `• ${p.id}: ${p.name} [${p.category}] ₩${p.price} - ${p.dna}`).join('\n')}`
+        ? `\n🧬 DNA 분석 완료 (우선 선택):\n${dnaProducts.map(p => `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()} - ${p.dna}`).join('\n')}`
         : '';
       
       const noDnaContext = noDnaProducts.length > 0
-        ? `\n📦 DNA 미분석 상품 (선택 시 DNA 생성 필수):\n${noDnaProducts.map(p => `• ${p.id}: ${p.name} [${p.category}] ₩${p.price}`).join('\n')}`
+        ? `\n📦 DNA 미분석 상품:\n${noDnaProducts.map(p => `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()}`).join('\n')}`
         : '';
 
-      // 강화된 시스템 프롬프트 (카테고리 명확화)
+      // 강화된 시스템 프롬프트 (카테고리 명확화 + 브랜드 다양성)
       const systemPrompt = `당신은 서울 청담동 20년 경력 셀럽 스타일리스트입니다.
 
 🎯 필수 규칙:
@@ -353,9 +447,10 @@ serve(async (req) => {
    - 아우터 (자켓/코트/가디건/패딩/점퍼/블레이저)
    - 기타 (신발/가방/액세서리 중 스타일에 어울리는 1개)
 3. 같은 카테고리에서 2개 이상 선택 금지!
-4. DNA 있는 상품 우선, 없으면 DNA 생성 필수
-5. 예산: ${budget.toLocaleString()}원 이내
-6. 성별: ${gender}, 시즌: ${requestedSeason}
+4. 🔥 다양한 브랜드 믹스 권장! 같은 브랜드 3개 이상 선택 금지!
+5. DNA 있는 상품 우선, 없으면 DNA 생성 필수
+6. 예산: ${budget.toLocaleString()}원 이내
+7. 성별: ${gender}, 시즌: ${requestedSeason}
 
 📝 DNA 형식: "[스타일태그] | 장점: ... | 코디팁: ..."`;
 
@@ -367,6 +462,7 @@ ${noDnaContext}
 ⚠️ 중요: 
 - 상의 1개 + 하의 1개 + 아우터 1개 + 기타(신발/가방/액세서리) 1개 = 총 4개!
 - 같은 카테고리 중복 선택 절대 금지!
+- 🔥 다양한 브랜드 조합으로 세련된 믹스매치!
 - 기타는 목걸이/팔찌/시계/모자 등도 가능!
 
 JSON 응답:
