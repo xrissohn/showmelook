@@ -41,8 +41,8 @@ interface RAGStyleResponse {
   productDNAs?: { id: string; dna: string }[];
 }
 
-// Category priority for auto-selection (one per category)
-const CATEGORY_PRIORITY = ['상의', '하의', '아우터', '신발', '가방'];
+// Category priority for auto-selection (순서: 상의 → 하의 → 아우터 → 기타)
+const CATEGORY_PRIORITY = ['상의', '하의', '아우터', '신발', '가방', '액세서리'];
 
 // Generate cache key from request parameters
 function generateCacheKey(gender: string, style: string, occasion: string, budget: number): string {
@@ -313,15 +313,16 @@ serve(async (req) => {
         ? `\n📦 DNA 미분석 상품 (선택 시 DNA 생성 필수):\n${noDnaProducts.map(p => `• ${p.id}: ${p.name} [${p.category}] ₩${p.price}`).join('\n')}`
         : '';
 
-      // 강화된 시스템 프롬프트
+      // 강화된 시스템 프롬프트 (순서 명시)
       const systemPrompt = `당신은 서울 청담동 20년 경력 셀럽 스타일리스트입니다.
 
 🎯 필수 규칙:
-1. 반드시 4개 이상 아이템 선택 (상의+하의+신발+가방 또는 악세서리)
-2. DNA 있는 상품 우선, 없으면 DNA 생성 필수
-3. 컨셉에 맞는 조화로운 코디
-4. 예산: ${budget.toLocaleString()}원 이내
-5. 성별: ${gender}, 시즌: ${requestedSeason}
+1. 반드시 4개 이상 아이템 선택
+2. 선택 순서: 상의 → 하의 → 아우터 → 기타(신발/가방/액세서리)
+3. DNA 있는 상품 우선, 없으면 DNA 생성 필수
+4. 컨셉에 맞는 조화로운 코디
+5. 예산: ${budget.toLocaleString()}원 이내
+6. 성별: ${gender}, 시즌: ${requestedSeason}
 
 📝 DNA 형식: "[스타일태그] | 장점: ... | 코디팁: ..."`;
 
@@ -330,14 +331,17 @@ serve(async (req) => {
 ${dnaContext}
 ${noDnaContext}
 
-⚠️ 중요: 반드시 4개 이상 아이템 선택! DNA 없는 상품 선택 시 DNA 생성 필수!
+⚠️ 중요: 
+- 반드시 4개 이상 선택!
+- 순서: 상의 → 하의 → 아우터 → 기타(신발/가방/액세서리)
+- DNA 없는 상품 선택 시 DNA 생성 필수!
 
 JSON 응답:
 {
   "lookName": "코디명",
   "styleConcept": "한줄 스타일 설명",
   "styleReasoning": "2문장 추천 이유",
-  "selectedProductIds": ["id1", "id2", "id3", "id4"],
+  "selectedProductIds": ["상의id", "하의id", "아우터id", "기타id"],
   "productDNAs": [{"id": "DNA없던상품id", "dna": "[태그] | 장점: ... | 코디팁: ..."}]
 }`;
 
@@ -491,9 +495,9 @@ JSON 응답:
       }
     }
 
-    // Step 6: ENSURE MINIMUM 4 ITEMS - Auto-fill missing categories from productsByPriority
+    // Step 6: ENSURE MINIMUM 4 ITEMS - 순서: 상의 → 하의 → 아우터 → 기타
     const MIN_ITEMS = 4;
-    const requiredCategories = ['상의', '하의', '신발', '가방']; // 필수 4개 카테고리
+    const requiredCategories = ['상의', '하의', '아우터', '신발', '가방', '액세서리']; // 우선순위 순
     
     if (lookItems.length < MIN_ITEMS) {
       console.log(`[style-recommend] Only ${lookItems.length} items, need ${MIN_ITEMS}. Auto-filling...`);
@@ -525,27 +529,16 @@ JSON 응답:
           if (lookItems.length >= MIN_ITEMS) break;
         }
       }
-      
-      // If still less than 4, try adding 아우터
-      if (lookItems.length < MIN_ITEMS && !usedCategories.has('아우터')) {
-        const outerProducts = productsByPriority['아우터'] || [];
-        if (outerProducts.length > 0) {
-          const product = outerProducts[0];
-          const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
-          const displayCat = getDisplayCategory(product.category, product.sub_category, product.name);
-          
-          lookItems.push({
-            category: displayCat,
-            product: product,
-            affiliateUrl,
-            source: 'cache',
-            isAutoSelected: runningTotal + product.price <= budget
-          });
-          usedCategories.add('아우터');
-          console.log(`[style-recommend] Auto-added 아우터: ${product.name}`);
-        }
-      }
     }
+    
+    // Step 7: Sort final items by priority order (상의 → 하의 → 아우터 → 기타)
+    lookItems.sort((a, b) => {
+      const aPriorityCat = mapToPriorityCategory(a.product?.category || '', a.product?.sub_category, a.product?.name);
+      const bPriorityCat = mapToPriorityCategory(b.product?.category || '', b.product?.sub_category, b.product?.name);
+      const aIdx = CATEGORY_PRIORITY.indexOf(aPriorityCat);
+      const bIdx = CATEGORY_PRIORITY.indexOf(bPriorityCat);
+      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
+    });
 
     console.log(`[style-recommend] Final item count: ${lookItems.length}, Categories: ${Array.from(usedCategories).join(', ')}`);
 
