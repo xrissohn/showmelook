@@ -324,7 +324,7 @@ async function downloadProductImages(imageUrls: string[]): Promise<{ url: string
   return results;
 }
 
-// Generate image using Vertex AI (gemini-3-pro-image-preview in us-central1)
+// Generate image using Vertex AI (gemini-2.0-flash-exp in us-central1)
 async function generateImageWithVertexAI(
   accessToken: string,
   projectId: string,
@@ -334,7 +334,7 @@ async function generateImageWithVertexAI(
 ): Promise<{ imageBase64: string; text?: string }> {
 
   const region = 'us-central1';
-  const modelId = 'gemini-3-pro-image-preview';
+  const modelId = 'gemini-2.0-flash-exp';
   const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
 
   // Build content parts - FACE IMAGE FIRST for better face preservation
@@ -452,10 +452,10 @@ async function generateImageWithUserGoogleAPI(
   productImages?: { url: string; base64: string }[]
 ): Promise<{ imageBase64: string; text?: string }> {
   const region = 'us-central1';
-  const modelId = 'gemini-3-pro-image-preview'; // Gemini 3.0 for better face composite
+  const modelId = 'gemini-2.0-flash-exp'; // Gemini 2.0 Flash for better face composite
   const endpoint = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${modelId}:generateContent`;
 
-  console.log('Calling User Google API (Vertex AI) with Gemini 3.0 Pro Image...');
+  console.log('Calling User Google API (Vertex AI) with Gemini 2.0 Flash Exp...');
 
   // Build content parts - FACE IMAGE FIRST for better face preservation
   const parts: any[] = [];
@@ -498,7 +498,7 @@ async function generateImageWithUserGoogleAPI(
     }
   };
 
-  console.log('Calling Vertex AI (Gemini 3.0 Pro) for face composite:', endpoint);
+  console.log('Calling Vertex AI (Gemini 2.0 Flash) for face composite:', endpoint);
 
   const response = await fetch(endpoint, {
     method: 'POST',
