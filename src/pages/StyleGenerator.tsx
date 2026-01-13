@@ -274,10 +274,16 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
         
         // 텍스트 워터마크 추가 (더 여리게)
         const fontSize = Math.max(14, img.width * 0.03);
+        const urlFontSize = Math.max(10, img.width * 0.02);
         ctx.font = `bold ${fontSize}px sans-serif`;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.textAlign = 'center';
         ctx.fillText('ShowMeLook', img.width / 2, y + watermarkHeight + fontSize + 12);
+        
+        // URL 추가
+        ctx.font = `${urlFontSize}px sans-serif`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillText('showmelook.com', img.width / 2, y + watermarkHeight + fontSize + urlFontSize + 20);
         
         // Blob으로 변환
         canvas.toBlob((blob) => {
@@ -293,24 +299,32 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
       logo.onerror = () => {
         // 로고 로드 실패 시 텍스트 워터마크만 추가 (중앙, 더 크고 여리게)
         const fontSize = Math.max(24, img.width * 0.05);
+        const urlFontSize = Math.max(14, img.width * 0.025);
         ctx.font = `bold ${fontSize}px sans-serif`;
         
         // 텍스트 배경 (중앙)
         const text = 'ShowMeLook';
+        const urlText = 'showmelook.com';
         const textWidth = ctx.measureText(text).width;
         const padding = 20;
+        const totalHeight = fontSize + urlFontSize + padding * 2 + 8;
         const rectX = (img.width - textWidth - padding * 2) / 2;
-        const rectY = (img.height - fontSize - padding * 2) / 2;
+        const rectY = (img.height - totalHeight) / 2;
         
         ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
         ctx.beginPath();
-        ctx.roundRect(rectX, rectY, textWidth + padding * 2, fontSize + padding * 2, 12);
+        ctx.roundRect(rectX, rectY, textWidth + padding * 2, totalHeight, 12);
         ctx.fill();
         
         ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(text, img.width / 2, img.height / 2);
+        ctx.fillText(text, img.width / 2, img.height / 2 - urlFontSize / 2);
+        
+        // URL 추가
+        ctx.font = `${urlFontSize}px sans-serif`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillText(urlText, img.width / 2, img.height / 2 + fontSize / 2 + 4);
         
         canvas.toBlob((blob) => {
           if (blob) {
