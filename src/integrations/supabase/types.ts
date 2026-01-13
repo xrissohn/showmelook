@@ -271,6 +271,7 @@ export type Database = {
           collected_at: string | null
           color: string | null
           dna_generated_at: string | null
+          dna_meta: Json | null
           dna_text: string | null
           external_id: string | null
           gender: string | null
@@ -294,6 +295,7 @@ export type Database = {
           collected_at?: string | null
           color?: string | null
           dna_generated_at?: string | null
+          dna_meta?: Json | null
           dna_text?: string | null
           external_id?: string | null
           gender?: string | null
@@ -317,6 +319,7 @@ export type Database = {
           collected_at?: string | null
           color?: string | null
           dna_generated_at?: string | null
+          dna_meta?: Json | null
           dna_text?: string | null
           external_id?: string | null
           gender?: string | null
