@@ -98,13 +98,72 @@ function normalizeGender(gender: string | null): string | null {
   return gender;
 }
 
+// Generate DNA for a single product
+async function generateDNA(product: Product, lovableApiKey: string | undefined, mode: string): Promise<DNAResult> {
+  const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
+  
+  let dnaText = '';
+  
+  if (lovableApiKey && mode === 'generate') {
+    const prompt = `상품 정보를 분석하여 스타일 DNA를 생성해주세요.
+
+상품명: ${product.name}
+브랜드: ${product.brand || '알 수 없음'}
+카테고리: ${inferredCategory}${subCategory ? ` > ${subCategory}` : ''}
+가격: ${product.price.toLocaleString()}원
+색상: ${product.color || '알 수 없음'}
+기존 태그: ${product.style_tags?.join(', ') || '없음'}
+
+다음 형식으로 DNA를 생성해주세요 (한 줄로):
+[스타일태그1,스타일태그2,스타일태그3] | 특징: (간단한 특징 설명) | 코디팁: (어울리는 스타일링)`;
+
+    try {
+      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-lite',
+          messages: [
+            { role: 'system', content: '당신은 패션 스타일 전문가입니다. 간결하고 정확한 DNA를 생성합니다.' },
+            { role: 'user', content: prompt }
+          ],
+        }),
+      });
+
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        dnaText = aiData.choices?.[0]?.message?.content?.trim() || '';
+      }
+    } catch (aiError) {
+      console.error(`[dna-batch] AI error for ${product.id}:`, aiError);
+    }
+  }
+  
+  // Fallback: Generate basic DNA from existing data
+  if (!dnaText) {
+    const tags = product.style_tags?.slice(0, 3).join(',') || '베이직';
+    const brandInfo = product.brand ? `${product.brand} 스타일` : '캐주얼';
+    dnaText = `[${tags}] | 특징: ${brandInfo} ${subCategory || inferredCategory} | 코디팁: 다양한 스타일에 매치 가능`;
+  }
+  
+  return {
+    id: product.id,
+    dna_text: dnaText,
+    category: inferredCategory,
+    sub_category: subCategory || undefined,
+  };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { batchSize = 50, mode = 'generate' } = await req.json().catch(() => ({}));
+    const { batchSize = 10, mode = 'generate' } = await req.json().catch(() => ({}));
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -112,7 +171,10 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    console.log(`[dna-batch] Starting DNA batch generation, mode: ${mode}, batchSize: ${batchSize}`);
+    // Limit batch size to prevent timeout (max 20 for parallel processing)
+    const effectiveBatchSize = Math.min(batchSize, 20);
+    
+    console.log(`[dna-batch] Starting DNA batch generation, mode: ${mode}, batchSize: ${effectiveBatchSize}`);
     
     // Get products without DNA
     const { data: products, error: fetchError } = await supabase
@@ -120,7 +182,7 @@ serve(async (req) => {
       .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
       .is('dna_text', null)
       .eq('is_active', true)
-      .limit(batchSize);
+      .limit(effectiveBatchSize);
     
     if (fetchError) {
       throw new Error(`Failed to fetch products: ${fetchError.message}`);
@@ -144,90 +206,35 @@ serve(async (req) => {
       .is('dna_text', null)
       .eq('is_active', true);
     
-    const results: DNAResult[] = [];
     const errors: { id: string; error: string }[] = [];
     
-    // Process products: infer category and generate DNA
-    for (const product of products as Product[]) {
-      try {
-        // Step 1: Infer category from product name
-        const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
-        const normalizedGender = normalizeGender(product.gender);
-        
-        // Step 2: Generate DNA text
-        let dnaText = '';
-        
-        if (lovableApiKey && mode === 'generate') {
-          // Use AI to generate rich DNA
-          const prompt = `상품 정보를 분석하여 스타일 DNA를 생성해주세요.
-
-상품명: ${product.name}
-브랜드: ${product.brand || '알 수 없음'}
-카테고리: ${inferredCategory}${subCategory ? ` > ${subCategory}` : ''}
-가격: ${product.price.toLocaleString()}원
-색상: ${product.color || '알 수 없음'}
-기존 태그: ${product.style_tags?.join(', ') || '없음'}
-
-다음 형식으로 DNA를 생성해주세요 (한 줄로):
-[스타일태그1,스타일태그2,스타일태그3] | 특징: (간단한 특징 설명) | 코디팁: (어울리는 스타일링)
-
-예시:
-[미니멀,캐주얼,데일리] | 특징: 부드러운 울 소재의 여유로운 핏 | 코디팁: 와이드 팬츠와 로퍼로 세련된 캐주얼룩`;
-
-          try {
-            const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${lovableApiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'google/gemini-2.5-flash-lite',
-                messages: [
-                  { role: 'system', content: '당신은 패션 스타일 전문가입니다. 간결하고 정확한 DNA를 생성합니다.' },
-                  { role: 'user', content: prompt }
-                ],
-              }),
-            });
-
-            if (aiResponse.ok) {
-              const aiData = await aiResponse.json();
-              dnaText = aiData.choices?.[0]?.message?.content?.trim() || '';
-            }
-          } catch (aiError) {
-            console.error(`[dna-batch] AI error for ${product.id}:`, aiError);
-          }
-        }
-        
-        // Fallback: Generate basic DNA from existing data
-        if (!dnaText) {
-          const tags = product.style_tags?.slice(0, 3).join(',') || '베이직';
-          const brandInfo = product.brand ? `${product.brand} 스타일` : '캐주얼';
-          dnaText = `[${tags}] | 특징: ${brandInfo} ${subCategory || inferredCategory} | 코디팁: 다양한 스타일에 매치 가능`;
-        }
-        
-        results.push({
-          id: product.id,
-          dna_text: dnaText,
-          category: inferredCategory,
-          sub_category: subCategory || undefined,
-        });
-        
-      } catch (err) {
-        console.error(`[dna-batch] Error processing ${product.id}:`, err);
-        errors.push({ id: product.id, error: err instanceof Error ? err.message : 'Unknown error' });
-      }
+    // Process products in parallel (5 at a time to avoid rate limiting)
+    const CONCURRENT_LIMIT = 5;
+    const results: DNAResult[] = [];
+    
+    for (let i = 0; i < products.length; i += CONCURRENT_LIMIT) {
+      const batch = (products as Product[]).slice(i, i + CONCURRENT_LIMIT);
+      const batchPromises = batch.map(product => 
+        generateDNA(product, lovableApiKey, mode)
+          .catch(err => {
+            console.error(`[dna-batch] Error processing ${product.id}:`, err);
+            errors.push({ id: product.id, error: err instanceof Error ? err.message : 'Unknown error' });
+            return null;
+          })
+      );
+      
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults.filter((r): r is DNAResult => r !== null));
     }
     
-    // Batch update products with DNA
+    // Batch update products with DNA (parallel updates)
     let updatedCount = 0;
-    for (const result of results) {
+    const updatePromises = results.map(async (result) => {
       const updateData: Record<string, any> = {
         dna_text: result.dna_text,
         dna_generated_at: new Date().toISOString(),
       };
       
-      // Only update category if it was inferred differently
       if (result.category) {
         updateData.category = result.category;
       }
@@ -241,12 +248,16 @@ serve(async (req) => {
         .eq('id', result.id);
       
       if (!updateError) {
-        updatedCount++;
+        return true;
       } else {
         console.error(`[dna-batch] Failed to update ${result.id}:`, updateError);
         errors.push({ id: result.id, error: updateError.message });
+        return false;
       }
-    }
+    });
+    
+    const updateResults = await Promise.all(updatePromises);
+    updatedCount = updateResults.filter(Boolean).length;
     
     console.log(`[dna-batch] Completed: ${updatedCount} updated, ${errors.length} errors, ${(remainingCount || 0) - products.length} remaining`);
     
@@ -256,7 +267,7 @@ serve(async (req) => {
       updated: updatedCount,
       errors: errors.length,
       remaining: Math.max(0, (remainingCount || 0) - products.length),
-      errorDetails: errors.slice(0, 10), // First 10 errors for debugging
+      errorDetails: errors.slice(0, 10),
       sampleDNA: results.slice(0, 3).map(r => ({ id: r.id, dna: r.dna_text })),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     
