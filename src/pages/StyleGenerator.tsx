@@ -260,8 +260,8 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
         // URL 폰트 크기 (크게)
         const urlFontSize = Math.max(20, img.width * 0.035);
         
-        // 로고 중앙보다 위에 위치 (15% 위로)
-        const logoStartY = (img.height - watermarkHeight) / 2 - img.height * 0.15;
+        // 로고 중앙보다 위에 위치 (10% 위로)
+        const logoStartY = (img.height - watermarkHeight) / 2 - img.height * 0.10;
         const logoX = (img.width - watermarkWidth) / 2;
         
         // 메인 로고 그리기 (투명도 0.5)
