@@ -225,6 +225,44 @@ export type Database = {
         }
         Relationships: []
       }
+      product_feedback: {
+        Row: {
+          action_type: string
+          context: Json | null
+          created_at: string | null
+          id: string
+          product_id: string | null
+          recommendation_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          recommendation_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          context?: Json | null
+          created_at?: string | null
+          id?: string
+          product_id?: string | null
+          recommendation_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_feedback_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_cache"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           brand: string | null
@@ -434,6 +472,45 @@ export type Database = {
           style_reasoning?: string | null
           total_price?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      recommendation_patterns: {
+        Row: {
+          avg_formality: number | null
+          concept_weights: Json | null
+          created_at: string | null
+          id: string
+          last_products: Json | null
+          pattern_key: string
+          popular_combos: Json | null
+          success_rate: number | null
+          updated_at: string | null
+          use_count: number | null
+        }
+        Insert: {
+          avg_formality?: number | null
+          concept_weights?: Json | null
+          created_at?: string | null
+          id?: string
+          last_products?: Json | null
+          pattern_key: string
+          popular_combos?: Json | null
+          success_rate?: number | null
+          updated_at?: string | null
+          use_count?: number | null
+        }
+        Update: {
+          avg_formality?: number | null
+          concept_weights?: Json | null
+          created_at?: string | null
+          id?: string
+          last_products?: Json | null
+          pattern_key?: string
+          popular_combos?: Json | null
+          success_rate?: number | null
+          updated_at?: string | null
+          use_count?: number | null
         }
         Relationships: []
       }

@@ -265,6 +265,7 @@ serve(async (req) => {
   }
 
   try {
+    const startTime = Date.now();
     const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age } = await req.json();
 
     if (!userRequest) {
@@ -281,16 +282,103 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const occasion = extractOccasions(userRequest)[0] || '캐주얼';
-    const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
-
     const isKids = age !== undefined && age <= 12;
     const requestedConcepts = extractConcepts(userRequest);
     const requestedOccasions = extractOccasions(userRequest);
+    const occasion = requestedOccasions[0] || '캐주얼';
+    const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
     
-    console.log(`[style-recommend] DNA 2.0 Request: "${userRequest}"`);
-    console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Age: ${age || 'N/A'}, isKids: ${isKids}`);
+    // 패턴 키 생성 (자체 학습용)
+    const patternKey = generatePatternKey(gender, occasion, requestedConcepts, budget);
+    
+    console.log(`[style-recommend] Request: "${userRequest}"`);
+    console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Pattern: ${patternKey}`);
     console.log(`[style-recommend] Concepts: ${requestedConcepts.join(', ')}, Occasions: ${requestedOccasions.join(', ')}`);
+
+    // ============= PHASE 1: 캐시 및 패턴 기반 빠른 추천 =============
+    
+    // 1-1. 캐시 히트 체크 (forceRefresh가 아닌 경우)
+    if (!forceRefresh) {
+      const { data: cachedLook } = await supabase
+        .from('style_cache')
+        .select('*')
+        .eq('cache_key', cacheKey)
+        .gt('expires_at', new Date().toISOString())
+        .single();
+
+      if (cachedLook && cachedLook.product_ids && cachedLook.product_ids.length >= 3) {
+        console.log(`[style-recommend] Cache HIT! Key: ${cacheKey}`);
+        
+        // 캐시된 상품 조회
+        const { data: cachedProducts } = await supabase
+          .from('products_cache')
+          .select('*')
+          .in('id', cachedLook.product_ids)
+          .eq('is_active', true);
+
+        if (cachedProducts && cachedProducts.length >= 3) {
+          // 캐시 사용 횟수 증가
+          await supabase
+            .from('style_cache')
+            .update({ use_count: (cachedLook.use_count || 0) + 1, last_used_at: new Date().toISOString() })
+            .eq('id', cachedLook.id);
+
+          const { data: merchants } = await supabase.from('merchants').select('*').eq('is_active', true);
+          
+          const lookItems: LookItem[] = [];
+          for (const product of cachedProducts) {
+            const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
+            const displayCat = getDisplaySubCategory(product.category, product.sub_category, product.name, product.dna_meta);
+            lookItems.push({
+              category: displayCat,
+              product,
+              affiliateUrl,
+              source: 'cache',
+              isAutoSelected: true,
+            });
+          }
+
+          const elapsed = Date.now() - startTime;
+          console.log(`[style-recommend] Cache response in ${elapsed}ms`);
+
+          return new Response(JSON.stringify({
+            success: true,
+            cacheHit: true,
+            look: {
+              name: `${gender} ${occasion} 추천 룩`,
+              styleConcept: `캐시된 인기 스타일링`,
+              styleReasoning: '이전에 좋은 반응을 얻은 스타일 조합입니다.',
+              items: lookItems,
+              totalPrice: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
+              autoSelectedTotal: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
+              autoSelectedCount: lookItems.length,
+              budget,
+            },
+            apiCalls: { gpt5: 0, serpapi: 0 },
+            stats: { cacheHit: true, responseTime: elapsed },
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+    }
+
+    // 1-2. 패턴 기반 빠른 추천 (성공률 높은 패턴이 있는 경우)
+    const { data: pattern } = await supabase
+      .from('recommendation_patterns')
+      .select('*')
+      .eq('pattern_key', patternKey)
+      .gte('success_rate', 0.3) // 30% 이상 전환율
+      .gte('use_count', 5) // 5회 이상 사용
+      .single();
+
+    let patternBasedIds: string[] = [];
+    if (pattern && pattern.popular_combos) {
+      const combos = pattern.popular_combos as { product_ids: string[]; score: number }[];
+      patternBasedIds = combos
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8)
+        .flatMap(c => c.product_ids);
+      console.log(`[style-recommend] Pattern HIT! ${patternBasedIds.length} suggested products`);
+    }
 
     // Step 1: Get merchants list
     const { data: merchants } = await supabase
@@ -298,7 +386,7 @@ serve(async (req) => {
       .select('*')
       .eq('is_active', true);
 
-    // Step 2: Fetch products with dna_meta
+    // Step 2: Fetch products with dna_meta (최적화된 쿼리)
     console.log(`[style-recommend] Fetching products with DNA 2.0 filtering...`);
     
     const productsByPriority: Record<string, CachedProduct[]> = {
@@ -315,7 +403,7 @@ serve(async (req) => {
       : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
     const requestedSeason = detectSeason(userRequest) || currentSeason;
     
-    // 한 번의 쿼리로 모든 상품 가져오기 (DNA meta 포함)
+    // 최적화: 카테고리별로 분리 쿼리 + boost_score 반영
     const { data: allProductsRaw, error: productError } = await supabase
       .from('products_cache')
       .select('*, dna_text, dna_meta, dna_generated_at')
@@ -323,8 +411,8 @@ serve(async (req) => {
       .eq('is_in_stock', true)
       .not('image_url', 'is', null)
       .lte('price', budget * 1.5)
-      .order('dna_generated_at', { ascending: false, nullsFirst: false }) // DNA 있는 상품 우선!
-      .limit(500);
+      .order('dna_generated_at', { ascending: false, nullsFirst: false })
+      .limit(300); // 500 → 300으로 줄임 (속도 개선)
     
     if (productError) {
       console.error('[style-recommend] Product fetch error:', productError);
@@ -365,23 +453,38 @@ serve(async (req) => {
     
     console.log(`[style-recommend] After season filter (${requestedSeason}): ${allProducts.length}`);
     
-    // ============= DNA 2.0 2차 필터링: 컨셉/occasion 점수 =============
-    // 점수 기반 정렬
-    const scoredProducts = allProducts.map(p => ({
-      product: p,
-      conceptScore: calculateConceptScore(p, requestedConcepts),
-      occasionScore: calculateOccasionScore(p, requestedOccasions),
-      hasDNA: !!p.dna_meta,
-    }));
+    // ============= DNA 2.0 2차 필터링: 컨셉/occasion/boost 점수 =============
+    // 점수 기반 정렬 (boost_score 반영)
+    const scoredProducts = allProducts.map(p => {
+      const boostScore = (p.dna_meta as any)?.boost_score || 0;
+      const isPatternSuggested = patternBasedIds.includes(p.id);
+      
+      return {
+        product: p,
+        conceptScore: calculateConceptScore(p, requestedConcepts),
+        occasionScore: calculateOccasionScore(p, requestedOccasions),
+        hasDNA: !!p.dna_meta,
+        boostScore,
+        isPatternSuggested,
+        totalScore: 0, // 아래에서 계산
+      };
+    });
     
-    // 점수 기반 정렬 (DNA 있음 > 컨셉 점수 > occasion 점수)
+    // 종합 점수 계산
+    for (const scored of scoredProducts) {
+      scored.totalScore = 
+        (scored.hasDNA ? 0.3 : 0) +
+        (scored.conceptScore * 0.25) +
+        (scored.occasionScore * 0.2) +
+        (scored.boostScore * 0.15) +
+        (scored.isPatternSuggested ? 0.1 : 0);
+    }
+    
+    // 점수 기반 정렬 (총점 > DNA 있음 > 컨셉 점수)
     scoredProducts.sort((a, b) => {
-      // DNA 있는 상품 우선
+      if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
       if (a.hasDNA !== b.hasDNA) return a.hasDNA ? -1 : 1;
-      // 컨셉 점수
-      if (a.conceptScore !== b.conceptScore) return b.conceptScore - a.conceptScore;
-      // occasion 점수
-      return b.occasionScore - a.occasionScore;
+      return b.conceptScore - a.conceptScore;
     });
     
     const topScoredProducts = scoredProducts.slice(0, 200);
@@ -894,4 +997,16 @@ async function generateAffiliateUrl(
   }
 
   return product.product_url;
+}
+
+// 패턴 키 생성 (자체 학습용)
+function generatePatternKey(
+  gender: string,
+  occasion: string,
+  concepts: string[],
+  budget: number
+): string {
+  const budgetRange = Math.floor(budget / 100000) * 100000;
+  const conceptsKey = concepts.sort().slice(0, 2).join('_');
+  return `${gender}_${occasion}_${conceptsKey}_${budgetRange}`;
 }

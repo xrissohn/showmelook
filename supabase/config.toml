@@ -44,3 +44,9 @@ verify_jwt = false
 
 [functions.dna-batch]
 verify_jwt = false
+
+[functions.feedback-collect]
+verify_jwt = false
+
+[functions.learn-patterns]
+verify_jwt = false
