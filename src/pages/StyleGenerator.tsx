@@ -264,8 +264,8 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
         const gap = 15;
         const totalHeight = watermarkHeight + gap + urlFontSize;
         
-        // 상단 1/3 지점에 위치 (세로 중심이 1/3 지점에 오도록)
-        const startY = (img.height / 3) - (totalHeight / 2);
+        // 중앙 위치
+        const startY = (img.height - totalHeight) / 2;
         const logoX = (img.width - watermarkWidth) / 2;
         
         // 메인 로고 그리기 (투명도 0.5)
