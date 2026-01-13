@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Camera, ArrowLeft, Check, Save } from 'lucide-react';
-import showmelookLogo from '@/assets/showmelook-logo.png';
-import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import { Camera, Check, Save } from 'lucide-react';
+import MainNavigation from '@/components/MainNavigation';
 
 const styleOptions = [
   { id: 'minimal', label: '미니멀', emoji: '🤍' },
@@ -193,25 +192,15 @@ const ProfileEdit = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <button 
-            onClick={() => navigate('/style')}
-            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors font-korean"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>돌아가기</span>
-          </button>
-          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
-          </button>
+      {/* Header - using shared navigation */}
+      <MainNavigation 
+        showBackButton
+        rightContent={
           <span className="font-korean text-lg text-foreground">프로필 수정</span>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="pt-28 pb-12 px-6">
+      <div className="pt-20 sm:pt-24 pb-12 px-6">
         <div className="container mx-auto max-w-lg space-y-8">
           {/* Photo Section */}
           <section className="animate-fade-in-up">

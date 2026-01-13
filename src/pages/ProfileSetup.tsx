@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Camera, ArrowRight, Check, Sparkles } from 'lucide-react';
-import showmelookLogo from '@/assets/showmelook-logo.png';
-import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import MainNavigation from '@/components/MainNavigation';
 
 const styleOptions = [
   { id: 'minimal', label: '미니멀', emoji: '🤍' },
@@ -148,13 +147,9 @@ const ProfileSetup = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-6 h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
-          </button>
+      {/* Header - using shared navigation with progress dots */}
+      <MainNavigation 
+        rightContent={
           <div className="flex items-center gap-2">
             {[1, 2, 3].map((s) => (
               <div
@@ -165,10 +160,10 @@ const ProfileSetup = () => {
               />
             ))}
           </div>
-        </div>
-      </header>
+        }
+      />
 
-      <div className="pt-28 pb-12 px-6">
+      <div className="pt-20 sm:pt-24 pb-12 px-6">
         <div className="container mx-auto max-w-lg">
           {/* Step 1: Photo Upload */}
           {step === 1 && (
