@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Download, Sparkles, ShoppingBag, ArrowLeft } from 'lucide-react';
+import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, X, User, LogOut, ImageIcon } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
@@ -15,10 +16,22 @@ interface MainNavigationProps {
 const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNavigationProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isLandingPage = location.pathname === '/';
+
+  const handleNavigate = (path: string) => {
+    setMobileMenuOpen(false);
+    navigate(path);
+  };
+
+  const handleSignOut = async () => {
+    setMobileMenuOpen(false);
+    await signOut();
+    navigate('/');
+  };
   
   // Scroll detection for navbar
   useEffect(() => {
@@ -74,76 +87,185 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
             rightContent
           ) : (
             <>
-              {/* 앱 설치 - 데스크탑 */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => navigate('/install')} 
-                className="font-korean text-xs sm:text-sm px-2 sm:px-3 hidden sm:flex"
-              >
-                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
-                앱 설치
-              </Button>
-              
-              {/* 앱 설치 - 모바일 아이콘 */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => navigate('/install')} 
-                className="sm:hidden w-8 h-8 rounded-full"
-              >
-                <Download className="w-4 h-4" />
-              </Button>
-              
-              {user ? (
-                <>
-                  {/* 장바구니 */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => navigate('/cart')} 
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-full"
-                  >
-                    <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </Button>
-                  
-                  {/* 스타일 만들기 버튼 */}
+              {/* Desktop Navigation */}
+              <div className="hidden sm:flex items-center gap-3">
+                {/* 앱 설치 */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/install')} 
+                  className="font-korean text-sm px-3"
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  앱 설치
+                </Button>
+                
+                {user ? (
+                  <>
+                    {/* 장바구니 */}
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => navigate('/cart')} 
+                      className="w-9 h-9 rounded-full"
+                    >
+                      <ShoppingBag className="w-5 h-5" />
+                    </Button>
+                    
+                    {/* 스타일 만들기 버튼 */}
+                    <Button 
+                      variant="hero" 
+                      size="sm"
+                      onClick={() => navigate('/style')}
+                      className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      내 스타일 만들기
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* 로그인 버튼 */}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => navigate('/auth')} 
+                      className="font-korean text-sm px-4 h-9"
+                    >
+                      로그인
+                    </Button>
+                    
+                    {/* 시작하기 버튼 */}
+                    <Button 
+                      variant="hero" 
+                      size="sm"
+                      onClick={() => navigate('/auth')}
+                      className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      시작하기
+                    </Button>
+                  </>
+                )}
+              </div>
+
+              {/* Mobile Navigation */}
+              <div className="flex sm:hidden items-center gap-1">
+                {user && (
                   <Button 
                     variant="hero" 
                     size="sm"
                     onClick={() => navigate('/style')}
-                    className="font-korean text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-9 rounded-full shadow-md"
+                    className="font-korean text-xs px-2.5 h-8 rounded-full shadow-md"
                   >
-                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
-                    <span className="hidden sm:inline">내 스타일 만들기</span>
-                    <span className="sm:hidden">시작</span>
+                    <Sparkles className="w-3 h-3 mr-0.5" />
+                    시작
                   </Button>
-                </>
-              ) : (
-                <>
-                  {/* 로그인 버튼 */}
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => navigate('/auth')} 
-                    className="font-korean text-xs sm:text-sm px-2 sm:px-4 h-8 sm:h-9"
-                  >
-                    로그인
-                  </Button>
-                  
-                  {/* 시작하기 버튼 */}
-                  <Button 
-                    variant="hero" 
-                    size="sm"
-                    onClick={() => navigate('/auth')}
-                    className="font-korean text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-9 rounded-full shadow-md"
-                  >
-                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
-                    <span className="hidden sm:inline">시작하기</span>
-                    <span className="sm:hidden">시작</span>
-                  </Button>
-                </>
-              )}
+                )}
+                
+                {/* Hamburger Menu */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full">
+                      <Menu className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="w-[280px] p-0">
+                    <SheetTitle className="sr-only">메뉴</SheetTitle>
+                    <div className="flex flex-col h-full">
+                      {/* Menu Header */}
+                      <div className="p-4 border-b border-border">
+                        <div className="flex items-center gap-2">
+                          <img src={showmelookLogo} alt="쇼미룩" className="w-8 h-8" />
+                          <span className="font-korean text-lg font-semibold text-foreground">쇼미룩</span>
+                        </div>
+                      </div>
+                      
+                      {/* Menu Items */}
+                      <div className="flex-1 py-4">
+                        {user ? (
+                          <>
+                            <button
+                              onClick={() => handleNavigate('/style')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Sparkles className="w-5 h-5 text-primary" />
+                              내 스타일 만들기
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/style')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                              내 룩 갤러리
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/cart')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <ShoppingBag className="w-5 h-5 text-muted-foreground" />
+                              장바구니
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/mypage')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <User className="w-5 h-5 text-muted-foreground" />
+                              마이페이지
+                            </button>
+                            <div className="my-2 mx-4 border-t border-border" />
+                            <button
+                              onClick={() => handleNavigate('/install')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Download className="w-5 h-5 text-muted-foreground" />
+                              앱 설치
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleNavigate('/auth')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Sparkles className="w-5 h-5 text-primary" />
+                              시작하기
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/auth')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <User className="w-5 h-5 text-muted-foreground" />
+                              로그인
+                            </button>
+                            <div className="my-2 mx-4 border-t border-border" />
+                            <button
+                              onClick={() => handleNavigate('/install')}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Download className="w-5 h-5 text-muted-foreground" />
+                              앱 설치
+                            </button>
+                          </>
+                        )}
+                      </div>
+                      
+                      {/* Menu Footer */}
+                      {user && (
+                        <div className="p-4 border-t border-border">
+                          <button
+                            onClick={handleSignOut}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                          >
+                            <LogOut className="w-5 h-5" />
+                            로그아웃
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              </div>
             </>
           )}
         </div>
