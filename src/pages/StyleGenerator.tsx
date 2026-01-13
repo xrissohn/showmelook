@@ -1767,6 +1767,7 @@ const StyleGenerator = () => {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const resultRef = useRef<HTMLDivElement>(null);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
   const [activeTab, setActiveTab] = useState<'generate' | 'mylooks' | 'mypage'>('generate');
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -2796,6 +2797,12 @@ const StyleGenerator = () => {
     }
 
     setIsGenerating(true);
+    
+    // 생성 시작 시 결과 영역으로 스크롤
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    
     try {
       const styleDescription = selectedTrend?.name_ko || customResult?.styleConcept || '트렌디한';
       
@@ -2856,6 +2863,11 @@ const StyleGenerator = () => {
 
       if (data?.imageUrl) {
         setGeneratedImage(data.imageUrl);
+        
+        // 생성 완료 시 결과 영역으로 스크롤
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
 
         // Update local limit state
         if (typeof data.remainingCount === 'number') {
@@ -3607,7 +3619,10 @@ const StyleGenerator = () => {
 
             {/* Right: Generated Result - order-1 on mobile (shows first), order-2 on desktop */}
             {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
-            <div className={`lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}>
+            <div 
+              ref={resultRef}
+              className={`lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}
+            >
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
                   {isGenerating ? (
