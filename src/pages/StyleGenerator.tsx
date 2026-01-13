@@ -260,24 +260,20 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
         // URL 폰트 크기 (크게)
         const urlFontSize = Math.max(20, img.width * 0.035);
         
-        // 전체 워터마크 높이 계산 (로고 + URL)
-        const gap = 15;
-        const totalHeight = watermarkHeight + gap + urlFontSize;
-        
-        // 중앙 위치
-        const startY = (img.height - totalHeight) / 2;
+        // 로고만 중앙에 위치
+        const logoStartY = (img.height - watermarkHeight) / 2;
         const logoX = (img.width - watermarkWidth) / 2;
         
         // 메인 로고 그리기 (투명도 0.5)
         ctx.globalAlpha = 0.5;
-        ctx.drawImage(logo, logoX, startY, watermarkWidth, watermarkHeight);
+        ctx.drawImage(logo, logoX, logoStartY, watermarkWidth, watermarkHeight);
         ctx.globalAlpha = 1.0;
         
-        // URL 추가 (로고 아래)
+        // URL 추가 (사진 맨 아래)
         ctx.font = `bold ${urlFontSize}px sans-serif`;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
         ctx.textAlign = 'center';
-        ctx.fillText('showmelook.com', img.width / 2, startY + watermarkHeight + gap + urlFontSize);
+        ctx.fillText('showmelook.com', img.width / 2, img.height - 20);
         
         // Blob으로 변환
         canvas.toBlob((blob) => {
