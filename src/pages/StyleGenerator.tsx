@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2 } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
@@ -19,6 +19,8 @@ import useEmblaCarousel from 'embla-carousel-react';
 import { LazyImage } from '@/components/LazyImage';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useImagePreloader } from '@/hooks/useImagePreloader';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
 interface StyleTrend {
   id: string;
   name: string;
@@ -2995,75 +2997,89 @@ const StyleGenerator = () => {
         {activeTab === 'generate' ? (
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
-            <div className="space-y-6 sm:space-y-8 order-2 lg:order-1">
-              {/* 주관식 입력 모드 - 항상 표시 */}
-              <div className="space-y-6">
-                <div className="p-5 rounded-2xl border-2 border-border bg-secondary/30">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-5 h-5 text-accent" />
-                    <h2 className="font-korean text-lg font-medium text-foreground">원하는 스타일 설명</h2>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {/* 스타일 프롬프트 */}
-                    <div className="space-y-2">
-                      <Label className="font-korean text-sm">스타일 프롬프트</Label>
-                      <Textarea
-                        placeholder="예: 봄 데이트룩, 화사하고 로맨틱한 느낌으로 원피스나 블라우스 위주로 추천해줘"
-                        value={customStylePrompt}
-                        onChange={(e) => setCustomStylePrompt(e.target.value)}
-                        className="min-h-[100px] resize-none font-korean"
-                        disabled={isCustomSearching}
-                      />
-                      
-                      {/* AI 분석 기반 추천 키워드 */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {isLoadingKeywords ? (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span>인기 키워드 분석 중...</span>
-                          </div>
-                        ) : (
-                          <>
-                            {trendKeywords.map((keyword, index) => (
-                              <button
-                                key={`trend-${index}-${keyword.text}`}
-                                onClick={() => setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`)}
-                                disabled={isCustomSearching}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
-                              >
-                                <span>{keyword.emoji}</span>
-                                <span>{keyword.text}</span>
-                              </button>
-                            ))}
-                            {/* DB 트렌드 키워드 */}
-                            {trends.map((trend) => {
-                              const trendEmojis: Record<string, string> = {
-                                'Minimalist': '🤍',
-                                'Street Style': '🔥',
-                                'Classic Elegance': '👔',
-                                'Athleisure': '⚡',
-                                'Bohemian': '🌺',
-                              };
-                              return (
-                                <button
-                                  key={trend.id}
-                                  onClick={() => {
-                                    setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
-                                    setSelectedTrend(trend);
-                                  }}
-                                  disabled={isCustomSearching}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
-                                >
-                                  <span>{trendEmojis[trend.name] || '🎨'}</span>
-                                  <span>{trend.name_ko}</span>
-                                </button>
-                              );
-                            })}
-                          </>
-                        )}
-                      </div>
+            <div className="space-y-4 sm:space-y-6 order-2 lg:order-1">
+              {/* 스타일 입력 - 모바일에서 접을 수 있는 아코디언 */}
+              <Collapsible defaultOpen={true} className="lg:block">
+                <CollapsibleTrigger className="w-full lg:hidden">
+                  <div className="p-4 rounded-2xl border-2 border-border bg-secondary/30 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-accent" />
+                      <span className="font-korean text-base font-medium text-foreground">스타일 설정</span>
+                      {customStylePrompt && (
+                        <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">입력됨</span>
+                      )}
                     </div>
+                    <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+                  </div>
+                </CollapsibleTrigger>
+                
+                <CollapsibleContent className="mt-3 lg:mt-0">
+                  <div className="p-4 sm:p-5 rounded-2xl border-2 border-border bg-secondary/30">
+                    <div className="hidden lg:flex items-center gap-2 mb-4">
+                      <Sparkles className="w-5 h-5 text-accent" />
+                      <h2 className="font-korean text-lg font-medium text-foreground">원하는 스타일 설명</h2>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {/* 스타일 프롬프트 */}
+                      <div className="space-y-2">
+                        <Label className="font-korean text-sm">스타일 프롬프트</Label>
+                        <Textarea
+                          placeholder="예: 봄 데이트룩, 화사하고 로맨틱한 느낌으로 원피스나 블라우스 위주로 추천해줘"
+                          value={customStylePrompt}
+                          onChange={(e) => setCustomStylePrompt(e.target.value)}
+                          className="min-h-[80px] sm:min-h-[100px] resize-none font-korean text-sm sm:text-base"
+                          disabled={isCustomSearching}
+                        />
+                        
+                        {/* AI 분석 기반 추천 키워드 */}
+                        <div className="flex flex-wrap gap-1.5">
+                          {isLoadingKeywords ? (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>인기 키워드 분석 중...</span>
+                            </div>
+                          ) : (
+                            <>
+                              {trendKeywords.map((keyword, index) => (
+                                <button
+                                  key={`trend-${index}-${keyword.text}`}
+                                  onClick={() => setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`)}
+                                  disabled={isCustomSearching}
+                                  className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                                >
+                                  <span>{keyword.emoji}</span>
+                                  <span>{keyword.text}</span>
+                                </button>
+                              ))}
+                              {/* DB 트렌드 키워드 */}
+                              {trends.map((trend) => {
+                                const trendEmojis: Record<string, string> = {
+                                  'Minimalist': '🤍',
+                                  'Street Style': '🔥',
+                                  'Classic Elegance': '👔',
+                                  'Athleisure': '⚡',
+                                  'Bohemian': '🌺',
+                                };
+                                return (
+                                  <button
+                                    key={trend.id}
+                                    onClick={() => {
+                                      setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
+                                      setSelectedTrend(trend);
+                                    }}
+                                    disabled={isCustomSearching}
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                                  >
+                                    <span>{trendEmojis[trend.name] || '🎨'}</span>
+                                    <span>{trend.name_ko}</span>
+                                  </button>
+                                );
+                              })}
+                            </>
+                          )}
+                        </div>
+                      </div>
 
                       {/* 성별 선택 (키즈 포함) */}
                       <div className="space-y-2">
@@ -3072,29 +3088,28 @@ const StyleGenerator = () => {
                           value={customGender}
                           onValueChange={(value) => {
                             setCustomGender(value as 'female' | 'male' | 'unisex' | 'kids');
-                            // 키즈 선택 시 기본 나이 설정
                             if (value === 'kids' && !customAge) {
                               setCustomAge(10);
                             }
                           }}
-                          className="flex gap-4 flex-wrap"
+                          className="grid grid-cols-2 sm:flex sm:gap-4 gap-2"
                           disabled={isCustomSearching}
                         >
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="female" id="custom-female" />
-                            <Label htmlFor="custom-female" className="cursor-pointer font-korean">여성</Label>
+                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-sm">여성</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="male" id="custom-male" />
-                            <Label htmlFor="custom-male" className="cursor-pointer font-korean">남성</Label>
+                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-sm">남성</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="unisex" id="custom-unisex" />
-                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean">🌈 유니섹스</Label>
+                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-sm">🌈 유니섹스</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="kids" id="custom-kids" />
-                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean">👶 키즈 (12세 이하)</Label>
+                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-sm">👶 키즈</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -3111,22 +3126,19 @@ const StyleGenerator = () => {
                               value={customAge || ''}
                               onChange={(e) => setCustomAge(parseInt(e.target.value) || undefined)}
                               placeholder="예: 8"
-                              className="w-24 font-korean"
+                              className="w-20 font-korean"
                               disabled={isCustomSearching}
                             />
                             <span className="text-sm text-muted-foreground font-korean">세</span>
                           </div>
-                          <p className="text-xs text-muted-foreground font-korean">
-                            12세 이하일 경우 키즈 전용 상품이 추천됩니다.
-                          </p>
                         </div>
                       )}
 
                       {/* 예산 슬라이더 */}
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <Label className="font-korean text-sm">예산</Label>
-                          <span className="text-lg font-semibold text-accent font-korean">
+                          <span className="text-base sm:text-lg font-semibold text-accent font-korean">
                             {new Intl.NumberFormat('ko-KR').format(customBudget[0])}원
                           </span>
                         </div>
@@ -3149,7 +3161,7 @@ const StyleGenerator = () => {
                       <Button
                         variant="hero"
                         size="lg"
-                        className="w-full font-korean"
+                        className="w-full font-korean text-sm sm:text-base"
                         onClick={handleCustomStyleSearch}
                         disabled={isCustomSearching || !customStylePrompt.trim()}
                       >
@@ -3167,316 +3179,316 @@ const StyleGenerator = () => {
                       </Button>
                     </div>
                   </div>
+                </CollapsibleContent>
+              </Collapsible>
 
-                  {/* 주관식 추천 결과 */}
-                  {customResult && (
-                    <div className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
-                      {/* 스타일 컨셉 헤더 - 글래스모피즘 효과 */}
-                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white/80 via-white/60 to-white/40 dark:from-card/80 dark:via-card/60 dark:to-card/40 backdrop-blur-xl border border-white/50 dark:border-white/10 p-6 shadow-xl shadow-accent/5">
-                        {/* 배경 장식 */}
-                        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-accent/20 to-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                        <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-primary/15 to-accent/15 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
-                        
-                        <div className="relative">
-                          {/* 라벨 */}
-                          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20 mb-4">
-                            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                              <Sparkles className="w-3 h-3 text-white" />
-                            </div>
-                            <span className="text-xs font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
-                          </div>
-                          
-                          {/* 타이틀 */}
-                          <h3 className="font-display text-2xl font-bold text-foreground mb-4 leading-tight tracking-tight">
-                            {customResult.styleConcept}
-                          </h3>
-                          
-                          {/* 설명 - 카드 스타일 */}
-                          <div className="relative pl-4 border-l-2 border-accent/30">
-                            <p className="text-sm text-muted-foreground font-korean leading-relaxed">
-                              {customResult.styleReasoning}
-                            </p>
-                          </div>
+              {/* 주관식 추천 결과 */}
+              {customResult && (
+                <div className="space-y-4 sm:space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
+                  {/* 스타일 컨셉 헤더 - 글래스모피즘 효과 */}
+                  <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/80 via-white/60 to-white/40 dark:from-card/80 dark:via-card/60 dark:to-card/40 backdrop-blur-xl border border-white/50 dark:border-white/10 p-4 sm:p-6 shadow-xl shadow-accent/5">
+                    {/* 배경 장식 */}
+                    <div className="absolute top-0 right-0 w-32 sm:w-40 h-32 sm:h-40 bg-gradient-to-br from-accent/20 to-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-tr from-primary/15 to-accent/15 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2" />
+                    
+                    <div className="relative">
+                      {/* 라벨 */}
+                      <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20 mb-3 sm:mb-4">
+                        <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                          <Sparkles className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
+                        </div>
+                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                      </div>
+                      
+                      {/* 타이틀 */}
+                      <h3 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-3 sm:mb-4 leading-tight tracking-tight">
+                        {customResult.styleConcept}
+                      </h3>
+                      
+                      {/* 설명 - 카드 스타일 */}
+                      <div className="relative pl-3 sm:pl-4 border-l-2 border-accent/30">
+                        <p className="text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
+                          {customResult.styleReasoning}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 추천 아이템 섹션 - 스와이프 캐러셀 */}
+                  <div className="space-y-3 sm:space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 sm:w-10 h-8 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
+                          <ShoppingBag className="w-4 sm:w-5 h-4 sm:h-5 text-accent" />
+                        </div>
+                        <div>
+                          <h4 className="font-korean text-sm sm:text-base font-semibold text-foreground">
+                            추천 아이템
+                          </h4>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">스와이프하여 둘러보세요</p>
                         </div>
                       </div>
-
-                      {/* 추천 아이템 섹션 - 스와이프 캐러셀 */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between px-1">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center">
-                              <ShoppingBag className="w-5 h-5 text-accent" />
-                            </div>
-                            <div>
-                              <h4 className="font-korean text-base font-semibold text-foreground">
-                                추천 아이템
-                              </h4>
-                              <p className="text-xs text-muted-foreground">스와이프하여 둘러보세요</p>
-                            </div>
-                          </div>
-                          {/* 캐러셀 네비게이션 */}
-                          <div className="flex items-center gap-3">
-                            <div className="flex gap-1.5">
-                              {customResult.items.map((_, idx) => (
-                                <div
-                                  key={idx}
-                                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                                    idx === currentSlide ? 'w-6 bg-accent' : 'w-1.5 bg-muted-foreground/20'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <div className="flex gap-1.5">
-                              <button
-                                onClick={scrollPrev}
-                                disabled={!canScrollPrev}
-                                className="w-9 h-9 rounded-xl bg-secondary/80 hover:bg-secondary flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                              >
-                                <ChevronLeft className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={scrollNext}
-                                disabled={!canScrollNext}
-                                className="w-9 h-9 rounded-xl bg-secondary/80 hover:bg-secondary flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
-                              >
-                                <ChevronRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </div>
+                      {/* 캐러셀 네비게이션 */}
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="hidden sm:flex gap-1.5">
+                          {customResult.items.map((_, idx) => (
+                            <div
+                              key={idx}
+                              className={`h-1.5 rounded-full transition-all duration-300 ${
+                                idx === currentSlide ? 'w-6 bg-accent' : 'w-1.5 bg-muted-foreground/20'
+                              }`}
+                            />
+                          ))}
                         </div>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={scrollPrev}
+                            disabled={!canScrollPrev}
+                            className="w-8 sm:w-9 h-8 sm:h-9 rounded-lg sm:rounded-xl bg-secondary/80 hover:bg-secondary flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={scrollNext}
+                            disabled={!canScrollNext}
+                            className="w-8 sm:w-9 h-8 sm:h-9 rounded-lg sm:rounded-xl bg-secondary/80 hover:bg-secondary flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
 
-                        {/* 스와이프 캐러셀 */}
-                        <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
-                          <div className="flex gap-4 -ml-4">
-                            {customResult.items.map((product, index) => (
-                              <div
-                                key={product.id}
-                                className="flex-none w-[85%] sm:w-[48%] lg:w-[45%] pl-4 first:pl-4"
-                              >
-                                <div
-                                  className={`group relative rounded-3xl transition-all duration-500 overflow-hidden ${
-                                    selectedTrendProducts.find(p => p.id === product.id)
-                                      ? 'ring-2 ring-accent ring-offset-2 ring-offset-background shadow-2xl shadow-accent/25 scale-[1.02]'
-                                      : 'shadow-lg hover:shadow-xl hover:scale-[1.01]'
-                                  }`}
-                                >
-                                  {/* 이미지 영역 */}
-                                  <div className="relative aspect-[3/4] bg-gradient-to-br from-secondary via-secondary/80 to-muted overflow-hidden">
-                                    {product.image_url ? (
-                                      <ProductImage 
-                                        src={product.image_url} 
-                                        alt={product.name}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
-                                        <ShoppingBag className="w-16 h-16 text-muted-foreground/20" />
-                                      </div>
-                                    )}
-                                    
-                                    {/* 오버레이 그라데이션 - 더 부드럽게 */}
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                                    
-                                    {/* 상단 배지들 */}
-                                    <div className="absolute top-4 left-4 right-4 flex justify-between items-start">
-                                      <span className="px-3 py-1.5 text-[11px] font-semibold bg-white/95 dark:bg-black/80 backdrop-blur-md rounded-full text-foreground shadow-lg">
-                                        {product.category}
-                                      </span>
-                                      {/* 좋아요 버튼 */}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          toggleLike(product);
-                                        }}
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
-                                          likedProducts.has(product.id)
-                                            ? 'bg-red-500 text-white scale-110'
-                                            : 'bg-white/95 dark:bg-black/80 backdrop-blur-md text-muted-foreground hover:text-red-500 hover:scale-110'
-                                        }`}
-                                      >
-                                        <Heart 
-                                          className={`w-5 h-5 transition-transform ${
-                                            likedProducts.has(product.id) ? 'fill-current' : ''
-                                          }`} 
-                                        />
-                                      </button>
-                                    </div>
+                    {/* 스와이프 캐러셀 */}
+                    <div className="overflow-hidden rounded-xl sm:rounded-2xl" ref={emblaRef}>
+                      <div className="flex gap-3 sm:gap-4 -ml-3 sm:-ml-4">
+                        {customResult.items.map((product, index) => (
+                          <div
+                            key={product.id}
+                            className="flex-none w-[80%] sm:w-[48%] lg:w-[45%] pl-3 sm:pl-4 first:pl-3 sm:first:pl-4"
+                          >
+                            <div
+                              className={`group relative rounded-2xl sm:rounded-3xl transition-all duration-500 overflow-hidden ${
+                                selectedTrendProducts.find(p => p.id === product.id)
+                                  ? 'ring-2 ring-accent ring-offset-2 ring-offset-background shadow-2xl shadow-accent/25 scale-[1.02]'
+                                  : 'shadow-lg hover:shadow-xl hover:scale-[1.01]'
+                              }`}
+                            >
+                              {/* 이미지 영역 */}
+                              <div className="relative aspect-[3/4] bg-gradient-to-br from-secondary via-secondary/80 to-muted overflow-hidden">
+                                {product.image_url ? (
+                                  <ProductImage 
+                                    src={product.image_url} 
+                                    alt={product.name}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-secondary to-muted">
+                                    <ShoppingBag className="w-12 sm:w-16 h-12 sm:h-16 text-muted-foreground/20" />
+                                  </div>
+                                )}
+                                
+                                {/* 오버레이 그라데이션 */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                                
+                                {/* 상단 배지들 */}
+                                <div className="absolute top-3 sm:top-4 left-3 sm:left-4 right-3 sm:right-4 flex justify-between items-start">
+                                  <span className="px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-[11px] font-semibold bg-white/95 dark:bg-black/80 backdrop-blur-md rounded-full text-foreground shadow-lg">
+                                    {product.category}
+                                  </span>
+                                  {/* 좋아요 버튼 */}
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleLike(product);
+                                    }}
+                                    className={`w-8 sm:w-10 h-8 sm:h-10 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${
+                                      likedProducts.has(product.id)
+                                        ? 'bg-red-500 text-white scale-110'
+                                        : 'bg-white/95 dark:bg-black/80 backdrop-blur-md text-muted-foreground hover:text-red-500 hover:scale-110'
+                                    }`}
+                                  >
+                                    <Heart 
+                                      className={`w-4 sm:w-5 h-4 sm:h-5 transition-transform ${
+                                        likedProducts.has(product.id) ? 'fill-current' : ''
+                                      }`} 
+                                    />
+                                  </button>
+                                </div>
 
-                                    {/* 선택 체크 아이콘 - 더 눈에 띄게 */}
-                                    {selectedTrendProducts.find(p => p.id === product.id) && (
-                                      <div className="absolute top-16 right-4">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-xl animate-scale-in">
-                                          <Check className="w-4.5 h-4.5 text-white" strokeWidth={3} />
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {/* 하단 정보 오버레이 - 글래스모피즘 */}
-                                    <div className="absolute bottom-0 left-0 right-0 p-5">
-                                      <div className="space-y-2">
-                                        {product.brand && (
-                                          <span className="inline-block px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest bg-white/20 backdrop-blur-sm rounded-full text-white/90">
-                                            {product.brand}
-                                          </span>
-                                        )}
-                                        <p className="font-semibold text-lg leading-tight line-clamp-2 text-white font-korean drop-shadow-lg">
-                                          {product.name}
-                                        </p>
-                                        <p className="text-2xl font-bold text-white drop-shadow-lg">
-                                          ₩{product.price.toLocaleString()}
-                                        </p>
-                                      </div>
+                                {/* 선택 체크 아이콘 */}
+                                {selectedTrendProducts.find(p => p.id === product.id) && (
+                                  <div className="absolute top-12 sm:top-16 right-3 sm:right-4">
+                                    <div className="w-6 sm:w-8 h-6 sm:h-8 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center shadow-xl animate-scale-in">
+                                      <Check className="w-3.5 sm:w-4.5 h-3.5 sm:h-4.5 text-white" strokeWidth={3} />
                                     </div>
                                   </div>
+                                )}
 
-                                  {/* 스타일 태그 & 액션 영역 - 글래스모피즘 카드 */}
-                                  <div className="p-4 bg-card/95 backdrop-blur-sm space-y-4">
-                                    {/* 스타일 태그 배지들 */}
-                                    {product.style_tags && product.style_tags.length > 0 && (
-                                      <div className="flex flex-wrap gap-1.5">
-                                        {product.style_tags.slice(0, 3).map((tag, tagIdx) => (
-                                          <span
-                                            key={tagIdx}
-                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold ${getTagColor(tag)}`}
-                                          >
-                                            <Tag className="w-2.5 h-2.5" />
-                                            {tag}
-                                          </span>
-                                        ))}
-                                        {product.style_tags.length > 3 && (
-                                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-muted text-muted-foreground">
-                                            +{product.style_tags.length - 3}
-                                          </span>
-                                        )}
-                                      </div>
+                                {/* 하단 정보 오버레이 */}
+                                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-5">
+                                  <div className="space-y-1 sm:space-y-2">
+                                    {product.brand && (
+                                      <span className="inline-block px-2 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest bg-white/20 backdrop-blur-sm rounded-full text-white/90">
+                                        {product.brand}
+                                      </span>
                                     )}
-
-                                    {/* 액션 버튼들 - 개선된 스타일 */}
-                                    <div className="flex flex-col gap-2.5">
-                                      <div className="flex gap-2">
-                                        <button
-                                          onClick={() => toggleTrendProduct(product)}
-                                          className={`flex-1 text-sm py-3 px-4 rounded-xl font-semibold transition-all duration-300 font-korean flex items-center justify-center gap-2 ${
-                                            selectedTrendProducts.find(p => p.id === product.id)
-                                              ? 'bg-gradient-to-r from-accent to-primary text-white shadow-lg shadow-accent/30 scale-[1.02]'
-                                              : 'bg-secondary hover:bg-secondary/80 text-foreground hover:shadow-md'
-                                          }`}
-                                        >
-                                          {selectedTrendProducts.find(p => p.id === product.id) ? (
-                                            <>
-                                              <Check className="w-4 h-4" strokeWidth={2.5} />
-                                              선택됨
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Plus className="w-4 h-4" strokeWidth={2.5} />
-                                              담기
-                                            </>
-                                          )}
-                                        </button>
-                                        <button
-                                          onClick={() => handlePurchase(product)}
-                                          disabled={purchasingProductId === product.id}
-                                          className="p-3 rounded-xl bg-secondary hover:bg-accent hover:text-white text-foreground transition-all duration-300 disabled:opacity-50 hover:shadow-md"
-                                          title="구매하기"
-                                        >
-                                          {purchasingProductId === product.id ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                          ) : (
-                                            <ExternalLink className="w-5 h-5" />
-                                          )}
-                                        </button>
-                                      </div>
-                                      {/* 다른 상품 보기 버튼 */}
-                                      <button
-                                        onClick={() => handleShowAlternatives(product.category, product.id)}
-                                        className="w-full text-xs py-2.5 px-4 rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 font-korean flex items-center justify-center gap-2 group"
-                                      >
-                                        <RefreshCw className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />
-                                        다른 {product.category} 보기
-                                      </button>
-                                    </div>
+                                    <p className="font-semibold text-base sm:text-lg leading-tight line-clamp-2 text-white font-korean drop-shadow-lg">
+                                      {product.name}
+                                    </p>
+                                    <p className="text-xl sm:text-2xl font-bold text-white drop-shadow-lg">
+                                      ₩{product.price.toLocaleString()}
+                                    </p>
                                   </div>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        </div>
 
-                        {/* 좋아요한 아이템 표시 */}
-                        {likedProducts.size > 0 && (
-                          <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/30 dark:to-pink-950/30 rounded-2xl border border-red-100 dark:border-red-900/30">
-                            <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
-                              <Heart className="w-4 h-4 text-red-500 fill-red-500" />
-                            </div>
-                            <span className="text-sm font-medium font-korean text-red-600 dark:text-red-400">
-                              {likedProducts.size}개 상품을 좋아요 했어요!
-                            </span>
-                          </div>
-                        )}
-                      </div>
+                              {/* 스타일 태그 & 액션 영역 */}
+                              <div className="p-3 sm:p-4 bg-card/95 backdrop-blur-sm space-y-3 sm:space-y-4">
+                                {/* 스타일 태그 배지들 */}
+                                {product.style_tags && product.style_tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                                    {product.style_tags.slice(0, 3).map((tag, tagIdx) => (
+                                      <span
+                                        key={tagIdx}
+                                        className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold ${getTagColor(tag)}`}
+                                      >
+                                        <Tag className="w-2 sm:w-2.5 h-2 sm:h-2.5" />
+                                        {tag}
+                                      </span>
+                                    ))}
+                                    {product.style_tags.length > 3 && (
+                                      <span className="px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold bg-muted text-muted-foreground">
+                                        +{product.style_tags.length - 3}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
 
-                      {/* 총 금액 카드 - 프리미엄 스타일 */}
-                      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card to-secondary/50 border border-border/50 p-5 shadow-lg">
-                        {/* 배경 장식 */}
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-accent/10 to-primary/10 rounded-full blur-2xl" />
-                        <div className="absolute bottom-0 left-0 w-20 h-20 bg-gradient-to-tr from-primary/10 to-accent/10 rounded-full blur-2xl" />
-                        
-                        <div className="relative space-y-4">
-                          {/* 선택 현황 */}
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-1">
-                              <span className="text-xs text-muted-foreground font-korean">선택한 아이템</span>
-                              <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-bold text-foreground">{selectedTrendProducts.length}</span>
-                                <span className="text-sm text-muted-foreground">/ {customResult.items.length}개</span>
+                                {/* 액션 버튼들 */}
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => toggleTrendProduct(product)}
+                                      className={`flex-1 text-xs sm:text-sm py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg sm:rounded-xl font-semibold transition-all duration-300 font-korean flex items-center justify-center gap-1.5 sm:gap-2 ${
+                                        selectedTrendProducts.find(p => p.id === product.id)
+                                          ? 'bg-gradient-to-r from-accent to-primary text-white shadow-lg shadow-accent/30 scale-[1.02]'
+                                          : 'bg-secondary hover:bg-secondary/80 text-foreground hover:shadow-md'
+                                      }`}
+                                    >
+                                      {selectedTrendProducts.find(p => p.id === product.id) ? (
+                                        <>
+                                          <Check className="w-3.5 sm:w-4 h-3.5 sm:h-4" strokeWidth={2.5} />
+                                          선택됨
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Plus className="w-3.5 sm:w-4 h-3.5 sm:h-4" strokeWidth={2.5} />
+                                          담기
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => handlePurchase(product)}
+                                      disabled={purchasingProductId === product.id}
+                                      className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-secondary hover:bg-accent hover:text-white text-foreground transition-all duration-300 disabled:opacity-50 hover:shadow-md"
+                                      title="구매하기"
+                                    >
+                                      {purchasingProductId === product.id ? (
+                                        <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
+                                      ) : (
+                                        <ExternalLink className="w-4 sm:w-5 h-4 sm:h-5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                  {/* 다른 상품 보기 버튼 */}
+                                  <button
+                                    onClick={() => handleShowAlternatives(product.category, product.id)}
+                                    className="w-full text-[10px] sm:text-xs py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg sm:rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 font-korean flex items-center justify-center gap-1.5 sm:gap-2 group"
+                                  >
+                                    <RefreshCw className="w-3 sm:w-3.5 h-3 sm:h-3.5 group-hover:rotate-180 transition-transform duration-500" />
+                                    다른 {product.category} 보기
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <span className="text-xs text-muted-foreground font-korean">총 금액</span>
-                              <p className="font-display font-bold text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                                ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
-                              </p>
-                            </div>
                           </div>
-                          
-                          {/* 예산 비교 프로그레스 바 */}
-                          <div className="space-y-2">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div 
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0])
-                                    ? 'bg-gradient-to-r from-orange-400 to-red-500'
-                                    : 'bg-gradient-to-r from-green-400 to-emerald-500'
-                                }`}
-                                style={{ 
-                                  width: `${Math.min(100, (selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) / (customResult.budget || customBudget[0])) * 100)}%` 
-                                }}
-                              />
-                            </div>
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground font-korean">
-                                예산 ₩{(customResult.budget || customBudget[0]).toLocaleString()}
-                              </span>
-                              {selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0]) ? (
-                                <span className="font-semibold text-orange-500 font-korean flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                                  +₩{(selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) - (customResult.budget || customBudget[0])).toLocaleString()} 초과
-                                </span>
-                              ) : (
-                                <span className="font-semibold text-green-500 font-korean flex items-center gap-1">
-                                  <Check className="w-3.5 h-3.5" />
-                                  예산 내
-                                </span>
-                              )}
-                            </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 좋아요한 아이템 표시 */}
+                    {likedProducts.size > 0 && (
+                      <div className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950/30 dark:to-pink-950/30 rounded-xl sm:rounded-2xl border border-red-100 dark:border-red-900/30">
+                        <div className="w-6 sm:w-8 h-6 sm:h-8 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                          <Heart className="w-3 sm:w-4 h-3 sm:h-4 text-red-500 fill-red-500" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-medium font-korean text-red-600 dark:text-red-400">
+                          {likedProducts.size}개 상품을 좋아요 했어요!
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 총 금액 카드 - 프리미엄 스타일 */}
+                  <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-card via-card to-secondary/50 border border-border/50 p-4 sm:p-5 shadow-lg">
+                    {/* 배경 장식 */}
+                    <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-gradient-to-br from-accent/10 to-primary/10 rounded-full blur-2xl" />
+                    <div className="absolute bottom-0 left-0 w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-tr from-primary/10 to-accent/10 rounded-full blur-2xl" />
+                    
+                    <div className="relative space-y-3 sm:space-y-4">
+                      {/* 선택 현황 */}
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-0.5 sm:space-y-1">
+                          <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">선택한 아이템</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xl sm:text-2xl font-bold text-foreground">{selectedTrendProducts.length}</span>
+                            <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}개</span>
                           </div>
                         </div>
+                        <div className="text-right">
+                          <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">총 금액</span>
+                          <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                            ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                          </p>
+                        </div>
                       </div>
-
+                      
+                      {/* 예산 비교 프로그레스 바 */}
+                      <div className="space-y-1.5 sm:space-y-2">
+                        <div className="h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0])
+                                ? 'bg-gradient-to-r from-orange-400 to-red-500'
+                                : 'bg-gradient-to-r from-green-400 to-emerald-500'
+                            }`}
+                            style={{ 
+                              width: `${Math.min(100, (selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) / (customResult.budget || customBudget[0])) * 100)}%` 
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] sm:text-xs">
+                          <span className="text-muted-foreground font-korean">
+                            예산 ₩{(customResult.budget || customBudget[0]).toLocaleString()}
+                          </span>
+                          {selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0]) ? (
+                            <span className="font-semibold text-orange-500 font-korean flex items-center gap-1">
+                              <span className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-orange-500" />
+                              +₩{(selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) - (customResult.budget || customBudget[0])).toLocaleString()} 초과
+                            </span>
+                          ) : (
+                            <span className="font-semibold text-green-500 font-korean flex items-center gap-1">
+                              <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
+                              예산 내
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
+              )}
 
 
               {/* Face Composite Option */}
@@ -3595,7 +3607,8 @@ const StyleGenerator = () => {
 
             {/* Right: Generated Result - order-1 on mobile (shows first), order-2 on desktop */}
             <div className="lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2">
-              <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
+              {/* 모바일: 40vh 고정 높이, 데스크탑: aspect-ratio 유지 */}
+              <div className="h-[40vh] lg:h-auto lg:aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
                 {isGenerating ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
                     {/* 메인 로고 애니메이션 */}
