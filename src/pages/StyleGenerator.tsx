@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2 } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
@@ -862,6 +862,15 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
   const [selectedLook, setSelectedLook] = useState<GeneratedLook | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   
+  // 삭제 확인 모달 상태
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // 스와이프 제스처 상태
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const minSwipeDistance = 50;
+  
   // 필터링된 아이템
   const filteredLooks = showFavoritesOnly 
     ? myLooks.filter(look => look.is_favorite) 
@@ -889,18 +898,45 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
   });
   
   // 모달에서 이전/다음 이동
-  const goToPrevious = () => {
+  const goToPrevious = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setSelectedLook(filteredLooks[currentIndex - 1]);
     }
-  };
+  }, [currentIndex, filteredLooks]);
   
-  const goToNext = () => {
+  const goToNext = useCallback(() => {
     if (currentIndex < filteredLooks.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedLook(filteredLooks[currentIndex + 1]);
     }
+  }, [currentIndex, filteredLooks]);
+  
+  // 터치 이벤트 핸들러
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+  
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+  
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+    
+    if (isLeftSwipe) {
+      goToNext();
+    } else if (isRightSwipe) {
+      goToPrevious();
+    }
+    
+    setTouchStart(null);
+    setTouchEnd(null);
   };
   
   // 키보드 네비게이션
@@ -910,17 +946,65 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goToPrevious();
       if (e.key === 'ArrowRight') goToNext();
-      if (e.key === 'Escape') setSelectedLook(null);
+      if (e.key === 'Escape') {
+        if (showDeleteConfirm) {
+          setShowDeleteConfirm(false);
+        } else {
+          setSelectedLook(null);
+        }
+      }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedLook, currentIndex, filteredLooks.length]);
+  }, [selectedLook, currentIndex, filteredLooks.length, showDeleteConfirm, goToPrevious, goToNext]);
   
   // 룩 클릭 핸들러
   const handleLookClick = (look: GeneratedLook, index: number) => {
     setSelectedLook(look);
     setCurrentIndex(index);
+  };
+  
+  // 룩 삭제 핸들러
+  const handleDeleteLook = async () => {
+    if (!selectedLook) return;
+    
+    setIsDeleting(true);
+    try {
+      // 스토리지에서 이미지 삭제 (파일 경로인 경우)
+      if (selectedLook.image_url && !selectedLook.image_url.startsWith('http') && !selectedLook.image_url.startsWith('data:')) {
+        await supabase.storage.from('generated-looks').remove([selectedLook.image_url]);
+      }
+      
+      // DB에서 삭제
+      const { error } = await supabase
+        .from('generated_looks')
+        .delete()
+        .eq('id', selectedLook.id);
+      
+      if (error) throw error;
+      
+      // 로컬 상태 업데이트
+      setMyLooks(prev => prev.filter(l => l.id !== selectedLook.id));
+      
+      toast({
+        title: '삭제 완료',
+        description: '룩이 삭제되었습니다.',
+      });
+      
+      // 모달 닫기
+      setShowDeleteConfirm(false);
+      setSelectedLook(null);
+    } catch (error: any) {
+      console.error('Delete error:', error);
+      toast({
+        title: '삭제 실패',
+        description: error.message || '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
   
   // 즐겨찾기 토글
@@ -1100,7 +1184,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
       {selectedLook && (
         <div 
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
-          onClick={() => setSelectedLook(null)}
+          onClick={() => !showDeleteConfirm && setSelectedLook(null)}
         >
           {/* 닫기 버튼 */}
           <button 
@@ -1110,39 +1194,56 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
             <X className="w-6 h-6 text-white" />
           </button>
           
-          {/* 이전 버튼 */}
+          {/* 삭제 버튼 */}
+          <button 
+            className="absolute top-4 left-4 z-10 w-12 h-12 rounded-full bg-red-500/20 backdrop-blur-sm flex items-center justify-center hover:bg-red-500/40 transition-colors"
+            onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
+          >
+            <Trash2 className="w-5 h-5 text-red-400" />
+          </button>
+          
+          {/* 이전 버튼 - 데스크톱만 */}
           {currentIndex > 0 && (
             <button 
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
               onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
           )}
           
-          {/* 다음 버튼 */}
+          {/* 다음 버튼 - 데스크톱만 */}
           {currentIndex < filteredLooks.length - 1 && (
             <button 
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
               onClick={(e) => { e.stopPropagation(); goToNext(); }}
             >
               <ChevronRight className="w-6 h-6 text-white" />
             </button>
           )}
           
-          {/* 이미지 컨테이너 */}
+          {/* 이미지 컨테이너 - 터치 제스처 지원 */}
           <div 
-            className="relative max-w-[90vw] max-h-[85vh] flex flex-col items-center"
+            className="relative max-w-[90vw] max-h-[85vh] flex flex-col items-center touch-pan-y"
             onClick={(e) => e.stopPropagation()}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
           >
             <img 
               src={selectedLook.image_url} 
               alt="Generated look" 
-              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
+              className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl select-none"
+              draggable={false}
             />
             
+            {/* 스와이프 힌트 - 모바일만 */}
+            <div className="sm:hidden text-center mt-2">
+              <p className="text-white/40 text-xs font-korean">← 스와이프하여 탐색 →</p>
+            </div>
+            
             {/* 하단 정보 및 액션 */}
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-4 px-4">
               <p className="text-white/80 text-sm font-korean">
                 {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
                   year: 'numeric',
@@ -1151,13 +1252,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                 })}
               </p>
               
-              <span className="text-white/40">•</span>
+              <span className="text-white/40 hidden sm:inline">•</span>
               
               <p className="text-white/60 text-sm">
                 {currentIndex + 1} / {filteredLooks.length}
               </p>
               
-              <span className="text-white/40">•</span>
+              <span className="text-white/40 hidden sm:inline">•</span>
               
               {/* 즐겨찾기 버튼 */}
               <button 
@@ -1165,7 +1266,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
               >
                 <Heart className={`w-4 h-4 ${selectedLook.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
-                <span className="text-white text-sm font-korean">
+                <span className="text-white text-sm font-korean hidden sm:inline">
                   {selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
                 </span>
               </button>
@@ -1185,10 +1286,57 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                   }}
                   isPremium={isPremium}
                   logoUrl={showmelookWatermarkFull}
+                  compact
                 />
               </div>
             </div>
           </div>
+          
+          {/* 삭제 확인 모달 */}
+          {showDeleteConfirm && (
+            <div 
+              className="fixed inset-0 z-[110] bg-black/80 flex items-center justify-center p-4"
+              onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}
+            >
+              <div 
+                className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold text-center font-korean mb-2">룩 삭제</h3>
+                <p className="text-sm text-muted-foreground text-center font-korean mb-6">
+                  이 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.
+                </p>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1 font-korean"
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                  >
+                    취소
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1 font-korean"
+                    onClick={handleDeleteLook}
+                    disabled={isDeleting}
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        삭제 중...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        삭제
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
