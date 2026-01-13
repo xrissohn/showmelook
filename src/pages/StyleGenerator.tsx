@@ -3594,8 +3594,7 @@ const StyleGenerator = () => {
             </div>
 
             {/* Right: Generated Result */}
-            <div className="lg:sticky lg:top-24 lg:self-start mt-6 lg:mt-0">
-              <h2 className="font-korean text-xl sm:text-2xl text-foreground mb-3 sm:mb-4">생성된 스타일</h2>
+            <div className="lg:sticky lg:top-20 lg:self-start mt-6 lg:mt-0">
               <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
                 {isGenerating ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
