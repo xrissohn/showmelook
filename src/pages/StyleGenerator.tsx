@@ -10,7 +10,8 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { useFeedback } from '@/hooks/useFeedback';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
@@ -1829,6 +1830,13 @@ const StyleGenerator = () => {
     { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일' },
   ]);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
+  
+  // 피드백 상태
+  const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
+  const [lastRecommendationId, setLastRecommendationId] = useState<string | null>(null);
+  
+  // 피드백 훅
+  const { trackClick, trackLike, trackCart, trackViews } = useFeedback();
   // Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     loop: false, 
@@ -1892,6 +1900,14 @@ const StyleGenerator = () => {
         });
       } else {
         // 좋아요 - DB에 저장
+        // 좋아요 피드백 수집
+        const feedbackContext = {
+          gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+          occasion: customStylePrompt,
+          budget: customBudget[0],
+        };
+        trackLike(productId, feedbackContext, lastRecommendationId || undefined);
+        
         const { error } = await supabase
           .from('liked_products')
           .insert({
@@ -1939,6 +1955,14 @@ const StyleGenerator = () => {
     }
 
     try {
+      // 장바구니 피드백 수집
+      const feedbackContext = {
+        gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+        occasion: customStylePrompt,
+        budget: customBudget[0],
+      };
+      trackCart(product.id, feedbackContext, lastRecommendationId || undefined);
+      
       const { error } = await supabase.from('cart_items').upsert({
         user_id: user.id,
         product_id: product.id,
@@ -2223,6 +2247,14 @@ const StyleGenerator = () => {
   };
   // 딥링크 변환 후 구매 페이지로 이동하는 함수
   const handlePurchase = async (product: CachedProduct) => {
+    // 클릭 피드백 수집
+    const feedbackContext = {
+      gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+      occasion: customStylePrompt,
+      budget: customBudget[0],
+    };
+    trackClick(product.id, feedbackContext, lastRecommendationId || undefined);
+    
     // affiliate_url이 이미 있으면 바로 이동
     if (product.affiliate_url) {
       window.open(product.affiliate_url, '_blank', 'noopener,noreferrer');
@@ -2738,10 +2770,10 @@ const StyleGenerator = () => {
           description: `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
         });
 
-        // 히스토리 저장
+        // 히스토리 저장 및 피드백용 ID 설정
         if (user) {
           try {
-            await supabase.from('recommendation_history').insert({
+            const { data: historyData } = await supabase.from('recommendation_history').insert({
               user_id: user.id,
               prompt: customStylePrompt,
               gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
@@ -2750,7 +2782,22 @@ const StyleGenerator = () => {
               style_reasoning: data.look.stylingTips || '',
               items: transformedItems as any,
               total_price: data.look.totalPrice || 0
-            });
+            }).select('id').single();
+            
+            // 피드백용 추천 ID 설정
+            if (historyData) {
+              setLastRecommendationId(historyData.id);
+              setFeedbackGiven(null); // 새 추천 시 피드백 초기화
+            }
+            
+            // 상품 조회 피드백 수집
+            const productIds = transformedItems.map((item: CachedProduct) => item.id);
+            const feedbackContext = {
+              gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+              occasion: customStylePrompt,
+              budget: customBudget[0],
+            };
+            trackViews(productIds, feedbackContext, historyData?.id || undefined);
           } catch (saveError) {
             console.error('Failed to save to history:', saveError);
           }
@@ -3215,6 +3262,55 @@ const StyleGenerator = () => {
                         <p className="text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
                           {customResult.styleReasoning}
                         </p>
+                      </div>
+                      
+                      {/* 피드백 버튼 */}
+                      <div className="mt-4 sm:mt-5 pt-4 border-t border-border/30">
+                        <p className="text-xs sm:text-sm text-muted-foreground font-korean mb-2 sm:mb-3">
+                          이 추천이 마음에 드시나요?
+                        </p>
+                        <div className="flex gap-2 sm:gap-3">
+                          <button
+                            onClick={() => {
+                              setFeedbackGiven('positive');
+                              toast({
+                                title: '감사합니다! 💕',
+                                description: '피드백이 더 나은 추천에 반영됩니다.',
+                              });
+                            }}
+                            disabled={feedbackGiven !== null}
+                            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-korean text-xs sm:text-sm font-medium transition-all duration-300 ${
+                              feedbackGiven === 'positive'
+                                ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                                : feedbackGiven === 'negative'
+                                ? 'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
+                                : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-500 hover:text-white hover:shadow-lg hover:shadow-green-500/20'
+                            }`}
+                          >
+                            <ThumbsUp className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                            {feedbackGiven === 'positive' ? '감사해요!' : '좋아요'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFeedbackGiven('negative');
+                              toast({
+                                title: '피드백 감사합니다',
+                                description: '다음에는 더 나은 추천을 드릴게요.',
+                              });
+                            }}
+                            disabled={feedbackGiven !== null}
+                            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-korean text-xs sm:text-sm font-medium transition-all duration-300 ${
+                              feedbackGiven === 'negative'
+                                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30'
+                                : feedbackGiven === 'positive'
+                                ? 'bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
+                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 hover:bg-orange-500 hover:text-white hover:shadow-lg hover:shadow-orange-500/20'
+                            }`}
+                          >
+                            <ThumbsDown className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
+                            {feedbackGiven === 'negative' ? '개선할게요' : '아쉬워요'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
