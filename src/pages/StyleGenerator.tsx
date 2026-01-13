@@ -17,6 +17,8 @@ import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 import useEmblaCarousel from 'embla-carousel-react';
 import { LazyImage } from '@/components/LazyImage';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useImagePreloader } from '@/hooks/useImagePreloader';
 interface StyleTrend {
   id: string;
   name: string;
@@ -838,6 +840,154 @@ const GeneratedStyleImage = ({
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+};
+
+// 내 룩 갤러리 컴포넌트 (무한 스크롤 + 이미지 프리로딩)
+interface MyLooksGalleryProps {
+  myLooks: GeneratedLook[];
+  setMyLooks: React.Dispatch<React.SetStateAction<GeneratedLook[]>>;
+  setActiveTab: (tab: 'generate' | 'mylooks' | 'mypage') => void;
+  toast: ReturnType<typeof useToast>['toast'];
+  isPremium: boolean;
+}
+
+const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }: MyLooksGalleryProps) => {
+  // 무한 스크롤 훅 (처음 12개, 스크롤 시 8개씩 추가)
+  const {
+    visibleItems,
+    loadMoreRef,
+    hasMore,
+    preloadItems,
+  } = useInfiniteScroll({
+    items: myLooks,
+    initialCount: 12,
+    increment: 8,
+    preloadCount: 4,
+  });
+
+  // 다음에 로드될 이미지들 프리로딩
+  useImagePreloader({
+    urls: preloadItems.map(look => look.image_url),
+    enabled: preloadItems.length > 0,
+  });
+
+  if (myLooks.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
+        <p className="text-lg text-muted-foreground font-korean">아직 생성된 룩이 없습니다</p>
+        <Button
+          variant="hero"
+          className="mt-4 font-korean"
+          onClick={() => setActiveTab('generate')}
+        >
+          첫 스타일 만들기
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* 로드된 개수 표시 */}
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm text-muted-foreground font-korean">
+          {visibleItems.length} / {myLooks.length}개 표시
+        </p>
+      </div>
+      
+      {/* 갤러리 그리드 */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        {visibleItems.map((look) => (
+          <div
+            key={look.id}
+            className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group"
+          >
+            <LazyImage
+              src={look.image_url}
+              alt="Generated look"
+              className="w-full h-full object-cover"
+              fallbackClassName="w-full h-full"
+            />
+            {/* 호버시 오버레이 */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            
+            {/* 하단 날짜 */}
+            <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <p className="text-sm text-white/90 font-korean">
+                {new Date(look.created_at).toLocaleDateString('ko-KR')}
+              </p>
+            </div>
+            
+            {/* 상단 버튼들 */}
+            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              {/* 저장/공유 버튼 */}
+              <ShareButtons 
+                imageUrl={look.image_url} 
+                onShare={(platform, result) => {
+                  if (result.message) {
+                    toast({
+                      title: result.success ? '성공' : '알림',
+                      description: result.message,
+                      variant: result.success ? 'default' : 'destructive',
+                    });
+                  }
+                }}
+                compact
+                isPremium={isPremium}
+                logoUrl={showmelookWatermarkFull}
+              />
+              {/* 좋아요 버튼 */}
+              <button 
+                onClick={async () => {
+                  const newFavorite = !look.is_favorite;
+                  const { error } = await supabase
+                    .from('generated_looks')
+                    .update({ is_favorite: newFavorite })
+                    .eq('id', look.id);
+                  
+                  if (!error) {
+                    setMyLooks(prev => prev.map(l => 
+                      l.id === look.id ? { ...l, is_favorite: newFavorite } : l
+                    ));
+                    toast({
+                      title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
+                      description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
+                    });
+                  }
+                }}
+                className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+              >
+                <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* 무한 스크롤 트리거 */}
+      {hasMore && (
+        <div 
+          ref={loadMoreRef} 
+          className="flex justify-center py-8"
+        >
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span className="text-sm font-korean">더 불러오는 중...</span>
+          </div>
+        </div>
+      )}
+      
+      {/* 모두 로드 완료 */}
+      {!hasMore && myLooks.length > 12 && (
+        <div className="text-center py-6">
+          <p className="text-sm text-muted-foreground font-korean">
+            모든 룩을 불러왔습니다 ✨
+          </p>
+        </div>
       )}
     </div>
   );
@@ -2906,90 +3056,14 @@ const StyleGenerator = () => {
             </div>
           </div>
         ) : activeTab === 'mylooks' ? (
-          /* My Looks Grid */
-          <div>
-            {myLooks.length === 0 ? (
-              <div className="text-center py-20">
-                <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
-                <p className="text-lg text-muted-foreground font-korean">아직 생성된 룩이 없습니다</p>
-                <Button
-                  variant="hero"
-                  className="mt-4 font-korean"
-                  onClick={() => setActiveTab('generate')}
-                >
-                  첫 스타일 만들기
-                </Button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {myLooks.map((look) => (
-                  <div
-                    key={look.id}
-                    className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group"
-                  >
-                    <LazyImage
-                      src={look.image_url}
-                      alt="Generated look"
-                      className="w-full h-full object-cover"
-                      fallbackClassName="w-full h-full"
-                    />
-                    {/* 호버시 오버레이 */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    
-                    {/* 하단 날짜 */}
-                    <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      <p className="text-sm text-white/90 font-korean">
-                        {new Date(look.created_at).toLocaleDateString('ko-KR')}
-                      </p>
-                    </div>
-                    
-                    {/* 상단 버튼들 */}
-                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                      {/* 저장/공유 버튼 */}
-                      <ShareButtons 
-                        imageUrl={look.image_url} 
-                        onShare={(platform, result) => {
-                          if (result.message) {
-                            toast({
-                              title: result.success ? '성공' : '알림',
-                              description: result.message,
-                              variant: result.success ? 'default' : 'destructive',
-                            });
-                          }
-                        }}
-                        compact
-                        isPremium={isPremium}
-                        logoUrl={showmelookWatermarkFull}
-                      />
-                      {/* 좋아요 버튼 */}
-                      <button 
-                        onClick={async () => {
-                          const newFavorite = !look.is_favorite;
-                          const { error } = await supabase
-                            .from('generated_looks')
-                            .update({ is_favorite: newFavorite })
-                            .eq('id', look.id);
-                          
-                          if (!error) {
-                            setMyLooks(prev => prev.map(l => 
-                              l.id === look.id ? { ...l, is_favorite: newFavorite } : l
-                            ));
-                            toast({
-                              title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
-                              description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
-                            });
-                          }
-                        }}
-                        className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-                      >
-                        <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          /* My Looks Grid with Infinite Scroll */
+          <MyLooksGallery 
+            myLooks={myLooks}
+            setMyLooks={setMyLooks}
+            setActiveTab={setActiveTab}
+            toast={toast}
+            isPremium={isPremium}
+          />
         ) : (
           /* My Page */
           <div className="max-w-2xl mx-auto">
