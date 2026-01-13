@@ -21,6 +21,15 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isLandingPage = location.pathname === '/';
+  const currentPath = location.pathname;
+  
+  // Helper function for active state styling
+  const isActive = (path: string) => currentPath === path;
+  const getMenuItemClass = (path: string) => `w-full flex items-center gap-3 px-4 py-3 text-left font-korean transition-colors ${
+    isActive(path) 
+      ? 'bg-primary/10 text-primary border-l-2 border-primary' 
+      : 'text-foreground hover:bg-muted'
+  }`;
 
   const handleNavigate = (path: string) => {
     setMobileMenuOpen(false);
@@ -187,38 +196,38 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                           <>
                             <button
                               onClick={() => handleNavigate('/style')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/style')}
                             >
-                              <Sparkles className="w-5 h-5 text-primary" />
+                              <Sparkles className={`w-5 h-5 ${isActive('/style') ? 'text-primary' : 'text-primary'}`} />
                               내 스타일 만들기
                             </button>
                             <button
                               onClick={() => handleNavigate('/style')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/style')}
                             >
-                              <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                              <ImageIcon className={`w-5 h-5 ${isActive('/style') ? 'text-primary' : 'text-muted-foreground'}`} />
                               내 룩 갤러리
                             </button>
                             <button
                               onClick={() => handleNavigate('/cart')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/cart')}
                             >
-                              <ShoppingBag className="w-5 h-5 text-muted-foreground" />
+                              <ShoppingBag className={`w-5 h-5 ${isActive('/cart') ? 'text-primary' : 'text-muted-foreground'}`} />
                               장바구니
                             </button>
                             <button
                               onClick={() => handleNavigate('/mypage')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/mypage')}
                             >
-                              <User className="w-5 h-5 text-muted-foreground" />
+                              <User className={`w-5 h-5 ${isActive('/mypage') ? 'text-primary' : 'text-muted-foreground'}`} />
                               마이페이지
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
                               onClick={() => handleNavigate('/install')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/install')}
                             >
-                              <Download className="w-5 h-5 text-muted-foreground" />
+                              <Download className={`w-5 h-5 ${isActive('/install') ? 'text-primary' : 'text-muted-foreground'}`} />
                               앱 설치
                             </button>
                           </>
@@ -226,24 +235,24 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                           <>
                             <button
                               onClick={() => handleNavigate('/auth')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/auth')}
                             >
-                              <Sparkles className="w-5 h-5 text-primary" />
+                              <Sparkles className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-primary'}`} />
                               시작하기
                             </button>
                             <button
                               onClick={() => handleNavigate('/auth')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/auth')}
                             >
-                              <User className="w-5 h-5 text-muted-foreground" />
+                              <User className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-muted-foreground'}`} />
                               로그인
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
                               onClick={() => handleNavigate('/install')}
-                              className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-foreground hover:bg-muted transition-colors"
+                              className={getMenuItemClass('/install')}
                             >
-                              <Download className="w-5 h-5 text-muted-foreground" />
+                              <Download className={`w-5 h-5 ${isActive('/install') ? 'text-primary' : 'text-muted-foreground'}`} />
                               앱 설치
                             </button>
                           </>
