@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Share, MoreVertical, Plus, Download, Smartphone, Monitor, Apple, Chrome } from 'lucide-react';
+import { Share, MoreVertical, Plus, Download, Smartphone, Monitor, Apple, Chrome } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
-import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import MainNavigation from '@/components/MainNavigation';
 
 type DeviceType = 'ios' | 'android' | 'desktop' | 'unknown';
 
@@ -75,20 +75,10 @@ const Install = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="mr-4">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] sm:h-[80px] object-contain -ml-2" />
-          </button>
-        </div>
-      </header>
+      {/* Header - using shared navigation */}
+      <MainNavigation showBackButton />
 
-      <main className="container mx-auto px-4 sm:px-6 py-8 max-w-2xl">
+      <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-2xl">
         {/* Hero */}
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-brand p-0.5">
