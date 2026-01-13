@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -1372,61 +1372,116 @@ const StyleGenerator = () => {
     fetchData();
   }, [user]);
 
+  // 캐시 참조 (재로딩 방지)
+  const dataFetchedRef = useRef(false);
+  const staticDataLoadedRef = useRef(false);
+
   const fetchData = async () => {
-    // Fetch trends
-    const { data: trendsData } = await supabase
-      .from('style_trends')
-      .select('*')
-      .eq('is_active', true);
+    // 정적 데이터는 한 번만 로드 (trends, products)
+    const shouldFetchStaticData = !staticDataLoadedRef.current;
     
-    if (trendsData) setTrends(trendsData);
-
-    // Fetch dynamic trend keywords from AI analysis
-    fetchTrendKeywords();
-
-    // Fetch products
-    const { data: productsData } = await supabase
-      .from('products')
-      .select('*')
-      .eq('is_active', true);
+    // 병렬 로딩으로 속도 최적화
+    const staticPromises: Promise<any>[] = [];
+    const userPromises: Promise<any>[] = [];
     
-    if (productsData) setProducts(productsData);
-
-    // Fetch user's generated looks and profile
+    // 1. 정적 데이터 (trends, products) - 앱 시작 시 1회만
+    if (shouldFetchStaticData) {
+      staticPromises.push(
+        Promise.resolve(supabase.from('style_trends').select('*').eq('is_active', true)),
+        Promise.resolve(supabase.from('products').select('*').eq('is_active', true))
+      );
+    }
+    
+    // 2. 사용자 데이터 (looks, profile) - 로그인 시
     if (user) {
-      const { data: looksData } = await supabase
-        .from('generated_looks')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      userPromises.push(
+        Promise.resolve(
+          supabase
+            .from('generated_looks')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+        ),
+        Promise.resolve(
+          supabase
+            .from('profiles')
+            .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
+            .eq('user_id', user.id)
+            .single()
+        )
+      );
+    }
+    
+    // 병렬 실행
+    const [staticResults, userResults] = await Promise.all([
+      Promise.all(staticPromises),
+      Promise.all(userPromises)
+    ]);
+    
+    // 정적 데이터 처리
+    if (shouldFetchStaticData && staticResults.length >= 2) {
+      const trendsResult = staticResults[0];
+      const productsResult = staticResults[1];
       
-      // Generate signed URLs for generated looks (bucket is now private)
-      if (looksData) {
-        const looksWithSignedUrls = await Promise.all(
-          looksData.map(async (look) => {
-            // Check if it's a file path (not already a full signed URL)
-            if (look.image_url && !look.image_url.startsWith('http')) {
-              const { data: signedData } = await supabase.storage
-                .from('generated-looks')
-                .createSignedUrl(look.image_url, 3600);
-              return { ...look, image_url: signedData?.signedUrl || look.image_url };
-            }
-            return look;
-          })
-        );
-        setMyLooks(looksWithSignedUrls);
+      if (trendsResult.data) setTrends(trendsResult.data);
+      if (productsResult.data) setProducts(productsResult.data);
+      
+      staticDataLoadedRef.current = true;
+      
+      // AI 트렌드 키워드 (백그라운드, 비동기)
+      fetchTrendKeywords();
+    }
+    
+    // 사용자 데이터 처리
+    if (user && userResults.length >= 2) {
+      const looksResult = userResults[0];
+      const profileResult = userResults[1];
+      
+      // Looks 처리 - Signed URL 배치 생성 (핵심 최적화!)
+      if (looksResult.data && looksResult.data.length > 0) {
+        const looksData = looksResult.data;
+        
+        // 파일 경로만 필터링 (http로 시작하지 않는 것들)
+        const pathsNeedingSigning = looksData
+          .map((look: any, index: number) => ({ index, path: look.image_url }))
+          .filter((item: any) => item.path && !item.path.startsWith('http') && !item.path.startsWith('data:'));
+        
+        let signedUrlMap: Record<number, string> = {};
+        
+        if (pathsNeedingSigning.length > 0) {
+          // 🚀 배치 처리: N번의 API 호출 -> 1번으로 감소!
+          const paths = pathsNeedingSigning.map((item: any) => item.path);
+          const { data: signedData } = await supabase.storage
+            .from('generated-looks')
+            .createSignedUrls(paths, 3600);
+          
+          if (signedData) {
+            pathsNeedingSigning.forEach((item: any, i: number) => {
+              if (signedData[i]?.signedUrl) {
+                signedUrlMap[item.index] = signedData[i].signedUrl;
+              }
+            });
+          }
+        }
+        
+        // Signed URL 적용
+        const looksWithUrls = looksData.map((look: any, index: number) => ({
+          ...look,
+          image_url: signedUrlMap[index] || look.image_url,
+        }));
+        
+        setMyLooks(looksWithUrls);
+      } else {
+        setMyLooks([]);
       }
-
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
-        .eq('user_id', user.id)
-        .single();
       
-      if (profileData) {
-        // Generate signed URL for avatar if it's a file path
+      // Profile 처리
+      if (profileResult.data) {
+        const profileData = profileResult.data;
+        
+        // Avatar Signed URL (단일이라 개별 처리)
         let avatarDisplayUrl = profileData.avatar_url;
-        if (profileData.avatar_url && !profileData.avatar_url.startsWith('http')) {
+        if (profileData.avatar_url && !profileData.avatar_url.startsWith('http') && !profileData.avatar_url.startsWith('data:')) {
           const { data: signedData } = await supabase.storage
             .from('avatars')
             .createSignedUrl(profileData.avatar_url, 3600);
@@ -1455,6 +1510,51 @@ const StyleGenerator = () => {
           setCustomGender(mappedGender);
         }
       }
+    }
+    
+    dataFetchedRef.current = true;
+  };
+  
+  // 룩 목록만 새로고침 (전체 재로딩 없이)
+  const refreshLooksOnly = async () => {
+    if (!user) return;
+    
+    const { data: looksData } = await supabase
+      .from('generated_looks')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    if (looksData && looksData.length > 0) {
+      const pathsNeedingSigning = looksData
+        .map((look, index) => ({ index, path: look.image_url }))
+        .filter(item => item.path && !item.path.startsWith('http') && !item.path.startsWith('data:'));
+      
+      let signedUrlMap: Record<number, string> = {};
+      
+      if (pathsNeedingSigning.length > 0) {
+        const paths = pathsNeedingSigning.map(item => item.path);
+        const { data: signedData } = await supabase.storage
+          .from('generated-looks')
+          .createSignedUrls(paths, 3600);
+        
+        if (signedData) {
+          pathsNeedingSigning.forEach((item, i) => {
+            if (signedData[i]?.signedUrl) {
+              signedUrlMap[item.index] = signedData[i].signedUrl;
+            }
+          });
+        }
+      }
+      
+      const looksWithUrls = looksData.map((look, index) => ({
+        ...look,
+        image_url: signedUrlMap[index] || look.image_url,
+      }));
+      
+      setMyLooks(looksWithUrls);
+    } else {
+      setMyLooks([]);
     }
   };
 
