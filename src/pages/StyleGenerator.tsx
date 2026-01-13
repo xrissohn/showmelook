@@ -60,6 +60,11 @@ interface GeneratedLook {
   image_url: string;
   is_favorite: boolean;
   created_at: string;
+  memo?: string | null;
+  tags?: string[] | null;
+  prompt_used?: string | null;
+  style_trend_id?: string | null;
+  product_ids?: string[] | null;
 }
 
 interface UserProfile {
@@ -866,10 +871,25 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // 다중 선택 모드 상태
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  
+  // 메모/태그 편집 상태
+  const [isEditingMemo, setIsEditingMemo] = useState(false);
+  const [editMemo, setEditMemo] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+  const [isSavingMemo, setIsSavingMemo] = useState(false);
+  
   // 스와이프 제스처 상태
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
+  
+  // 사전 정의된 태그 옵션
+  const tagOptions = ['데일리', '특별한 날', '데이트', '출근룩', '주말', '파티', '여행', '계절감'];
   
   // 필터링된 아이템
   const filteredLooks = showFavoritesOnly 
@@ -897,11 +917,149 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     enabled: preloadItems.length > 0,
   });
   
+  // 다중 선택 토글
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+  
+  // 전체 선택/해제
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredLooks.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredLooks.map(l => l.id)));
+    }
+  };
+  
+  // 선택 모드 종료
+  const exitSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  };
+  
+  // 다중 삭제 핸들러
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    
+    setIsDeleting(true);
+    try {
+      const idsToDelete = Array.from(selectedIds);
+      const looksToDelete = myLooks.filter(l => selectedIds.has(l.id));
+      
+      // 스토리지에서 이미지 삭제
+      const pathsToDelete = looksToDelete
+        .filter(l => l.image_url && !l.image_url.startsWith('http') && !l.image_url.startsWith('data:'))
+        .map(l => l.image_url);
+      
+      if (pathsToDelete.length > 0) {
+        await supabase.storage.from('generated-looks').remove(pathsToDelete);
+      }
+      
+      // DB에서 삭제
+      const { error } = await supabase
+        .from('generated_looks')
+        .delete()
+        .in('id', idsToDelete);
+      
+      if (error) throw error;
+      
+      // 로컬 상태 업데이트
+      setMyLooks(prev => prev.filter(l => !selectedIds.has(l.id)));
+      
+      toast({
+        title: '삭제 완료',
+        description: `${idsToDelete.length}개의 룩이 삭제되었습니다.`,
+      });
+      
+      setShowBulkDeleteConfirm(false);
+      exitSelectMode();
+    } catch (error: any) {
+      console.error('Bulk delete error:', error);
+      toast({
+        title: '삭제 실패',
+        description: error.message || '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+  
+  // 메모/태그 편집 시작
+  const startEditingMemo = () => {
+    if (!selectedLook) return;
+    setEditMemo(selectedLook.memo || '');
+    setEditTags(selectedLook.tags || []);
+    setIsEditingMemo(true);
+  };
+  
+  // 태그 추가
+  const addTag = (tag: string) => {
+    const trimmedTag = tag.trim();
+    if (trimmedTag && !editTags.includes(trimmedTag)) {
+      setEditTags([...editTags, trimmedTag]);
+    }
+    setNewTag('');
+  };
+  
+  // 태그 제거
+  const removeTag = (tagToRemove: string) => {
+    setEditTags(editTags.filter(t => t !== tagToRemove));
+  };
+  
+  // 메모/태그 저장
+  const saveMemoAndTags = async () => {
+    if (!selectedLook) return;
+    
+    setIsSavingMemo(true);
+    try {
+      const { error } = await supabase
+        .from('generated_looks')
+        .update({ 
+          memo: editMemo.trim() || null, 
+          tags: editTags.length > 0 ? editTags : null 
+        })
+        .eq('id', selectedLook.id);
+      
+      if (error) throw error;
+      
+      // 로컬 상태 업데이트
+      const updatedLook = { ...selectedLook, memo: editMemo.trim() || null, tags: editTags.length > 0 ? editTags : null };
+      setMyLooks(prev => prev.map(l => l.id === selectedLook.id ? updatedLook : l));
+      setSelectedLook(updatedLook);
+      
+      toast({
+        title: '저장 완료',
+        description: '메모와 태그가 저장되었습니다.',
+      });
+      
+      setIsEditingMemo(false);
+    } catch (error: any) {
+      console.error('Save memo error:', error);
+      toast({
+        title: '저장 실패',
+        description: error.message || '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingMemo(false);
+    }
+  };
+  
   // 모달에서 이전/다음 이동
   const goToPrevious = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1);
       setSelectedLook(filteredLooks[currentIndex - 1]);
+      setIsEditingMemo(false);
     }
   }, [currentIndex, filteredLooks]);
   
@@ -909,6 +1067,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     if (currentIndex < filteredLooks.length - 1) {
       setCurrentIndex(currentIndex + 1);
       setSelectedLook(filteredLooks[currentIndex + 1]);
+      setIsEditingMemo(false);
     }
   }, [currentIndex, filteredLooks]);
   
@@ -944,10 +1103,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     if (!selectedLook) return;
     
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditingMemo) return; // 편집 중일 때는 키보드 네비게이션 비활성화
       if (e.key === 'ArrowLeft') goToPrevious();
       if (e.key === 'ArrowRight') goToNext();
       if (e.key === 'Escape') {
-        if (showDeleteConfirm) {
+        if (isEditingMemo) {
+          setIsEditingMemo(false);
+        } else if (showDeleteConfirm) {
           setShowDeleteConfirm(false);
         } else {
           setSelectedLook(null);
@@ -957,12 +1119,17 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedLook, currentIndex, filteredLooks.length, showDeleteConfirm, goToPrevious, goToNext]);
+  }, [selectedLook, currentIndex, filteredLooks.length, showDeleteConfirm, isEditingMemo, goToPrevious, goToNext]);
   
   // 룩 클릭 핸들러
   const handleLookClick = (look: GeneratedLook, index: number) => {
-    setSelectedLook(look);
-    setCurrentIndex(index);
+    if (isSelectMode) {
+      toggleSelect(look.id);
+    } else {
+      setSelectedLook(look);
+      setCurrentIndex(index);
+      setIsEditingMemo(false);
+    }
   };
   
   // 룩 삭제 핸들러
@@ -1049,32 +1216,79 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
 
   return (
     <div>
-      {/* 필터 및 개수 표시 */}
-      <div className="flex justify-between items-center mb-4">
-        <p className="text-sm text-muted-foreground font-korean">
-          {visibleItems.length} / {filteredLooks.length}개 표시
-          {showFavoritesOnly && ` (즐겨찾기)`}
-        </p>
+      {/* 필터 및 다중 선택 모드 */}
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted-foreground font-korean">
+            {isSelectMode ? `${selectedIds.size}개 선택됨` : `${visibleItems.length} / ${filteredLooks.length}개`}
+            {showFavoritesOnly && !isSelectMode && ` (즐겨찾기)`}
+          </p>
+        </div>
         
-        {/* 필터 버튼 */}
-        <Button
-          variant={showFavoritesOnly ? "default" : "outline"}
-          size="sm"
-          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-          className="flex items-center gap-2"
-        >
-          <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
-          <span className="font-korean">즐겨찾기</span>
-          {favoriteCount > 0 && (
-            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-              showFavoritesOnly 
-                ? 'bg-primary-foreground/20 text-primary-foreground' 
-                : 'bg-accent text-accent-foreground'
-            }`}>
-              {favoriteCount}
-            </span>
+        <div className="flex items-center gap-2">
+          {/* 다중 선택 모드 */}
+          {isSelectMode ? (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleSelectAll}
+                className="font-korean text-xs"
+              >
+                {selectedIds.size === filteredLooks.length ? '전체 해제' : '전체 선택'}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                disabled={selectedIds.size === 0}
+                className="font-korean text-xs"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                {selectedIds.size}개 삭제
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exitSelectMode}
+                className="font-korean text-xs"
+              >
+                취소
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSelectMode(true)}
+                className="font-korean text-xs"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                선택
+              </Button>
+              {/* 필터 버튼 */}
+              <Button
+                variant={showFavoritesOnly ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                className="flex items-center gap-1"
+              >
+                <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+                <span className="font-korean hidden sm:inline">즐겨찾기</span>
+                {favoriteCount > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    showFavoritesOnly 
+                      ? 'bg-primary-foreground/20 text-primary-foreground' 
+                      : 'bg-accent text-accent-foreground'
+                  }`}>
+                    {favoriteCount}
+                  </span>
+                )}
+              </Button>
+            </>
           )}
-        </Button>
+        </div>
       </div>
       
       {/* 필터 결과 없음 */}
@@ -1098,7 +1312,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
           {visibleItems.map((look, index) => (
             <div
               key={look.id}
-              className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group cursor-pointer"
+              className={`aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group cursor-pointer transition-all duration-200 ${
+                isSelectMode && selectedIds.has(look.id) ? 'ring-4 ring-accent ring-offset-2 ring-offset-background' : ''
+              }`}
               onClick={() => handleLookClick(look, index)}
             >
               <LazyImage
@@ -1108,51 +1324,84 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                 fallbackClassName="w-full h-full"
               />
               
+              {/* 다중 선택 체크박스 */}
+              {isSelectMode && (
+                <div className="absolute top-3 right-3 z-10">
+                  <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    selectedIds.has(look.id) 
+                      ? 'bg-accent border-accent' 
+                      : 'bg-background/80 border-border'
+                  }`}>
+                    {selectedIds.has(look.id) && <Check className="w-4 h-4 text-accent-foreground" />}
+                  </div>
+                </div>
+              )}
+              
               {/* 즐겨찾기 표시 (항상 보임) */}
-              {look.is_favorite && (
+              {look.is_favorite && !isSelectMode && (
                 <div className="absolute top-3 left-3">
                   <Heart className="w-5 h-5 fill-accent text-accent drop-shadow-md" />
                 </div>
               )}
               
-              {/* 호버시 오버레이 */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-              
-              {/* 하단 날짜 */}
-              <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                <p className="text-sm text-white/90 font-korean">
-                  {new Date(look.created_at).toLocaleDateString('ko-KR')}
-                </p>
-              </div>
-              
-              {/* 상단 버튼들 */}
-              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                {/* 저장/공유 버튼 */}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <ShareButtons 
-                    imageUrl={look.image_url} 
-                    onShare={(platform, result) => {
-                      if (result.message) {
-                        toast({
-                          title: result.success ? '성공' : '알림',
-                          description: result.message,
-                          variant: result.success ? 'default' : 'destructive',
-                        });
-                      }
-                    }}
-                    compact
-                    isPremium={isPremium}
-                    logoUrl={showmelookWatermarkFull}
-                  />
+              {/* 태그 표시 */}
+              {look.tags && look.tags.length > 0 && !isSelectMode && (
+                <div className="absolute bottom-3 left-3 right-3 flex flex-wrap gap-1">
+                  {look.tags.slice(0, 2).map((tag, i) => (
+                    <span key={i} className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+                      {tag}
+                    </span>
+                  ))}
+                  {look.tags.length > 2 && (
+                    <span className="text-xs bg-black/60 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+                      +{look.tags.length - 2}
+                    </span>
+                  )}
                 </div>
-                {/* 좋아요 버튼 */}
-                <button 
-                  onClick={(e) => toggleFavorite(look, e)}
-                  className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-                >
-                  <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
-                </button>
-              </div>
+              )}
+              
+              {/* 호버시 오버레이 - 선택 모드가 아닐 때만 */}
+              {!isSelectMode && (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                  
+                  {/* 하단 날짜 */}
+                  <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <p className="text-sm text-white/90 font-korean">
+                      {new Date(look.created_at).toLocaleDateString('ko-KR')}
+                    </p>
+                  </div>
+                  
+                  {/* 상단 버튼들 */}
+                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    {/* 저장/공유 버튼 */}
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ShareButtons 
+                        imageUrl={look.image_url} 
+                        onShare={(platform, result) => {
+                          if (result.message) {
+                            toast({
+                              title: result.success ? '성공' : '알림',
+                              description: result.message,
+                              variant: result.success ? 'default' : 'destructive',
+                            });
+                          }
+                        }}
+                        compact
+                        isPremium={isPremium}
+                        logoUrl={showmelookWatermarkFull}
+                      />
+                    </div>
+                    {/* 좋아요 버튼 */}
+                    <button 
+                      onClick={(e) => toggleFavorite(look, e)}
+                      className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+                    >
+                      <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -1233,7 +1482,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
             <img 
               src={selectedLook.image_url} 
               alt="Generated look" 
-              className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-2xl select-none"
+              className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
               draggable={false}
             />
             
@@ -1242,54 +1491,159 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
               <p className="text-white/40 text-xs font-korean">← 스와이프하여 탐색 →</p>
             </div>
             
-            {/* 하단 정보 및 액션 */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-4 px-4">
-              <p className="text-white/80 text-sm font-korean">
-                {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </p>
-              
-              <span className="text-white/40 hidden sm:inline">•</span>
-              
-              <p className="text-white/60 text-sm">
-                {currentIndex + 1} / {filteredLooks.length}
-              </p>
-              
-              <span className="text-white/40 hidden sm:inline">•</span>
-              
-              {/* 즐겨찾기 버튼 */}
-              <button 
-                onClick={() => toggleFavorite(selectedLook)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              >
-                <Heart className={`w-4 h-4 ${selectedLook.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
-                <span className="text-white text-sm font-korean hidden sm:inline">
-                  {selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
-                </span>
-              </button>
-              
-              {/* 공유 버튼 */}
-              <div className="flex items-center gap-2">
-                <ShareButtons 
-                  imageUrl={selectedLook.image_url} 
-                  onShare={(platform, result) => {
-                    if (result.message) {
-                      toast({
-                        title: result.success ? '성공' : '알림',
-                        description: result.message,
-                        variant: result.success ? 'default' : 'destructive',
-                      });
-                    }
-                  }}
-                  isPremium={isPremium}
-                  logoUrl={showmelookWatermarkFull}
-                  compact
-                />
+            {/* 메모/태그 영역 */}
+            {isEditingMemo ? (
+              <div className="mt-4 w-full max-w-md bg-card rounded-xl p-4 space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground font-korean mb-2 block">메모</label>
+                  <Textarea
+                    value={editMemo}
+                    onChange={(e) => setEditMemo(e.target.value)}
+                    placeholder="이 룩에 대한 메모를 입력하세요..."
+                    className="resize-none h-20 font-korean"
+                    maxLength={200}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1 text-right">{editMemo.length}/200</p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-foreground font-korean mb-2 block">태그</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {editTags.map((tag, i) => (
+                      <span 
+                        key={i} 
+                        className="inline-flex items-center gap-1 text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full"
+                      >
+                        {tag}
+                        <button onClick={() => removeTag(tag)} className="hover:text-red-500">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))}
+                      placeholder="태그 입력..."
+                      className="flex-1 h-8 text-sm"
+                      maxLength={20}
+                    />
+                    <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
+                      추가
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {tagOptions.filter(t => !editTags.includes(t)).map((tag) => (
+                      <button
+                        key={tag}
+                        onClick={() => addTag(tag)}
+                        className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/80 transition-colors font-korean"
+                      >
+                        + {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1 font-korean" 
+                    onClick={() => setIsEditingMemo(false)}
+                  >
+                    취소
+                  </Button>
+                  <Button 
+                    className="flex-1 font-korean" 
+                    onClick={saveMemoAndTags}
+                    disabled={isSavingMemo}
+                  >
+                    {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                    저장
+                  </Button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* 태그/메모 표시 */}
+                {(selectedLook.tags?.length || selectedLook.memo) && (
+                  <div className="mt-3 text-center max-w-md">
+                    {selectedLook.tags && selectedLook.tags.length > 0 && (
+                      <div className="flex flex-wrap justify-center gap-1 mb-2">
+                        {selectedLook.tags.map((tag, i) => (
+                          <span key={i} className="text-xs bg-accent/80 text-accent-foreground px-2 py-0.5 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {selectedLook.memo && (
+                      <p className="text-white/70 text-sm font-korean line-clamp-2">"{selectedLook.memo}"</p>
+                    )}
+                  </div>
+                )}
+                
+                {/* 하단 정보 및 액션 */}
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-4">
+                  <p className="text-white/80 text-sm font-korean">
+                    {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  
+                  <span className="text-white/40">•</span>
+                  
+                  <p className="text-white/60 text-sm">
+                    {currentIndex + 1} / {filteredLooks.length}
+                  </p>
+                  
+                  <span className="text-white/40 hidden sm:inline">•</span>
+                  
+                  {/* 메모/태그 편집 버튼 */}
+                  <button 
+                    onClick={startEditingMemo}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                  >
+                    <Tag className="w-4 h-4 text-white" />
+                    <span className="text-white text-sm font-korean hidden sm:inline">
+                      {selectedLook.memo || selectedLook.tags?.length ? '편집' : '메모/태그'}
+                    </span>
+                  </button>
+                  
+                  {/* 즐겨찾기 버튼 */}
+                  <button 
+                    onClick={() => toggleFavorite(selectedLook)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                  >
+                    <Heart className={`w-4 h-4 ${selectedLook.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
+                    <span className="text-white text-sm font-korean hidden sm:inline">
+                      {selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
+                    </span>
+                  </button>
+                  
+                  {/* 공유 버튼 */}
+                  <ShareButtons 
+                    imageUrl={selectedLook.image_url} 
+                    onShare={(platform, result) => {
+                      if (result.message) {
+                        toast({
+                          title: result.success ? '성공' : '알림',
+                          description: result.message,
+                          variant: result.success ? 'default' : 'destructive',
+                        });
+                      }
+                    }}
+                    isPremium={isPremium}
+                    logoUrl={showmelookWatermarkFull}
+                    compact
+                  />
+                </div>
+              </>
+            )}
           </div>
           
           {/* 삭제 확인 모달 */}
@@ -1337,6 +1691,55 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
               </div>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* 다중 삭제 확인 모달 */}
+      {showBulkDeleteConfirm && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setShowBulkDeleteConfirm(false)}
+        >
+          <div 
+            className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-center font-korean mb-2">
+              {selectedIds.size}개 룩 삭제
+            </h3>
+            <p className="text-sm text-muted-foreground text-center font-korean mb-6">
+              선택한 {selectedIds.size}개의 룩을 삭제하시겠습니까?<br/>
+              삭제된 룩은 복구할 수 없습니다.
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1 font-korean"
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                취소
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 font-korean"
+                onClick={handleBulkDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    삭제 중...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {selectedIds.size}개 삭제
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
