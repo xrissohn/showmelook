@@ -1955,10 +1955,35 @@ const StyleGenerator = () => {
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
             <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] sm:h-[90px] object-contain -ml-2 sm:-ml-3" />
           </button>
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* 내 룩 버튼 with Badge */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setActiveTab('mylooks')} 
+              className={`p-2 relative ${activeTab === 'mylooks' ? 'text-accent bg-accent/10' : ''}`}
+            >
+              <Heart className={`w-5 h-5 ${activeTab === 'mylooks' ? 'fill-accent' : ''}`} />
+              {myLooks.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {myLooks.length > 99 ? '99+' : myLooks.length}
+                </span>
+              )}
+            </Button>
+            {/* 마이페이지 버튼 */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setActiveTab('mypage')} 
+              className={`p-2 ${activeTab === 'mypage' ? 'text-accent bg-accent/10' : ''}`}
+            >
+              <User className={`w-5 h-5 ${activeTab === 'mypage' ? 'fill-accent' : ''}`} />
+            </Button>
+            {/* 장바구니 */}
             <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2">
               <ShoppingBag className="w-5 h-5" />
             </Button>
+            {/* 로그아웃 */}
             <Button variant="ghost" size="sm" onClick={handleSignOut} className="p-2">
               <LogOut className="w-5 h-5" />
             </Button>
@@ -1967,41 +1992,6 @@ const StyleGenerator = () => {
       </header>
 
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        {/* Tabs - Mobile optimized with horizontal scroll */}
-        <div className="flex gap-1 sm:gap-4 mb-6 sm:mb-8 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
-          <button
-            onClick={() => setActiveTab('generate')}
-            className={`px-3 sm:px-4 py-2 font-medium font-korean transition-colors whitespace-nowrap text-sm sm:text-base ${
-              activeTab === 'generate'
-                ? 'text-foreground border-b-2 border-accent'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            스타일 생성
-          </button>
-          <button
-            onClick={() => setActiveTab('mylooks')}
-            className={`px-3 sm:px-4 py-2 font-medium font-korean transition-colors whitespace-nowrap text-sm sm:text-base ${
-              activeTab === 'mylooks'
-                ? 'text-foreground border-b-2 border-accent'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            내 룩 ({myLooks.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('mypage')}
-            className={`px-3 sm:px-4 py-2 font-medium font-korean transition-colors whitespace-nowrap text-sm sm:text-base flex items-center ${
-              activeTab === 'mypage'
-                ? 'text-foreground border-b-2 border-accent'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <User className="w-4 h-4 mr-1" />
-            마이페이지
-          </button>
-        </div>
-
         {activeTab === 'generate' ? (
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Left: Selection */}
