@@ -2993,9 +2993,9 @@ const StyleGenerator = () => {
         }
       />
 
-      <div className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8">
+      <div className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8 max-w-full overflow-x-hidden">
         {activeTab === 'generate' ? (
-          <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full">
             {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
             <div className="space-y-4 sm:space-y-6 order-2 lg:order-1">
               {/* 스타일 입력 - 모바일에서 접을 수 있는 아코디언 */}
@@ -3606,91 +3606,92 @@ const StyleGenerator = () => {
             </div>
 
             {/* Right: Generated Result - order-1 on mobile (shows first), order-2 on desktop */}
-            <div className="lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden">
+            {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
+            <div className={`lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}>
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
-              <div className="w-full aspect-[3/4] sm:aspect-[3/4] lg:aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none">
-                {isGenerating ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
-                    {/* 메인 로고 애니메이션 */}
-                    <div className="relative">
-                      {/* 펄스 링 애니메이션 */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-32 h-32 rounded-full border-2 border-accent/30 animate-ping" style={{ animationDuration: '2s' }} />
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-24 h-24 rounded-full border-2 border-primary/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+              <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
+                  {isGenerating ? (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
+                      {/* 메인 로고 애니메이션 */}
+                      <div className="relative">
+                        {/* 펄스 링 애니메이션 */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-full border-2 border-accent/30 animate-ping" style={{ animationDuration: '2s' }} />
+                        </div>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-20 sm:w-24 h-20 sm:h-24 rounded-full border-2 border-primary/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+                        </div>
+                        
+                        {/* 회전하는 그라데이션 링 */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div 
+                            className="w-22 sm:w-28 h-22 sm:h-28 rounded-full"
+                            style={{
+                              background: 'conic-gradient(from 0deg, transparent, hsl(var(--accent)), transparent)',
+                              animation: 'spin 2s linear infinite',
+                            }}
+                          />
+                        </div>
+                        
+                        {/* 회전하는 로고 컨테이너 */}
+                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-xl border border-accent/20">
+                          <img 
+                            src={showmelookLogo} 
+                            alt="" 
+                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain animate-spin"
+                            style={{ animationDuration: '3s' }}
+                          />
+                        </div>
                       </div>
                       
-                      {/* 회전하는 그라데이션 링 */}
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div 
-                          className="w-28 h-28 rounded-full"
-                          style={{
-                            background: 'conic-gradient(from 0deg, transparent, hsl(var(--accent)), transparent)',
-                            animation: 'spin 2s linear infinite',
-                          }}
-                        />
+                      {/* 로딩 텍스트 */}
+                      <div className="mt-6 sm:mt-8 text-center px-4">
+                        <p className="text-base sm:text-lg font-medium text-foreground font-korean animate-pulse">
+                          AI가 스타일을 생성중...
+                        </p>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-2 font-korean">
+                          잠시만 기다려주세요 ✨
+                        </p>
                       </div>
                       
-                      {/* 회전하는 로고 컨테이너 */}
-                      <div className="relative w-20 h-20 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-xl border border-accent/20">
-                        <img 
-                          src={showmelookLogo} 
-                          alt="" 
-                          className="w-12 h-12 object-contain animate-spin"
-                          style={{ animationDuration: '3s' }}
-                        />
+                      {/* 하단 도트 애니메이션 */}
+                      <div className="flex gap-2 mt-4 sm:mt-6">
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-accent"
+                            style={{
+                              animation: 'bounce 1s ease-in-out infinite',
+                              animationDelay: `${i * 0.15}s`,
+                            }}
+                          />
+                        ))}
                       </div>
                     </div>
-                    
-                    {/* 로딩 텍스트 */}
-                    <div className="mt-8 text-center">
-                      <p className="text-lg font-medium text-foreground font-korean animate-pulse">
-                        AI가 스타일을 생성중...
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-2 font-korean">
-                        잠시만 기다려주세요 ✨
-                      </p>
+                  ) : generatedImage ? (
+                    <GeneratedStyleImage
+                      src={generatedImage}
+                      alt="Generated style"
+                      logoSrc={showmelookWatermarkFull}
+                      isPremium={isPremium}
+                      onShare={(platform, result) => {
+                        if (result.message) {
+                          toast({
+                            title: result.success ? '성공' : '알림',
+                            description: result.message,
+                            variant: result.success ? 'default' : 'destructive',
+                          });
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                      <img src={showmelookLogo} alt="" className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 opacity-50" />
+                      <p className="text-base sm:text-lg font-medium font-korean">AI 스타일 미리보기</p>
+                      <p className="text-xs sm:text-sm mt-2 font-korean">트렌드와 아이템을 선택하고 생성하세요</p>
                     </div>
-                    
-                    {/* 하단 도트 애니메이션 */}
-                    <div className="flex gap-2 mt-6">
-                      {[0, 1, 2].map((i) => (
-                        <div
-                          key={i}
-                          className="w-2.5 h-2.5 rounded-full bg-accent"
-                          style={{
-                            animation: 'bounce 1s ease-in-out infinite',
-                            animationDelay: `${i * 0.15}s`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ) : generatedImage ? (
-                  <GeneratedStyleImage
-                    src={generatedImage}
-                    alt="Generated style"
-                    logoSrc={showmelookWatermarkFull}
-                    isPremium={isPremium}
-                    onShare={(platform, result) => {
-                      if (result.message) {
-                        toast({
-                          title: result.success ? '성공' : '알림',
-                          description: result.message,
-                          variant: result.success ? 'default' : 'destructive',
-                        });
-                      }
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                    <img src={showmelookLogo} alt="" className="w-16 h-16 mb-4 opacity-50" />
-                    <p className="text-lg font-medium font-korean">AI 스타일 미리보기</p>
-                    <p className="text-sm mt-2 font-korean">트렌드와 아이템을 선택하고 생성하세요</p>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
               {/* 선택된 트렌드 상품 구매하기 */}
               {selectedTrendProducts.length > 0 && (
