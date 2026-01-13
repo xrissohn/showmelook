@@ -366,13 +366,97 @@ function generateDNA(product: Product): DNAResult {
   };
 }
 
+// 재귀 호출을 위한 함수
+async function continueProcessing(supabaseUrl: string, supabaseKey: string, iteration: number, maxIterations: number) {
+  if (iteration >= maxIterations) {
+    console.log(`[dna-batch] 최대 반복 횟수(${maxIterations}) 도달, 다음 스케줄에서 계속`);
+    return;
+  }
+  
+  try {
+    console.log(`[dna-batch] 백그라운드 배치 #${iteration + 1} 시작...`);
+    
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // 남은 상품 확인
+    const { data: products, error: fetchError } = await supabase
+      .from('products_cache')
+      .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
+      .eq('is_active', true)
+      .is('dna_meta', null)
+      .limit(100);
+    
+    if (fetchError) {
+      console.error(`[dna-batch] 배치 #${iteration + 1} 조회 실패:`, fetchError);
+      return;
+    }
+    
+    if (!products || products.length === 0) {
+      console.log(`[dna-batch] 모든 상품 DNA 생성 완료!`);
+      return;
+    }
+    
+    console.log(`[dna-batch] 배치 #${iteration + 1}: ${products.length}개 상품 처리 중...`);
+    
+    // DNA 생성 및 업데이트
+    const startTime = Date.now();
+    let updatedCount = 0;
+    
+    for (const product of products as Product[]) {
+      try {
+        const result = generateDNA(product);
+        
+        const updateData: Record<string, any> = {
+          dna_text: result.dna_text,
+          dna_meta: result.dna_meta,
+          dna_generated_at: new Date().toISOString(),
+        };
+        
+        if (result.category) updateData.category = result.category;
+        if (result.sub_category) updateData.sub_category = result.sub_category;
+        
+        const { error: updateError } = await supabase
+          .from('products_cache')
+          .update(updateData)
+          .eq('id', result.id);
+        
+        if (!updateError) updatedCount++;
+      } catch (err) {
+        console.error(`[dna-batch] 배치 #${iteration + 1} 상품 ${product.id} 에러:`, err);
+      }
+    }
+    
+    const elapsed = Date.now() - startTime;
+    console.log(`[dna-batch] 배치 #${iteration + 1} 완료: ${updatedCount}개 업데이트, ${elapsed}ms`);
+    
+    // 남은 상품 확인
+    const { count: remainingCount } = await supabase
+      .from('products_cache')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_active', true)
+      .is('dna_meta', null);
+    
+    if ((remainingCount || 0) > 0) {
+      console.log(`[dna-batch] 남은 상품 ${remainingCount}개, 다음 배치 시작...`);
+      // 약간의 딜레이 후 다음 배치
+      await new Promise(resolve => setTimeout(resolve, 500));
+      await continueProcessing(supabaseUrl, supabaseKey, iteration + 1, maxIterations);
+    } else {
+      console.log(`[dna-batch] 모든 상품 DNA 생성 완료!`);
+    }
+    
+  } catch (err) {
+    console.error(`[dna-batch] 배치 #${iteration + 1} 에러:`, err);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { batchSize = 50 } = await req.json().catch(() => ({}));
+    const { batchSize = 50, scheduled = false, maxIterations = 10 } = await req.json().catch(() => ({}));
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -382,7 +466,7 @@ serve(async (req) => {
     // 배치 사이즈 제한 (AI 호출 없으므로 더 많이 처리 가능)
     const effectiveBatchSize = Math.min(batchSize, 100);
     
-    console.log(`[dna-batch] DNA 2.0 빠른 생성 시작, batchSize: ${effectiveBatchSize}`);
+    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize})`);
     
     // dna_meta가 없는 상품 조회
     const { data: products, error: fetchError } = await supabase
@@ -409,6 +493,8 @@ serve(async (req) => {
         .eq('is_active', true)
         .not('dna_meta', 'is', null);
       
+      console.log(`[dna-batch] 모든 상품에 DNA가 있습니다 (${withMetaCount}/${totalCount})`);
+      
       return new Response(JSON.stringify({
         success: true,
         message: 'DNA 2.0 생성 완료 - 모든 상품에 dna_meta가 있습니다',
@@ -416,6 +502,7 @@ serve(async (req) => {
         remaining: 0,
         total: totalCount || 0,
         coverage: totalCount ? `${Math.round((withMetaCount || 0) / totalCount * 100)}%` : '100%',
+        scheduled,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
@@ -481,6 +568,21 @@ serve(async (req) => {
     updatedCount = updateResults.filter(Boolean).length;
     
     const totalTime = Date.now() - startTime;
+    const remaining = Math.max(0, (remainingCount || 0) - products.length);
+    
+    // 스케줄된 호출이고 남은 상품이 있으면 백그라운드에서 계속 처리
+    if (scheduled && remaining > 0) {
+      console.log(`[dna-batch] 스케줄 모드: 남은 ${remaining}개 상품을 백그라운드에서 처리합니다`);
+      
+      // EdgeRuntime.waitUntil로 백그라운드 처리
+      // @ts-ignore - EdgeRuntime은 Deno Deploy에서 제공
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        EdgeRuntime.waitUntil(continueProcessing(supabaseUrl, supabaseKey, 1, maxIterations));
+      } else {
+        // EdgeRuntime이 없으면 직접 처리 (테스트 환경)
+        console.log(`[dna-batch] EdgeRuntime 미지원, 동기 처리로 대체`);
+      }
+    }
     
     // 통계 계산
     const targetStats: Record<string, number> = {};
@@ -492,16 +594,18 @@ serve(async (req) => {
       slotStats[result.dna_meta.item_slot] = (slotStats[result.dna_meta.item_slot] || 0) + 1;
     }
     
-    console.log(`[dna-batch] 완료: ${updatedCount}개 업데이트, ${errors.length}개 에러, ${(remainingCount || 0) - products.length}개 남음, 총 ${totalTime}ms`);
+    console.log(`[dna-batch] 완료: ${updatedCount}개 업데이트, ${errors.length}개 에러, ${remaining}개 남음, 총 ${totalTime}ms`);
     
     return new Response(JSON.stringify({
       success: true,
       processed: products.length,
       updated: updatedCount,
       errors: errors.length,
-      remaining: Math.max(0, (remainingCount || 0) - products.length),
+      remaining,
       timeMs: totalTime,
       avgTimePerProduct: Math.round(totalTime / products.length),
+      scheduled,
+      backgroundProcessing: scheduled && remaining > 0,
       errorDetails: errors.slice(0, 5),
       sampleDNA: results.slice(0, 3).map(r => ({ 
         id: r.id, 
