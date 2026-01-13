@@ -13,6 +13,7 @@ import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 import useEmblaCarousel from 'embla-carousel-react';
 interface StyleTrend {
@@ -1950,9 +1951,9 @@ const StyleGenerator = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-            <span className="font-bold text-lg sm:text-xl text-primary">ShowMeLook</span>
+            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] sm:h-[90px] object-contain -ml-2 sm:-ml-3" />
           </button>
           <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2">
