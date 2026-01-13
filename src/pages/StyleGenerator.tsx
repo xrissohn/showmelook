@@ -253,8 +253,8 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
       logo.crossOrigin = 'anonymous';
       
       logo.onload = () => {
-        // 워터마크 크기 계산 (이미지 너비의 30%)
-        const watermarkWidth = img.width * 0.30;
+        // 워터마크 크기 계산 (이미지 너비의 45% - 1.5배 증가)
+        const watermarkWidth = img.width * 0.45;
         const watermarkHeight = (logo.height / logo.width) * watermarkWidth;
         
         // URL 폰트 크기 (크게)
@@ -264,8 +264,8 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<s
         const gap = 15;
         const totalHeight = watermarkHeight + gap + urlFontSize;
         
-        // 정중앙 위치
-        const startY = (img.height - totalHeight) / 2;
+        // 상단 1/3 지점에 위치 (세로 중심이 1/3 지점에 오도록)
+        const startY = (img.height / 3) - (totalHeight / 2);
         const logoX = (img.width - watermarkWidth) / 2;
         
         // 메인 로고 그리기 (투명도 0.5)
