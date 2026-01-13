@@ -272,19 +272,16 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string, koreanLogo
           const urlFontSize = Math.max(15, img.width * 0.027);
           
           // 전체 워터마크 높이 계산 (한글로고 + 로고 + 영문 + URL)
-          const gap = 12;
-          const totalHeight = (hasKoreanLogo ? koreanLogoHeight + gap : 0) + watermarkHeight + fontSize + urlFontSize + 45;
+          const gap = 8; // 한글 로고와 메인 로고 사이 간격 줄임
+          const textGap = 8; // 텍스트 간격
+          const totalHeight = (hasKoreanLogo ? koreanLogoHeight + gap : 0) + watermarkHeight + fontSize + urlFontSize + textGap * 2;
           
-          // 정중앙 위치 (전체 높이 기준)
-          const startY = (img.height - totalHeight) / 2;
+          // 한글 로고 바로 아래에 위치하도록 조정 (위쪽으로 이동)
+          const startY = (img.height - totalHeight) / 2 - img.height * 0.08; // 위로 8% 이동
           const mainLogoY = startY + (hasKoreanLogo ? koreanLogoHeight + gap : 0);
           const mainLogoX = (img.width - watermarkWidth) / 2;
           
-          // 더 여린 반투명 배경 원 (투명도 0.25) - 위치 조정
-          ctx.beginPath();
-          ctx.arc(img.width / 2, startY + totalHeight / 2, watermarkWidth / 2 + 50, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-          ctx.fill();
+          // 배경 원 제거됨
           
           // 한글 로고 그리기 (로고 위)
           if (hasKoreanLogo) {
@@ -299,16 +296,16 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string, koreanLogo
           ctx.drawImage(logo, mainLogoX, mainLogoY, watermarkWidth, watermarkHeight);
           ctx.globalAlpha = 1.0;
           
-          // 영문 "ShowMeLook" 텍스트 (로고 아래)
+          // 영문 "ShowMeLook" 텍스트 (로고 바로 아래)
           ctx.font = `bold ${fontSize}px sans-serif`;
           ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
           ctx.textAlign = 'center';
-          ctx.fillText('ShowMeLook', img.width / 2, mainLogoY + watermarkHeight + fontSize + 15);
+          ctx.fillText('ShowMeLook', img.width / 2, mainLogoY + watermarkHeight + fontSize + textGap);
           
-          // URL 추가
+          // URL 추가 (ShowMeLook 바로 아래)
           ctx.font = `${urlFontSize}px sans-serif`;
           ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.fillText('showmelook.com', img.width / 2, mainLogoY + watermarkHeight + fontSize + urlFontSize + 28);
+          ctx.fillText('showmelook.com', img.width / 2, mainLogoY + watermarkHeight + fontSize + urlFontSize + textGap * 2 + 4);
           
           // Blob으로 변환
           canvas.toBlob((blob) => {
