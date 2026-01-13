@@ -3626,60 +3626,116 @@ const StyleGenerator = () => {
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
                   {isGenerating ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden">
+                      {/* 배경 파티클 효과 */}
+                      <div className="absolute inset-0 overflow-hidden">
+                        {[...Array(12)].map((_, i) => (
+                          <div
+                            key={i}
+                            className="absolute w-2 h-2 rounded-full bg-accent/20"
+                            style={{
+                              left: `${Math.random() * 100}%`,
+                              top: `${Math.random() * 100}%`,
+                              animation: `float ${3 + Math.random() * 2}s ease-in-out infinite`,
+                              animationDelay: `${Math.random() * 2}s`,
+                            }}
+                          />
+                        ))}
+                      </div>
+                      
                       {/* 메인 로고 애니메이션 */}
-                      <div className="relative">
-                        {/* 펄스 링 애니메이션 */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-full border-2 border-accent/30 animate-ping" style={{ animationDuration: '2s' }} />
+                      <div className="relative z-10">
+                        {/* 외부 회전 링 */}
+                        <div className="absolute inset-[-20px] sm:inset-[-24px] flex items-center justify-center">
+                          <div 
+                            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-2 border-dashed border-accent/40"
+                            style={{ animation: 'spin 8s linear infinite' }}
+                          />
                         </div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-20 sm:w-24 h-20 sm:h-24 rounded-full border-2 border-primary/40 animate-ping" style={{ animationDuration: '2s', animationDelay: '0.5s' }} />
+                        
+                        {/* 펄스 링 애니메이션 */}
+                        <div className="absolute inset-[-10px] sm:inset-[-12px] flex items-center justify-center">
+                          <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-full border-2 border-accent/30 animate-ping" style={{ animationDuration: '2s' }} />
                         </div>
                         
                         {/* 회전하는 그라데이션 링 */}
-                        <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="absolute inset-[-8px] sm:inset-[-10px] flex items-center justify-center">
                           <div 
-                            className="w-22 sm:w-28 h-22 sm:h-28 rounded-full"
+                            className="w-24 sm:w-32 h-24 sm:h-32 rounded-full"
                             style={{
-                              background: 'conic-gradient(from 0deg, transparent, hsl(var(--accent)), transparent)',
-                              animation: 'spin 2s linear infinite',
+                              background: 'conic-gradient(from 0deg, transparent 0%, hsl(var(--accent)) 25%, transparent 50%, hsl(var(--primary)) 75%, transparent 100%)',
+                              animation: 'spin 3s linear infinite',
                             }}
                           />
                         </div>
                         
-                        {/* 회전하는 로고 컨테이너 */}
-                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-xl border border-accent/20">
+                        {/* 내부 글로우 */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div 
+                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-accent/10 blur-xl"
+                            style={{ animation: 'pulse 2s ease-in-out infinite' }}
+                          />
+                        </div>
+                        
+                        {/* 로고 컨테이너 */}
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-background/90 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/30">
                           <img 
                             src={showmelookLogo} 
                             alt="" 
-                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain animate-spin"
-                            style={{ animationDuration: '3s' }}
+                            className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
+                            style={{ animation: 'pulse 2s ease-in-out infinite' }}
                           />
                         </div>
                       </div>
                       
-                      {/* 로딩 텍스트 */}
-                      <div className="mt-6 sm:mt-8 text-center px-4">
-                        <p className="text-base sm:text-lg font-medium text-foreground font-korean animate-pulse">
-                          AI가 스타일을 생성중...
-                        </p>
-                        <p className="text-xs sm:text-sm text-muted-foreground mt-2 font-korean">
-                          잠시만 기다려주세요 ✨
+                      {/* 로딩 텍스트 with typing effect */}
+                      <div className="mt-8 sm:mt-10 text-center px-4 z-10">
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="text-lg sm:text-xl font-semibold text-foreground font-korean">
+                            AI가 스타일을 만들고 있어요
+                          </span>
+                          <span className="flex gap-0.5">
+                            {[0, 1, 2].map((i) => (
+                              <span
+                                key={i}
+                                className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-accent"
+                                style={{
+                                  animation: 'bounce 1s ease-in-out infinite',
+                                  animationDelay: `${i * 0.2}s`,
+                                }}
+                              />
+                            ))}
+                          </span>
+                        </div>
+                        <p className="text-sm sm:text-base text-muted-foreground mt-3 font-korean">
+                          완벽한 룩을 찾는 중이에요 ✨
                         </p>
                       </div>
                       
-                      {/* 하단 도트 애니메이션 */}
-                      <div className="flex gap-2 mt-4 sm:mt-6">
-                        {[0, 1, 2].map((i) => (
-                          <div
+                      {/* 프로그레스 바 */}
+                      <div className="mt-6 sm:mt-8 w-48 sm:w-64 h-1.5 bg-secondary rounded-full overflow-hidden z-10">
+                        <div 
+                          className="h-full bg-gradient-to-r from-accent via-primary to-accent rounded-full"
+                          style={{
+                            animation: 'shimmer 2s ease-in-out infinite',
+                            backgroundSize: '200% 100%',
+                          }}
+                        />
+                      </div>
+                      
+                      {/* 패션 아이콘 애니메이션 */}
+                      <div className="flex gap-4 mt-6 sm:mt-8 z-10">
+                        {['👗', '👔', '👟', '👜', '🧥'].map((emoji, i) => (
+                          <span
                             key={i}
-                            className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-accent"
+                            className="text-xl sm:text-2xl"
                             style={{
-                              animation: 'bounce 1s ease-in-out infinite',
+                              animation: 'bounce 1.5s ease-in-out infinite',
                               animationDelay: `${i * 0.15}s`,
                             }}
-                          />
+                          >
+                            {emoji}
+                          </span>
                         ))}
                       </div>
                     </div>
@@ -3708,18 +3764,75 @@ const StyleGenerator = () => {
                   )}
                 </div>
 
-              {/* 선택된 트렌드 상품 구매하기 */}
+              {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
                 <div className="mt-4 sm:mt-6 w-full">
                   <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
-                  <div className="space-y-2 w-full">
+                  
+                  {/* 모바일: 가로 스와이프 캐러셀 */}
+                  <div className="lg:hidden">
+                    <div className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide -mx-1 px-1">
+                      {selectedTrendProducts.map((product) => (
+                        <div
+                          key={product.id}
+                          className="flex-shrink-0 w-[140px] snap-start bg-secondary rounded-xl p-3 flex flex-col"
+                        >
+                          {product.image_url && (
+                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted mb-2">
+                              <ProductImage 
+                                src={product.image_url} 
+                                alt={product.name}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground font-korean text-xs line-clamp-2 mb-1">{product.name}</p>
+                            {product.brand && (
+                              <p className="text-[10px] text-accent truncate">{product.brand}</p>
+                            )}
+                            <p className="text-sm font-semibold text-foreground mt-1">
+                              ₩{product.price.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex gap-1.5 mt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addCachedProductToCart(product)}
+                              className="flex-1 h-8 p-0"
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="minimal"
+                              size="sm"
+                              onClick={() => handlePurchase(product)}
+                              disabled={purchasingProductId === product.id}
+                              className="flex-1 h-8 text-xs px-2"
+                            >
+                              {purchasingProductId === product.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                '구매'
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground text-center mt-1 font-korean">← 좌우로 스와이프 →</p>
+                  </div>
+                  
+                  {/* 데스크탑: 기존 리스트 뷰 */}
+                  <div className="hidden lg:block space-y-2 w-full">
                     {selectedTrendProducts.map((product) => (
                       <div
                         key={product.id}
-                        className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-secondary rounded-lg sm:rounded-xl w-full"
+                        className="flex items-center gap-3 p-3 bg-secondary rounded-xl w-full"
                       >
                         {product.image_url && (
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                             <ProductImage 
                               src={product.image_url} 
                               alt={product.name}
@@ -3728,32 +3841,32 @@ const StyleGenerator = () => {
                           </div>
                         )}
                         <div className="flex-1 min-w-0 overflow-hidden">
-                          <p className="font-medium text-foreground font-korean text-xs sm:text-sm truncate">{product.name}</p>
+                          <p className="font-medium text-foreground font-korean text-sm truncate">{product.name}</p>
                           {product.brand && (
-                            <p className="text-[10px] sm:text-xs text-accent truncate">{product.brand}</p>
+                            <p className="text-xs text-accent truncate">{product.brand}</p>
                           )}
-                          <p className="text-xs sm:text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground">
                             ₩{product.price.toLocaleString()}
                           </p>
                         </div>
-                        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+                        <div className="flex gap-2 flex-shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => addCachedProductToCart(product)}
-                            className="font-korean h-7 w-7 sm:h-8 sm:w-8 p-0"
+                            className="font-korean h-8 w-8 p-0"
                           >
-                            <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <ShoppingBag className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="minimal"
                             size="sm"
                             onClick={() => handlePurchase(product)}
                             disabled={purchasingProductId === product.id}
-                            className="font-korean text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8"
+                            className="font-korean text-sm px-3 h-8"
                           >
                             {purchasingProductId === product.id ? (
-                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                              <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
                               '구매'
                             )}
@@ -3762,7 +3875,8 @@ const StyleGenerator = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-2 sm:mt-3 flex flex-col gap-2">
+                  
+                  <div className="mt-3 flex flex-col gap-2">
                     <Button
                       variant="outline"
                       size="sm"
