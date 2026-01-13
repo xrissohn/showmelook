@@ -2994,8 +2994,8 @@ const StyleGenerator = () => {
       <div className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-4 sm:pb-8">
         {activeTab === 'generate' ? (
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
-            {/* Left: Selection */}
-            <div className="space-y-6 sm:space-y-8">
+            {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
+            <div className="space-y-6 sm:space-y-8 order-2 lg:order-1">
               {/* 주관식 입력 모드 - 항상 표시 */}
               <div className="space-y-6">
                 <div className="p-5 rounded-2xl border-2 border-border bg-secondary/30">
@@ -3593,8 +3593,8 @@ const StyleGenerator = () => {
               )}
             </div>
 
-            {/* Right: Generated Result */}
-            <div className="lg:sticky lg:top-20 lg:self-start mt-6 lg:mt-0">
+            {/* Right: Generated Result - order-1 on mobile (shows first), order-2 on desktop */}
+            <div className="lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2">
               <div className="aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
                 {isGenerating ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
