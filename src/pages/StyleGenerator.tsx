@@ -2734,7 +2734,7 @@ const StyleGenerator = () => {
         setSelectedTrendProducts(autoSelectedItems);
 
         toast({
-          title: data.cacheHit ? '캐시된 스타일 불러옴!' : '스타일 추천 완료!',
+          title: '스타일 추천 완료!',
           description: `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
         });
 
@@ -2875,19 +2875,12 @@ const StyleGenerator = () => {
         }
 
         // Show appropriate toast
-        if (data.cached) {
-          toast({
-            title: '캐시된 스타일 불러옴!',
-            description: '이전에 생성된 동일한 조합의 스타일입니다. (비용 절약 🎉)',
-          });
-        } else {
-          toast({
-            title: '스타일 생성 완료!',
-            description: useFaceComposite && userProfile?.avatar_url 
-              ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
-              : '당신만의 룩이 완성되었습니다.',
-          });
-        }
+        toast({
+          title: '스타일 생성 완료!',
+          description: useFaceComposite && userProfile?.avatar_url 
+            ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
+            : '당신만의 룩이 완성되었습니다.',
+        });
 
         // Save to database (only if not cached - edge function handles caching)
         if (!data.cached) {

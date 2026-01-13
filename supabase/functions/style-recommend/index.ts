@@ -346,8 +346,8 @@ serve(async (req) => {
             cacheHit: true,
             look: {
               name: `${gender} ${occasion} 추천 룩`,
-              styleConcept: `캐시된 인기 스타일링`,
-              styleReasoning: '이전에 좋은 반응을 얻은 스타일 조합입니다.',
+              styleConcept: `🎨 ${gender} ${occasion} 스타일\n\n요청하신 "${userRequest}"에 맞춰 DNA 2.0 기반으로 코디를 구성했습니다.`,
+              styleReasoning: `${gender}의 ${occasion} 상황에 적합한 아이템들을 DNA 2.0의 formality 매칭으로 선택했습니다.`,
               items: lookItems,
               totalPrice: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
               autoSelectedTotal: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
