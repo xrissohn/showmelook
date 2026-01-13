@@ -2993,15 +2993,15 @@ const StyleGenerator = () => {
         }
       />
 
-      <div className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-4 sm:pb-8">
+      <div className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8">
         {activeTab === 'generate' ? (
           <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
             {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
             <div className="space-y-4 sm:space-y-6 order-2 lg:order-1">
               {/* 스타일 입력 - 모바일에서 접을 수 있는 아코디언 */}
               <Collapsible defaultOpen={true} className="lg:block">
-                <CollapsibleTrigger className="w-full lg:hidden">
-                  <div className="p-4 rounded-2xl border-2 border-border bg-secondary/30 flex items-center justify-between">
+                <CollapsibleTrigger className="w-full lg:hidden group">
+                  <div className="p-4 rounded-2xl border-2 border-border bg-secondary/30 flex items-center justify-between transition-all duration-200 hover:bg-secondary/50">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-accent" />
                       <span className="font-korean text-base font-medium text-foreground">스타일 설정</span>
@@ -3009,11 +3009,11 @@ const StyleGenerator = () => {
                         <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">입력됨</span>
                       )}
                     </div>
-                    <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+                    <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-300 group-data-[state=open]:rotate-180" />
                   </div>
                 </CollapsibleTrigger>
                 
-                <CollapsibleContent className="mt-3 lg:mt-0">
+                <CollapsibleContent className="mt-3 lg:mt-0 overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
                   <div className="p-4 sm:p-5 rounded-2xl border-2 border-border bg-secondary/30">
                     <div className="hidden lg:flex items-center gap-2 mb-4">
                       <Sparkles className="w-5 h-5 text-accent" />
@@ -3563,11 +3563,11 @@ const StyleGenerator = () => {
                 </div>
               </div>
 
-              {/* Generate Button */}
+              {/* Generate Button - 데스크탑용 (모바일에서는 하단 고정 버튼 사용) */}
               <Button
                 variant="gold"
                 size="xl"
-                className="w-full font-korean"
+                className="w-full font-korean hidden lg:flex"
                 onClick={generateStyle}
                 disabled={isGenerating || !canGenerate}
               >
@@ -4112,6 +4112,42 @@ const StyleGenerator = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 모바일 하단 고정 생성 버튼 */}
+      {activeTab === 'generate' && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border lg:hidden z-40 animate-fade-in">
+          <Button
+            variant="gold"
+            size="lg"
+            className="w-full font-korean shadow-lg shadow-accent/20"
+            onClick={generateStyle}
+            disabled={isGenerating || !canGenerate}
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                생성 중...
+              </>
+            ) : !canGenerate ? (
+              <>
+                <Crown className="w-5 h-5" />
+                프리미엄으로 업그레이드
+              </>
+            ) : (
+              <>
+                <img src={showmelookLogo} alt="" className="w-5 h-5 object-contain" />
+                {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
+              </>
+            )}
+          </Button>
+          {/* 남은 횟수 표시 */}
+          {!isPremium && (
+            <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
+              오늘 {remainingCount}회 남음
+            </p>
+          )}
         </div>
       )}
     </div>
