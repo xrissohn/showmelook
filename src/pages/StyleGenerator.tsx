@@ -3606,9 +3606,9 @@ const StyleGenerator = () => {
             </div>
 
             {/* Right: Generated Result - order-1 on mobile (shows first), order-2 on desktop */}
-            <div className="lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2">
-              {/* 모바일: 40vh 고정 높이, 데스크탑: aspect-ratio 유지 */}
-              <div className="h-[40vh] lg:h-auto lg:aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative">
+            <div className="lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden">
+              {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
+              <div className="w-full aspect-[3/4] sm:aspect-[3/4] lg:aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none">
                 {isGenerating ? (
                   <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10">
                     {/* 메인 로고 애니메이션 */}
@@ -3694,16 +3694,16 @@ const StyleGenerator = () => {
 
               {/* 선택된 트렌드 상품 구매하기 */}
               {selectedTrendProducts.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="font-medium text-foreground mb-3 font-korean">선택된 아이템 구매하기</h3>
-                  <div className="space-y-2">
+                <div className="mt-4 sm:mt-6 w-full">
+                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
+                  <div className="space-y-2 w-full">
                     {selectedTrendProducts.map((product) => (
                       <div
                         key={product.id}
-                        className="flex items-center gap-3 p-3 bg-secondary rounded-xl"
+                        className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-secondary rounded-lg sm:rounded-xl w-full"
                       >
                         {product.image_url && (
-                          <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
+                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                             <ProductImage 
                               src={product.image_url} 
                               alt={product.name}
@@ -3711,33 +3711,33 @@ const StyleGenerator = () => {
                             />
                           </div>
                         )}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground font-korean text-sm truncate">{product.name}</p>
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <p className="font-medium text-foreground font-korean text-xs sm:text-sm truncate">{product.name}</p>
                           {product.brand && (
-                            <p className="text-xs text-accent truncate">{product.brand}</p>
+                            <p className="text-[10px] sm:text-xs text-accent truncate">{product.brand}</p>
                           )}
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             ₩{product.price.toLocaleString()}
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => addCachedProductToCart(product)}
-                            className="font-korean"
+                            className="font-korean h-7 w-7 sm:h-8 sm:w-8 p-0"
                           >
-                            <ShoppingBag className="w-4 h-4" />
+                            <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </Button>
                           <Button
                             variant="minimal"
                             size="sm"
                             onClick={() => handlePurchase(product)}
                             disabled={purchasingProductId === product.id}
-                            className="font-korean"
+                            className="font-korean text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8"
                           >
                             {purchasingProductId === product.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                             ) : (
                               '구매'
                             )}
@@ -3746,30 +3746,32 @@ const StyleGenerator = () => {
                       </div>
                     ))}
                   </div>
-                  <div className="mt-3 flex flex-col gap-2">
+                  <div className="mt-2 sm:mt-3 flex flex-col gap-2">
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={addAllToCart}
-                      className="w-full font-korean"
+                      className="w-full font-korean text-xs sm:text-sm h-9 sm:h-10"
                     >
-                      <ShoppingBag className="w-4 h-4 mr-2" />
+                      <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                       전체 장바구니 담기
                     </Button>
                     <Button
                       variant="hero"
+                      size="sm"
                       onClick={() => {
                         selectedTrendProducts.forEach((product, index) => {
                           setTimeout(() => handlePurchase(product), index * 300);
                         });
                       }}
-                      className="w-full font-korean"
+                      className="w-full font-korean text-xs sm:text-sm h-9 sm:h-10"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" />
+                      <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                       전체 구매하기
                     </Button>
                   </div>
-                  <div className="mt-3 p-3 bg-accent/10 rounded-xl text-center">
-                    <p className="text-sm text-accent font-korean">
+                  <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-accent/10 rounded-lg sm:rounded-xl text-center">
+                    <p className="text-xs sm:text-sm text-accent font-korean">
                       총 ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                     </p>
                   </div>
@@ -3778,17 +3780,17 @@ const StyleGenerator = () => {
 
               {/* 기존 상품 테이블에서 선택한 아이템 */}
               {generatedImage && selectedProducts.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="font-medium text-foreground mb-3 font-korean">기본 아이템 구매하기</h3>
-                  <div className="space-y-2">
+                <div className="mt-4 sm:mt-6 w-full">
+                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">기본 아이템 구매하기</h3>
+                  <div className="space-y-2 w-full">
                     {selectedProducts.map((product) => (
                       <div
                         key={product.id}
-                        className="flex items-center justify-between p-3 bg-secondary rounded-xl"
+                        className="flex items-center justify-between gap-2 p-2 sm:p-3 bg-secondary rounded-lg sm:rounded-xl w-full"
                       >
-                        <div>
-                          <p className="font-medium text-foreground font-korean">{product.name_ko}</p>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground font-korean text-xs sm:text-sm truncate">{product.name_ko}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground">
                             ₩{product.price.toLocaleString()}
                           </p>
                         </div>
@@ -3796,7 +3798,7 @@ const StyleGenerator = () => {
                           variant="minimal"
                           size="sm"
                           onClick={() => addToCart(product)}
-                          className="font-korean"
+                          className="font-korean text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8 flex-shrink-0"
                         >
                           담기
                         </Button>
@@ -3805,12 +3807,12 @@ const StyleGenerator = () => {
                   </div>
                   <Button
                     variant="hero"
-                    size="lg"
-                    className="w-full mt-4 font-korean"
+                    size="sm"
+                    className="w-full mt-3 sm:mt-4 font-korean text-xs sm:text-sm h-9 sm:h-10"
                     onClick={() => navigate('/cart')}
                   >
                     장바구니로 이동
-                    <ChevronRight className="w-5 h-5" />
+                    <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Button>
                 </div>
               )}
