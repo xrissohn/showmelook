@@ -32,7 +32,7 @@ interface DNAMeta {
 interface DNAResult {
   id: string;
   dna_text: string;
-  dna_meta: DNAMeta | null;
+  dna_meta: DNAMeta;
   category?: string;
   sub_category?: string;
 }
@@ -42,13 +42,12 @@ function inferCategory(name: string, currentCategory: string): { category: strin
   const nameLower = name.toLowerCase();
   const nameKr = name;
   
-  // 상의 키워드
   const topKeywords = ['니트', '스웨터', '셔츠', '블라우스', '티셔츠', 't-shirt', 'tee', 'shirt', 'sweater', 'knit', 'top', '탑', '카디건', 'cardigan', '후드', 'hoodie', '맨투맨', 'sweatshirt', '폴로', 'polo', '베스트', 'vest', '조끼'];
   const bottomKeywords = ['팬츠', '바지', 'pants', 'trousers', 'jeans', '진', '청바지', '슬랙스', 'slacks', '쇼츠', 'shorts', '반바지', '스커트', 'skirt', '치마', '레깅스', 'leggings'];
   const outerKeywords = ['코트', 'coat', '재킷', 'jacket', '점퍼', 'jumper', '블레이저', 'blazer', '패딩', 'puffer', '다운', 'down', '파카', 'parka', '트렌치', 'trench', '후리스', 'fleece', '무스탕', '야상'];
   const shoeKeywords = ['신발', 'shoes', '스니커즈', 'sneakers', '부츠', 'boots', '로퍼', 'loafers', '샌들', 'sandals', '슬리퍼', 'slippers', '펌프스', 'pumps', '힐', 'heels', '플랫', 'flats', '더비', 'derby', '옥스포드', 'oxford', '슈즈'];
   const bagKeywords = ['가방', 'bag', '백', '토트', 'tote', '크로스백', 'crossbody', '숄더백', 'shoulder', '클러치', 'clutch', '백팩', 'backpack', '파우치', 'pouch'];
-  const accessoryKeywords = ['액세서리', 'accessory', '목걸이', 'necklace', '귀걸이', 'earring', '반지', 'ring', '팔찌', 'bracelet', '시계', 'watch', '모자', 'hat', '캡', 'cap', '스카프', 'scarf', '벨트', 'belt', '선글라스', 'sunglasses', '안경'];
+  const accessoryKeywords = ['액세서리', 'accessory', '목걸이', 'necklace', '귀걸이', 'earring', '반지', 'ring', '팔찌', 'bracelet', '시계', 'watch', '모자', 'hat', '캡', 'cap', '스카프', 'scarf', '벨트', 'belt', '선글라스', 'sunglasses', '안경', '머플러', 'muffler'];
   const dressKeywords = ['원피스', 'dress', '드레스', '점프수트', 'jumpsuit', '롬퍼', 'romper'];
   
   const checkKeywords = (keywords: string[]) => {
@@ -111,9 +110,9 @@ function categoryToItemSlot(category: string, subCategory: string | null): DNAMe
   if (['원피스', 'dress', '드레스'].some(k => combined.includes(k))) return 'dress';
   if (['신발', 'shoes', '스니커즈', '부츠', '로퍼', '샌들', '힐'].some(k => combined.includes(k))) return 'shoes';
   if (['가방', 'bag', '백', '토트', '클러치'].some(k => combined.includes(k))) return 'bag';
-  if (['액세서리', 'accessory', '목걸이', '귀걸이', '반지', '팔찌', '시계', '모자', '스카프', '벨트'].some(k => combined.includes(k))) return 'accessory';
+  if (['액세서리', 'accessory', '목걸이', '귀걸이', '반지', '팔찌', '시계', '모자', '스카프', '벨트', '머플러'].some(k => combined.includes(k))) return 'accessory';
   
-  return 'accessory'; // 기본값
+  return 'accessory';
 }
 
 // 성별 정규화 (키즈 포함)
@@ -121,7 +120,6 @@ function normalizeTarget(gender: string | null, name: string): DNAMeta['target']
   const nameLower = name.toLowerCase();
   const genderLower = (gender || '').toLowerCase();
   
-  // 키즈 감지
   const kidsKeywords = ['키즈', 'kids', 'children', '아동', '유아', '주니어', 'junior', 'baby', '베이비', 'boy', 'girl', '남아', '여아'];
   const isKids = kidsKeywords.some(k => nameLower.includes(k) || genderLower.includes(k));
   
@@ -131,12 +129,10 @@ function normalizeTarget(gender: string | null, name: string): DNAMeta['target']
     return 'kids_unisex';
   }
   
-  // 성인
   if (['여성', 'women', 'woman', 'female', 'f', 'w', 'ladies', 'lady'].some(k => genderLower.includes(k))) return 'adult_female';
   if (['남성', 'men', 'man', 'male', 'm', 'gentleman'].some(k => genderLower.includes(k))) return 'adult_male';
   if (['unisex', '유니섹스', '공용'].some(k => genderLower.includes(k))) return 'unisex';
   
-  // 이름에서 추론
   if (['여성', 'women', 'woman', 'ladies'].some(k => nameLower.includes(k))) return 'adult_female';
   if (['남성', 'men', 'man', 'gentleman'].some(k => nameLower.includes(k))) return 'adult_male';
   
@@ -182,12 +178,78 @@ function inferSeasonFit(name: string, category: string): string[] {
     seasons.push('spring', 'fall');
   }
   
-  // 기본값: 사계절
   if (seasons.length === 0) {
     return ['spring', 'summer', 'fall', 'winter'];
   }
   
   return [...new Set(seasons)];
+}
+
+// 컨셉 추론 (스타일 태그 + 가격대 + 브랜드)
+function inferConcepts(product: Product, formality: number): string[] {
+  const concepts: string[] = [];
+  const nameLower = product.name.toLowerCase();
+  
+  // 스타일 태그에서 추출
+  if (product.style_tags && product.style_tags.length > 0) {
+    concepts.push(...product.style_tags.slice(0, 3));
+  }
+  
+  // 이름에서 스타일 키워드 추출
+  const styleMap: Record<string, string[]> = {
+    '캐주얼': ['캐주얼', 'casual', '데일리', 'daily'],
+    '미니멀': ['미니멀', 'minimal', '심플', 'simple', '베이직', 'basic'],
+    '모던': ['모던', 'modern', '시크', 'chic'],
+    '클래식': ['클래식', 'classic', '트래디셔널', 'traditional'],
+    '스트릿': ['스트릿', 'street', '힙합', 'hiphop', '오버사이즈', 'oversize'],
+    '스포티': ['스포티', 'sporty', '애슬레저', 'athleisure', '액티브', 'active'],
+    '로맨틱': ['로맨틱', 'romantic', '페미닌', 'feminine', '러블리', 'lovely'],
+    '빈티지': ['빈티지', 'vintage', '레트로', 'retro'],
+  };
+  
+  for (const [style, keywords] of Object.entries(styleMap)) {
+    if (keywords.some(k => nameLower.includes(k))) {
+      if (!concepts.includes(style)) {
+        concepts.push(style);
+      }
+    }
+  }
+  
+  // 포멀리티 기반 기본 컨셉 추가
+  if (concepts.length === 0) {
+    if (formality >= 7) {
+      concepts.push('포멀', '비즈니스');
+    } else if (formality >= 5) {
+      concepts.push('세미캐주얼', '스마트');
+    } else {
+      concepts.push('캐주얼', '데일리');
+    }
+  }
+  
+  return concepts.slice(0, 5);
+}
+
+// occasion 추론
+function inferOccasions(formality: number, itemSlot: DNAMeta['item_slot'], concepts: string[]): string[] {
+  const occasions: string[] = [];
+  
+  if (formality >= 7) {
+    occasions.push('출근', '미팅', '비즈니스', '면접');
+  } else if (formality >= 5) {
+    occasions.push('데이트', '약속', '모임', '세미포멀');
+  } else {
+    occasions.push('데일리', '캐주얼', '주말', '여행');
+  }
+  
+  // 컨셉 기반 추가
+  if (concepts.includes('스포티') || concepts.includes('액티브')) {
+    occasions.push('운동', '레저');
+  }
+  if (concepts.includes('로맨틱') || concepts.includes('페미닌')) {
+    occasions.push('데이트', '파티');
+  }
+  
+  return [...new Set(occasions)].slice(0, 5);
 }
 
 // item_slot에 따른 pair_slots 추론
@@ -225,14 +287,51 @@ function inferPairSlots(itemSlot: DNAMeta['item_slot'], formality: number): stri
   return pairs;
 }
 
-// 상품 정보로 기본 DNA Meta 생성
-function generateBasicDNAMeta(product: Product, inferredCategory: string, subCategory: string): DNAMeta {
+// dna_meta에서 dna_text 자동 생성
+function generateDNAText(product: Product, meta: DNAMeta, subCategory: string): string {
+  const conceptsStr = meta.concepts.slice(0, 3).join(',');
+  const brandInfo = product.brand || '데일리';
+  const occasionStr = meta.occasions.slice(0, 2).join('/');
+  
+  // 포멀리티 레이블
+  let formalityLabel = '캐주얼';
+  if (meta.formality >= 8) formalityLabel = '포멀';
+  else if (meta.formality >= 6) formalityLabel = '세미포멀';
+  else if (meta.formality >= 4) formalityLabel = '스마트캐주얼';
+  
+  // 시즌 한글화
+  const seasonMap: Record<string, string> = {
+    'spring': '봄',
+    'summer': '여름',
+    'fall': '가을',
+    'winter': '겨울'
+  };
+  const seasonStr = meta.season_fit.map(s => seasonMap[s] || s).join('/');
+  
+  // 코디팁 생성
+  const pairTips: string[] = [];
+  if (meta.pair_slots.includes('bottom_pants')) pairTips.push('팬츠');
+  if (meta.pair_slots.includes('bottom_skirt')) pairTips.push('스커트');
+  if (meta.pair_slots.includes('top_shirt')) pairTips.push('셔츠');
+  if (meta.pair_slots.includes('outer_blazer')) pairTips.push('블레이저');
+  if (meta.pair_slots.includes('shoes_sneakers')) pairTips.push('스니커즈');
+  if (meta.pair_slots.includes('shoes_loafer')) pairTips.push('로퍼');
+  
+  const pairStr = pairTips.slice(0, 3).join(', ') || '다양한 아이템';
+  
+  return `[${conceptsStr}] | ${formalityLabel} ${subCategory || meta.item_slot} | ${brandInfo} | 추천: ${occasionStr} | 시즌: ${seasonStr} | 코디: ${pairStr}와 매치`;
+}
+
+// DNA 2.0 생성 (AI 없이 빠르게 처리)
+function generateDNA(product: Product): DNAResult {
+  const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
+  
   const target = normalizeTarget(product.gender, product.name);
   const itemSlot = categoryToItemSlot(inferredCategory, subCategory);
   const colorFamily = inferColorFamily(product.color, product.name);
   const seasonFit = inferSeasonFit(product.name, inferredCategory);
   
-  // 가격대로 formality 추론 (비싼 = 더 포멀)
+  // 가격대로 formality 추론
   let formality = 5;
   if (product.price > 300000) formality = 8;
   else if (product.price > 150000) formality = 7;
@@ -240,15 +339,11 @@ function generateBasicDNAMeta(product: Product, inferredCategory: string, subCat
   else if (product.price < 30000) formality = 3;
   else if (product.price < 50000) formality = 4;
   
-  // 스타일 태그에서 concepts 추출
-  const concepts = product.style_tags?.slice(0, 5) || ['캐주얼'];
-  
-  // 기본 occasions
-  const occasions = formality >= 7 ? ['출근', '미팅', '비즈니스'] : ['데일리', '캐주얼', '주말'];
-  
+  const concepts = inferConcepts(product, formality);
+  const occasions = inferOccasions(formality, itemSlot, concepts);
   const pairSlots = inferPairSlots(itemSlot, formality);
   
-  return {
+  const dnaMeta: DNAMeta = {
     target,
     item_slot: itemSlot,
     concepts,
@@ -258,95 +353,9 @@ function generateBasicDNAMeta(product: Product, inferredCategory: string, subCat
     color_family: colorFamily,
     season_fit: seasonFit,
   };
-}
-
-// Generate DNA for a single product (AI + Meta)
-async function generateDNA(product: Product, lovableApiKey: string | undefined, mode: string): Promise<DNAResult> {
-  const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
   
-  let dnaText = '';
-  let dnaMeta: DNAMeta | null = null;
-  
-  // 기본 DNA Meta 생성 (항상)
-  dnaMeta = generateBasicDNAMeta(product, inferredCategory, subCategory);
-  
-  if (lovableApiKey && mode === 'generate') {
-    const prompt = `상품 정보를 분석하여 스타일 DNA를 생성해주세요.
-
-상품명: ${product.name}
-브랜드: ${product.brand || '알 수 없음'}
-카테고리: ${inferredCategory}${subCategory ? ` > ${subCategory}` : ''}
-가격: ${product.price.toLocaleString()}원
-색상: ${product.color || '알 수 없음'}
-기존 태그: ${product.style_tags?.join(', ') || '없음'}
-타겟: ${dnaMeta.target}
-
-다음 JSON 형식으로 응답해주세요:
-{
-  "dna_text": "[스타일태그1,스타일태그2] | 장점: (간단 설명) | 코디팁: (어울리는 아이템)",
-  "dna_meta": {
-    "concepts": ["미니멀", "모던", "캐주얼"],
-    "formality": 5,
-    "occasions": ["데일리", "출근"],
-    "color_family": "neutral"
-  }
-}
-
-JSON만 출력하세요.`;
-
-    try {
-      const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-lite',
-          messages: [
-            { role: 'system', content: '당신은 패션 스타일 전문가입니다. JSON 형식으로만 응답합니다.' },
-            { role: 'user', content: prompt }
-          ],
-        }),
-      });
-
-      if (aiResponse.ok) {
-        const aiData = await aiResponse.json();
-        const content = aiData.choices?.[0]?.message?.content?.trim() || '';
-        
-        // JSON 파싱 시도
-        const jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          try {
-            const parsed = JSON.parse(jsonMatch[0]);
-            dnaText = parsed.dna_text || '';
-            
-            // AI 응답으로 dnaMeta 보강
-            if (parsed.dna_meta) {
-              if (parsed.dna_meta.concepts) dnaMeta.concepts = parsed.dna_meta.concepts;
-              if (parsed.dna_meta.formality) dnaMeta.formality = parsed.dna_meta.formality;
-              if (parsed.dna_meta.occasions) dnaMeta.occasions = parsed.dna_meta.occasions;
-              if (parsed.dna_meta.color_family) dnaMeta.color_family = parsed.dna_meta.color_family;
-            }
-          } catch (parseError) {
-            console.error(`[dna-batch] JSON parse error for ${product.id}:`, parseError);
-            dnaText = content;
-          }
-        } else {
-          dnaText = content;
-        }
-      }
-    } catch (aiError) {
-      console.error(`[dna-batch] AI error for ${product.id}:`, aiError);
-    }
-  }
-  
-  // Fallback: Generate basic DNA text from existing data
-  if (!dnaText) {
-    const tags = product.style_tags?.slice(0, 3).join(',') || '베이직';
-    const brandInfo = product.brand ? `${product.brand} 스타일` : '캐주얼';
-    dnaText = `[${tags}] | 장점: ${brandInfo} ${subCategory || inferredCategory} | 코디팁: 다양한 스타일에 매치 가능`;
-  }
+  // dna_text는 dna_meta 기반으로 자동 생성
+  const dnaText = generateDNAText(product, dnaMeta, subCategory);
   
   return {
     id: product.id,
@@ -363,86 +372,82 @@ serve(async (req) => {
   }
 
   try {
-    const { batchSize = 10, mode = 'generate', regenerateMeta = false } = await req.json().catch(() => ({}));
+    const { batchSize = 50 } = await req.json().catch(() => ({}));
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
-    // Limit batch size to prevent timeout (max 20 for parallel processing)
-    const effectiveBatchSize = Math.min(batchSize, 20);
+    // 배치 사이즈 제한 (AI 호출 없으므로 더 많이 처리 가능)
+    const effectiveBatchSize = Math.min(batchSize, 100);
     
-    console.log(`[dna-batch] Starting DNA 2.0 batch generation, mode: ${mode}, batchSize: ${effectiveBatchSize}, regenerateMeta: ${regenerateMeta}`);
+    console.log(`[dna-batch] DNA 2.0 빠른 생성 시작, batchSize: ${effectiveBatchSize}`);
     
-    // Get products without DNA or without dna_meta (if regenerateMeta)
-    let query = supabase
+    // dna_meta가 없는 상품 조회
+    const { data: products, error: fetchError } = await supabase
       .from('products_cache')
       .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
-      .eq('is_active', true);
-    
-    if (regenerateMeta) {
-      // dna_meta가 없는 상품만 (기존 dna_text 있어도 meta 생성)
-      query = query.is('dna_meta', null);
-    } else {
-      // dna_text가 없는 상품
-      query = query.is('dna_text', null);
-    }
-    
-    const { data: products, error: fetchError } = await query.limit(effectiveBatchSize);
+      .eq('is_active', true)
+      .is('dna_meta', null)
+      .limit(effectiveBatchSize);
     
     if (fetchError) {
       throw new Error(`Failed to fetch products: ${fetchError.message}`);
     }
     
     if (!products || products.length === 0) {
+      // 남은 상품 수 확인
+      const { count: totalCount } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+      
+      const { count: withMetaCount } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .not('dna_meta', 'is', null);
+      
       return new Response(JSON.stringify({
         success: true,
-        message: 'No products need DNA generation',
+        message: 'DNA 2.0 생성 완료 - 모든 상품에 dna_meta가 있습니다',
         processed: 0,
         remaining: 0,
+        total: totalCount || 0,
+        coverage: totalCount ? `${Math.round((withMetaCount || 0) / totalCount * 100)}%` : '100%',
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
-    console.log(`[dna-batch] Found ${products.length} products for DNA 2.0 generation`);
+    console.log(`[dna-batch] ${products.length}개 상품 DNA 2.0 생성 중...`);
     
-    // Get remaining count
-    let remainingQuery = supabase
+    // 남은 상품 수 조회
+    const { count: remainingCount } = await supabase
       .from('products_cache')
       .select('*', { count: 'exact', head: true })
-      .eq('is_active', true);
-    
-    if (regenerateMeta) {
-      remainingQuery = remainingQuery.is('dna_meta', null);
-    } else {
-      remainingQuery = remainingQuery.is('dna_text', null);
-    }
-    
-    const { count: remainingCount } = await remainingQuery;
+      .eq('is_active', true)
+      .is('dna_meta', null);
     
     const errors: { id: string; error: string }[] = [];
-    
-    // Process products in parallel (5 at a time to avoid rate limiting)
-    const CONCURRENT_LIMIT = 5;
     const results: DNAResult[] = [];
     
-    for (let i = 0; i < products.length; i += CONCURRENT_LIMIT) {
-      const batch = (products as Product[]).slice(i, i + CONCURRENT_LIMIT);
-      const batchPromises = batch.map(product => 
-        generateDNA(product, lovableApiKey, mode)
-          .catch(err => {
-            console.error(`[dna-batch] Error processing ${product.id}:`, err);
-            errors.push({ id: product.id, error: err instanceof Error ? err.message : 'Unknown error' });
-            return null;
-          })
-      );
-      
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults.filter((r): r is DNAResult => r !== null));
+    // 동기적으로 빠르게 처리 (AI 호출 없음)
+    const startTime = Date.now();
+    
+    for (const product of products as Product[]) {
+      try {
+        const result = generateDNA(product);
+        results.push(result);
+      } catch (err) {
+        console.error(`[dna-batch] Error processing ${product.id}:`, err);
+        errors.push({ id: product.id, error: err instanceof Error ? err.message : 'Unknown error' });
+      }
     }
     
-    // Batch update products with DNA 2.0 (parallel updates)
+    const generateTime = Date.now() - startTime;
+    console.log(`[dna-batch] DNA 생성 완료: ${results.length}개, ${generateTime}ms`);
+    
+    // 병렬 업데이트
     let updatedCount = 0;
     const updatePromises = results.map(async (result) => {
       const updateData: Record<string, any> = {
@@ -475,19 +480,19 @@ serve(async (req) => {
     const updateResults = await Promise.all(updatePromises);
     updatedCount = updateResults.filter(Boolean).length;
     
-    // 타겟 분포 통계
+    const totalTime = Date.now() - startTime;
+    
+    // 통계 계산
     const targetStats: Record<string, number> = {};
     const slotStats: Record<string, number> = {};
+    const formalitySum = results.reduce((sum, r) => sum + r.dna_meta.formality, 0);
+    
     for (const result of results) {
-      if (result.dna_meta) {
-        targetStats[result.dna_meta.target] = (targetStats[result.dna_meta.target] || 0) + 1;
-        slotStats[result.dna_meta.item_slot] = (slotStats[result.dna_meta.item_slot] || 0) + 1;
-      }
+      targetStats[result.dna_meta.target] = (targetStats[result.dna_meta.target] || 0) + 1;
+      slotStats[result.dna_meta.item_slot] = (slotStats[result.dna_meta.item_slot] || 0) + 1;
     }
     
-    console.log(`[dna-batch] Completed: ${updatedCount} updated, ${errors.length} errors, ${(remainingCount || 0) - products.length} remaining`);
-    console.log(`[dna-batch] Target distribution:`, targetStats);
-    console.log(`[dna-batch] Slot distribution:`, slotStats);
+    console.log(`[dna-batch] 완료: ${updatedCount}개 업데이트, ${errors.length}개 에러, ${(remainingCount || 0) - products.length}개 남음, 총 ${totalTime}ms`);
     
     return new Response(JSON.stringify({
       success: true,
@@ -495,15 +500,19 @@ serve(async (req) => {
       updated: updatedCount,
       errors: errors.length,
       remaining: Math.max(0, (remainingCount || 0) - products.length),
-      errorDetails: errors.slice(0, 10),
+      timeMs: totalTime,
+      avgTimePerProduct: Math.round(totalTime / products.length),
+      errorDetails: errors.slice(0, 5),
       sampleDNA: results.slice(0, 3).map(r => ({ 
         id: r.id, 
+        name: (products as Product[]).find(p => p.id === r.id)?.name || 'Unknown',
         dna_text: r.dna_text,
         dna_meta: r.dna_meta,
       })),
       stats: {
         targetDistribution: targetStats,
         slotDistribution: slotStats,
+        avgFormality: results.length > 0 ? (formalitySum / results.length).toFixed(1) : 0,
       }
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     
