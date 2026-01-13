@@ -855,6 +855,20 @@ interface MyLooksGalleryProps {
 }
 
 const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }: MyLooksGalleryProps) => {
+  // 필터 상태
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  
+  // 상세 보기 모달 상태
+  const [selectedLook, setSelectedLook] = useState<GeneratedLook | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // 필터링된 아이템
+  const filteredLooks = showFavoritesOnly 
+    ? myLooks.filter(look => look.is_favorite) 
+    : myLooks;
+  
+  const favoriteCount = myLooks.filter(look => look.is_favorite).length;
+  
   // 무한 스크롤 훅 (처음 12개, 스크롤 시 8개씩 추가)
   const {
     visibleItems,
@@ -862,7 +876,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     hasMore,
     preloadItems,
   } = useInfiniteScroll({
-    items: myLooks,
+    items: filteredLooks,
     initialCount: 12,
     increment: 8,
     preloadCount: 4,
@@ -873,6 +887,65 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     urls: preloadItems.map(look => look.image_url),
     enabled: preloadItems.length > 0,
   });
+  
+  // 모달에서 이전/다음 이동
+  const goToPrevious = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(currentIndex - 1);
+      setSelectedLook(filteredLooks[currentIndex - 1]);
+    }
+  };
+  
+  const goToNext = () => {
+    if (currentIndex < filteredLooks.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelectedLook(filteredLooks[currentIndex + 1]);
+    }
+  };
+  
+  // 키보드 네비게이션
+  useEffect(() => {
+    if (!selectedLook) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') goToPrevious();
+      if (e.key === 'ArrowRight') goToNext();
+      if (e.key === 'Escape') setSelectedLook(null);
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedLook, currentIndex, filteredLooks.length]);
+  
+  // 룩 클릭 핸들러
+  const handleLookClick = (look: GeneratedLook, index: number) => {
+    setSelectedLook(look);
+    setCurrentIndex(index);
+  };
+  
+  // 즐겨찾기 토글
+  const toggleFavorite = async (look: GeneratedLook, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const newFavorite = !look.is_favorite;
+    const { error } = await supabase
+      .from('generated_looks')
+      .update({ is_favorite: newFavorite })
+      .eq('id', look.id);
+    
+    if (!error) {
+      setMyLooks(prev => prev.map(l => 
+        l.id === look.id ? { ...l, is_favorite: newFavorite } : l
+      ));
+      // 모달에서도 업데이트
+      if (selectedLook?.id === look.id) {
+        setSelectedLook({ ...look, is_favorite: newFavorite });
+      }
+      toast({
+        title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
+        description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
+      });
+    }
+  };
 
   if (myLooks.length === 0) {
     return (
@@ -892,81 +965,114 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
 
   return (
     <div>
-      {/* 로드된 개수 표시 */}
+      {/* 필터 및 개수 표시 */}
       <div className="flex justify-between items-center mb-4">
         <p className="text-sm text-muted-foreground font-korean">
-          {visibleItems.length} / {myLooks.length}개 표시
+          {visibleItems.length} / {filteredLooks.length}개 표시
+          {showFavoritesOnly && ` (즐겨찾기)`}
         </p>
+        
+        {/* 필터 버튼 */}
+        <Button
+          variant={showFavoritesOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          className="flex items-center gap-2"
+        >
+          <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
+          <span className="font-korean">즐겨찾기</span>
+          {favoriteCount > 0 && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+              showFavoritesOnly 
+                ? 'bg-primary-foreground/20 text-primary-foreground' 
+                : 'bg-accent text-accent-foreground'
+            }`}>
+              {favoriteCount}
+            </span>
+          )}
+        </Button>
       </div>
       
-      {/* 갤러리 그리드 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-        {visibleItems.map((look) => (
-          <div
-            key={look.id}
-            className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group"
+      {/* 필터 결과 없음 */}
+      {filteredLooks.length === 0 && showFavoritesOnly && (
+        <div className="text-center py-16">
+          <Heart className="w-12 h-12 mx-auto opacity-30 text-muted-foreground mb-4" />
+          <p className="text-lg text-muted-foreground font-korean">즐겨찾기한 룩이 없습니다</p>
+          <Button
+            variant="outline"
+            className="mt-4 font-korean"
+            onClick={() => setShowFavoritesOnly(false)}
           >
-            <LazyImage
-              src={look.image_url}
-              alt="Generated look"
-              className="w-full h-full object-cover"
-              fallbackClassName="w-full h-full"
-            />
-            {/* 호버시 오버레이 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-            
-            {/* 하단 날짜 */}
-            <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <p className="text-sm text-white/90 font-korean">
-                {new Date(look.created_at).toLocaleDateString('ko-KR')}
-              </p>
-            </div>
-            
-            {/* 상단 버튼들 */}
-            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              {/* 저장/공유 버튼 */}
-              <ShareButtons 
-                imageUrl={look.image_url} 
-                onShare={(platform, result) => {
-                  if (result.message) {
-                    toast({
-                      title: result.success ? '성공' : '알림',
-                      description: result.message,
-                      variant: result.success ? 'default' : 'destructive',
-                    });
-                  }
-                }}
-                compact
-                isPremium={isPremium}
-                logoUrl={showmelookWatermarkFull}
+            전체 보기
+          </Button>
+        </div>
+      )}
+      
+      {/* 갤러리 그리드 */}
+      {filteredLooks.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {visibleItems.map((look, index) => (
+            <div
+              key={look.id}
+              className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group cursor-pointer"
+              onClick={() => handleLookClick(look, index)}
+            >
+              <LazyImage
+                src={look.image_url}
+                alt="Generated look"
+                className="w-full h-full object-cover"
+                fallbackClassName="w-full h-full"
               />
-              {/* 좋아요 버튼 */}
-              <button 
-                onClick={async () => {
-                  const newFavorite = !look.is_favorite;
-                  const { error } = await supabase
-                    .from('generated_looks')
-                    .update({ is_favorite: newFavorite })
-                    .eq('id', look.id);
-                  
-                  if (!error) {
-                    setMyLooks(prev => prev.map(l => 
-                      l.id === look.id ? { ...l, is_favorite: newFavorite } : l
-                    ));
-                    toast({
-                      title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
-                      description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
-                    });
-                  }
-                }}
-                className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-              >
-                <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
-              </button>
+              
+              {/* 즐겨찾기 표시 (항상 보임) */}
+              {look.is_favorite && (
+                <div className="absolute top-3 left-3">
+                  <Heart className="w-5 h-5 fill-accent text-accent drop-shadow-md" />
+                </div>
+              )}
+              
+              {/* 호버시 오버레이 */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+              
+              {/* 하단 날짜 */}
+              <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <p className="text-sm text-white/90 font-korean">
+                  {new Date(look.created_at).toLocaleDateString('ko-KR')}
+                </p>
+              </div>
+              
+              {/* 상단 버튼들 */}
+              <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                {/* 저장/공유 버튼 */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <ShareButtons 
+                    imageUrl={look.image_url} 
+                    onShare={(platform, result) => {
+                      if (result.message) {
+                        toast({
+                          title: result.success ? '성공' : '알림',
+                          description: result.message,
+                          variant: result.success ? 'default' : 'destructive',
+                        });
+                      }
+                    }}
+                    compact
+                    isPremium={isPremium}
+                    logoUrl={showmelookWatermarkFull}
+                  />
+                </div>
+                {/* 좋아요 버튼 */}
+                <button 
+                  onClick={(e) => toggleFavorite(look, e)}
+                  className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+                >
+                  <Heart className={`w-5 h-5 ${look.is_favorite ? 'fill-accent text-accent' : 'text-foreground'}`} />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       
       {/* 무한 스크롤 트리거 */}
       {hasMore && (
@@ -982,11 +1088,107 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
       )}
       
       {/* 모두 로드 완료 */}
-      {!hasMore && myLooks.length > 12 && (
+      {!hasMore && filteredLooks.length > 12 && (
         <div className="text-center py-6">
           <p className="text-sm text-muted-foreground font-korean">
             모든 룩을 불러왔습니다 ✨
           </p>
+        </div>
+      )}
+      
+      {/* 상세 보기 모달 */}
+      {selectedLook && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center"
+          onClick={() => setSelectedLook(null)}
+        >
+          {/* 닫기 버튼 */}
+          <button 
+            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+            onClick={() => setSelectedLook(null)}
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+          
+          {/* 이전 버튼 */}
+          {currentIndex > 0 && (
+            <button 
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goToPrevious(); }}
+            >
+              <ChevronLeft className="w-6 h-6 text-white" />
+            </button>
+          )}
+          
+          {/* 다음 버튼 */}
+          {currentIndex < filteredLooks.length - 1 && (
+            <button 
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
+              onClick={(e) => { e.stopPropagation(); goToNext(); }}
+            >
+              <ChevronRight className="w-6 h-6 text-white" />
+            </button>
+          )}
+          
+          {/* 이미지 컨테이너 */}
+          <div 
+            className="relative max-w-[90vw] max-h-[85vh] flex flex-col items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img 
+              src={selectedLook.image_url} 
+              alt="Generated look" 
+              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
+            />
+            
+            {/* 하단 정보 및 액션 */}
+            <div className="mt-4 flex items-center gap-4">
+              <p className="text-white/80 text-sm font-korean">
+                {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+              
+              <span className="text-white/40">•</span>
+              
+              <p className="text-white/60 text-sm">
+                {currentIndex + 1} / {filteredLooks.length}
+              </p>
+              
+              <span className="text-white/40">•</span>
+              
+              {/* 즐겨찾기 버튼 */}
+              <button 
+                onClick={() => toggleFavorite(selectedLook)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              >
+                <Heart className={`w-4 h-4 ${selectedLook.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
+                <span className="text-white text-sm font-korean">
+                  {selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
+                </span>
+              </button>
+              
+              {/* 공유 버튼 */}
+              <div className="flex items-center gap-2">
+                <ShareButtons 
+                  imageUrl={selectedLook.image_url} 
+                  onShare={(platform, result) => {
+                    if (result.message) {
+                      toast({
+                        title: result.success ? '성공' : '알림',
+                        description: result.message,
+                        variant: result.success ? 'default' : 'destructive',
+                      });
+                    }
+                  }}
+                  isPremium={isPremium}
+                  logoUrl={showmelookWatermarkFull}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
