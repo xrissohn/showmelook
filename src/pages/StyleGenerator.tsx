@@ -2993,11 +2993,11 @@ const StyleGenerator = () => {
         }
       />
 
-      <div className="container mx-auto px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8 max-w-full overflow-x-hidden">
+      <div className="w-full max-w-full overflow-x-hidden px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8 mx-auto" style={{ maxWidth: '100vw' }}>
         {activeTab === 'generate' ? (
-          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full">
+          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full max-w-7xl mx-auto">
             {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
-            <div className="space-y-4 sm:space-y-6 order-2 lg:order-1">
+            <div className="space-y-4 sm:space-y-6 order-2 lg:order-1 w-full min-w-0">
               {/* 스타일 입력 - 모바일에서 접을 수 있는 아코디언 */}
               <Collapsible defaultOpen={true} className="lg:block">
                 <CollapsibleTrigger className="w-full lg:hidden group">
@@ -3013,8 +3013,8 @@ const StyleGenerator = () => {
                   </div>
                 </CollapsibleTrigger>
                 
-                <CollapsibleContent className="mt-3 lg:mt-0 overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up">
-                  <div className="p-4 sm:p-5 rounded-2xl border-2 border-border bg-secondary/30">
+                <CollapsibleContent className="mt-3 lg:mt-0 overflow-hidden data-[state=open]:animate-accordion-down data-[state=closed]:animate-accordion-up w-full">
+                  <div className="p-3 sm:p-5 rounded-2xl border-2 border-border bg-secondary/30 w-full overflow-hidden">
                     <div className="hidden lg:flex items-center gap-2 mb-4">
                       <Sparkles className="w-5 h-5 text-accent" />
                       <h2 className="font-korean text-lg font-medium text-foreground">원하는 스타일 설명</h2>
@@ -3033,7 +3033,7 @@ const StyleGenerator = () => {
                         />
                         
                         {/* AI 분석 기반 추천 키워드 */}
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-1.5 w-full overflow-hidden">
                           {isLoadingKeywords ? (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground">
                               <Loader2 className="w-3 h-3 animate-spin" />
@@ -3046,10 +3046,10 @@ const StyleGenerator = () => {
                                   key={`trend-${index}-${keyword.text}`}
                                   onClick={() => setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`)}
                                   disabled={isCustomSearching}
-                                  className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
                                 >
                                   <span>{keyword.emoji}</span>
-                                  <span>{keyword.text}</span>
+                                  <span className="truncate max-w-[100px]">{keyword.text}</span>
                                 </button>
                               ))}
                               {/* DB 트렌드 키워드 */}
@@ -3069,10 +3069,10 @@ const StyleGenerator = () => {
                                       setSelectedTrend(trend);
                                     }}
                                     disabled={isCustomSearching}
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50"
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
                                   >
                                     <span>{trendEmojis[trend.name] || '🎨'}</span>
-                                    <span>{trend.name_ko}</span>
+                                    <span className="truncate max-w-[80px]">{trend.name_ko}</span>
                                   </button>
                                 );
                               })}
@@ -3082,7 +3082,7 @@ const StyleGenerator = () => {
                       </div>
 
                       {/* 성별 선택 (키즈 포함) */}
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full">
                         <Label className="font-korean text-sm">누구를 위한 스타일인가요?</Label>
                         <RadioGroup
                           value={customGender}
@@ -3092,24 +3092,24 @@ const StyleGenerator = () => {
                               setCustomAge(10);
                             }
                           }}
-                          className="grid grid-cols-2 sm:flex sm:gap-4 gap-2"
+                          className="grid grid-cols-2 gap-2 w-full"
                           disabled={isCustomSearching}
                         >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="female" id="custom-female" />
-                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-sm">여성</Label>
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <RadioGroupItem value="female" id="custom-female" className="shrink-0" />
+                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-xs sm:text-sm truncate">여성</Label>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="male" id="custom-male" />
-                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-sm">남성</Label>
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <RadioGroupItem value="male" id="custom-male" className="shrink-0" />
+                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-xs sm:text-sm truncate">남성</Label>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="unisex" id="custom-unisex" />
-                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-sm">🌈 유니섹스</Label>
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <RadioGroupItem value="unisex" id="custom-unisex" className="shrink-0" />
+                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-xs sm:text-sm truncate">🌈 유니섹스</Label>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="kids" id="custom-kids" />
-                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-sm">👶 키즈</Label>
+                          <div className="flex items-center space-x-2 min-w-0">
+                            <RadioGroupItem value="kids" id="custom-kids" className="shrink-0" />
+                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-xs sm:text-sm truncate">👶 키즈</Label>
                           </div>
                         </RadioGroup>
                       </div>
