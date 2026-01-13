@@ -1,3 +1,8 @@
+/**
+ * MainNavigation - Unified navigation component for all pages
+ * Version: 2.0 - Mobile hamburger menu with active state highlighting
+ * Last updated: 2026-01-13
+ */
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
