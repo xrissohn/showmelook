@@ -16,6 +16,7 @@ import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 import useEmblaCarousel from 'embla-carousel-react';
+import { LazyImage } from '@/components/LazyImage';
 interface StyleTrend {
   id: string;
   name: string;
@@ -2926,10 +2927,11 @@ const StyleGenerator = () => {
                     key={look.id}
                     className="aspect-[3/4] rounded-2xl overflow-hidden bg-secondary relative group"
                   >
-                    <ProgressiveImage
+                    <LazyImage
                       src={look.image_url}
                       alt="Generated look"
                       className="w-full h-full object-cover"
+                      fallbackClassName="w-full h-full"
                     />
                     {/* 호버시 오버레이 */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

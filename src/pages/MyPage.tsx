@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,14 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import { LazyImage } from "@/components/LazyImage";
+import { 
+  useRecommendationHistory, 
+  useLikedProducts, 
+  useDeleteRecommendation, 
+  useUnlikeProduct, 
+  useAddToCart 
+} from "@/hooks/useMyPageData";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,50 +29,24 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-interface RecommendationItem {
-  category: string;
-  name: string;
-  price: number;
-  image_url: string;
-  product_url: string;
-  brand?: string;
-}
-
-interface RecommendationHistory {
-  id: string;
-  prompt: string;
-  gender: string;
-  budget: number;
-  style_concept: string;
-  style_reasoning: string;
-  items: RecommendationItem[];
-  total_price: number;
-  created_at: string;
-}
-
-interface LikedProduct {
-  id: string;
-  product_id: string;
-  product_name: string;
-  product_brand: string | null;
-  product_price: number;
-  product_image_url: string | null;
-  product_url: string;
-  product_category: string | null;
-  style_tags: string[] | null;
-  created_at: string;
-}
-
 const MyPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   
-  const [recommendations, setRecommendations] = useState<RecommendationHistory[]>([]);
-  const [likedProducts, setLikedProducts] = useState<LikedProduct[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("likes");
+
+  // React Query 훅 사용 (5분 캐싱)
+  const { data: recommendations = [], isLoading: isLoadingRecs } = useRecommendationHistory();
+  const { data: likedProducts = [], isLoading: isLoadingLikes } = useLikedProducts();
+  
+  // Mutations
+  const deleteRecommendation = useDeleteRecommendation();
+  const unlikeProduct = useUnlikeProduct();
+  const addToCart = useAddToCart();
+
+  const isLoading = isLoadingRecs || isLoadingLikes;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price) + '원';
@@ -80,67 +62,9 @@ const MyPage = () => {
     });
   };
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
-      return;
-    }
-
-    if (user) {
-      fetchData();
-    }
-  }, [user, authLoading, navigate]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    await Promise.all([fetchRecommendations(), fetchLikedProducts()]);
-    setIsLoading(false);
-  };
-
-  const fetchRecommendations = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('recommendation_history')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      const parsed = (data || []).map((rec: any) => ({
-        ...rec,
-        items: typeof rec.items === 'string' ? JSON.parse(rec.items) : rec.items
-      }));
-
-      setRecommendations(parsed);
-    } catch (error: any) {
-      console.error('Error fetching recommendations:', error);
-    }
-  };
-
-  const fetchLikedProducts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('liked_products')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setLikedProducts(data || []);
-    } catch (error: any) {
-      console.error('Error fetching liked products:', error);
-    }
-  };
-
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('recommendation_history')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setRecommendations(prev => prev.filter(r => r.id !== id));
+      await deleteRecommendation.mutateAsync(id);
       toast({
         title: "삭제 완료",
         description: "추천 히스토리가 삭제되었습니다.",
@@ -156,14 +80,7 @@ const MyPage = () => {
 
   const handleUnlike = async (productId: string) => {
     try {
-      const { error } = await supabase
-        .from('liked_products')
-        .delete()
-        .eq('id', productId);
-
-      if (error) throw error;
-
-      setLikedProducts(prev => prev.filter(p => p.id !== productId));
+      await unlikeProduct.mutateAsync(productId);
       toast({
         title: "좋아요 취소",
         description: "관심 상품에서 제거되었습니다.",
@@ -177,26 +94,9 @@ const MyPage = () => {
     }
   };
 
-  const handleAddToCart = async (product: LikedProduct) => {
-    if (!user) return;
-
+  const handleAddToCart = async (product: any) => {
     try {
-      const { error } = await supabase.from('cart_items').upsert({
-        user_id: user.id,
-        product_id: product.product_id,
-        quantity: 1,
-        product_source: 'cache',
-        product_name: product.product_name,
-        product_brand: product.product_brand,
-        product_price: product.product_price,
-        product_image_url: product.product_image_url,
-        product_url: product.product_url,
-      }, {
-        onConflict: 'user_id,product_id'
-      });
-
-      if (error) throw error;
-
+      await addToCart.mutateAsync(product);
       toast({
         title: "장바구니에 추가됨",
         description: `${product.product_name}이(가) 장바구니에 추가되었습니다.`,
@@ -239,6 +139,12 @@ const MyPage = () => {
     };
     return colorMap[tag] || 'bg-secondary text-muted-foreground';
   };
+
+  // 인증 리다이렉트
+  if (!authLoading && !user) {
+    navigate('/auth');
+    return null;
+  }
 
   if (authLoading || isLoading) {
     return (
@@ -324,30 +230,22 @@ const MyPage = () => {
                 {likedProducts.map((product) => (
                   <Card key={product.id} className="overflow-hidden group">
                     <div className="aspect-square relative bg-muted">
-                      {product.product_image_url ? (
-                        <img
-                          src={product.product_image_url}
-                          alt={product.product_name}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/placeholder.svg';
-                          }}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
-                        </div>
-                      )}
+                      <LazyImage
+                        src={product.product_image_url}
+                        alt={product.product_name}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                        fallbackClassName="w-full h-full"
+                      />
                       {/* Category Badge */}
                       {product.product_category && (
-                        <span className="absolute top-2 left-2 text-xs bg-background/90 backdrop-blur px-2 py-0.5 rounded-full">
+                        <span className="absolute top-2 left-2 text-xs bg-background/90 backdrop-blur px-2 py-0.5 rounded-full z-10">
                           {product.product_category}
                         </span>
                       )}
                       {/* Unlike Button */}
                       <button
                         onClick={() => handleUnlike(product.id)}
-                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 z-10"
                       >
                         <Heart className="w-4 h-4 fill-red-500 text-red-500" />
                       </button>
@@ -377,6 +275,7 @@ const MyPage = () => {
                           size="sm"
                           className="flex-1 text-xs h-8"
                           onClick={() => handleAddToCart(product)}
+                          disabled={addToCart.isPending}
                         >
                           <ShoppingCart className="w-3 h-3 mr-1" />
                           담기
@@ -484,21 +383,13 @@ const MyPage = () => {
                               {rec.items.map((item, index) => (
                                 <div key={index} className="space-y-2">
                                   <div className="aspect-square relative overflow-hidden bg-muted rounded-lg">
-                                    {item.image_url ? (
-                                      <img
-                                        src={item.image_url}
-                                        alt={item.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          (e.target as HTMLImageElement).src = '/placeholder.svg';
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <ShoppingBag className="w-8 h-8 text-muted-foreground/30" />
-                                      </div>
-                                    )}
-                                    <span className="absolute top-1 left-1 text-xs bg-background/90 px-1.5 py-0.5 rounded">
+                                    <LazyImage
+                                      src={item.image_url}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover"
+                                      fallbackClassName="w-full h-full"
+                                    />
+                                    <span className="absolute top-1 left-1 text-xs bg-background/90 px-1.5 py-0.5 rounded z-10">
                                       {item.category}
                                     </span>
                                   </div>
