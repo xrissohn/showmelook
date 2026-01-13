@@ -789,7 +789,7 @@ const Admin = () => {
 
         {/* Test Tabs */}
         <Tabs defaultValue="dna-management" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-10">
+          <TabsList className="flex w-full overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
             <TabsTrigger value="dna-management">DNA 관리</TabsTrigger>
             <TabsTrigger value="admin-tools">관리도구</TabsTrigger>
             <TabsTrigger value="batch-collect">배치 수집</TabsTrigger>
