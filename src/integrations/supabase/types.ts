@@ -100,9 +100,11 @@ export type Database = {
           id: string
           image_url: string
           is_favorite: boolean | null
+          memo: string | null
           product_ids: string[] | null
           prompt_used: string | null
           style_trend_id: string | null
+          tags: string[] | null
           user_id: string
         }
         Insert: {
@@ -110,9 +112,11 @@ export type Database = {
           id?: string
           image_url: string
           is_favorite?: boolean | null
+          memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
           style_trend_id?: string | null
+          tags?: string[] | null
           user_id: string
         }
         Update: {
@@ -120,9 +124,11 @@ export type Database = {
           id?: string
           image_url?: string
           is_favorite?: boolean | null
+          memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
           style_trend_id?: string | null
+          tags?: string[] | null
           user_id?: string
         }
         Relationships: [
