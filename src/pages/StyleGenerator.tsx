@@ -13,8 +13,7 @@ import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
-import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
-import showmelookWatermarkLogo from '@/assets/showmelook-watermark-logo.png';
+import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 import useEmblaCarousel from 'embla-carousel-react';
 interface StyleTrend {
   id: string;
@@ -228,8 +227,8 @@ const CelebrationParticles = ({ show }: { show: boolean }) => {
   );
 };
 
-// 이미지에 워터마크 추가 함수 (중앙, 더 크고 더 여린 투명도)
-const addWatermarkToImage = async (imageUrl: string, logoUrl: string, koreanLogoUrl?: string): Promise<string> => {
+// 이미지에 워터마크 추가 함수 (중앙, 통합 로고 + URL만)
+const addWatermarkToImage = async (imageUrl: string, logoUrl: string): Promise<string> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -249,82 +248,46 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string, koreanLogo
       // 원본 이미지 그리기
       ctx.drawImage(img, 0, 0);
       
-      // 워터마크 로고 로드
+      // 새 통합 워터마크 로고 로드
       const logo = new Image();
       logo.crossOrigin = 'anonymous';
       
       logo.onload = () => {
-        // 한글 로고도 로드
-        const koreanLogo = new Image();
-        koreanLogo.crossOrigin = 'anonymous';
+        // 워터마크 크기 계산 (이미지 너비의 30%)
+        const watermarkWidth = img.width * 0.30;
+        const watermarkHeight = (logo.height / logo.width) * watermarkWidth;
         
-        const drawWatermark = (hasKoreanLogo: boolean) => {
-          // 워터마크 크기 계산 (이미지 너비의 25%)
-          const watermarkWidth = img.width * 0.25;
-          const watermarkHeight = watermarkWidth;
-          
-          // 한글 로고 크기 (메인 로고의 105% 너비 - 1.5배 증가)
-          const koreanLogoWidth = watermarkWidth * 1.05;
-          const koreanLogoHeight = hasKoreanLogo ? (koreanLogo.height / koreanLogo.width) * koreanLogoWidth : 0;
-          
-          // 폰트 크기 계산 (1.5배 증가)
-          const fontSize = Math.max(21, img.width * 0.042);
-          const urlFontSize = Math.max(15, img.width * 0.027);
-          
-          // 전체 워터마크 높이 계산 (한글로고 + 로고 + 영문 + URL)
-          const gap = 8; // 한글 로고와 메인 로고 사이 간격 줄임
-          const textGap = 8; // 텍스트 간격
-          const totalHeight = (hasKoreanLogo ? koreanLogoHeight + gap : 0) + watermarkHeight + fontSize + urlFontSize + textGap * 2;
-          
-          // 한글 로고 바로 아래에 위치하도록 조정 (위쪽으로 이동)
-          const startY = (img.height - totalHeight) / 2 - img.height * 0.08; // 위로 8% 이동
-          const mainLogoY = startY + (hasKoreanLogo ? koreanLogoHeight + gap : 0);
-          const mainLogoX = (img.width - watermarkWidth) / 2;
-          
-          // 배경 원 제거됨
-          
-          // 한글 로고 그리기 (로고 위)
-          if (hasKoreanLogo) {
-            ctx.globalAlpha = 0.5;
-            const koreanLogoX = (img.width - koreanLogoWidth) / 2;
-            ctx.drawImage(koreanLogo, koreanLogoX, startY, koreanLogoWidth, koreanLogoHeight);
-            ctx.globalAlpha = 1.0;
+        // URL 폰트 크기 (크게)
+        const urlFontSize = Math.max(20, img.width * 0.035);
+        
+        // 전체 워터마크 높이 계산 (로고 + URL)
+        const gap = 15;
+        const totalHeight = watermarkHeight + gap + urlFontSize;
+        
+        // 정중앙 위치
+        const startY = (img.height - totalHeight) / 2;
+        const logoX = (img.width - watermarkWidth) / 2;
+        
+        // 메인 로고 그리기 (투명도 0.5)
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(logo, logoX, startY, watermarkWidth, watermarkHeight);
+        ctx.globalAlpha = 1.0;
+        
+        // URL 추가 (로고 아래)
+        ctx.font = `bold ${urlFontSize}px sans-serif`;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.textAlign = 'center';
+        ctx.fillText('showmelook.com', img.width / 2, startY + watermarkHeight + gap + urlFontSize);
+        
+        // Blob으로 변환
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const watermarkedUrl = URL.createObjectURL(blob);
+            resolve(watermarkedUrl);
+          } else {
+            reject(new Error('Failed to create blob'));
           }
-          
-          // 메인 로고 그리기 (더 여리게 - 투명도 0.4)
-          ctx.globalAlpha = 0.4;
-          ctx.drawImage(logo, mainLogoX, mainLogoY, watermarkWidth, watermarkHeight);
-          ctx.globalAlpha = 1.0;
-          
-          // 영문 "ShowMeLook" 텍스트 (로고 바로 아래)
-          ctx.font = `bold ${fontSize}px sans-serif`;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-          ctx.textAlign = 'center';
-          ctx.fillText('ShowMeLook', img.width / 2, mainLogoY + watermarkHeight + fontSize + textGap);
-          
-          // URL 추가 (ShowMeLook 바로 아래)
-          ctx.font = `${urlFontSize}px sans-serif`;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.fillText('showmelook.com', img.width / 2, mainLogoY + watermarkHeight + fontSize + urlFontSize + textGap * 2 + 4);
-          
-          // Blob으로 변환
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const watermarkedUrl = URL.createObjectURL(blob);
-              resolve(watermarkedUrl);
-            } else {
-              reject(new Error('Failed to create blob'));
-            }
-          }, 'image/png', 1.0);
-        };
-        
-        if (koreanLogoUrl) {
-          koreanLogo.onload = () => drawWatermark(true);
-          koreanLogo.onerror = () => drawWatermark(false);
-          koreanLogo.src = koreanLogoUrl;
-        } else {
-          drawWatermark(false);
-        }
+        }, 'image/png', 1.0);
       };
       
       logo.onerror = () => {
@@ -380,8 +343,7 @@ const downloadImage = async (
   imageUrl: string, 
   fileName: string = 'showmelook-style.png',
   addWatermark: boolean = false,
-  logoUrl?: string,
-  koreanLogoUrl?: string
+  logoUrl?: string
 ) => {
   try {
     let urlToDownload = imageUrl;
@@ -389,7 +351,7 @@ const downloadImage = async (
     // 워터마크 추가 (비프리미엄 사용자)
     if (addWatermark && logoUrl) {
       try {
-        urlToDownload = await addWatermarkToImage(imageUrl, logoUrl, koreanLogoUrl);
+        urlToDownload = await addWatermarkToImage(imageUrl, logoUrl);
       } catch (error) {
         console.error('Watermark failed, downloading original:', error);
         // 워터마크 실패 시 원본 다운로드
@@ -424,8 +386,7 @@ const shareToSNS = async (
   imageUrl: string, 
   platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy',
   addWatermark: boolean = false,
-  logoUrl?: string,
-  koreanLogoUrl?: string
+  logoUrl?: string
 ) => {
   const shareText = '👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요! #ShowMeLook #AI패션 #스타일추천';
   const shareUrl = window.location.origin;
@@ -437,8 +398,7 @@ const shareToSNS = async (
         imageUrl, 
         'showmelook-style-instagram.png',
         addWatermark,
-        logoUrl,
-        koreanLogoUrl
+        logoUrl
       );
       if (downloaded) {
         // 모바일 확인
@@ -505,8 +465,7 @@ const ShareButtons = ({
   className = '',
   compact = false,
   isPremium = false,
-  logoUrl,
-  koreanLogoUrl
+  logoUrl
 }: { 
   imageUrl: string; 
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
@@ -514,7 +473,6 @@ const ShareButtons = ({
   compact?: boolean;
   isPremium?: boolean;
   logoUrl?: string;
-  koreanLogoUrl?: string;
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -528,8 +486,7 @@ const ShareButtons = ({
       imageUrl, 
       `showmelook-style-${Date.now()}.png`,
       shouldAddWatermark,
-      logoUrl,
-      koreanLogoUrl
+      logoUrl
     );
     setIsDownloading(false);
     const message = success 
@@ -541,7 +498,7 @@ const ShareButtons = ({
   };
 
   const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
-    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, koreanLogoUrl);
+    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl);
     setIsShareOpen(false);
     onShare?.(platform, result);
   };
@@ -713,14 +670,12 @@ const GeneratedStyleImage = ({
   src, 
   alt,
   logoSrc,
-  koreanLogoSrc,
   onShare,
   isPremium = false
 }: { 
   src: string; 
   alt: string;
   logoSrc: string;
-  koreanLogoSrc?: string;
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
   isPremium?: boolean;
 }) => {
@@ -881,7 +836,7 @@ const GeneratedStyleImage = ({
           {/* 저장/공유 버튼 오버레이 */}
           {!isLoading && (
             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} koreanLogoUrl={koreanLogoSrc} />
+              <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} />
             </div>
           )}
         </>
@@ -1999,9 +1954,9 @@ const StyleGenerator = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-          <button onClick={() => navigate('/')} className="flex items-center gap-0 hover:opacity-80 transition-opacity">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[60px] sm:h-[90px] object-contain -ml-2 sm:-ml-3" />
+            <span className="font-bold text-lg sm:text-xl text-primary">ShowMeLook</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2">
@@ -2717,8 +2672,7 @@ const StyleGenerator = () => {
                   <GeneratedStyleImage
                     src={generatedImage}
                     alt="Generated style"
-                    logoSrc={showmelookWatermarkLogo}
-                    koreanLogoSrc={showmelookKoreanLogo}
+                    logoSrc={showmelookWatermarkFull}
                     isPremium={isPremium}
                     onShare={(platform, result) => {
                       if (result.message) {
@@ -2916,8 +2870,7 @@ const StyleGenerator = () => {
                         }}
                         compact
                         isPremium={isPremium}
-                        logoUrl={showmelookWatermarkLogo}
-                        koreanLogoUrl={showmelookKoreanLogo}
+                        logoUrl={showmelookWatermarkFull}
                       />
                       {/* 좋아요 버튼 */}
                       <button 
