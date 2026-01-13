@@ -14,6 +14,7 @@ import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check,
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import showmelookWatermarkLogo from '@/assets/showmelook-watermark-logo.png';
 import useEmblaCarousel from 'embla-carousel-react';
 interface StyleTrend {
   id: string;
@@ -262,17 +263,17 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string, koreanLogo
           const watermarkWidth = img.width * 0.25;
           const watermarkHeight = watermarkWidth;
           
-          // 한글 로고 크기 (메인 로고의 60% 너비)
-          const koreanLogoWidth = watermarkWidth * 0.7;
+          // 한글 로고 크기 (메인 로고의 105% 너비 - 1.5배 증가)
+          const koreanLogoWidth = watermarkWidth * 1.05;
           const koreanLogoHeight = hasKoreanLogo ? (koreanLogo.height / koreanLogo.width) * koreanLogoWidth : 0;
           
-          // 폰트 크기 계산
-          const fontSize = Math.max(14, img.width * 0.028);
-          const urlFontSize = Math.max(10, img.width * 0.018);
+          // 폰트 크기 계산 (1.5배 증가)
+          const fontSize = Math.max(21, img.width * 0.042);
+          const urlFontSize = Math.max(15, img.width * 0.027);
           
           // 전체 워터마크 높이 계산 (한글로고 + 로고 + 영문 + URL)
-          const gap = 10;
-          const totalHeight = (hasKoreanLogo ? koreanLogoHeight + gap : 0) + watermarkHeight + fontSize + urlFontSize + 35;
+          const gap = 12;
+          const totalHeight = (hasKoreanLogo ? koreanLogoHeight + gap : 0) + watermarkHeight + fontSize + urlFontSize + 45;
           
           // 정중앙 위치 (전체 높이 기준)
           const startY = (img.height - totalHeight) / 2;
@@ -281,33 +282,33 @@ const addWatermarkToImage = async (imageUrl: string, logoUrl: string, koreanLogo
           
           // 더 여린 반투명 배경 원 (투명도 0.25) - 위치 조정
           ctx.beginPath();
-          ctx.arc(img.width / 2, startY + totalHeight / 2, watermarkWidth / 2 + 35, 0, Math.PI * 2);
+          ctx.arc(img.width / 2, startY + totalHeight / 2, watermarkWidth / 2 + 50, 0, Math.PI * 2);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
           ctx.fill();
           
           // 한글 로고 그리기 (로고 위)
           if (hasKoreanLogo) {
-            ctx.globalAlpha = 0.4;
+            ctx.globalAlpha = 0.5;
             const koreanLogoX = (img.width - koreanLogoWidth) / 2;
             ctx.drawImage(koreanLogo, koreanLogoX, startY, koreanLogoWidth, koreanLogoHeight);
             ctx.globalAlpha = 1.0;
           }
           
-          // 메인 로고 그리기 (더 여리게 - 투명도 0.35)
-          ctx.globalAlpha = 0.35;
+          // 메인 로고 그리기 (더 여리게 - 투명도 0.4)
+          ctx.globalAlpha = 0.4;
           ctx.drawImage(logo, mainLogoX, mainLogoY, watermarkWidth, watermarkHeight);
           ctx.globalAlpha = 1.0;
           
           // 영문 "ShowMeLook" 텍스트 (로고 아래)
           ctx.font = `bold ${fontSize}px sans-serif`;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
           ctx.textAlign = 'center';
-          ctx.fillText('ShowMeLook', img.width / 2, mainLogoY + watermarkHeight + fontSize + 12);
+          ctx.fillText('ShowMeLook', img.width / 2, mainLogoY + watermarkHeight + fontSize + 15);
           
           // URL 추가
           ctx.font = `${urlFontSize}px sans-serif`;
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-          ctx.fillText('showmelook.com', img.width / 2, mainLogoY + watermarkHeight + fontSize + urlFontSize + 22);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.fillText('showmelook.com', img.width / 2, mainLogoY + watermarkHeight + fontSize + urlFontSize + 28);
           
           // Blob으로 변환
           canvas.toBlob((blob) => {
@@ -2719,7 +2720,7 @@ const StyleGenerator = () => {
                   <GeneratedStyleImage
                     src={generatedImage}
                     alt="Generated style"
-                    logoSrc={showmelookLogo}
+                    logoSrc={showmelookWatermarkLogo}
                     koreanLogoSrc={showmelookKoreanLogo}
                     isPremium={isPremium}
                     onShare={(platform, result) => {
@@ -2918,7 +2919,7 @@ const StyleGenerator = () => {
                         }}
                         compact
                         isPremium={isPremium}
-                        logoUrl={showmelookLogo}
+                        logoUrl={showmelookWatermarkLogo}
                         koreanLogoUrl={showmelookKoreanLogo}
                       />
                       {/* 좋아요 버튼 */}
