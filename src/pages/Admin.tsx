@@ -209,15 +209,12 @@ const Admin = () => {
   const [batchResult, setBatchResult] = useState<BatchCollectResult | null>(null);
   const [isBatchLoading, setIsBatchLoading] = useState(false);
 
-  // DNA management state
+  // DNA 2.0 management state (simplified)
   const [dnaStats, setDnaStats] = useState<{
     total: number;
     withDna: number;
     withoutDna: number;
-    withMeta: number;
-    withoutMeta: number;
-    byCategory: Record<string, { total: number; withDna: number; withMeta: number }>;
-    byBrand: Record<string, { total: number; withDna: number }>;
+    byCategory: Record<string, { total: number; withDna: number }>;
     byTarget: Record<string, number>;
     bySlot: Record<string, number>;
   } | null>(null);
@@ -227,12 +224,14 @@ const Admin = () => {
     processed?: number;
     updated?: number;
     remaining?: number;
+    errors?: number;
+    timeMs?: number;
+    avgTimePerProduct?: number;
     error?: string;
-    sampleDNA?: { id: string; dna_text: string; dna_meta: any }[];
-    stats?: { targetDistribution: Record<string, number>; slotDistribution: Record<string, number> };
+    sampleDNA?: { id: string; name: string; dna_text: string; dna_meta: any }[];
+    stats?: { targetDistribution: Record<string, number>; slotDistribution: Record<string, number>; avgFormality?: string };
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
-  const [regenerateMeta, setRegenerateMeta] = useState(false);
 
   useEffect(() => {
     loadMerchants();
@@ -642,47 +641,28 @@ const Admin = () => {
 
   const loadDnaStats = async () => {
     try {
-      // Get total and DNA counts with dna_meta
+      // Get total and DNA 2.0 counts (dna_meta)
       const { data: products } = await supabase
         .from('products_cache')
-        .select('id, dna_text, dna_meta, category, brand')
+        .select('id, dna_meta, category')
         .eq('is_active', true);
 
       if (!products) return;
 
       const total = products.length;
-      const withDna = products.filter(p => p.dna_text).length;
+      const withDna = products.filter(p => p.dna_meta).length;
       const withoutDna = total - withDna;
-      const withMeta = products.filter(p => p.dna_meta).length;
-      const withoutMeta = total - withMeta;
 
       // Group by category
-      const byCategory: Record<string, { total: number; withDna: number; withMeta: number }> = {};
+      const byCategory: Record<string, { total: number; withDna: number }> = {};
       products.forEach(p => {
         const cat = p.category || '미분류';
-        if (!byCategory[cat]) byCategory[cat] = { total: 0, withDna: 0, withMeta: 0 };
+        if (!byCategory[cat]) byCategory[cat] = { total: 0, withDna: 0 };
         byCategory[cat].total++;
-        if (p.dna_text) byCategory[cat].withDna++;
-        if (p.dna_meta) byCategory[cat].withMeta++;
+        if (p.dna_meta) byCategory[cat].withDna++;
       });
 
-      // Group by brand (top 10)
-      const brandCounts: Record<string, { total: number; withDna: number }> = {};
-      products.forEach(p => {
-        const brand = p.brand || '알 수 없음';
-        if (!brandCounts[brand]) brandCounts[brand] = { total: 0, withDna: 0 };
-        brandCounts[brand].total++;
-        if (p.dna_text) brandCounts[brand].withDna++;
-      });
-      
-      // Sort and take top 10
-      const byBrand = Object.fromEntries(
-        Object.entries(brandCounts)
-          .sort((a, b) => b[1].total - a[1].total)
-          .slice(0, 10)
-      );
-
-      // DNA 2.0: target distribution
+      // DNA 2.0: target and slot distribution
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
       products.forEach(p => {
@@ -697,22 +677,20 @@ const Admin = () => {
         }
       });
 
-      setDnaStats({ total, withDna, withoutDna, withMeta, withoutMeta, byCategory, byBrand, byTarget, bySlot });
+      setDnaStats({ total, withDna, withoutDna, byCategory, byTarget, bySlot });
     } catch (error) {
       console.error('Error loading DNA stats:', error);
     }
   };
 
-  const runDnaBatch = async (regenerateMetaFlag: boolean = false) => {
+  const runDnaBatch = async () => {
     setIsDnaLoading(true);
     setDnaBatchResult(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('dna-batch', {
         body: { 
-          batchSize: parseInt(dnaBatchSize) || 50,
-          mode: 'generate',
-          regenerateMeta: regenerateMetaFlag
+          batchSize: parseInt(dnaBatchSize) || 50
         },
       });
 
@@ -721,10 +699,9 @@ const Admin = () => {
       setDnaBatchResult(data);
       
       if (data.success) {
-        const modeMsg = regenerateMetaFlag ? 'DNA 2.0 메타' : 'DNA';
         toast({
-          title: `${modeMsg} 생성 완료`,
-          description: `${data.updated}개 상품 처리됨, ${data.remaining}개 남음`,
+          title: "DNA 2.0 생성 완료",
+          description: `${data.updated}개 상품 처리됨 (${data.timeMs}ms), ${data.remaining}개 남음`,
         });
         loadDnaStats();
       } else {
@@ -847,7 +824,7 @@ const Admin = () => {
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
-                        DNA 현황
+                        DNA 2.0 현황
                       </h3>
                       <Button variant="outline" size="sm" onClick={loadDnaStats}>
                         <RefreshCw className="w-4 h-4 mr-2" />
@@ -855,11 +832,13 @@ const Admin = () => {
                       </Button>
                     </div>
                     
-                    {/* Overall Progress */}
-                    <div className="p-4 border rounded-lg space-y-3">
+                    {/* Overall Progress - DNA 2.0 only */}
+                    <div className="p-4 border-2 border-primary/30 rounded-lg space-y-3 bg-primary/5">
                       <div className="flex items-center justify-between text-sm">
-                        <span>전체 DNA 커버리지</span>
-                        <span className="font-bold">
+                        <span className="font-medium flex items-center gap-2">
+                          🧬 DNA 2.0 커버리지
+                        </span>
+                        <span className="font-bold text-primary">
                           {dnaStats.withDna} / {dnaStats.total} ({Math.round((dnaStats.withDna / dnaStats.total) * 100)}%)
                         </span>
                       </div>
@@ -867,34 +846,11 @@ const Admin = () => {
                       <div className="flex gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <span className="w-2 h-2 bg-primary rounded-full" />
-                          DNA 있음: {dnaStats.withDna}
+                          완료: {dnaStats.withDna}
                         </span>
                         <span className="flex items-center gap-1">
                           <span className="w-2 h-2 bg-muted rounded-full" />
-                          DNA 없음: {dnaStats.withoutDna}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* DNA 2.0 Meta Progress */}
-                    <div className="p-4 border-2 border-blue-200 dark:border-blue-800 rounded-lg space-y-3 bg-blue-50/50 dark:bg-blue-950/50">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium flex items-center gap-2">
-                          🧬 DNA 2.0 Meta 커버리지
-                        </span>
-                        <span className="font-bold text-blue-600">
-                          {dnaStats.withMeta} / {dnaStats.total} ({Math.round((dnaStats.withMeta / dnaStats.total) * 100)}%)
-                        </span>
-                      </div>
-                      <Progress value={(dnaStats.withMeta / dnaStats.total) * 100} className="h-3 bg-blue-100 dark:bg-blue-900" />
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 bg-blue-500 rounded-full" />
-                          Meta 있음: {dnaStats.withMeta}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 bg-blue-200 rounded-full" />
-                          Meta 없음: {dnaStats.withoutMeta}
+                          미생성: {dnaStats.withoutDna}
                         </span>
                       </div>
                     </div>
@@ -903,7 +859,7 @@ const Admin = () => {
                     {Object.keys(dnaStats.byTarget).length > 0 && (
                       <div className="p-4 border rounded-lg space-y-3">
                         <h4 className="text-sm font-medium flex items-center gap-2">
-                          👤 타겟 분포 (DNA 2.0)
+                          👤 타겟 분포
                         </h4>
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                           {Object.entries(dnaStats.byTarget)
@@ -922,7 +878,7 @@ const Admin = () => {
                     {Object.keys(dnaStats.bySlot).length > 0 && (
                       <div className="p-4 border rounded-lg space-y-3">
                         <h4 className="text-sm font-medium flex items-center gap-2">
-                          🏷️ 슬롯 분포 (DNA 2.0)
+                          🏷️ 슬롯 분포
                         </h4>
                         <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
                           {Object.entries(dnaStats.bySlot)
@@ -945,7 +901,7 @@ const Admin = () => {
 
                     {/* Category Breakdown */}
                     <div className="p-4 border rounded-lg space-y-3">
-                      <h4 className="text-sm font-medium">카테고리별 DNA 현황</h4>
+                      <h4 className="text-sm font-medium">카테고리별 현황</h4>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                         {Object.entries(dnaStats.byCategory)
                           .sort((a, b) => b[1].total - a[1].total)
@@ -954,31 +910,16 @@ const Admin = () => {
                             <div key={cat} className="p-2 bg-muted/50 rounded text-sm">
                               <p className="font-medium truncate">{cat}</p>
                               <p className="text-xs text-muted-foreground">
-                                DNA: {stats.withDna}/{stats.total} | Meta: {stats.withMeta}
+                                {stats.withDna}/{stats.total} ({Math.round((stats.withDna / stats.total) * 100)}%)
                               </p>
                             </div>
                           ))}
                       </div>
                     </div>
-
-                    {/* Brand Breakdown */}
-                    <div className="p-4 border rounded-lg space-y-3">
-                      <h4 className="text-sm font-medium">브랜드별 DNA 현황 (Top 10)</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                        {Object.entries(dnaStats.byBrand).map(([brand, stats]) => (
-                          <div key={brand} className="p-2 bg-muted/50 rounded text-xs">
-                            <p className="font-medium truncate" title={brand}>{brand}</p>
-                            <p className="text-muted-foreground">
-                              {stats.withDna}/{stats.total}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
                   </div>
                 )}
 
-                {/* DNA Batch Generation */}
+                {/* DNA 2.0 Batch Generation */}
                 <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
                   <div className="flex items-center justify-between">
                     <div>
@@ -987,7 +928,7 @@ const Admin = () => {
                         DNA 2.0 배치 생성
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        AI를 사용하여 DNA가 없는 상품에 스타일 DNA와 메타 정보를 생성합니다.
+                        규칙 기반으로 빠르게 DNA 메타 정보를 생성합니다 (AI 호출 없음).
                       </p>
                     </div>
                   </div>
@@ -1000,43 +941,29 @@ const Admin = () => {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="10">10개</SelectItem>
-                          <SelectItem value="25">25개</SelectItem>
+                          <SelectItem value="20">20개</SelectItem>
                           <SelectItem value="50">50개</SelectItem>
                           <SelectItem value="100">100개</SelectItem>
+                          <SelectItem value="200">200개</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
                     <Button 
-                      onClick={() => runDnaBatch(false)}
+                      onClick={runDnaBatch}
                       disabled={isDnaLoading}
-                    >
-                      {isDnaLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <Play className="w-4 h-4 mr-2" />
-                      )}
-                      DNA 생성 (새 상품만)
-                    </Button>
-
-                    <Button 
-                      onClick={() => runDnaBatch(true)}
-                      disabled={isDnaLoading}
-                      variant="secondary"
-                      className="border-blue-300 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950 dark:hover:bg-blue-900"
                     >
                       {isDnaLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : (
                         <Dna className="w-4 h-4 mr-2" />
                       )}
-                      🧬 DNA 2.0 Meta 생성
+                      🧬 DNA 2.0 생성
                     </Button>
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    💡 "DNA 생성"은 dna_text가 없는 상품에 DNA를 생성합니다. "DNA 2.0 Meta 생성"은 dna_meta가 없는 상품에 target/slot/formality 등을 추가합니다.
+                    ⚡ AI 호출 없이 상품당 ~40ms로 빠르게 처리됩니다 (100개 ≈ 4초)
                   </p>
 
                   {/* Batch Result */}
@@ -1048,13 +975,20 @@ const Admin = () => {
                     }`}>
                       {dnaBatchResult.success ? (
                         <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                            <span className="font-medium">DNA 2.0 생성 완료</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-5 h-5 text-green-600" />
+                              <span className="font-medium">DNA 2.0 생성 완료</span>
+                            </div>
+                            {dnaBatchResult.timeMs && (
+                              <Badge variant="secondary" className="text-xs">
+                                ⚡ {dnaBatchResult.timeMs}ms ({dnaBatchResult.avgTimePerProduct}ms/상품)
+                              </Badge>
+                            )}
                           </div>
-                          <div className="grid grid-cols-3 gap-4 text-sm">
+                          <div className="grid grid-cols-4 gap-4 text-sm">
                             <div>
-                              <span className="text-muted-foreground">처리됨:</span>{' '}
+                              <span className="text-muted-foreground">처리:</span>{' '}
                               <span className="font-medium">{dnaBatchResult.processed}</span>
                             </div>
                             <div>
@@ -1062,7 +996,11 @@ const Admin = () => {
                               <span className="font-medium text-green-600">{dnaBatchResult.updated}</span>
                             </div>
                             <div>
-                              <span className="text-muted-foreground">남은 상품:</span>{' '}
+                              <span className="text-muted-foreground">에러:</span>{' '}
+                              <span className="font-medium text-red-600">{dnaBatchResult.errors || 0}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">남음:</span>{' '}
                               <span className="font-medium">{dnaBatchResult.remaining}</span>
                             </div>
                           </div>
@@ -1094,19 +1032,17 @@ const Admin = () => {
                           )}
                           
                           {dnaBatchResult.sampleDNA && dnaBatchResult.sampleDNA.length > 0 && (
-                            <div className="mt-3 pt-3 border-t">
-                              <p className="text-xs font-medium mb-2">생성된 DNA 2.0 샘플:</p>
-                              <div className="space-y-2">
-                                {dnaBatchResult.sampleDNA.map((sample) => (
+                            <details className="mt-3 pt-3 border-t">
+                              <summary className="text-xs font-medium mb-2 cursor-pointer">생성된 DNA 샘플 ({dnaBatchResult.sampleDNA.length}개)</summary>
+                              <div className="space-y-2 mt-2">
+                                {dnaBatchResult.sampleDNA.slice(0, 3).map((sample) => (
                                   <div key={sample.id} className="text-xs bg-white/50 dark:bg-black/20 p-2 rounded space-y-1">
-                                    <p><strong>dna_text:</strong> <code className="break-all">{sample.dna_text}</code></p>
-                                    {sample.dna_meta && (
-                                      <p><strong>dna_meta:</strong> target={sample.dna_meta.target}, slot={sample.dna_meta.item_slot}, formality={sample.dna_meta.formality}</p>
-                                    )}
+                                    <p className="font-medium truncate">{sample.name}</p>
+                                    <p><code className="break-all text-muted-foreground">{sample.dna_text}</code></p>
                                   </div>
                                 ))}
                               </div>
-                            </div>
+                            </details>
                           )}
                         </div>
                       ) : (
