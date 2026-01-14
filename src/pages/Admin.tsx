@@ -233,6 +233,25 @@ const Admin = () => {
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
 
+  // StockX image scraping state
+  const [stockxScrapeResult, setStockxScrapeResult] = useState<{
+    success: boolean;
+    total?: number;
+    updated?: number;
+    failed?: number;
+    results?: Array<{
+      id: string;
+      product_url: string;
+      image_url: string | null;
+      success: boolean;
+      error?: string;
+    }>;
+    message?: string;
+    error?: string;
+  } | null>(null);
+  const [isStockxScraping, setIsStockxScraping] = useState(false);
+  const [stockxScrapeLimit, setStockxScrapeLimit] = useState("5");
+
   useEffect(() => {
     loadMerchants();
     loadDnaStats();
@@ -724,6 +743,40 @@ const Admin = () => {
     }
   };
 
+  const scrapeStockxImages = async () => {
+    setIsStockxScraping(true);
+    setStockxScrapeResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('scrape-stockx-images', {
+        body: { limit: parseInt(stockxScrapeLimit) || 5 },
+      });
+
+      if (error) throw error;
+
+      setStockxScrapeResult(data);
+
+      if (data.success) {
+        toast({
+          title: "StockX 이미지 스크래핑 완료",
+          description: `${data.updated}/${data.total}개 이미지 업데이트됨`,
+        });
+        // Refresh product stats
+        loadProductStats();
+      }
+    } catch (error: any) {
+      console.error('StockX scrape error:', error);
+      setStockxScrapeResult({ success: false, error: error.message });
+      toast({
+        title: "StockX 스크래핑 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsStockxScraping(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -1207,6 +1260,89 @@ const Admin = () => {
                       전체 초기화
                     </Button>
                   </div>
+                </div>
+
+                {/* StockX Image Scraping */}
+                <div className="p-4 border-2 border-blue-500/30 rounded-lg space-y-4 bg-blue-500/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2 text-blue-600">
+                        <Package className="w-4 h-4" />
+                        StockX 이미지 스크래핑
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        이미지가 없는 StockX 상품의 이미지를 스크래핑합니다.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select value={stockxScrapeLimit} onValueChange={setStockxScrapeLimit}>
+                        <SelectTrigger className="w-[80px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="5">5개</SelectItem>
+                          <SelectItem value="10">10개</SelectItem>
+                          <SelectItem value="20">20개</SelectItem>
+                          <SelectItem value="50">50개</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button 
+                        onClick={scrapeStockxImages}
+                        disabled={isStockxScraping}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {isStockxScraping ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Play className="w-4 h-4 mr-2" />
+                        )}
+                        스크래핑 시작
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* StockX Scrape Result */}
+                  {stockxScrapeResult && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg space-y-3">
+                      {stockxScrapeResult.success ? (
+                        <>
+                          <div className="flex items-center gap-2 text-green-600">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">
+                              {stockxScrapeResult.updated}/{stockxScrapeResult.total}개 이미지 업데이트
+                            </span>
+                          </div>
+                          {stockxScrapeResult.results && stockxScrapeResult.results.length > 0 && (
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                              {stockxScrapeResult.results.map((r, idx) => (
+                                <div key={idx} className={`flex items-center gap-2 p-2 rounded text-sm ${r.success ? 'bg-green-100' : 'bg-red-100'}`}>
+                                  {r.success ? (
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="truncate text-xs">{r.product_url}</p>
+                                    {r.success && r.image_url && (
+                                      <img src={r.image_url} alt="" className="w-12 h-12 object-contain mt-1 rounded" />
+                                    )}
+                                    {!r.success && r.error && (
+                                      <p className="text-xs text-red-600">{r.error}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-red-600">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">오류: {stockxScrapeResult.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

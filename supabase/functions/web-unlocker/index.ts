@@ -549,6 +549,87 @@ function parseBenetton(html: string, url: string): ProductData | null {
   }
 }
 
+// StockX parser - for sneaker images
+function parseStockX(html: string, url: string): ProductData | null {
+  try {
+    // StockX uses React/Next.js, try multiple extraction methods
+    
+    // Method 1: Try og:image meta tag (most reliable for images)
+    const ogImageMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+    const ogTitleMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+    
+    // Method 2: Try JSON-LD
+    const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+    for (const match of jsonLdMatches) {
+      try {
+        const jsonLd = JSON.parse(match[1]);
+        if (jsonLd['@type'] === 'Product') {
+          const imageUrl = Array.isArray(jsonLd.image) ? jsonLd.image[0] : jsonLd.image;
+          return {
+            name: jsonLd.name || ogTitleMatch?.[1] || '',
+            brand: jsonLd.brand?.name || null,
+            price: parseInt(String(jsonLd.offers?.price || jsonLd.offers?.[0]?.price || 0).replace(/[^\d]/g, '')) || 0,
+            original_price: null,
+            image_url: imageUrl || ogImageMatch?.[1] || null,
+            category: '신발',
+            sizes: null,
+            is_in_stock: true,
+            color: extractColor(jsonLd.name || ''),
+          };
+        }
+      } catch (e) {
+        continue;
+      }
+    }
+    
+    // Method 3: Try __NEXT_DATA__
+    const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([^<]+)<\/script>/i);
+    if (nextDataMatch) {
+      try {
+        const nextData = JSON.parse(nextDataMatch[1]);
+        const product = nextData?.props?.pageProps?.product || 
+                        nextData?.props?.pageProps?.data?.product ||
+                        nextData?.props?.pageProps?.initialState?.product;
+        if (product) {
+          return {
+            name: product.title || product.name || ogTitleMatch?.[1] || '',
+            brand: product.brand || null,
+            price: product.retailPrice || product.market?.lowestAsk || 0,
+            original_price: null,
+            image_url: product.media?.imageUrl || product.media?.thumbUrl || product.image || ogImageMatch?.[1] || null,
+            category: '신발',
+            sizes: null,
+            is_in_stock: true,
+            color: extractColor(product.title || product.name || ''),
+          };
+        }
+      } catch (e) {
+        console.log('StockX __NEXT_DATA__ parsing failed');
+      }
+    }
+    
+    // Method 4: Fallback to og tags only
+    if (ogImageMatch?.[1]) {
+      return {
+        name: ogTitleMatch?.[1]?.replace(/\s*[-|–].*StockX.*$/i, '') || '',
+        brand: null,
+        price: 0,
+        original_price: null,
+        image_url: ogImageMatch[1],
+        category: '신발',
+        sizes: null,
+        is_in_stock: true,
+        color: extractColor(ogTitleMatch?.[1] || ''),
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('StockX parsing error:', error);
+    return null;
+  }
+}
+
 // Generic parser for other sites
 function parseGeneric(html: string, url: string): ProductData | null {
   try {
@@ -629,6 +710,7 @@ function identifyMerchant(url: string): string {
   if (url.includes('benettonmall.co.kr')) return 'benetton1';
   if (url.includes('musinsa.com')) return 'musinsa';
   if (url.includes('29cm.co.kr')) return '29cm';
+  if (url.includes('stockx.com')) return 'stockx';
   return 'unknown';
 }
 
