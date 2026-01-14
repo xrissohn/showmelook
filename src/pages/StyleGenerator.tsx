@@ -1820,14 +1820,14 @@ const StyleGenerator = () => {
   const [alternativeProducts, setAlternativeProducts] = useState<CachedProduct[]>([]);
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
 
-  // 동적 트렌드 키워드 상태
-  const [trendKeywords, setTrendKeywords] = useState<{ emoji: string; text: string; desc: string }[]>([
-    { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디' },
-    { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼' },
-    { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일' },
-    { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일' },
-    { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩' },
-    { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일' },
+  // 동적 트렌드 키워드 상태 (인기도 추가)
+  const [trendKeywords, setTrendKeywords] = useState<{ emoji: string; text: string; desc: string; popularity: number }[]>([
+    { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디', popularity: 98 },
+    { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼', popularity: 85 },
+    { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일', popularity: 92 },
+    { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일', popularity: 76 },
+    { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩', popularity: 88 },
+    { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일', popularity: 71 },
   ]);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
   
@@ -1835,12 +1835,94 @@ const StyleGenerator = () => {
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [lastRecommendationId, setLastRecommendationId] = useState<string | null>(null);
   
-  // 티커 애니메이션 상태
+  // 티커 애니메이션 상태 (부드러운 스크롤)
+  const tickerRef = useRef<HTMLDivElement>(null);
+  const tickerAnimationRef = useRef<number | null>(null);
+  const tickerPositionRef = useRef(0);
   const [isTickerPaused, setIsTickerPaused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStartX, setDragStartX] = useState(0);
-  const [dragScrollLeft, setDragScrollLeft] = useState(0);
-  const [tickerOffset, setTickerOffset] = useState(0);
+  const dragStartXRef = useRef(0);
+  const dragStartPositionRef = useRef(0);
+  const lastDragXRef = useRef(0);
+  const velocityRef = useRef(0);
+  
+  // 티커 애니메이션 효과
+  useEffect(() => {
+    const ticker = tickerRef.current;
+    if (!ticker) return;
+    
+    const speed = 0.5; // 픽셀/프레임
+    let lastTime = performance.now();
+    
+    const animate = (currentTime: number) => {
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+      
+      if (!isTickerPaused && !isDragging) {
+        // 자연스러운 감속 후 자동 스크롤
+        if (Math.abs(velocityRef.current) > 0.1) {
+          velocityRef.current *= 0.95; // 감속
+          tickerPositionRef.current -= velocityRef.current;
+        } else {
+          velocityRef.current = 0;
+          tickerPositionRef.current -= speed * (deltaTime / 16); // 60fps 기준
+        }
+        
+        // 루프 처리
+        const halfWidth = ticker.scrollWidth / 2;
+        if (tickerPositionRef.current <= -halfWidth) {
+          tickerPositionRef.current += halfWidth;
+        } else if (tickerPositionRef.current > 0) {
+          tickerPositionRef.current -= halfWidth;
+        }
+        
+        ticker.style.transform = `translateX(${tickerPositionRef.current}px)`;
+      } else if (isDragging) {
+        ticker.style.transform = `translateX(${tickerPositionRef.current}px)`;
+      } else if (isTickerPaused && Math.abs(velocityRef.current) > 0.1) {
+        // 멈췄을 때 관성 처리
+        velocityRef.current *= 0.92;
+        tickerPositionRef.current -= velocityRef.current;
+        ticker.style.transform = `translateX(${tickerPositionRef.current}px)`;
+      }
+      
+      tickerAnimationRef.current = requestAnimationFrame(animate);
+    };
+    
+    tickerAnimationRef.current = requestAnimationFrame(animate);
+    
+    return () => {
+      if (tickerAnimationRef.current) {
+        cancelAnimationFrame(tickerAnimationRef.current);
+      }
+    };
+  }, [isTickerPaused, isDragging]);
+  
+  // 티커 드래그 핸들러
+  const handleTickerMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragStartXRef.current = e.clientX;
+    dragStartPositionRef.current = tickerPositionRef.current;
+    lastDragXRef.current = e.clientX;
+    velocityRef.current = 0;
+  };
+  
+  const handleTickerMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const delta = e.clientX - dragStartXRef.current;
+    tickerPositionRef.current = dragStartPositionRef.current + delta;
+    velocityRef.current = e.clientX - lastDragXRef.current;
+    lastDragXRef.current = e.clientX;
+  };
+  
+  const handleTickerMouseUp = () => {
+    setIsDragging(false);
+  };
+  
+  const handleTickerMouseLeave = () => {
+    setIsTickerPaused(false);
+    setIsDragging(false);
+  };
   
   // 피드백 훅
   const { trackClick, trackLike, trackCart, trackViews } = useFeedback();
@@ -3093,23 +3175,12 @@ const StyleGenerator = () => {
                         
                         {/* AI 분석 기반 추천 키워드 - 티커 스타일 */}
                         <div 
-                          className="relative w-full overflow-hidden h-8 group"
+                          className="relative w-full overflow-hidden h-8 group select-none"
                           onMouseEnter={() => setIsTickerPaused(true)}
-                          onMouseLeave={() => {
-                            setIsTickerPaused(false);
-                            setIsDragging(false);
-                          }}
-                          onMouseDown={(e) => {
-                            setIsDragging(true);
-                            setDragStartX(e.clientX);
-                            setDragScrollLeft(tickerOffset);
-                          }}
-                          onMouseMove={(e) => {
-                            if (!isDragging) return;
-                            const delta = e.clientX - dragStartX;
-                            setTickerOffset(dragScrollLeft + delta);
-                          }}
-                          onMouseUp={() => setIsDragging(false)}
+                          onMouseLeave={handleTickerMouseLeave}
+                          onMouseDown={handleTickerMouseDown}
+                          onMouseMove={handleTickerMouseMove}
+                          onMouseUp={handleTickerMouseUp}
                           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
                         >
                           {isLoadingKeywords ? (
@@ -3119,11 +3190,8 @@ const StyleGenerator = () => {
                             </div>
                           ) : (
                             <div 
-                              className="flex items-center gap-2 absolute whitespace-nowrap h-full"
-                              style={{
-                                transform: `translateX(${tickerOffset}px)`,
-                                animation: isTickerPaused || isDragging ? 'none' : 'ticker 30s linear infinite',
-                              }}
+                              ref={tickerRef}
+                              className="flex items-center gap-2 absolute whitespace-nowrap h-full will-change-transform"
                             >
                               {/* 키워드 2번 반복 (무한 루프 효과) */}
                               {[...Array(2)].map((_, repeatIdx) => (
@@ -3137,13 +3205,29 @@ const StyleGenerator = () => {
                                         }
                                       }}
                                       disabled={isCustomSearching}
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
+                                      className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0 relative"
                                     >
                                       <span>{keyword.emoji}</span>
                                       <span>{keyword.text}</span>
+                                      {/* 인기도 배지 */}
+                                      {keyword.popularity >= 90 && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-500/20 text-rose-500 rounded-full text-[10px] font-medium">
+                                          🔥 HOT
+                                        </span>
+                                      )}
+                                      {keyword.popularity >= 80 && keyword.popularity < 90 && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full text-[10px] font-medium">
+                                          ⬆️ {keyword.popularity}
+                                        </span>
+                                      )}
+                                      {keyword.popularity >= 70 && keyword.popularity < 80 && (
+                                        <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/20 text-blue-500 rounded-full text-[10px] font-medium">
+                                          {keyword.popularity}
+                                        </span>
+                                      )}
                                     </button>
                                   ))}
-                                  {trends.map((trend) => {
+                                  {trends.map((trend, trendIdx) => {
                                     const trendEmojis: Record<string, string> = {
                                       'Minimalist': '🤍',
                                       'Street Style': '🔥',
@@ -3151,6 +3235,8 @@ const StyleGenerator = () => {
                                       'Athleisure': '⚡',
                                       'Bohemian': '🌺',
                                     };
+                                    // DB 트렌드에는 랜덤 인기도 부여 (50-99)
+                                    const trendPopularity = 50 + ((trendIdx * 17) % 50);
                                     return (
                                       <button
                                         key={`db-${repeatIdx}-${trend.id}`}
@@ -3161,10 +3247,15 @@ const StyleGenerator = () => {
                                           }
                                         }}
                                         disabled={isCustomSearching}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
+                                        className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
                                       >
                                         <span>{trendEmojis[trend.name] || '🎨'}</span>
                                         <span>{trend.name_ko}</span>
+                                        {trendPopularity >= 80 && (
+                                          <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full text-[10px] font-medium">
+                                            ⬆️ {trendPopularity}
+                                          </span>
+                                        )}
                                       </button>
                                     );
                                   })}
@@ -3173,12 +3264,6 @@ const StyleGenerator = () => {
                             </div>
                           )}
                         </div>
-                        <style>{`
-                          @keyframes ticker {
-                            0% { transform: translateX(0); }
-                            100% { transform: translateX(-50%); }
-                          }
-                        `}</style>
                       </div>
 
                       {/* 성별 선택 (키즈 포함) */}
