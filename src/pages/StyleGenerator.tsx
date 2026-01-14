@@ -1835,6 +1835,13 @@ const StyleGenerator = () => {
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [lastRecommendationId, setLastRecommendationId] = useState<string | null>(null);
   
+  // 티커 애니메이션 상태
+  const [isTickerPaused, setIsTickerPaused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [dragScrollLeft, setDragScrollLeft] = useState(0);
+  const [tickerOffset, setTickerOffset] = useState(0);
+  
   // 피드백 훅
   const { trackClick, trackLike, trackCart, trackViews } = useFeedback();
   // Embla Carousel
@@ -3084,53 +3091,94 @@ const StyleGenerator = () => {
                           disabled={isCustomSearching}
                         />
                         
-                        {/* AI 분석 기반 추천 키워드 */}
-                        <div className="flex flex-wrap gap-1.5 w-full overflow-hidden">
+                        {/* AI 분석 기반 추천 키워드 - 티커 스타일 */}
+                        <div 
+                          className="relative w-full overflow-hidden h-8 group"
+                          onMouseEnter={() => setIsTickerPaused(true)}
+                          onMouseLeave={() => {
+                            setIsTickerPaused(false);
+                            setIsDragging(false);
+                          }}
+                          onMouseDown={(e) => {
+                            setIsDragging(true);
+                            setDragStartX(e.clientX);
+                            setDragScrollLeft(tickerOffset);
+                          }}
+                          onMouseMove={(e) => {
+                            if (!isDragging) return;
+                            const delta = e.clientX - dragStartX;
+                            setTickerOffset(dragScrollLeft + delta);
+                          }}
+                          onMouseUp={() => setIsDragging(false)}
+                          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+                        >
                           {isLoadingKeywords ? (
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground h-full">
                               <Loader2 className="w-3 h-3 animate-spin" />
                               <span>인기 키워드 분석 중...</span>
                             </div>
                           ) : (
-                            <>
-                              {trendKeywords.map((keyword, index) => (
-                                <button
-                                  key={`trend-${index}-${keyword.text}`}
-                                  onClick={() => setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`)}
-                                  disabled={isCustomSearching}
-                                  className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
-                                >
-                                  <span>{keyword.emoji}</span>
-                                  <span className="truncate max-w-[100px]">{keyword.text}</span>
-                                </button>
+                            <div 
+                              className="flex items-center gap-2 absolute whitespace-nowrap h-full"
+                              style={{
+                                transform: `translateX(${tickerOffset}px)`,
+                                animation: isTickerPaused || isDragging ? 'none' : 'ticker 30s linear infinite',
+                              }}
+                            >
+                              {/* 키워드 2번 반복 (무한 루프 효과) */}
+                              {[...Array(2)].map((_, repeatIdx) => (
+                                <div key={repeatIdx} className="flex items-center gap-2">
+                                  {trendKeywords.map((keyword, index) => (
+                                    <button
+                                      key={`trend-${repeatIdx}-${index}-${keyword.text}`}
+                                      onClick={() => {
+                                        if (!isDragging) {
+                                          setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`);
+                                        }
+                                      }}
+                                      disabled={isCustomSearching}
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
+                                    >
+                                      <span>{keyword.emoji}</span>
+                                      <span>{keyword.text}</span>
+                                    </button>
+                                  ))}
+                                  {trends.map((trend) => {
+                                    const trendEmojis: Record<string, string> = {
+                                      'Minimalist': '🤍',
+                                      'Street Style': '🔥',
+                                      'Classic Elegance': '👔',
+                                      'Athleisure': '⚡',
+                                      'Bohemian': '🌺',
+                                    };
+                                    return (
+                                      <button
+                                        key={`db-${repeatIdx}-${trend.id}`}
+                                        onClick={() => {
+                                          if (!isDragging) {
+                                            setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
+                                            setSelectedTrend(trend);
+                                          }
+                                        }}
+                                        disabled={isCustomSearching}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
+                                      >
+                                        <span>{trendEmojis[trend.name] || '🎨'}</span>
+                                        <span>{trend.name_ko}</span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               ))}
-                              {/* DB 트렌드 키워드 */}
-                              {trends.map((trend) => {
-                                const trendEmojis: Record<string, string> = {
-                                  'Minimalist': '🤍',
-                                  'Street Style': '🔥',
-                                  'Classic Elegance': '👔',
-                                  'Athleisure': '⚡',
-                                  'Bohemian': '🌺',
-                                };
-                                return (
-                                  <button
-                                    key={trend.id}
-                                    onClick={() => {
-                                      setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
-                                      setSelectedTrend(trend);
-                                    }}
-                                    disabled={isCustomSearching}
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
-                                  >
-                                    <span>{trendEmojis[trend.name] || '🎨'}</span>
-                                    <span className="truncate max-w-[80px]">{trend.name_ko}</span>
-                                  </button>
-                                );
-                              })}
-                            </>
+                            </div>
                           )}
                         </div>
+                        <style>{`
+                          @keyframes ticker {
+                            0% { transform: translateX(0); }
+                            100% { transform: translateX(-50%); }
+                          }
+                        `}</style>
                       </div>
 
                       {/* 성별 선택 (키즈 포함) */}
