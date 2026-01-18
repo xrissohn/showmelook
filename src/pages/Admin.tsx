@@ -252,6 +252,20 @@ const Admin = () => {
   const [isStockxScraping, setIsStockxScraping] = useState(false);
   const [stockxScrapeLimit, setStockxScrapeLimit] = useState("5");
 
+  // Image validation state
+  const [imageValidationResult, setImageValidationResult] = useState<{
+    success: boolean;
+    checked?: number;
+    valid?: number;
+    invalid?: number;
+    deactivated?: number;
+    dryRun?: boolean;
+    invalidProducts?: Array<{ id: string; name: string; status: number }>;
+    error?: string;
+  } | null>(null);
+  const [isValidatingImages, setIsValidatingImages] = useState(false);
+  const [imageValidationDryRun, setImageValidationDryRun] = useState(true);
+
   useEffect(() => {
     loadMerchants();
     loadDnaStats();
@@ -774,6 +788,51 @@ const Admin = () => {
       });
     } finally {
       setIsStockxScraping(false);
+    }
+  };
+
+  const validateImages = async () => {
+    setIsValidatingImages(true);
+    setImageValidationResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-images', {
+        body: { 
+          merchantId: 'stockx',
+          limit: 100,
+          dryRun: imageValidationDryRun
+        },
+      });
+
+      if (error) throw error;
+
+      setImageValidationResult(data);
+
+      if (data.success) {
+        if (imageValidationDryRun) {
+          toast({
+            title: "이미지 검증 완료 (미리보기)",
+            description: `${data.checked}개 중 ${data.invalid}개 이미지 오류 발견`,
+          });
+        } else {
+          toast({
+            title: "이미지 검증 및 비활성화 완료",
+            description: `${data.invalid}개 상품 비활성화됨`,
+          });
+          loadProductStats();
+          loadCachedProducts();
+        }
+      }
+    } catch (error: any) {
+      console.error('Image validation error:', error);
+      setImageValidationResult({ success: false, error: error.message });
+      toast({
+        title: "이미지 검증 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidatingImages(false);
     }
   };
 
@@ -1339,6 +1398,80 @@ const Admin = () => {
                         <div className="flex items-center gap-2 text-red-600">
                           <XCircle className="w-5 h-5" />
                           <span className="font-medium">오류: {stockxScrapeResult.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Image URL Validation */}
+                <div className="p-4 border-2 border-orange-500/30 rounded-lg space-y-4 bg-orange-500/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2 text-orange-600">
+                        <XCircle className="w-4 h-4" />
+                        이미지 URL 검증 (404 체크)
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        실제로 로드되지 않는 이미지를 가진 상품을 찾아 비활성화합니다.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={imageValidationDryRun}
+                          onChange={(e) => setImageValidationDryRun(e.target.checked)}
+                          className="rounded"
+                        />
+                        미리보기만
+                      </label>
+                      <Button 
+                        onClick={validateImages}
+                        disabled={isValidatingImages}
+                        className="bg-orange-600 hover:bg-orange-700"
+                      >
+                        {isValidatingImages ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Play className="w-4 h-4 mr-2" />
+                        )}
+                        {imageValidationDryRun ? '검증 시작' : '검증 + 비활성화'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Image Validation Result */}
+                  {imageValidationResult && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg space-y-3">
+                      {imageValidationResult.success ? (
+                        <>
+                          <div className="flex items-center gap-2 text-orange-600">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">
+                              {imageValidationResult.checked}개 검사 → {imageValidationResult.valid}개 정상, {imageValidationResult.invalid}개 오류
+                              {!imageValidationResult.dryRun && ` (${imageValidationResult.deactivated}개 비활성화됨)`}
+                            </span>
+                          </div>
+                          {imageValidationResult.invalidProducts && imageValidationResult.invalidProducts.length > 0 && (
+                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                              <p className="text-sm font-medium text-muted-foreground">오류 상품 목록:</p>
+                              {imageValidationResult.invalidProducts.map((p, idx) => (
+                                <div key={idx} className="flex items-center gap-2 p-2 rounded bg-red-100 text-sm">
+                                  <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="truncate">{p.name}</p>
+                                    <p className="text-xs text-red-600">HTTP {p.status}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-red-600">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">오류: {imageValidationResult.error}</span>
                         </div>
                       )}
                     </div>
