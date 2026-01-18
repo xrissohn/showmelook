@@ -2739,7 +2739,6 @@ const StyleGenerator = () => {
         body: {
           userRequest,
           gender,
-          budget: 300000,
           forceRefresh: false
         }
       });
