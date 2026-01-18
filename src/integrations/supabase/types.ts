@@ -225,6 +225,45 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_products: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          error_type: string
+          id: string
+          raw_data: Json
+          resolved_at: string | null
+          resolved_by: string | null
+          retry_count: number | null
+          source: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          error_type: string
+          id?: string
+          raw_data: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          source: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          error_type?: string
+          id?: string
+          raw_data?: Json
+          resolved_at?: string | null
+          resolved_by?: string | null
+          retry_count?: number | null
+          source?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       product_feedback: {
         Row: {
           action_type: string

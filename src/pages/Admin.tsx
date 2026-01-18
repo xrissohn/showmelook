@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,11 +6,16 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, Trash2, ImageOff } from "lucide-react";
+import { 
+  CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
+  Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
+  AlertTriangle, FileSpreadsheet, Eye, RotateCw
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
+import * as XLSX from 'xlsx';
 
 interface DeeplinkResult {
   success?: boolean;
@@ -60,17 +65,33 @@ interface StyleRecommendResult {
     stylingTips: string;
     styleTags: string[];
   };
-  apiCalls?: {
-    gemini: number;
-    serpapi: number;
-  };
-  stats?: {
-    requestedItems: number;
-    foundInCache: number;
-    foundViaSerpapi: number;
-    notFound: number;
-  };
+  apiCalls?: { gemini: number; serpapi: number };
+  stats?: { requestedItems: number; foundInCache: number; foundViaSerpapi: number; notFound: number };
   error?: string;
+}
+
+interface PendingProduct {
+  id: string;
+  source: string;
+  raw_data: unknown;
+  error_type: string;
+  error_message: string | null;
+  retry_count: number;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+interface ExcelProduct {
+  merchant_id: string;
+  product_url: string;
+  name: string;
+  price: number;
+  image_url?: string;
+  original_price?: number;
+  category?: string;
+  brand?: string;
+  gender?: string;
+  color?: string;
 }
 
 const Admin = () => {
@@ -113,25 +134,206 @@ const Admin = () => {
     remaining?: number;
     errors?: number;
     timeMs?: number;
-    avgTimePerProduct?: number;
     error?: string;
-    sampleDNA?: { id: string; name: string; dna_text: string; dna_meta: any }[];
-    stats?: { targetDistribution: Record<string, number>; slotDistribution: Record<string, number>; avgFormality?: string };
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
+
+  // Pending products state
+  const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Excel upload state
+  const [excelProducts, setExcelProducts] = useState<ExcelProduct[]>([]);
+  const [excelFileName, setExcelFileName] = useState<string | null>(null);
+  const [isExcelUploading, setIsExcelUploading] = useState(false);
+  const [excelUploadResult, setExcelUploadResult] = useState<{
+    success: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
 
   useEffect(() => {
     loadDnaStats();
     loadProductStats();
+    loadPendingCount();
   }, []);
+
+  const loadPendingCount = async () => {
+    try {
+      const { count } = await supabase
+        .from('pending_products')
+        .select('*', { count: 'exact', head: true })
+        .is('resolved_at', null);
+      setPendingCount(count || 0);
+    } catch (error) {
+      console.error('Error loading pending count:', error);
+    }
+  };
+
+  const loadPendingProducts = async () => {
+    setPendingLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('pending_products')
+        .select('*')
+        .is('resolved_at', null)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      setPendingProducts(data || []);
+      setPendingCount(data?.length || 0);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "로드 실패", description: errorMessage, variant: "destructive" });
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const retryPendingProduct = async (pending: PendingProduct) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('register-product', {
+        body: { products: [pending.raw_data] },
+      });
+
+      if (error) throw error;
+
+      if (data.success && data.results?.[0]?.success) {
+        // 성공 시 pending에서 제거
+        await supabase
+          .from('pending_products')
+          .update({ resolved_at: new Date().toISOString(), resolved_by: 'auto_retry' })
+          .eq('id', pending.id);
+        
+        toast({ title: "등록 성공", description: "제품이 성공적으로 등록되었습니다." });
+        loadPendingProducts();
+      } else {
+        // 실패 시 retry_count 증가
+        await supabase
+          .from('pending_products')
+          .update({ 
+            retry_count: pending.retry_count + 1,
+            error_message: data.results?.[0]?.error || data.error,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', pending.id);
+        
+        toast({ title: "등록 실패", description: data.results?.[0]?.error || data.error, variant: "destructive" });
+        loadPendingProducts();
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "재시도 실패", description: errorMessage, variant: "destructive" });
+    }
+  };
+
+  const deletePendingProduct = async (id: string) => {
+    try {
+      await supabase
+        .from('pending_products')
+        .update({ resolved_at: new Date().toISOString(), resolved_by: 'deleted' })
+        .eq('id', id);
+      
+      toast({ title: "삭제됨", description: "등록 대기 항목이 삭제되었습니다." });
+      loadPendingProducts();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "삭제 실패", description: errorMessage, variant: "destructive" });
+    }
+  };
+
+  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setExcelFileName(file.name);
+    setExcelUploadResult(null);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
+
+        // 컬럼 매핑
+        const products: ExcelProduct[] = jsonData.map((row) => ({
+          merchant_id: String(row['merchant_id'] || row['머천트'] || row['Merchant'] || 'unknown'),
+          product_url: String(row['product_url'] || row['URL'] || row['url'] || row['상품URL'] || ''),
+          name: String(row['name'] || row['상품명'] || row['Name'] || row['title'] || ''),
+          price: Number(row['price'] || row['가격'] || row['Price'] || 0),
+          image_url: row['image_url'] || row['이미지'] || row['Image'] ? String(row['image_url'] || row['이미지'] || row['Image']) : undefined,
+          original_price: row['original_price'] || row['원가'] ? Number(row['original_price'] || row['원가']) : undefined,
+          category: row['category'] || row['카테고리'] ? String(row['category'] || row['카테고리']) : undefined,
+          brand: row['brand'] || row['브랜드'] ? String(row['brand'] || row['브랜드']) : undefined,
+          gender: row['gender'] || row['성별'] ? String(row['gender'] || row['성별']) : undefined,
+          color: row['color'] || row['색상'] ? String(row['color'] || row['색상']) : undefined,
+        })).filter(p => p.product_url && p.name && p.price > 0);
+
+        setExcelProducts(products);
+        toast({ title: "파일 파싱 완료", description: `${products.length}개 제품 발견` });
+      } catch (error) {
+        toast({ title: "파일 파싱 실패", description: "올바른 엑셀 파일인지 확인해주세요.", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }, [toast]);
+
+  const registerExcelProducts = async () => {
+    if (excelProducts.length === 0) return;
+
+    setIsExcelUploading(true);
+    setExcelUploadResult(null);
+
+    const BATCH_SIZE = 10;
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < excelProducts.length; i += BATCH_SIZE) {
+      const batch = excelProducts.slice(i, i + BATCH_SIZE);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('register-product', {
+          body: { products: batch },
+        });
+
+        if (error) throw error;
+
+        if (data.success && data.results) {
+          for (const r of data.results) {
+            if (r.success) {
+              success++;
+            } else {
+              failed++;
+              errors.push(`${r.product_url?.slice(0, 50)}...: ${r.error}`);
+            }
+          }
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        failed += batch.length;
+        errors.push(`배치 오류: ${errorMessage}`);
+      }
+    }
+
+    setExcelUploadResult({ success, failed, errors: errors.slice(0, 10) });
+    setIsExcelUploading(false);
+    
+    if (success > 0) {
+      toast({ title: "등록 완료", description: `${success}개 성공, ${failed}개 실패` });
+      loadProductStats();
+      loadDnaStats();
+      loadPendingCount();
+    }
+  };
 
   const testDeeplink = async () => {
     if (!productUrl.trim()) {
-      toast({
-        title: "URL 입력 필요",
-        description: "상품 URL을 입력해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "URL 입력 필요", description: "상품 URL을 입력해주세요.", variant: "destructive" });
       return;
     }
 
@@ -144,23 +346,15 @@ const Admin = () => {
       });
 
       if (error) throw error;
-      
       setDeeplinkResult(data);
       
       if (data.success) {
-        toast({
-          title: "딥링크 생성 성공",
-          description: `${data.merchant_name} 제휴 링크가 생성되었습니다.`,
-        });
+        toast({ title: "딥링크 생성 성공", description: `${data.merchant_name} 제휴 링크가 생성되었습니다.` });
       }
-    } catch (error: any) {
-      console.error('Deeplink test error:', error);
-      setDeeplinkResult({ error: error.message || 'Unknown error' });
-      toast({
-        title: "딥링크 생성 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setDeeplinkResult({ error: errorMessage });
+      toast({ title: "딥링크 생성 실패", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -174,17 +368,12 @@ const Admin = () => {
 
   const loadProductStats = async () => {
     try {
-      const { count: total } = await supabase
-        .from('products_cache')
-        .select('*', { count: 'exact', head: true });
-
-      const { data: products } = await supabase
-        .from('products_cache')
-        .select('merchant_id');
+      const { count: total } = await supabase.from('products_cache').select('*', { count: 'exact', head: true });
+      const { data: products } = await supabase.from('products_cache').select('merchant_id');
 
       const byMerchant: Record<string, number> = {};
       products?.forEach(p => {
-        byMerchant[p.merchant_id] = (byMerchant[p.merchant_id] || 0) + 1;
+        byMerchant[p.merchant_id || 'unknown'] = (byMerchant[p.merchant_id || 'unknown'] || 0) + 1;
       });
 
       setProductStats({ total: total || 0, byMerchant });
@@ -197,33 +386,22 @@ const Admin = () => {
     setProductsLoading(true);
     setSelectedProductIds([]);
     try {
-      let query = supabase
-        .from('products_cache')
+      let query = supabase.from('products_cache')
         .select('id, merchant_id, name, brand, price, image_url, category, style_tags, is_in_stock, is_active, collected_at');
       
-      if (filter === 'active') {
-        query = query.eq('is_active', true);
-      } else if (filter === 'inactive') {
-        query = query.eq('is_active', false);
-      }
+      if (filter === 'active') query = query.eq('is_active', true);
+      else if (filter === 'inactive') query = query.eq('is_active', false);
       
       query = query.order('collected_at', { ascending: false });
-      
-      if (!loadAll) {
-        query = query.limit(100);
-      }
+      if (!loadAll) query = query.limit(100);
       
       const { data, error } = await query;
-      
       if (error) throw error;
       setCachedProducts(data || []);
       loadProductStats();
-    } catch (error: any) {
-      toast({
-        title: "상품 로드 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "상품 로드 실패", description: errorMessage, variant: "destructive" });
     } finally {
       setProductsLoading(false);
     }
@@ -231,56 +409,32 @@ const Admin = () => {
 
   const toggleProductSelection = (productId: string) => {
     setSelectedProductIds(prev => 
-      prev.includes(productId) 
-        ? prev.filter(id => id !== productId)
-        : [...prev, productId]
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
     );
   };
 
-  const selectAllProducts = () => {
-    setSelectedProductIds(cachedProducts.map(p => p.id));
-  };
-
-  const deselectAllProducts = () => {
-    setSelectedProductIds([]);
-  };
+  const selectAllProducts = () => setSelectedProductIds(cachedProducts.map(p => p.id));
+  const deselectAllProducts = () => setSelectedProductIds([]);
 
   const deleteSelectedProducts = async () => {
     if (selectedProductIds.length === 0) {
-      toast({
-        title: "선택된 상품 없음",
-        description: "삭제할 상품을 선택해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "선택된 상품 없음", description: "삭제할 상품을 선택해주세요.", variant: "destructive" });
       return;
     }
 
-    if (!confirm(`${selectedProductIds.length}개 상품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
-      return;
-    }
+    if (!confirm(`${selectedProductIds.length}개 상품을 삭제하시겠습니까?`)) return;
 
     setIsDeletingProducts(true);
     try {
-      const { error } = await supabase
-        .from('products_cache')
-        .delete()
-        .in('id', selectedProductIds);
-      
+      const { error } = await supabase.from('products_cache').delete().in('id', selectedProductIds);
       if (error) throw error;
       
-      toast({
-        title: "삭제 완료",
-        description: `${selectedProductIds.length}개 상품이 삭제되었습니다.`,
-      });
-      
+      toast({ title: "삭제 완료", description: `${selectedProductIds.length}개 상품이 삭제되었습니다.` });
       setSelectedProductIds([]);
       loadCachedProducts(productFilter, showAllProducts);
-    } catch (error: any) {
-      toast({
-        title: "삭제 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "삭제 실패", description: errorMessage, variant: "destructive" });
     } finally {
       setIsDeletingProducts(false);
     }
@@ -288,36 +442,24 @@ const Admin = () => {
 
   const deactivateSelectedProducts = async () => {
     if (selectedProductIds.length === 0) {
-      toast({
-        title: "선택된 상품 없음",
-        description: "비활성화할 상품을 선택해주세요.",
-        variant: "destructive",
-      });
+      toast({ title: "선택된 상품 없음", description: "비활성화할 상품을 선택해주세요.", variant: "destructive" });
       return;
     }
 
     setIsDeletingProducts(true);
     try {
-      const { error } = await supabase
-        .from('products_cache')
+      const { error } = await supabase.from('products_cache')
         .update({ is_active: false, updated_at: new Date().toISOString() })
         .in('id', selectedProductIds);
       
       if (error) throw error;
       
-      toast({
-        title: "비활성화 완료",
-        description: `${selectedProductIds.length}개 상품이 비활성화되었습니다.`,
-      });
-      
+      toast({ title: "비활성화 완료", description: `${selectedProductIds.length}개 상품이 비활성화되었습니다.` });
       setSelectedProductIds([]);
       loadCachedProducts(productFilter, showAllProducts);
-    } catch (error: any) {
-      toast({
-        title: "비활성화 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "비활성화 실패", description: errorMessage, variant: "destructive" });
     } finally {
       setIsDeletingProducts(false);
     }
@@ -325,11 +467,7 @@ const Admin = () => {
 
   const testStyleRecommend = async () => {
     if (!aiUserRequest.trim()) {
-      toast({
-        title: "요청 입력 필요",
-        description: "스타일 요청을 입력해주세요. (예: 캐주얼 데이트룩)",
-        variant: "destructive",
-      });
+      toast({ title: "요청 입력 필요", description: "스타일 요청을 입력해주세요.", variant: "destructive" });
       return;
     }
 
@@ -338,39 +476,22 @@ const Admin = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('style-recommend', {
-        body: {
-          userRequest: aiUserRequest,
-          gender: aiGender,
-          forceRefresh: aiForceRefresh,
-        },
+        body: { userRequest: aiUserRequest, gender: aiGender, forceRefresh: aiForceRefresh },
       });
 
       if (error) throw error;
-      
       setAiResult(data);
       
       if (data.success) {
         const cacheMsg = data.cacheHit ? '캐시 히트!' : `API: Gemini ${data.apiCalls?.gemini || 0}`;
-        toast({
-          title: "AI 추천 완료",
-          description: `${data.look?.items?.filter((i: any) => i.product)?.length || 0}개 아이템 추천 (${cacheMsg})`,
-        });
+        toast({ title: "AI 추천 완료", description: `${data.look?.items?.filter((i: { product: unknown }) => i.product)?.length || 0}개 아이템 추천 (${cacheMsg})` });
       } else {
-        toast({
-          title: "AI 추천 실패",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "AI 추천 실패", description: data.error, variant: "destructive" });
       }
     } catch (error: unknown) {
-      console.error('Style recommend error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setAiResult({ success: false, cacheHit: false, error: errorMessage });
-      toast({
-        title: "AI 추천 실패",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      toast({ title: "AI 추천 실패", description: errorMessage, variant: "destructive" });
     } finally {
       setIsAiLoading(false);
     }
@@ -394,12 +515,8 @@ const Admin = () => {
       products.forEach(p => {
         if (p.dna_meta) {
           const meta = p.dna_meta as { target?: string; item_slot?: string };
-          if (meta.target) {
-            byTarget[meta.target] = (byTarget[meta.target] || 0) + 1;
-          }
-          if (meta.item_slot) {
-            bySlot[meta.item_slot] = (bySlot[meta.item_slot] || 0) + 1;
-          }
+          if (meta.target) byTarget[meta.target] = (byTarget[meta.target] || 0) + 1;
+          if (meta.item_slot) bySlot[meta.item_slot] = (bySlot[meta.item_slot] || 0) + 1;
         }
       });
 
@@ -415,36 +532,22 @@ const Admin = () => {
 
     try {
       const { data, error } = await supabase.functions.invoke('dna-batch', {
-        body: { 
-          batchSize: parseInt(dnaBatchSize) || 50
-        },
+        body: { batchSize: parseInt(dnaBatchSize) || 50 },
       });
 
       if (error) throw error;
-      
       setDnaBatchResult(data);
       
       if (data.success) {
-        toast({
-          title: "DNA 2.0 생성 완료",
-          description: `${data.updated}개 상품 처리됨 (${data.timeMs}ms), ${data.remaining}개 남음`,
-        });
+        toast({ title: "DNA 2.0 생성 완료", description: `${data.updated}개 상품 처리됨, ${data.remaining}개 남음` });
         loadDnaStats();
       } else {
-        toast({
-          title: "DNA 생성 실패",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "DNA 생성 실패", description: data.error, variant: "destructive" });
       }
-    } catch (error: any) {
-      console.error('DNA batch error:', error);
-      setDnaBatchResult({ success: false, error: error.message });
-      toast({
-        title: "DNA 배치 오류",
-        description: error.message,
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setDnaBatchResult({ success: false, error: errorMessage });
+      toast({ title: "DNA 배치 오류", description: errorMessage, variant: "destructive" });
     } finally {
       setIsDnaLoading(false);
     }
@@ -458,13 +561,11 @@ const Admin = () => {
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold text-foreground">Admin 관리 페이지</h1>
-          <p className="text-muted-foreground">
-            ShowMeLook 시스템 관리 및 테스트
-          </p>
+          <p className="text-muted-foreground">ShowMeLook 시스템 관리 및 테스트</p>
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{productStats.total}</div>
@@ -483,6 +584,15 @@ const Admin = () => {
               <p className="text-sm text-muted-foreground">DNA 미생성</p>
             </CardContent>
           </Card>
+          <Card className={pendingCount > 0 ? 'border-yellow-500' : ''}>
+            <CardContent className="pt-4">
+              <div className={`text-2xl font-bold ${pendingCount > 0 ? 'text-yellow-600' : ''}`}>
+                {pendingCount}
+                {pendingCount > 0 && <AlertTriangle className="w-4 h-4 inline ml-1" />}
+              </div>
+              <p className="text-sm text-muted-foreground">등록 대기</p>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-4">
               <div className="text-2xl font-bold">{Object.keys(productStats.byMerchant).length}</div>
@@ -492,8 +602,19 @@ const Admin = () => {
         </div>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="dna" className="space-y-4">
+        <Tabs defaultValue="register" className="space-y-4">
           <TabsList className="flex w-full overflow-x-auto">
+            <TabsTrigger value="register">
+              <Upload className="w-4 h-4 mr-1" />
+              제품 등록
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="relative">
+              <AlertTriangle className="w-4 h-4 mr-1" />
+              등록 대기
+              {pendingCount > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingCount}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="dna">
               <Dna className="w-4 h-4 mr-1" />
               DNA 관리
@@ -519,6 +640,207 @@ const Admin = () => {
               관리도구
             </TabsTrigger>
           </TabsList>
+
+          {/* Product Registration Tab */}
+          <TabsContent value="register" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5" />
+                  엑셀 제품 일괄 등록
+                </CardTitle>
+                <CardDescription>
+                  xlsx/xls 파일을 업로드하여 제품을 일괄 등록합니다. 이미지 저장 + DNA 생성이 자동으로 수행됩니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Column guide */}
+                <div className="p-4 bg-muted rounded-lg text-sm space-y-2">
+                  <p className="font-medium">📋 필수 컬럼</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <Badge variant="outline">merchant_id / 머천트</Badge>
+                    <Badge variant="outline">product_url / URL</Badge>
+                    <Badge variant="outline">name / 상품명</Badge>
+                    <Badge variant="outline">price / 가격</Badge>
+                  </div>
+                  <p className="font-medium mt-3">📎 선택 컬럼</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+                    <Badge variant="secondary">image_url / 이미지</Badge>
+                    <Badge variant="secondary">original_price / 원가</Badge>
+                    <Badge variant="secondary">category / 카테고리</Badge>
+                    <Badge variant="secondary">brand / 브랜드</Badge>
+                    <Badge variant="secondary">gender / 성별</Badge>
+                    <Badge variant="secondary">color / 색상</Badge>
+                  </div>
+                </div>
+
+                {/* File upload */}
+                <div className="flex items-center gap-4">
+                  <Input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleExcelUpload}
+                    className="max-w-xs"
+                  />
+                  {excelFileName && (
+                    <span className="text-sm text-muted-foreground">
+                      📁 {excelFileName} ({excelProducts.length}개 제품)
+                    </span>
+                  )}
+                </div>
+
+                {/* Preview */}
+                {excelProducts.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium flex items-center gap-2">
+                        <Eye className="w-4 h-4" />
+                        미리보기 (상위 5개)
+                      </h4>
+                      <Button 
+                        onClick={registerExcelProducts} 
+                        disabled={isExcelUploading}
+                      >
+                        {isExcelUploading ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <Upload className="w-4 h-4 mr-2" />
+                        )}
+                        {excelProducts.length}개 제품 등록
+                      </Button>
+                    </div>
+                    
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted">
+                            <tr>
+                              <th className="p-2 text-left">머천트</th>
+                              <th className="p-2 text-left">상품명</th>
+                              <th className="p-2 text-right">가격</th>
+                              <th className="p-2 text-left">이미지</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {excelProducts.slice(0, 5).map((p, idx) => (
+                              <tr key={idx} className="border-t">
+                                <td className="p-2">
+                                  <Badge variant="outline">{p.merchant_id}</Badge>
+                                </td>
+                                <td className="p-2 max-w-[200px] truncate">{p.name}</td>
+                                <td className="p-2 text-right font-medium">₩{p.price.toLocaleString()}</td>
+                                <td className="p-2">
+                                  {p.image_url ? (
+                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-muted-foreground" />
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload result */}
+                {excelUploadResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    excelUploadResult.failed === 0 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                      : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      {excelUploadResult.failed === 0 ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                      )}
+                      <span className="font-medium">
+                        등록 완료: {excelUploadResult.success}개 성공, {excelUploadResult.failed}개 실패
+                      </span>
+                    </div>
+                    {excelUploadResult.errors.length > 0 && (
+                      <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                        {excelUploadResult.errors.map((err, idx) => (
+                          <p key={idx} className="text-xs">❌ {err}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pending Products Tab */}
+          <TabsContent value="pending" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                  등록 대기 제품
+                </CardTitle>
+                <CardDescription>
+                  이미지 저장 또는 DNA 생성에 실패한 제품들입니다. 재시도하거나 수동으로 보완할 수 있습니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Button onClick={loadPendingProducts} disabled={pendingLoading} variant="outline">
+                    {pendingLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    새로고침
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    {pendingProducts.length}개 대기 중
+                  </span>
+                </div>
+
+                {pendingProducts.length > 0 ? (
+                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                    {pendingProducts.map((pending) => {
+                      const rawData = pending.raw_data as { name?: string; product_url?: string; image_url?: string };
+                      return (
+                        <div key={pending.id} className="p-3 border rounded-lg bg-card flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge variant="outline">{pending.source}</Badge>
+                              <Badge variant={pending.error_type === 'image_failed' ? 'secondary' : 'destructive'}>
+                                {pending.error_type}
+                              </Badge>
+                              {pending.retry_count > 0 && (
+                                <Badge variant="outline" className="text-xs">재시도 {pending.retry_count}회</Badge>
+                              )}
+                            </div>
+                            <p className="font-medium text-sm truncate">{rawData?.name || 'Unknown'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{rawData?.product_url}</p>
+                            {pending.error_message && (
+                              <p className="text-xs text-destructive mt-1 truncate">{pending.error_message}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" onClick={() => retryPendingProduct(pending)}>
+                              <RotateCw className="w-4 h-4 mr-1" />
+                              재시도
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => deletePendingProduct(pending.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {pendingLoading ? '로딩 중...' : '등록 대기 중인 제품이 없습니다.'}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* DNA Management Tab */}
           <TabsContent value="dna" className="space-y-4">
@@ -555,7 +877,6 @@ const Admin = () => {
                         <Progress value={dnaPercentage} className="h-3" />
                       </div>
 
-                      {/* Target Distribution */}
                       {Object.keys(dnaStats.byTarget).length > 0 && (
                         <div className="p-4 border rounded-lg space-y-2">
                           <h4 className="text-sm font-medium">타겟 분포</h4>
@@ -563,15 +884,12 @@ const Admin = () => {
                             {Object.entries(dnaStats.byTarget)
                               .sort((a, b) => b[1] - a[1])
                               .map(([target, count]) => (
-                                <Badge key={target} variant="secondary">
-                                  {target}: {count}
-                                </Badge>
+                                <Badge key={target} variant="secondary">{target}: {count}</Badge>
                               ))}
                           </div>
                         </div>
                       )}
 
-                      {/* Slot Distribution */}
                       {Object.keys(dnaStats.bySlot).length > 0 && (
                         <div className="p-4 border rounded-lg space-y-2">
                           <h4 className="text-sm font-medium">아이템 슬롯 분포</h4>
@@ -579,9 +897,7 @@ const Admin = () => {
                             {Object.entries(dnaStats.bySlot)
                               .sort((a, b) => b[1] - a[1])
                               .map(([slot, count]) => (
-                                <Badge key={slot} variant="outline">
-                                  {slot}: {count}
-                                </Badge>
+                                <Badge key={slot} variant="outline">{slot}: {count}</Badge>
                               ))}
                           </div>
                         </div>
@@ -598,7 +914,7 @@ const Admin = () => {
                       DNA 2.0 배치 생성
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      규칙 기반으로 빠르게 DNA 메타 정보를 생성합니다 (AI 호출 없음).
+                      규칙 기반으로 빠르게 DNA 메타 정보를 생성합니다.
                     </p>
                   </div>
 
@@ -618,20 +934,12 @@ const Admin = () => {
                       </Select>
                     </div>
 
-                    <Button 
-                      onClick={runDnaBatch}
-                      disabled={isDnaLoading}
-                    >
-                      {isDnaLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <Dna className="w-4 h-4 mr-2" />
-                      )}
+                    <Button onClick={runDnaBatch} disabled={isDnaLoading}>
+                      {isDnaLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Dna className="w-4 h-4 mr-2" />}
                       🧬 DNA 2.0 생성
                     </Button>
                   </div>
 
-                  {/* Batch Result */}
                   {dnaBatchResult && (
                     <div className={`p-4 rounded-lg border ${
                       dnaBatchResult.success 
@@ -640,34 +948,15 @@ const Admin = () => {
                     }`}>
                       {dnaBatchResult.success ? (
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <CheckCircle2 className="w-5 h-5 text-green-600" />
-                              <span className="font-medium">DNA 2.0 생성 완료</span>
-                            </div>
-                            {dnaBatchResult.timeMs && (
-                              <Badge variant="secondary" className="text-xs">
-                                ⚡ {dnaBatchResult.timeMs}ms
-                              </Badge>
-                            )}
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            <span className="font-medium">DNA 2.0 생성 완료</span>
                           </div>
                           <div className="grid grid-cols-4 gap-4 text-sm">
-                            <div>
-                              <span className="text-muted-foreground">처리:</span>{' '}
-                              <span className="font-medium">{dnaBatchResult.processed}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">성공:</span>{' '}
-                              <span className="font-medium text-green-600">{dnaBatchResult.updated}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">에러:</span>{' '}
-                              <span className="font-medium text-red-600">{dnaBatchResult.errors || 0}</span>
-                            </div>
-                            <div>
-                              <span className="text-muted-foreground">남음:</span>{' '}
-                              <span className="font-medium">{dnaBatchResult.remaining}</span>
-                            </div>
+                            <div><span className="text-muted-foreground">처리:</span> <span className="font-medium">{dnaBatchResult.processed}</span></div>
+                            <div><span className="text-muted-foreground">성공:</span> <span className="font-medium text-green-600">{dnaBatchResult.updated}</span></div>
+                            <div><span className="text-muted-foreground">에러:</span> <span className="font-medium text-red-600">{dnaBatchResult.errors || 0}</span></div>
+                            <div><span className="text-muted-foreground">남음:</span> <span className="font-medium">{dnaBatchResult.remaining}</span></div>
                           </div>
                         </div>
                       ) : (
@@ -691,9 +980,7 @@ const Admin = () => {
                   <ShoppingBag className="w-5 h-5" />
                   AI 스타일 추천
                 </CardTitle>
-                <CardDescription>
-                  GPT-5가 스타일을 추론하고, DNA 2.0 기반으로 룩을 조합합니다.
-                </CardDescription>
+                <CardDescription>GPT-5가 스타일을 추론하고, DNA 2.0 기반으로 룩을 조합합니다.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-3">
@@ -710,9 +997,7 @@ const Admin = () => {
                     <div>
                       <label className="text-sm font-medium mb-2 block">성별</label>
                       <Select value={aiGender} onValueChange={setAiGender}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="성별 선택" />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="성별 선택" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="여성">여성</SelectItem>
                           <SelectItem value="남성">남성</SelectItem>
@@ -721,28 +1006,18 @@ const Admin = () => {
                     </div>
                     <div className="flex items-end">
                       <label className="flex items-center gap-2 text-sm pb-2">
-                        <input
-                          type="checkbox"
-                          checked={aiForceRefresh}
-                          onChange={(e) => setAiForceRefresh(e.target.checked)}
-                          className="rounded"
-                        />
-                        캐시 무시 (새로 생성)
+                        <input type="checkbox" checked={aiForceRefresh} onChange={(e) => setAiForceRefresh(e.target.checked)} className="rounded" />
+                        캐시 무시
                       </label>
                     </div>
                   </div>
                 </div>
 
                 <Button onClick={testStyleRecommend} disabled={isAiLoading} className="w-full">
-                  {isAiLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                  )}
+                  {isAiLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShoppingBag className="w-4 h-4 mr-2" />}
                   AI 추천 생성
                 </Button>
 
-                {/* Result */}
                 {aiResult && (
                   <div className={`p-4 rounded-lg border ${
                     aiResult.success 
@@ -757,54 +1032,31 @@ const Admin = () => {
                             <span className="font-medium">{aiResult.look.name}</span>
                             {aiResult.cacheHit && <Badge variant="secondary">캐시 히트</Badge>}
                           </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold">₩{aiResult.look.totalPrice.toLocaleString()}</p>
-                          </div>
+                          <p className="text-lg font-bold">₩{aiResult.look.totalPrice.toLocaleString()}</p>
                         </div>
                         
                         {aiResult.look.stylingTips && (
-                          <p className="text-sm text-muted-foreground italic">
-                            💡 {aiResult.look.stylingTips}
-                          </p>
+                          <p className="text-sm text-muted-foreground italic">💡 {aiResult.look.stylingTips}</p>
                         )}
 
-                        {/* Look Items Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                           {aiResult.look.items.filter(item => item.product).map((item, idx) => (
                             <div key={idx} className="border rounded-lg overflow-hidden bg-card">
                               <div className="aspect-square bg-muted relative">
                                 {item.product?.image_url ? (
-                                  <img 
-                                    src={item.product.image_url} 
-                                    alt={item.product.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = '/placeholder.svg';
-                                    }}
-                                  />
+                                  <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Package className="w-8 h-8 text-muted-foreground" />
-                                  </div>
+                                  <div className="w-full h-full flex items-center justify-center"><Package className="w-8 h-8 text-muted-foreground" /></div>
                                 )}
-                                <Badge className="absolute top-1 left-1 text-xs" variant="secondary">
-                                  {item.category}
-                                </Badge>
+                                <Badge className="absolute top-1 left-1 text-xs" variant="secondary">{item.category}</Badge>
                               </div>
                               <div className="p-2">
                                 <p className="text-xs font-medium line-clamp-2 mb-1">{item.product?.name}</p>
                                 <p className="text-xs text-muted-foreground">{item.product?.brand}</p>
                                 <p className="text-sm font-bold mt-1">₩{item.product?.price.toLocaleString()}</p>
                                 {item.affiliateUrl && (
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="w-full mt-2 text-xs"
-                                    onClick={() => window.open(item.affiliateUrl!, '_blank')}
-                                  >
-                                    <ExternalLink className="w-3 h-3 mr-1" />
-                                    구매하기
+                                  <Button variant="outline" size="sm" className="w-full mt-2 text-xs" onClick={() => window.open(item.affiliateUrl!, '_blank')}>
+                                    <ExternalLink className="w-3 h-3 mr-1" />구매하기
                                   </Button>
                                 )}
                               </div>
@@ -828,13 +1080,8 @@ const Admin = () => {
           <TabsContent value="deeplink" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link2 className="w-5 h-5" />
-                  딥링크 생성 테스트
-                </CardTitle>
-                <CardDescription>
-                  상품 URL을 입력하면 링크프라이스 제휴 딥링크를 생성합니다.
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2"><Link2 className="w-5 h-5" />딥링크 생성 테스트</CardTitle>
+                <CardDescription>상품 URL을 입력하면 링크프라이스 제휴 딥링크를 생성합니다.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
@@ -845,15 +1092,10 @@ const Admin = () => {
                     onKeyDown={(e) => e.key === 'Enter' && testDeeplink()}
                   />
                   <Button onClick={testDeeplink} disabled={isLoading}>
-                    {isLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Link2 className="w-4 h-4" />
-                    )}
+                    {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
                   </Button>
                 </div>
 
-                {/* Result */}
                 {deeplinkResult && (
                   <div className={`p-4 rounded-lg border ${
                     deeplinkResult.success 
@@ -872,8 +1114,7 @@ const Admin = () => {
                           <p><span className="text-muted-foreground">제휴:</span> <code className="text-xs break-all">{deeplinkResult.affiliate_url}</code></p>
                         </div>
                         <Button onClick={openAffiliateLink} variant="outline" size="sm">
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          링크 열기
+                          <ExternalLink className="w-4 h-4 mr-2" />링크 열기
                         </Button>
                       </div>
                     ) : (
@@ -897,16 +1138,10 @@ const Admin = () => {
           <TabsContent value="products" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="w-5 h-5" />
-                  상품 관리
-                </CardTitle>
-                <CardDescription>
-                  products_cache 상품 목록 - 상품 삭제/비활성화
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2"><Database className="w-5 h-5" />상품 관리</CardTitle>
+                <CardDescription>products_cache 상품 목록 - 상품 삭제/비활성화</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Controls */}
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
                     <label className="text-sm font-medium">필터:</label>
@@ -914,9 +1149,7 @@ const Admin = () => {
                       setProductFilter(v as 'all' | 'active' | 'inactive');
                       loadCachedProducts(v as 'all' | 'active' | 'inactive', showAllProducts);
                     }}>
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="active">활성화</SelectItem>
                         <SelectItem value="inactive">비활성화</SelectItem>
@@ -926,65 +1159,38 @@ const Admin = () => {
                   </div>
 
                   <label className="flex items-center gap-2 text-sm">
-                    <Checkbox 
-                      checked={showAllProducts}
-                      onCheckedChange={(checked) => {
-                        setShowAllProducts(!!checked);
-                        loadCachedProducts(productFilter, !!checked);
-                      }}
-                    />
+                    <Checkbox checked={showAllProducts} onCheckedChange={(checked) => {
+                      setShowAllProducts(!!checked);
+                      loadCachedProducts(productFilter, !!checked);
+                    }} />
                     전체 상품 로드
                   </label>
 
                   <Button onClick={() => loadCachedProducts(productFilter, showAllProducts)} disabled={productsLoading} variant="outline">
-                    {productsLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                    )}
+                    {productsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                     새로고침
                   </Button>
                 </div>
 
-                {/* Selection actions */}
                 {cachedProducts.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg">
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={selectAllProducts}>
-                        전체 선택
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={deselectAllProducts}>
-                        선택 해제
-                      </Button>
+                      <Button variant="outline" size="sm" onClick={selectAllProducts}>전체 선택</Button>
+                      <Button variant="outline" size="sm" onClick={deselectAllProducts}>선택 해제</Button>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {selectedProductIds.length}개 선택됨 / 총 {cachedProducts.length}개
-                    </span>
+                    <span className="text-sm text-muted-foreground">{selectedProductIds.length}개 선택됨 / 총 {cachedProducts.length}개</span>
                     <div className="flex items-center gap-2 ml-auto">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={deactivateSelectedProducts}
-                        disabled={selectedProductIds.length === 0 || isDeletingProducts}
-                      >
-                        {isDeletingProducts ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                        비활성화
+                      <Button variant="outline" size="sm" onClick={deactivateSelectedProducts} disabled={selectedProductIds.length === 0 || isDeletingProducts}>
+                        {isDeletingProducts ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}비활성화
                       </Button>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={deleteSelectedProducts}
-                        disabled={selectedProductIds.length === 0 || isDeletingProducts}
-                      >
-                        {isDeletingProducts ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
-                        삭제
+                      <Button variant="destructive" size="sm" onClick={deleteSelectedProducts} disabled={selectedProductIds.length === 0 || isDeletingProducts}>
+                        {isDeletingProducts ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}삭제
                       </Button>
                     </div>
                   </div>
                 )}
 
-                {/* Product list */}
-                {cachedProducts.length > 0 && (
+                {cachedProducts.length > 0 ? (
                   <div className="grid gap-2 max-h-[600px] overflow-y-auto">
                     {cachedProducts.map((product) => (
                       <div 
@@ -994,35 +1200,19 @@ const Admin = () => {
                         } ${!product.is_active ? 'opacity-60' : ''}`}
                         onClick={() => toggleProductSelection(product.id)}
                       >
-                        <Checkbox 
-                          checked={selectedProductIds.includes(product.id)}
-                          onCheckedChange={() => toggleProductSelection(product.id)}
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <Checkbox checked={selectedProductIds.includes(product.id)} onCheckedChange={() => toggleProductSelection(product.id)} onClick={(e) => e.stopPropagation()} />
                         <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
                           {product.image_url ? (
-                            <img 
-                              src={product.image_url} 
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                              }}
-                            />
+                            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              <Package className="w-5 h-5" />
-                            </div>
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Package className="w-5 h-5" /></div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1 mb-0.5 flex-wrap">
                             <Badge variant="outline" className="text-xs">{product.merchant_id}</Badge>
                             <Badge variant="secondary" className="text-xs">{product.category}</Badge>
-                            {!product.is_active && (
-                              <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">비활성</Badge>
-                            )}
+                            {!product.is_active && <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">비활성</Badge>}
                           </div>
                           <p className="font-medium text-sm truncate">{product.name}</p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1033,11 +1223,9 @@ const Admin = () => {
                       </div>
                     ))}
                   </div>
-                )}
-
-                {cachedProducts.length === 0 && !productsLoading && (
+                ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    상품이 없습니다. "새로고침" 버튼을 클릭해주세요.
+                    {productsLoading ? '로딩 중...' : '상품이 없습니다. "새로고침" 버튼을 클릭해주세요.'}
                   </div>
                 )}
               </CardContent>
@@ -1048,26 +1236,15 @@ const Admin = () => {
           <TabsContent value="tools" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  관리 도구
-                </CardTitle>
-                <CardDescription>
-                  시스템 관리를 위한 도구들
-                </CardDescription>
+                <CardTitle className="flex items-center gap-2"><Zap className="w-5 h-5" />관리 도구</CardTitle>
+                <CardDescription>시스템 관리를 위한 도구들</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Generation Usage Reset */}
                 <div className="p-4 border rounded-lg space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium flex items-center gap-2">
-                        <RotateCcw className="w-4 h-4" />
-                        일일 생성 횟수 초기화
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        오늘의 스타일 생성 횟수를 0으로 리셋합니다.
-                      </p>
+                      <h3 className="font-medium flex items-center gap-2"><RotateCcw className="w-4 h-4" />일일 생성 횟수 초기화</h3>
+                      <p className="text-sm text-muted-foreground">오늘의 스타일 생성 횟수를 0으로 리셋합니다.</p>
                     </div>
                     <Button 
                       variant="destructive"
@@ -1075,85 +1252,51 @@ const Admin = () => {
                         try {
                           const { data: { user } } = await supabase.auth.getUser();
                           if (!user) {
-                            toast({
-                              title: "로그인 필요",
-                              description: "로그인 후 사용해주세요.",
-                              variant: "destructive",
-                            });
+                            toast({ title: "로그인 필요", description: "로그인 후 사용해주세요.", variant: "destructive" });
                             return;
                           }
                           
                           const today = new Date().toISOString().split('T')[0];
-                          const { error } = await supabase
-                            .from('daily_generation_usage')
+                          await supabase.from('daily_generation_usage')
                             .update({ generation_count: 0, updated_at: new Date().toISOString() })
                             .eq('user_id', user.id)
                             .eq('usage_date', today);
                           
-                          if (error) throw error;
-                          
-                          toast({
-                            title: "초기화 완료",
-                            description: "오늘의 생성 횟수가 0으로 초기화되었습니다.",
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "초기화 실패",
-                            description: error.message,
-                            variant: "destructive",
-                          });
+                          toast({ title: "초기화 완료", description: "오늘의 생성 횟수가 0으로 초기화되었습니다." });
+                        } catch (error: unknown) {
+                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                          toast({ title: "초기화 실패", description: errorMessage, variant: "destructive" });
                         }
                       }}
                     >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      횟수 초기화
+                      <RotateCcw className="w-4 h-4 mr-2" />횟수 초기화
                     </Button>
                   </div>
                 </div>
 
-                {/* Cache Clear */}
                 <div className="p-4 border rounded-lg space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4" />
-                        추천 캐시 정리
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        만료된 스타일 추천 캐시를 삭제합니다.
-                      </p>
+                      <h3 className="font-medium flex items-center gap-2"><RefreshCw className="w-4 h-4" />추천 캐시 정리</h3>
+                      <p className="text-sm text-muted-foreground">만료된 스타일 추천 캐시를 삭제합니다.</p>
                     </div>
                     <Button 
                       variant="outline"
                       onClick={async () => {
                         try {
-                          const { error } = await supabase
-                            .from('style_cache')
-                            .delete()
-                            .lt('expires_at', new Date().toISOString());
-                          
-                          if (error) throw error;
-                          
-                          toast({
-                            title: "캐시 정리 완료",
-                            description: "만료된 캐시가 삭제되었습니다.",
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "캐시 정리 실패",
-                            description: error.message,
-                            variant: "destructive",
-                          });
+                          await supabase.from('style_cache').delete().lt('expires_at', new Date().toISOString());
+                          toast({ title: "캐시 정리 완료", description: "만료된 캐시가 삭제되었습니다." });
+                        } catch (error: unknown) {
+                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                          toast({ title: "캐시 정리 실패", description: errorMessage, variant: "destructive" });
                         }
                       }}
                     >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      만료 캐시 정리
+                      <RefreshCw className="w-4 h-4 mr-2" />만료 캐시 정리
                     </Button>
                   </div>
                 </div>
 
-                {/* Product Stats */}
                 <div className="p-4 border rounded-lg space-y-4">
                   <h3 className="font-medium">상품 통계</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
