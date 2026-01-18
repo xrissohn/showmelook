@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.update-product-images]
 verify_jwt = false
+
+[functions.test-product-feed]
+verify_jwt = false

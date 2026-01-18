@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2, Download, Image, ImageOff } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2, Download, Image, ImageOff, Rss } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -305,6 +305,30 @@ const Admin = () => {
     estimatedTimeMinutes?: number;
     status?: string;
     note?: string;
+    error?: string;
+  } | null>(null);
+
+  // Product feed test state
+  const [feedMerchant, setFeedMerchant] = useState<string>("11st");
+  const [isFeedTesting, setIsFeedTesting] = useState(false);
+  const [feedResult, setFeedResult] = useState<{
+    success: boolean;
+    merchant: string;
+    apiConnected: boolean;
+    totalProducts: number;
+    sampleProducts: Array<{
+      product_id?: string;
+      product_name?: string;
+      category_name?: string;
+      brand?: string;
+      price?: number | string;
+      sale_price?: number | string;
+      image_url?: string;
+      product_url?: string;
+      [key: string]: unknown;
+    }>;
+    fields: string[];
+    elapsedMs?: number;
     error?: string;
   } | null>(null);
 
@@ -1070,6 +1094,52 @@ const Admin = () => {
     }
   };
 
+  const testProductFeed = async () => {
+    setIsFeedTesting(true);
+    setFeedResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('test-product-feed', {
+        body: { merchant: feedMerchant },
+      });
+
+      if (error) throw error;
+
+      setFeedResult(data);
+
+      if (data.success) {
+        toast({
+          title: "피드 연결 성공",
+          description: `${data.merchant}: ${data.totalProducts}개 상품 (${data.elapsedMs}ms)`,
+        });
+      } else {
+        toast({
+          title: "피드 연결 실패",
+          description: data.error,
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error('Product feed test error:', error);
+      setFeedResult({
+        success: false,
+        merchant: feedMerchant,
+        apiConnected: false,
+        totalProducts: 0,
+        sampleProducts: [],
+        fields: [],
+        error: error.message,
+      });
+      toast({
+        title: "피드 테스트 오류",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsFeedTesting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -1139,6 +1209,10 @@ const Admin = () => {
         {/* Test Tabs */}
         <Tabs defaultValue="dna-management" className="space-y-4">
           <TabsList className="flex w-full overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
+            <TabsTrigger value="product-feed">
+              <Rss className="w-4 h-4 mr-1" />
+              상품피드
+            </TabsTrigger>
             <TabsTrigger value="dna-management">DNA 관리</TabsTrigger>
             <TabsTrigger value="admin-tools">관리도구</TabsTrigger>
             <TabsTrigger value="missing-images">
@@ -1154,6 +1228,178 @@ const Admin = () => {
             <TabsTrigger value="collect">상품 수집</TabsTrigger>
             <TabsTrigger value="products">수집된 상품</TabsTrigger>
           </TabsList>
+
+          {/* Product Feed Test Tab */}
+          <TabsContent value="product-feed" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Rss className="w-5 h-5" />
+                  상품 피드 API 테스트
+                </CardTitle>
+                <CardDescription>
+                  LinkPrice 상품피드 API 연결 상태를 확인하고 샘플 상품을 조회합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Feed Test Controls */}
+                <div className="flex flex-wrap items-end gap-4">
+                  <div>
+                    <label className="text-sm font-medium mb-1 block">머천트</label>
+                    <Select value={feedMerchant} onValueChange={setFeedMerchant}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="11st">11번가</SelectItem>
+                        <SelectItem value="coupang">쿠팡</SelectItem>
+                        <SelectItem value="gmarket">G마켓</SelectItem>
+                        <SelectItem value="auction">옥션</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <Button onClick={testProductFeed} disabled={isFeedTesting}>
+                    {isFeedTesting ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Play className="w-4 h-4 mr-2" />
+                    )}
+                    피드 테스트
+                  </Button>
+                </div>
+
+                {/* Feed Result */}
+                {feedResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    feedResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                  }`}>
+                    {feedResult.success ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">API 연결 성공</span>
+                            <Badge variant="secondary">{feedResult.merchant}</Badge>
+                          </div>
+                          {feedResult.elapsedMs && (
+                            <Badge variant="outline" className="text-xs">
+                              {feedResult.elapsedMs}ms
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <span className="text-sm text-muted-foreground">총 상품 수</span>
+                            <p className="text-2xl font-bold">{feedResult.totalProducts.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-sm text-muted-foreground">필드 수</span>
+                            <p className="text-2xl font-bold">{feedResult.fields.length}</p>
+                          </div>
+                        </div>
+
+                        {/* Fields */}
+                        {feedResult.fields.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">응답 필드</h4>
+                            <div className="flex flex-wrap gap-1">
+                              {feedResult.fields.map((field) => (
+                                <Badge key={field} variant="outline" className="text-xs">
+                                  {field}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Sample Products */}
+                        {feedResult.sampleProducts.length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">샘플 상품 ({feedResult.sampleProducts.length}개)</h4>
+                            <div className="grid gap-2">
+                              {feedResult.sampleProducts.map((product, idx) => (
+                                <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                                  <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
+                                    {product.image_url ? (
+                                      <img 
+                                        src={product.image_url as string} 
+                                        alt={product.product_name as string || '상품'}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                        <Package className="w-5 h-5" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm truncate">
+                                      {product.product_name || product.product_id || '상품명 없음'}
+                                    </p>
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                      {product.brand && <span>{product.brand}</span>}
+                                      {product.category_name && <Badge variant="secondary" className="text-xs">{product.category_name}</Badge>}
+                                    </div>
+                                    <div className="flex items-center gap-2 text-sm mt-1">
+                                      {product.sale_price && (
+                                        <span className="font-bold text-primary">
+                                          ₩{Number(product.sale_price).toLocaleString()}
+                                        </span>
+                                      )}
+                                      {product.price && product.price !== product.sale_price && (
+                                        <span className="text-muted-foreground line-through text-xs">
+                                          ₩{Number(product.price).toLocaleString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {product.product_url && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(product.product_url as string, '_blank')}
+                                    >
+                                      <ExternalLink className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
+                        <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <span className="font-medium">API 연결 실패</span>
+                          <p className="text-sm mt-1">{feedResult.error}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Info */}
+                <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                  <p className="font-medium mb-1">📋 지원 머천트 피드 API</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>11번가: https://api.linkprice.com/ci/product/deal/11st/{'{A코드}'}</li>
+                    <li>쿠팡: https://api.linkprice.com/ci/product/deal/coupang/{'{A코드}'}</li>
+                    <li>G마켓: https://api.linkprice.com/ci/product/deal/gmarket/{'{A코드}'}</li>
+                    <li>옥션: https://api.linkprice.com/ci/product/deal/auction/{'{A코드}'}</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* DNA Management Tab */}
           <TabsContent value="dna-management" className="space-y-4">
