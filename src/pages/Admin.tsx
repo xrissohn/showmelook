@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2, Download, Image } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2, Download, Image, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import MissingImagesManager from "@/components/admin/MissingImagesManager";
 
 interface DeeplinkResult {
   success?: boolean;
@@ -1140,6 +1141,10 @@ const Admin = () => {
           <TabsList className="flex w-full overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
             <TabsTrigger value="dna-management">DNA 관리</TabsTrigger>
             <TabsTrigger value="admin-tools">관리도구</TabsTrigger>
+            <TabsTrigger value="missing-images">
+              <ImageOff className="w-4 h-4 mr-1" />
+              이미지 누락
+            </TabsTrigger>
             <TabsTrigger value="batch-collect">배치 수집</TabsTrigger>
             <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
             <TabsTrigger value="brightdata">BrightData</TabsTrigger>
@@ -2603,6 +2608,11 @@ const Admin = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Missing Images Tab */}
+          <TabsContent value="missing-images" className="space-y-4">
+            <MissingImagesManager />
           </TabsContent>
 
           {/* Deeplink Test Tab */}
