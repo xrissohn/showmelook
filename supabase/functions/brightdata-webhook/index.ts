@@ -8,7 +8,6 @@ const corsHeaders = {
 
 // Bright Data에서 보내는 상품 데이터 형식
 interface BrightDataProduct {
-  // 다양한 필드명 지원
   url?: string;
   product_url?: string;
   title?: string;
@@ -36,24 +35,21 @@ interface BrightDataProduct {
   [key: string]: unknown;
 }
 
-// DB 저장용 형식 (products_cache 테이블에 맞춤)
-interface ProductForDB {
-  external_id: string;
+// register-product에 전달할 형식
+interface ProductInput {
   merchant_id: string;
   product_url: string;
   name: string;
   price: number;
   original_price?: number;
-  image_url: string | null;
-  category: string;
+  image_url?: string;
+  category?: string;
   sub_category?: string;
-  style_tags: string[];
   brand?: string;
   sizes?: Record<string, unknown>;
   gender?: string;
   color?: string;
-  is_in_stock: boolean;
-  is_active: boolean;
+  is_in_stock?: boolean;
 }
 
 // 머천트 ID 추출
@@ -70,30 +66,6 @@ function extractMerchantId(url: string): string {
   if (urlLower.includes('posty')) return 'posty';
   if (urlLower.includes('lfmall')) return 'lfmall';
   return 'unknown';
-}
-
-// External ID 추출
-function extractExternalId(url: string, product: BrightDataProduct): string {
-  // 상품에서 직접 ID 추출
-  if (product.sku) return product.sku;
-  if (product.product_id) return product.product_id;
-  
-  // URL에서 ID 추출 시도
-  const patterns = [
-    /\/products?\/(\d+)/i,
-    /\/goods\/(\d+)/i,
-    /\/item\/(\d+)/i,
-    /[?&](?:product_?id|goods_?no|item_?id)=(\w+)/i,
-    /\/(\d{6,})/,
-  ];
-  
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
-  }
-  
-  // 최후의 수단: URL 해시
-  return btoa(url).slice(0, 20);
 }
 
 // 카테고리 추론
@@ -119,35 +91,6 @@ function inferCategory(name: string): string {
   return '기타';
 }
 
-// 스타일 태그 추출
-function extractStyleTags(name: string, category: string): string[] {
-  const tags: string[] = [];
-  const nameLower = name.toLowerCase();
-  
-  const styleKeywords: Record<string, string[]> = {
-    '캐주얼': ['캐주얼', 'casual', '데일리', 'daily', '베이직', 'basic'],
-    '미니멀': ['미니멀', 'minimal', '심플', 'simple', '모던', 'modern'],
-    '스트릿': ['스트릿', 'street', '오버핏', 'overfit', '빅사이즈'],
-    '클래식': ['클래식', 'classic', '포멀', 'formal', '정장', '오피스', 'office'],
-    '스포티': ['스포티', 'sporty', '애슬레저', 'athleisure', '운동', 'sport'],
-    '빈티지': ['빈티지', 'vintage', '레트로', 'retro'],
-    '페미닌': ['페미닌', 'feminine', '러블리', 'lovely', '플라워', 'flower'],
-  };
-  
-  for (const [style, keywords] of Object.entries(styleKeywords)) {
-    if (keywords.some(kw => nameLower.includes(kw))) {
-      tags.push(style);
-    }
-  }
-  
-  // 카테고리 태그 추가
-  if (category !== '기타') {
-    tags.push(category);
-  }
-  
-  return tags.length > 0 ? tags : ['일반'];
-}
-
 // 가격 파싱
 function parsePrice(price: unknown): number {
   if (typeof price === 'number') return Math.round(price);
@@ -159,31 +102,28 @@ function parsePrice(price: unknown): number {
 }
 
 // 이미지 URL 추출
-function extractImageUrl(product: BrightDataProduct): string | null {
+function extractImageUrl(product: BrightDataProduct): string | undefined {
   if (product.main_image) return product.main_image;
   if (product.image) return product.image;
   if (product.images && product.images.length > 0) return product.images[0];
   if (product.image_urls && product.image_urls.length > 0) return product.image_urls[0];
-  return null;
+  return undefined;
 }
 
-// 상품 데이터 변환
-function transformProduct(product: BrightDataProduct): ProductForDB | null {
-  // URL 추출 (다양한 필드명 지원)
+// 상품 데이터 변환 (register-product 형식으로)
+function transformProduct(product: BrightDataProduct): ProductInput | null {
   const url = product.url || product.product_url;
   if (!url) {
     console.log('Skipping product without URL:', JSON.stringify(product).slice(0, 200));
     return null;
   }
   
-  // 이름 추출 (다양한 필드명 지원)
   const name = product.title || product.name || product.product_name || '';
   if (!name) {
     console.log('Skipping product without name:', url);
     return null;
   }
   
-  // 가격 추출 (다양한 형식 지원)
   let price = parsePrice(product.price);
   if (price <= 0 && product.final_price?.value) {
     price = Math.round(product.final_price.value);
@@ -197,9 +137,7 @@ function transformProduct(product: BrightDataProduct): ProductForDB | null {
   }
   
   const merchantId = extractMerchantId(url);
-  const externalId = extractExternalId(url, product);
   const category = product.category || inferCategory(name);
-  const styleTags = extractStyleTags(name, category);
   
   // 재고 상태 확인
   let isInStock = true;
@@ -217,7 +155,7 @@ function transformProduct(product: BrightDataProduct): ProductForDB | null {
     originalPrice = Math.round(product.original_price.value);
   }
   
-  // 카테고리 분리 (예: "남성의류 > 니트/스웨터")
+  // 카테고리 분리
   let mainCategory = category;
   let subCategory: string | undefined;
   if (category.includes('>')) {
@@ -226,23 +164,18 @@ function transformProduct(product: BrightDataProduct): ProductForDB | null {
     subCategory = parts[1];
   }
   
-  // 성별 추출
+  // 성별, 색상, 사이즈
   const gender = product.gender as string | undefined;
-  
-  // 색상 추출 (첫 번째 색상)
   let color: string | undefined;
   if (product.colors && product.colors.length > 0) {
     color = product.colors[0];
   }
-  
-  // 사이즈 정보
   let sizes: Record<string, unknown> | undefined;
   if (product.sizes && product.sizes.length > 0) {
     sizes = { available: product.sizes };
   }
   
   return {
-    external_id: externalId,
     merchant_id: merchantId,
     product_url: url,
     name: name.slice(0, 500),
@@ -251,13 +184,11 @@ function transformProduct(product: BrightDataProduct): ProductForDB | null {
     image_url: extractImageUrl(product),
     category: mainCategory,
     sub_category: subCategory,
-    style_tags: styleTags,
     brand: product.brand,
     sizes,
     gender,
     color,
     is_in_stock: isInStock,
-    is_active: true,
   };
 }
 
@@ -290,7 +221,7 @@ serve(async (req) => {
   console.log('Content-Type:', req.headers.get('content-type'));
 
   try {
-    // 인증 확인 (선택적 - Bright Data에서 설정한 경우)
+    // 인증 확인
     const webhookSecret = Deno.env.get('BRIGHTDATA_WEBHOOK_SECRET');
     if (webhookSecret) {
       const providedSecret = req.headers.get('x-webhook-secret') || req.headers.get('authorization')?.replace('Bearer ', '');
@@ -318,11 +249,9 @@ serve(async (req) => {
     let products: BrightDataProduct[] = [];
 
     if (contentType.includes('application/x-ndjson') || contentType.includes('ndjson')) {
-      // NDJSON 형식
       products = parseNDJSON(rawBody);
       console.log('Parsed as NDJSON:', products.length, 'products');
     } else {
-      // JSON 형식 (배열 또는 단일 객체)
       try {
         const parsed = JSON.parse(rawBody);
         if (Array.isArray(parsed)) {
@@ -336,7 +265,6 @@ serve(async (req) => {
         }
         console.log('Parsed as JSON:', products.length, 'products');
       } catch (e) {
-        // JSON 파싱 실패 시 NDJSON 시도
         products = parseNDJSON(rawBody);
         console.log('Fallback to NDJSON:', products.length, 'products');
       }
@@ -353,7 +281,7 @@ serve(async (req) => {
     }
 
     // 상품 변환
-    const transformedProducts: ProductForDB[] = [];
+    const transformedProducts: ProductInput[] = [];
     let skipped = 0;
 
     for (const product of products) {
@@ -378,61 +306,99 @@ serve(async (req) => {
       });
     }
 
-    // DB에 저장 (개별 upsert로 중복 처리)
-    let savedCount = 0;
-    let errorCount = 0;
-    
-    for (const p of transformedProducts) {
-      // 먼저 기존 상품 확인
-      const { data: existing } = await supabase
-        .from('products_cache')
-        .select('id')
-        .eq('external_id', p.external_id)
-        .eq('merchant_id', p.merchant_id)
-        .maybeSingle();
-      
-      if (existing) {
-        // 기존 상품 업데이트
-        const { error } = await supabase
-          .from('products_cache')
-          .update({
-            ...p,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
-        
-        if (error) {
-          console.error('Update error:', error);
-          errorCount++;
+    // register-product Edge Function 호출 (배치 처리)
+    const BATCH_SIZE = 10;
+    let successCount = 0;
+    let failedCount = 0;
+    const failedProducts: Array<{ product: ProductInput; error: string }> = [];
+
+    for (let i = 0; i < transformedProducts.length; i += BATCH_SIZE) {
+      const batch = transformedProducts.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(transformedProducts.length / BATCH_SIZE)}`);
+
+      try {
+        const response = await fetch(`${supabaseUrl}/functions/v1/register-product`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+          },
+          body: JSON.stringify({ products: batch }),
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.results) {
+          for (const r of result.results) {
+            if (r.success) {
+              successCount++;
+            } else {
+              failedCount++;
+              const originalProduct = batch.find(p => p.product_url === r.product_url);
+              if (originalProduct) {
+                failedProducts.push({
+                  product: originalProduct,
+                  error: r.error || 'Unknown error',
+                });
+              }
+            }
+          }
         } else {
-          savedCount++;
+          // 전체 배치 실패
+          for (const product of batch) {
+            failedCount++;
+            failedProducts.push({
+              product,
+              error: result.error || 'Batch failed',
+            });
+          }
         }
-      } else {
-        // 새 상품 삽입
-        const { error } = await supabase
-          .from('products_cache')
-          .insert({
-            ...p,
-            collected_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
+      } catch (error) {
+        console.error('Batch call error:', error);
+        for (const product of batch) {
+          failedCount++;
+          failedProducts.push({
+            product,
+            error: error instanceof Error ? error.message : 'Network error',
           });
-        
-        if (error) {
-          console.error('Insert error:', error);
-          errorCount++;
-        } else {
-          savedCount++;
         }
+      }
+
+      // 배치 간 딜레이 (rate limit 방지)
+      if (i + BATCH_SIZE < transformedProducts.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    // 실패한 제품들을 pending_products에 저장
+    if (failedProducts.length > 0) {
+      console.log(`Saving ${failedProducts.length} failed products to pending_products`);
+      
+      const pendingRecords = failedProducts.map(fp => ({
+        source: 'brightdata',
+        raw_data: fp.product,
+        error_type: fp.error.includes('image') ? 'image_failed' : 
+                    fp.error.includes('dna') ? 'dna_failed' : 'both_failed',
+        error_message: fp.error,
+      }));
+
+      const { error: pendingError } = await supabase
+        .from('pending_products')
+        .insert(pendingRecords);
+
+      if (pendingError) {
+        console.error('Failed to save pending products:', pendingError);
       }
     }
 
     const result = {
       success: true,
       received: products.length,
-      processed: transformedProducts.length,
+      transformed: transformedProducts.length,
       skipped,
-      saved: savedCount,
-      errors: errorCount,
+      registered: successCount,
+      failed: failedCount,
+      pendingSaved: failedProducts.length,
       timestamp: new Date().toISOString(),
     };
 
