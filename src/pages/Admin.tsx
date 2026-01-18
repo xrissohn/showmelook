@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2 } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2, Download, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -271,6 +271,29 @@ const Admin = () => {
   } | null>(null);
   const [isValidatingImages, setIsValidatingImages] = useState(false);
   const [imageValidationDryRun, setImageValidationDryRun] = useState(true);
+
+  // Image download to storage state
+  const [imageDownloadMerchant, setImageDownloadMerchant] = useState<string>("");
+  const [imageDownloadLimit, setImageDownloadLimit] = useState("5");
+  const [isDownloadingImages, setIsDownloadingImages] = useState(false);
+  const [imageDownloadResult, setImageDownloadResult] = useState<{
+    success: boolean;
+    merchantId?: string;
+    total?: number;
+    updated?: number;
+    failed?: number;
+    remaining?: number;
+    results?: Array<{
+      productId: string;
+      productName: string;
+      originalUrl: string;
+      storageUrl?: string;
+      success: boolean;
+      error?: string;
+    }>;
+    error?: string;
+    message?: string;
+  } | null>(null);
 
   useEffect(() => {
     loadMerchants();
@@ -950,6 +973,58 @@ const Admin = () => {
     }
   };
 
+  const downloadImagesToStorage = async () => {
+    if (!imageDownloadMerchant) {
+      toast({
+        title: "머천트 선택 필요",
+        description: "이미지를 다운로드할 머천트를 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDownloadingImages(true);
+    setImageDownloadResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-download-images', {
+        body: { 
+          merchantId: imageDownloadMerchant,
+          limit: parseInt(imageDownloadLimit) || 5
+        },
+      });
+
+      if (error) throw error;
+
+      setImageDownloadResult(data);
+
+      if (data.success) {
+        if (data.total === 0) {
+          toast({
+            title: "다운로드할 이미지 없음",
+            description: data.message || "모든 이미지가 이미 Storage에 저장되어 있습니다.",
+          });
+        } else {
+          toast({
+            title: "이미지 다운로드 완료",
+            description: `${data.updated}/${data.total}개 성공, ${data.remaining}개 남음`,
+          });
+          loadProductStats();
+        }
+      }
+    } catch (error: any) {
+      console.error('Image download error:', error);
+      setImageDownloadResult({ success: false, error: error.message });
+      toast({
+        title: "이미지 다운로드 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingImages(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -1586,6 +1661,127 @@ const Admin = () => {
                         <div className="flex items-center gap-2 text-red-600">
                           <XCircle className="w-5 h-5" />
                           <span className="font-medium">오류: {imageValidationResult.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Image Download to Storage */}
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div>
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Download className="w-4 h-4" />
+                      이미지 Storage 저장
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      외부 이미지 URL을 다운로드하여 영구 Storage에 저장합니다.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">머천트</label>
+                      <Select value={imageDownloadMerchant} onValueChange={setImageDownloadMerchant}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="머천트 선택" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {merchants.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name_ko} ({m.name})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">다운로드 수</label>
+                      <Select value={imageDownloadLimit} onValueChange={setImageDownloadLimit}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1개</SelectItem>
+                          <SelectItem value="3">3개</SelectItem>
+                          <SelectItem value="5">5개</SelectItem>
+                          <SelectItem value="10">10개</SelectItem>
+                          <SelectItem value="20">20개</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="flex items-end">
+                      <Button 
+                        onClick={downloadImagesToStorage}
+                        disabled={isDownloadingImages || !imageDownloadMerchant}
+                        className="w-full"
+                      >
+                        {isDownloadingImages ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            다운로드 중...
+                          </>
+                        ) : (
+                          <>
+                            <Image className="w-4 h-4 mr-2" />
+                            Storage에 저장
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Download Result */}
+                  {imageDownloadResult && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg space-y-2">
+                      {imageDownloadResult.success ? (
+                        <>
+                          <div className="flex items-center gap-2 text-green-600">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">
+                              {imageDownloadResult.total === 0 
+                                ? '다운로드할 이미지 없음'
+                                : `${imageDownloadResult.updated}/${imageDownloadResult.total}개 저장 완료`
+                              }
+                            </span>
+                          </div>
+                          {(imageDownloadResult.remaining ?? 0) > 0 && (
+                            <p className="text-sm text-muted-foreground">
+                              남은 이미지: {imageDownloadResult.remaining}개
+                            </p>
+                          )}
+                          {imageDownloadResult.failed && imageDownloadResult.failed > 0 && (
+                            <p className="text-sm text-orange-600">
+                              실패: {imageDownloadResult.failed}개
+                            </p>
+                          )}
+                          {/* Results detail */}
+                          {imageDownloadResult.results && imageDownloadResult.results.length > 0 && (
+                            <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                              {imageDownloadResult.results.map((r, idx) => (
+                                <div key={idx} className={`text-xs p-2 rounded ${r.success ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
+                                  <div className="flex items-center gap-1">
+                                    {r.success ? (
+                                      <CheckCircle2 className="w-3 h-3 text-green-600" />
+                                    ) : (
+                                      <XCircle className="w-3 h-3 text-red-600" />
+                                    )}
+                                    <span className="truncate">{r.productName}</span>
+                                  </div>
+                                  {r.error && (
+                                    <p className="text-red-600 mt-1">{r.error}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-red-600">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">오류: {imageDownloadResult.error}</span>
                         </div>
                       )}
                     </div>
