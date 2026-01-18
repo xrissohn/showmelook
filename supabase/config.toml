@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.test-product-feed]
 verify_jwt = false
+
+[functions.register-product]
+verify_jwt = false

@@ -1060,86 +1060,74 @@ async function downloadAndStoreImage(
   }
 }
 
-// ============= Upsert Products with Image Download =============
+// ============= Upsert Products with Unified Registration =============
+// Uses register-product function to ensure image storage + DNA generation
 async function upsertProducts(
   supabase: any, 
   products: (Product & { style_tags: string[] })[]
-): Promise<{ inserted: number; updated: number; errors: number }> {
+): Promise<{ inserted: number; updated: number; errors: number; errorDetails: string[] }> {
   let inserted = 0;
   let updated = 0;
   let errors = 0;
+  const errorDetails: string[] = [];
+
+  // Batch products for register-product function
+  const batchSize = 10;
   
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-  const storageBaseUrl = `${supabaseUrl}/storage/v1/object/public/product-images`;
+  for (let i = 0; i < products.length; i += batchSize) {
+    const batch = products.slice(i, i + batchSize);
+    
+    const productInputs = batch.map(product => ({
+      merchant_id: product.merchant_id,
+      product_url: product.product_url,
+      external_id: product.external_id,
+      name: product.name,
+      brand: product.brand,
+      price: product.price,
+      original_price: product.original_price,
+      image_url: product.image_url,
+      category: product.category,
+      sub_category: product.sub_category,
+      sizes: product.sizes,
+      is_in_stock: product.is_in_stock,
+      style_tags: product.style_tags,
+      gender: product.gender,
+      color: product.color,
+    }));
 
-  for (const product of products) {
     try {
-      // First, upsert the product
-      const { data: upsertedProduct, error } = await supabase
-        .from('products_cache')
-        .upsert({
-          merchant_id: product.merchant_id,
-          product_url: product.product_url,
-          external_id: product.external_id,
-          name: product.name,
-          brand: product.brand,
-          price: product.price,
-          original_price: product.original_price,
-          image_url: product.image_url,
-          category: product.category,
-          sub_category: product.sub_category,
-          sizes: product.sizes,
-          is_in_stock: product.is_in_stock,
-          style_tags: product.style_tags,
-          gender: product.gender,
-          color: product.color,
-          updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'product_url',
-        })
-        .select('id')
-        .single();
+      const { data: registerResult, error: registerError } = await supabase.functions.invoke('register-product', {
+        body: { products: productInputs }
+      });
 
-      if (error) {
-        console.error('[Upsert] Error:', error);
-        errors++;
+      if (registerError) {
+        console.error('[Upsert] Register function error:', registerError);
+        errors += batch.length;
+        errorDetails.push(`Batch ${i / batchSize + 1}: ${registerError.message}`);
         continue;
       }
 
-      inserted++;
-      
-      // If image_url exists and is external, download and store it
-      if (product.image_url && !product.image_url.startsWith(storageBaseUrl)) {
-        const productId = upsertedProduct?.id;
-        if (productId) {
-          const storageUrl = await downloadAndStoreImage(
-            supabase,
-            productId,
-            product.image_url,
-            product.merchant_id
-          );
-          
-          if (storageUrl) {
-            // Update with storage URL
-            await supabase
-              .from('products_cache')
-              .update({ 
-                image_url: storageUrl,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', productId);
-              
-            console.log(`[Upsert] Image stored for ${product.name}`);
+      if (registerResult?.results) {
+        for (const result of registerResult.results) {
+          if (result.success) {
+            inserted++;
+          } else {
+            errors++;
+            errorDetails.push(result.error || 'Unknown registration error');
           }
         }
       }
+
+      console.log(`[Upsert] Batch ${i / batchSize + 1}: ${registerResult?.success_count || 0} success, ${registerResult?.fail_count || 0} failed`);
+      
     } catch (e) {
       console.error('[Upsert] Exception:', e);
-      errors++;
+      errors += batch.length;
+      errorDetails.push(`Batch ${i / batchSize + 1}: ${e}`);
     }
   }
 
-  return { inserted, updated, errors };
+  return { inserted, updated, errors, errorDetails };
 }
 
 // ============= Main Handler =============
