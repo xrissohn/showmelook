@@ -3649,54 +3649,20 @@ const StyleGenerator = () => {
                     <div className="absolute top-0 right-0 w-20 sm:w-24 h-20 sm:h-24 bg-gradient-to-br from-accent/10 to-primary/10 rounded-full blur-2xl" />
                     <div className="absolute bottom-0 left-0 w-16 sm:w-20 h-16 sm:h-20 bg-gradient-to-tr from-primary/10 to-accent/10 rounded-full blur-2xl" />
                     
-                    <div className="relative space-y-3 sm:space-y-4">
+                    <div className="relative flex justify-between items-center">
                       {/* 선택 현황 */}
-                      <div className="flex justify-between items-start">
-                        <div className="space-y-0.5 sm:space-y-1">
-                          <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">선택한 아이템</span>
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-xl sm:text-2xl font-bold text-foreground">{selectedTrendProducts.length}</span>
-                            <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}개</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">총 금액</span>
-                          <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                            ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
-                          </p>
+                      <div className="space-y-0.5 sm:space-y-1">
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">선택한 아이템</span>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl sm:text-2xl font-bold text-foreground">{selectedTrendProducts.length}</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}개</span>
                         </div>
                       </div>
-                      
-                      {/* 예산 비교 프로그레스 바 */}
-                      <div className="space-y-1.5 sm:space-y-2">
-                        <div className="h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0])
-                                ? 'bg-gradient-to-r from-orange-400 to-red-500'
-                                : 'bg-gradient-to-r from-green-400 to-emerald-500'
-                            }`}
-                            style={{ 
-                              width: `${Math.min(100, (selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) / (customResult.budget || customBudget[0])) * 100)}%` 
-                            }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between text-[10px] sm:text-xs">
-                          <span className="text-muted-foreground font-korean">
-                            예산 ₩{(customResult.budget || customBudget[0]).toLocaleString()}
-                          </span>
-                          {selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) > (customResult.budget || customBudget[0]) ? (
-                            <span className="font-semibold text-orange-500 font-korean flex items-center gap-1">
-                              <span className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-orange-500" />
-                              +₩{(selectedTrendProducts.reduce((sum, p) => sum + p.price, 0) - (customResult.budget || customBudget[0])).toLocaleString()} 초과
-                            </span>
-                          ) : (
-                            <span className="font-semibold text-green-500 font-korean flex items-center gap-1">
-                              <Check className="w-3 sm:w-3.5 h-3 sm:h-3.5" />
-                              예산 내
-                            </span>
-                          )}
-                        </div>
+                      <div className="text-right">
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">총 금액</span>
+                        <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
+                          ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                        </p>
                       </div>
                     </div>
                   </div>
