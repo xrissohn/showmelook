@@ -50,3 +50,9 @@ verify_jwt = false
 
 [functions.learn-patterns]
 verify_jwt = false
+
+[functions.download-product-image]
+verify_jwt = false
+
+[functions.batch-download-images]
+verify_jwt = false
