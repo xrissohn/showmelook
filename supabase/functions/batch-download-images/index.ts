@@ -20,6 +20,33 @@ interface DownloadResult {
   error?: string;
 }
 
+// High-resolution image URL transformer
+function getHighResImageUrl(imageUrl: string, merchantId: string): string {
+  if (!imageUrl) return imageUrl;
+  
+  // Paul Smith: upgrade from w_614 to w_1200
+  if (merchantId === 'paulsmith' && imageUrl.includes('w_614')) {
+    return imageUrl.replace('w_614', 'w_1200');
+  }
+  
+  // WConcept: upgrade width parameters
+  if (merchantId === 'wconcept' && imageUrl.includes('w=')) {
+    return imageUrl.replace(/w=\d+/, 'w=1200');
+  }
+  
+  // Posty: upgrade image size
+  if (merchantId === 'posty' && imageUrl.includes('/resize/')) {
+    return imageUrl.replace(/\/resize\/\d+/, '/resize/1200');
+  }
+  
+  // StockX: remove resize parameters for original quality
+  if (merchantId === 'stockx' && imageUrl.includes('?w=')) {
+    return imageUrl.split('?')[0];
+  }
+  
+  return imageUrl;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -86,8 +113,11 @@ serve(async (req) => {
 
     // 2. Process each product
     for (const product of products) {
-      const imageUrl = product.image_url!;
+      const originalUrl = product.image_url!;
+      // Get high-res version
+      const imageUrl = getHighResImageUrl(originalUrl, merchantId);
       console.log(`[batch-download-images] Processing: ${product.name} (${product.id})`);
+      console.log(`[batch-download-images] URL: ${originalUrl} -> ${imageUrl}`);
 
       try {
         // Download image

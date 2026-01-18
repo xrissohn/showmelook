@@ -295,6 +295,18 @@ const Admin = () => {
     message?: string;
   } | null>(null);
 
+  // Batch download all images state
+  const [isDownloadingAllImages, setIsDownloadingAllImages] = useState(false);
+  const [downloadAllResult, setDownloadAllResult] = useState<{
+    success: boolean;
+    message?: string;
+    totalProducts?: number;
+    estimatedTimeMinutes?: number;
+    status?: string;
+    note?: string;
+    error?: string;
+  } | null>(null);
+
   useEffect(() => {
     loadMerchants();
     loadDnaStats();
@@ -1022,6 +1034,38 @@ const Admin = () => {
       });
     } finally {
       setIsDownloadingImages(false);
+    }
+  };
+
+  const downloadAllImagesToStorage = async () => {
+    setIsDownloadingAllImages(true);
+    setDownloadAllResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('batch-download-all-images', {
+        body: {},
+      });
+
+      if (error) throw error;
+
+      setDownloadAllResult(data);
+
+      if (data.success) {
+        toast({
+          title: "전체 이미지 다운로드 시작",
+          description: data.note || `${data.totalProducts}개 상품 처리 시작 (약 ${data.estimatedTimeMinutes}분 소요)`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Download all images error:', error);
+      setDownloadAllResult({ success: false, error: error.message });
+      toast({
+        title: "전체 이미지 다운로드 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingAllImages(false);
     }
   };
 
@@ -1782,6 +1826,73 @@ const Admin = () => {
                         <div className="flex items-center gap-2 text-red-600">
                           <XCircle className="w-5 h-5" />
                           <span className="font-medium">오류: {imageDownloadResult.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Download ALL Images to Storage */}
+                <div className="p-4 border-2 border-green-500/30 rounded-lg space-y-4 bg-green-500/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2 text-green-600">
+                        <Download className="w-4 h-4" />
+                        전체 상품 이미지 다운로드
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        모든 상품의 외부 이미지를 고화질로 Storage에 저장합니다. (백그라운드 실행)
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={downloadAllImagesToStorage}
+                      disabled={isDownloadingAllImages}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      {isDownloadingAllImages ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          시작 중...
+                        </>
+                      ) : (
+                        <>
+                          <Download className="w-4 h-4 mr-2" />
+                          전체 다운로드 시작
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Download All Result */}
+                  {downloadAllResult && (
+                    <div className={`mt-4 p-3 rounded-lg space-y-2 ${
+                      downloadAllResult.success 
+                        ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
+                        : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
+                    }`}>
+                      {downloadAllResult.success ? (
+                        <>
+                          <div className="flex items-center gap-2 text-green-600">
+                            <CheckCircle2 className="w-5 h-5" />
+                            <span className="font-medium">
+                              {downloadAllResult.message}
+                            </span>
+                          </div>
+                          <div className="text-sm space-y-1 text-muted-foreground">
+                            <p>📦 처리 대상: {downloadAllResult.totalProducts}개 상품</p>
+                            <p>⏱️ 예상 소요: 약 {downloadAllResult.estimatedTimeMinutes}분</p>
+                            <p>🔄 상태: {downloadAllResult.status === 'processing' ? '백그라운드 처리 중...' : '완료'}</p>
+                          </div>
+                          {downloadAllResult.note && (
+                            <p className="text-xs text-green-600 mt-2">
+                              💡 {downloadAllResult.note}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex items-center gap-2 text-red-600">
+                          <XCircle className="w-5 h-5" />
+                          <span className="font-medium">오류: {downloadAllResult.error}</span>
                         </div>
                       )}
                     </div>
