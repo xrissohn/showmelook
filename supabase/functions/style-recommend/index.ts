@@ -163,20 +163,35 @@ function filterByTarget(products: CachedProduct[], isKids: boolean, gender: stri
     if (!meta) return true; // DNA 없으면 일단 포함
     if (!meta.target) return true; // target 없으면 일단 포함
     
-    // target이 문자열인지 확인 (JSON 파싱 오류 또는 객체일 수 있음)
-    const target = typeof meta.target === 'string' ? meta.target : String(meta.target || '');
-    if (!target) return true;
+    let targetGender = '';
+    let isKidsTarget = false;
+    
+    // target이 객체 형식인 경우 처리 (StockX 등 일부 제품)
+    if (typeof meta.target === 'object' && meta.target !== null) {
+      const targetObj = meta.target as { age?: string; gender?: string };
+      targetGender = targetObj.gender || '';
+      isKidsTarget = targetObj.age === 'kids';
+    } else {
+      // 문자열 형식 처리 (정상)
+      const target = String(meta.target || '');
+      if (!target) return true;
+      
+      isKidsTarget = target.startsWith('kids_');
+      if (target.includes('female')) targetGender = 'female';
+      else if (target.includes('male')) targetGender = 'male';
+      else targetGender = 'unisex';
+    }
     
     if (isKids) {
       // 키즈 요청 -> kids 타겟만
-      return target.startsWith('kids_') || target === 'unisex';
+      return isKidsTarget || targetGender === 'unisex';
     } else {
       // 성인 요청 -> kids 제외
-      if (target.startsWith('kids_')) return false;
+      if (isKidsTarget) return false;
       
       // 성별 필터
-      if (gender === '남성' && target === 'adult_female') return false;
-      if (gender === '여성' && target === 'adult_male') return false;
+      if (gender === '남성' && targetGender === 'female') return false;
+      if (gender === '여성' && targetGender === 'male') return false;
       
       return true;
     }
