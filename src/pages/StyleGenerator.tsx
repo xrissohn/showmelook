@@ -3319,28 +3319,7 @@ const StyleGenerator = () => {
                         </div>
                       )}
 
-                      {/* 예산 슬라이더 */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <Label className="font-korean text-sm">예산</Label>
-                          <span className="text-base sm:text-lg font-semibold text-accent font-korean">
-                            {new Intl.NumberFormat('ko-KR').format(customBudget[0])}원
-                          </span>
-                        </div>
-                        <Slider
-                          value={customBudget}
-                          onValueChange={setCustomBudget}
-                          min={50000}
-                          max={1000000}
-                          step={10000}
-                          disabled={isCustomSearching}
-                          className="w-full"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground font-korean">
-                          <span>5만원</span>
-                          <span>100만원</span>
-                        </div>
-                      </div>
+                      {/* 예산 섹션 제거됨 - AI가 스타일에만 집중 */}
 
                       {/* 추천 버튼 */}
                       <Button
