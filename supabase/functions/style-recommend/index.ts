@@ -1,3 +1,4 @@
+// style-recommend v2.1 - fixed null target check
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -160,6 +161,7 @@ function filterByTarget(products: CachedProduct[], isKids: boolean, gender: stri
   return products.filter(p => {
     const meta = p.dna_meta;
     if (!meta) return true; // DNA 없으면 일단 포함
+    if (!meta.target) return true; // target 없으면 일단 포함
     
     if (isKids) {
       // 키즈 요청 -> kids 타겟만
