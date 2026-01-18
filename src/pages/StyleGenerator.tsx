@@ -3843,7 +3843,7 @@ const StyleGenerator = () => {
             {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
             <div 
               ref={resultRef}
-              className={`lg:sticky lg:top-20 order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}
+              className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}
             >
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
