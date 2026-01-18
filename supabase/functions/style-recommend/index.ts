@@ -416,9 +416,9 @@ serve(async (req) => {
       .eq('is_active', true)
       .eq('is_in_stock', true)
       .not('image_url', 'is', null)
-      .lte('price', budget * 1.5)
+      // 예산 제한 제거 - AI가 스타일에만 집중
       .order('dna_generated_at', { ascending: false, nullsFirst: false })
-      .limit(300); // 500 → 300으로 줄임 (속도 개선)
+      .limit(300);
     
     if (productError) {
       console.error('[style-recommend] Product fetch error:', productError);

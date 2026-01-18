@@ -50,12 +50,13 @@ interface CachedProduct {
   name: string;
   brand: string | null;
   price: number;
+  original_price?: number | null;
   image_url: string | null;
   product_url: string;
   category: string;
   style_tags: string[] | null;
   affiliate_url?: string;
-  isAutoSelected?: boolean; // 예산 내 자동 선택 여부
+  isAutoSelected?: boolean;
 }
 
 interface GeneratedLook {
@@ -3663,6 +3664,27 @@ const StyleGenerator = () => {
                         <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
                           ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                         </p>
+                        {/* 할인/절약 금액 표시 */}
+                        {(() => {
+                          const totalPrice = selectedTrendProducts.reduce((sum, p) => sum + p.price, 0);
+                          const originalPrice = selectedTrendProducts.reduce((sum, p) => sum + (p.original_price || p.price), 0);
+                          const savings = originalPrice - totalPrice;
+                          const discountRate = originalPrice > 0 ? Math.round((savings / originalPrice) * 100) : 0;
+                          
+                          if (savings > 0) {
+                            return (
+                              <div className="flex items-center justify-end gap-1.5 mt-1">
+                                <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
+                                  ₩{originalPrice.toLocaleString()}
+                                </span>
+                                <span className="text-[10px] sm:text-xs font-semibold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">
+                                  {discountRate}% 절약
+                                </span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </div>
                     </div>
                   </div>
