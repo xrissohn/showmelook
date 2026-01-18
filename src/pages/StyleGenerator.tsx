@@ -3136,7 +3136,7 @@ const StyleGenerator = () => {
 
       <div className="w-full max-w-full overflow-x-hidden px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8 mx-auto" style={{ maxWidth: '100vw' }}>
         {activeTab === 'generate' ? (
-          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 w-full max-w-7xl mx-auto lg:items-start">
             {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
             <div className="space-y-4 sm:space-y-6 order-2 lg:order-1 w-full min-w-0">
               {/* 스타일 입력 - 모바일에서 접을 수 있는 아코디언 */}
@@ -3843,7 +3843,7 @@ const StyleGenerator = () => {
             {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
             <div 
               ref={resultRef}
-              className={`lg:sticky lg:top-20 lg:self-start mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}
+              className={`lg:sticky lg:top-20 mt-0 lg:mt-0 order-1 lg:order-2 w-full overflow-hidden ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}
             >
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
