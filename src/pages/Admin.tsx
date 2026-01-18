@@ -1321,56 +1321,66 @@ const Admin = () => {
                           <div>
                             <h4 className="text-sm font-medium mb-2">샘플 상품 ({feedResult.sampleProducts.length}개)</h4>
                             <div className="grid gap-2">
-                              {feedResult.sampleProducts.map((product, idx) => (
-                                <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                                  <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
-                                    {product.image_url ? (
-                                      <img 
-                                        src={product.image_url as string} 
-                                        alt={product.product_name as string || '상품'}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          (e.target as HTMLImageElement).style.display = 'none';
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                        <Package className="w-5 h-5" />
+                              {feedResult.sampleProducts.map((product, idx) => {
+                                // Handle different field names across merchants
+                                const productName = (product.product_name || product.subject || product.name || product.product_id) as string;
+                                const imageUrl = (product.image_url || product.img) as string;
+                                const productUrl = (product.product_url || product.url) as string;
+                                const categoryName = (product.category_name || product.category) as string;
+                                const salePrice = product.sale_price || product.price;
+                                const originalPrice = product.original_price || product.price;
+                                
+                                return (
+                                  <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                                    <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
+                                      {imageUrl ? (
+                                        <img 
+                                          src={imageUrl.replace('http://', 'https://')} 
+                                          alt={productName || '상품'}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (e.target as HTMLImageElement).style.display = 'none';
+                                          }}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                          <Package className="w-5 h-5" />
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm truncate">
+                                        {productName || '상품명 없음'}
+                                      </p>
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        {product.brand && <span>{product.brand as string}</span>}
+                                        {categoryName && <Badge variant="secondary" className="text-xs">{categoryName}</Badge>}
                                       </div>
+                                      <div className="flex items-center gap-2 text-sm mt-1">
+                                        {salePrice && (
+                                          <span className="font-bold text-primary">
+                                            ₩{Number(salePrice).toLocaleString()}
+                                          </span>
+                                        )}
+                                        {originalPrice && Number(originalPrice) > 0 && originalPrice !== salePrice && (
+                                          <span className="text-muted-foreground line-through text-xs">
+                                            ₩{Number(originalPrice).toLocaleString()}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {productUrl && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => window.open(productUrl, '_blank')}
+                                      >
+                                        <ExternalLink className="w-4 h-4" />
+                                      </Button>
                                     )}
                                   </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-sm truncate">
-                                      {product.product_name || product.product_id || '상품명 없음'}
-                                    </p>
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      {product.brand && <span>{product.brand}</span>}
-                                      {product.category_name && <Badge variant="secondary" className="text-xs">{product.category_name}</Badge>}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-sm mt-1">
-                                      {product.sale_price && (
-                                        <span className="font-bold text-primary">
-                                          ₩{Number(product.sale_price).toLocaleString()}
-                                        </span>
-                                      )}
-                                      {product.price && product.price !== product.sale_price && (
-                                        <span className="text-muted-foreground line-through text-xs">
-                                          ₩{Number(product.price).toLocaleString()}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  {product.product_url && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => window.open(product.product_url as string, '_blank')}
-                                    >
-                                      <ExternalLink className="w-4 h-4" />
-                                    </Button>
-                                  )}
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
