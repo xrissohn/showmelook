@@ -6,9 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3 } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DeeplinkResult {
   success?: boolean;
@@ -52,6 +53,7 @@ interface CachedProduct {
   category: string;
   style_tags: string[] | null;
   is_in_stock: boolean;
+  is_active: boolean;
   collected_at: string;
 }
 
@@ -180,6 +182,10 @@ const Admin = () => {
   const [cachedProducts, setCachedProducts] = useState<CachedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productStats, setProductStats] = useState<{ total: number; byMerchant: Record<string, number> }>({ total: 0, byMerchant: {} });
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [isDeletingProducts, setIsDeletingProducts] = useState(false);
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const [productFilter, setProductFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
 
   // Style v1 test state
@@ -418,14 +424,28 @@ const Admin = () => {
     }
   };
 
-  const loadCachedProducts = async () => {
+  const loadCachedProducts = async (filter: 'all' | 'active' | 'inactive' = 'active', loadAll: boolean = false) => {
     setProductsLoading(true);
+    setSelectedProductIds([]);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products_cache')
-        .select('id, merchant_id, name, brand, price, image_url, category, style_tags, is_in_stock, collected_at')
-        .order('collected_at', { ascending: false })
-        .limit(50);
+        .select('id, merchant_id, name, brand, price, image_url, category, style_tags, is_in_stock, is_active, collected_at');
+      
+      // Apply filter
+      if (filter === 'active') {
+        query = query.eq('is_active', true);
+      } else if (filter === 'inactive') {
+        query = query.eq('is_active', false);
+      }
+      
+      query = query.order('collected_at', { ascending: false });
+      
+      if (!loadAll) {
+        query = query.limit(100);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       setCachedProducts(data || []);
@@ -438,6 +458,100 @@ const Admin = () => {
       });
     } finally {
       setProductsLoading(false);
+    }
+  };
+
+  const toggleProductSelection = (productId: string) => {
+    setSelectedProductIds(prev => 
+      prev.includes(productId) 
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const selectAllProducts = () => {
+    setSelectedProductIds(cachedProducts.map(p => p.id));
+  };
+
+  const deselectAllProducts = () => {
+    setSelectedProductIds([]);
+  };
+
+  const deleteSelectedProducts = async () => {
+    if (selectedProductIds.length === 0) {
+      toast({
+        title: "선택된 상품 없음",
+        description: "삭제할 상품을 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!confirm(`${selectedProductIds.length}개 상품을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) {
+      return;
+    }
+
+    setIsDeletingProducts(true);
+    try {
+      const { error } = await supabase
+        .from('products_cache')
+        .delete()
+        .in('id', selectedProductIds);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "삭제 완료",
+        description: `${selectedProductIds.length}개 상품이 삭제되었습니다.`,
+      });
+      
+      setSelectedProductIds([]);
+      loadCachedProducts(productFilter, showAllProducts);
+    } catch (error: any) {
+      toast({
+        title: "삭제 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingProducts(false);
+    }
+  };
+
+  const deactivateSelectedProducts = async () => {
+    if (selectedProductIds.length === 0) {
+      toast({
+        title: "선택된 상품 없음",
+        description: "비활성화할 상품을 선택해주세요.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDeletingProducts(true);
+    try {
+      const { error } = await supabase
+        .from('products_cache')
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .in('id', selectedProductIds);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "비활성화 완료",
+        description: `${selectedProductIds.length}개 상품이 비활성화되었습니다.`,
+      });
+      
+      setSelectedProductIds([]);
+      loadCachedProducts(productFilter, showAllProducts);
+    } catch (error: any) {
+      toast({
+        title: "비활성화 실패",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingProducts(false);
     }
   };
 
@@ -2454,30 +2568,107 @@ const Admin = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="w-5 h-5" />
-                  수집된 상품 목록
+                  수집된 상품 관리
                 </CardTitle>
                 <CardDescription>
-                  products_cache에 저장된 최근 상품 50개
+                  products_cache 상품 목록 - 이미지가 안 보이는 상품을 선택하여 삭제/비활성화할 수 있습니다
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button onClick={loadCachedProducts} disabled={productsLoading}>
-                  {productsLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                  )}
-                  상품 목록 불러오기
-                </Button>
+                {/* Controls */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">필터:</label>
+                    <Select value={productFilter} onValueChange={(v) => {
+                      setProductFilter(v as 'all' | 'active' | 'inactive');
+                      loadCachedProducts(v as 'all' | 'active' | 'inactive', showAllProducts);
+                    }}>
+                      <SelectTrigger className="w-[120px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">활성화</SelectItem>
+                        <SelectItem value="inactive">비활성화</SelectItem>
+                        <SelectItem value="all">전체</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox 
+                      checked={showAllProducts}
+                      onCheckedChange={(checked) => {
+                        setShowAllProducts(!!checked);
+                        loadCachedProducts(productFilter, !!checked);
+                      }}
+                    />
+                    전체 상품 로드
+                  </label>
+
+                  <Button onClick={() => loadCachedProducts(productFilter, showAllProducts)} disabled={productsLoading} variant="outline">
+                    {productsLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    새로고침
+                  </Button>
+                </div>
+
+                {/* Selection actions */}
                 {cachedProducts.length > 0 && (
-                  <div className="grid gap-3 max-h-[600px] overflow-y-auto">
+                  <div className="flex flex-wrap items-center gap-2 p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={selectAllProducts}>
+                        전체 선택
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={deselectAllProducts}>
+                        선택 해제
+                      </Button>
+                    </div>
+                    <span className="text-sm text-muted-foreground">
+                      {selectedProductIds.length}개 선택됨 / 총 {cachedProducts.length}개
+                    </span>
+                    <div className="flex items-center gap-2 ml-auto">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={deactivateSelectedProducts}
+                        disabled={selectedProductIds.length === 0 || isDeletingProducts}
+                      >
+                        {isDeletingProducts ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                        비활성화
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        onClick={deleteSelectedProducts}
+                        disabled={selectedProductIds.length === 0 || isDeletingProducts}
+                      >
+                        {isDeletingProducts ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Trash2 className="w-4 h-4 mr-1" />}
+                        삭제
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Product list */}
+                {cachedProducts.length > 0 && (
+                  <div className="grid gap-2 max-h-[600px] overflow-y-auto">
                     {cachedProducts.map((product) => (
                       <div 
                         key={product.id}
-                        className="flex items-center gap-4 p-3 rounded-lg border bg-card"
+                        className={`flex items-center gap-3 p-3 rounded-lg border bg-card cursor-pointer transition-colors ${
+                          selectedProductIds.includes(product.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                        } ${!product.is_active ? 'opacity-60' : ''}`}
+                        onClick={() => toggleProductSelection(product.id)}
                       >
-                        <div className="w-16 h-20 flex-shrink-0 rounded overflow-hidden bg-muted">
+                        <Checkbox 
+                          checked={selectedProductIds.includes(product.id)}
+                          onCheckedChange={() => toggleProductSelection(product.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
                           {product.image_url ? (
                             <img 
                               src={product.image_url} 
@@ -2487,11 +2678,11 @@ const Admin = () => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
                                 target.parentElement!.innerHTML = `
-                                  <div class="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                      <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/>
-                                      <circle cx="9" cy="9" r="2"/>
-                                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>
+                                  <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                      <circle cx="12" cy="12" r="10"/>
+                                      <path d="m15 9-6 6"/>
+                                      <path d="m9 9 6 6"/>
                                     </svg>
                                   </div>
                                 `;
@@ -2499,31 +2690,25 @@ const Admin = () => {
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              <Package className="w-6 h-6" />
+                              <Package className="w-5 h-5" />
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-1 mb-0.5 flex-wrap">
                             <Badge variant="outline" className="text-xs">{product.merchant_id}</Badge>
                             <Badge variant="secondary" className="text-xs">{product.category}</Badge>
                             {!product.is_in_stock && (
                               <Badge variant="destructive" className="text-xs">품절</Badge>
                             )}
-                          </div>
-                          <p className="font-medium truncate">{product.name}</p>
-                          <p className="text-sm text-muted-foreground">{product.brand}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="font-bold">₩{product.price.toLocaleString()}</span>
-                            {product.style_tags && product.style_tags.length > 0 && (
-                              <div className="flex gap-1">
-                                {product.style_tags.map((tag, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
+                            {!product.is_active && (
+                              <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">비활성</Badge>
                             )}
+                          </div>
+                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>{product.brand}</span>
+                            <span className="font-bold text-foreground">₩{product.price.toLocaleString()}</span>
                           </div>
                         </div>
                       </div>
@@ -2533,7 +2718,7 @@ const Admin = () => {
 
                 {cachedProducts.length === 0 && !productsLoading && (
                   <div className="text-center py-8 text-muted-foreground">
-                    아직 수집된 상품이 없습니다. Phase 2 탭에서 상품을 수집해주세요.
+                    상품이 없습니다. "새로고침" 버튼을 클릭하거나 필터를 변경해보세요.
                   </div>
                 )}
               </CardContent>
