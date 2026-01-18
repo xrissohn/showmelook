@@ -359,34 +359,34 @@ serve(async (req) => {
 
           result.success_count++;
 
-          // Save to database
+          // Register product using the unified register-product function
           const externalId = extractExternalId(url);
-          const { error: upsertError } = await supabase
-            .from('products_cache')
-            .upsert({
-              merchant_id: merchant.id,
-              external_id: externalId,
-              product_url: url,
-              name: productData.name,
-              brand: productData.brand,
-              price: productData.price,
-              original_price: productData.original_price,
-              image_url: productData.image_url,
-              category: productData.category,
-              sizes: productData.sizes,
-              is_in_stock: productData.is_in_stock,
-              color: productData.color,
-              style_tags: [],
-              gender: null,
-              is_active: true,
-              collected_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }, {
-              onConflict: 'product_url',
-            });
+          
+          // Call register-product function for proper image storage + DNA generation
+          const { data: registerResult, error: registerError } = await supabase.functions.invoke('register-product', {
+            body: {
+              products: [{
+                merchant_id: merchant.id,
+                external_id: externalId,
+                product_url: url,
+                name: productData.name,
+                brand: productData.brand,
+                price: productData.price,
+                original_price: productData.original_price,
+                image_url: productData.image_url,
+                category: productData.category,
+                sizes: productData.sizes,
+                is_in_stock: productData.is_in_stock,
+                color: productData.color,
+                style_tags: [],
+                gender: null,
+              }]
+            }
+          });
 
-          if (upsertError) {
-            result.errors.push(`${url}: DB error - ${upsertError.message}`);
+          if (registerError || !registerResult?.success) {
+            const errorMsg = registerError?.message || registerResult?.results?.[0]?.error || 'Unknown error';
+            result.errors.push(`${url}: Registration failed - ${errorMsg}`);
           } else {
             result.saved_count++;
             totalSaved++;
