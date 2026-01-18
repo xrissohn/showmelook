@@ -373,22 +373,39 @@ serve(async (req) => {
             ? `${conceptTags[0]} ${gender} ${occasion} 룩`
             : `${gender} ${occasion} 추천 룩`;
           
-          // 구체적인 스타일링 설명 생성
+          // 🎯 최고의 스타일리스트 톤으로 스타일링 설명 생성
           let styleReasoning = '';
+          
+          // 훅 문장 - 이 룩의 핵심 포인트
           if (topItem?.product && bottomItem?.product) {
-            styleReasoning = `이 룩의 핵심은 ${topItem.product.brand || '세련된'} ${topItem.product.name.split(' ').slice(0, 3).join(' ')}과(와) ${bottomItem.product.brand || ''} ${bottomItem.product.name.split(' ').slice(0, 3).join(' ')}의 조화예요. `;
+            const topBrand = topItem.product.brand || '';
+            const topName = topItem.product.name.split(' ').slice(0, 2).join(' ');
+            const bottomBrand = bottomItem.product.brand || '';
+            const bottomName = bottomItem.product.name.split(' ').slice(0, 2).join(' ');
+            
+            styleReasoning = `이 룩의 핵심은 '${conceptTags[0] || '세련된 조화'}'예요. `;
+            styleReasoning += `${topBrand} ${topName}의 실루엣이 상체 비율을 잡아주고, ${bottomBrand} ${bottomName}이(가) 하체 라인을 정돈해주거든요. `;
           } else if (topItem?.product) {
-            styleReasoning = `${topItem.product.brand || ''} ${topItem.product.name.split(' ').slice(0, 4).join(' ')}을(를) 중심으로 한 코디네이션이에요. `;
+            const topBrand = topItem.product.brand || '';
+            const topName = topItem.product.name.split(' ').slice(0, 3).join(' ');
+            styleReasoning = `${topBrand} ${topName}이(가) 이 룩의 시그니처 피스예요. 깔끔한 핏감이 전체 무드를 좌우하죠. `;
           }
           
+          // 중간 설명 - 레이어링과 디테일
           if (outerItem?.product) {
-            styleReasoning += `${outerItem.product.name.split(' ').slice(0, 3).join(' ')}으로 레이어링하면 ${occasion}에 딱 맞는 무드가 완성되죠. `;
+            const outerBrand = outerItem.product.brand || '';
+            const outerName = outerItem.product.name.split(' ').slice(0, 2).join(' ');
+            const formalityDesc = (outerItem.product.dna_meta?.formality ?? 5) > 6 ? '격식 있는' : '편안한';
+            styleReasoning += `여기에 ${outerBrand} ${outerName}으로 레이어링하면 ${formalityDesc} ${occasion} 무드가 완성되죠. `;
           }
           
+          // 킬링 포인트 마무리
           if (etcItems.length > 0 && etcItems[0]?.product) {
-            styleReasoning += `킬링 포인트는 ${etcItems[0].product.name.split(' ').slice(0, 3).join(' ')}! 전체적인 룩에 포인트를 더해줘요.`;
+            const etcName = etcItems[0].product.name.split(' ').slice(0, 2).join(' ');
+            const etcCategory = etcItems[0].category;
+            styleReasoning += `킬링 포인트? ${etcCategory}로 선택한 ${etcName}이(가) 전체 룩에 임팩트를 더해요!`;
           } else {
-            styleReasoning += `${gender} ${occasion} 상황에서 자신감 있게 연출해보세요!`;
+            styleReasoning += `킬링 포인트? 심플한 듯 디테일한 조화가 ${occasion}에서 시선을 사로잡죠!`;
           }
           
           const styleConcept = brandMix 
@@ -834,19 +851,43 @@ JSON 응답:
       const fallbackBrands = [...new Set(selectedFallbackProducts.map(p => p?.brand).filter(Boolean))].slice(0, 2);
       const fallbackConcepts = [...new Set(selectedFallbackProducts.flatMap(p => p?.dna_meta?.concepts || []))].slice(0, 3);
       
-      let fallbackReasoning = `${gender}의 ${occasion} 상황을 위해 DNA 2.0 매칭으로 선별했어요. `;
-      
+      // 🎯 Fallback도 최고의 스타일리스트 톤으로!
       const topProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'top');
       const bottomProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'bottom' || p?.dna_meta?.item_slot === 'dress');
+      const outerProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'outer');
+      const etcProduct = selectedFallbackProducts.find(p => ['shoes', 'bag', 'accessory'].includes(p?.dna_meta?.item_slot || ''));
       
-      if (topProduct && bottomProduct) {
-        fallbackReasoning += `${topProduct.brand || ''} 상의와 ${bottomProduct.brand || ''} 하의의 formality가 잘 맞아 조화로운 룩이 완성돼요. `;
+      // 훅 문장 - 핵심 포인트
+      let fallbackReasoning = '';
+      if (fallbackConcepts.length > 0) {
+        fallbackReasoning = `이 룩의 핵심은 '${fallbackConcepts[0]}'예요. `;
+      } else {
+        fallbackReasoning = `이 룩의 핵심은 '${occasion}에 완벽한 균형감'이에요. `;
       }
       
-      if (fallbackConcepts.length > 0) {
-        fallbackReasoning += `${fallbackConcepts.join(', ')} 컨셉이 녹아든 스타일이니 자신감 있게 연출해보세요!`;
+      // 중간 설명 - 상하의 조화
+      if (topProduct && bottomProduct) {
+        const topBrand = topProduct.brand || '';
+        const topName = (topProduct.name || '').split(' ').slice(0, 2).join(' ');
+        const bottomBrand = bottomProduct.brand || '';
+        const bottomName = (bottomProduct.name || '').split(' ').slice(0, 2).join(' ');
+        const topFormality = topProduct.dna_meta?.formality || 5;
+        const bottomFormality = bottomProduct.dna_meta?.formality || 5;
+        const avgFormality = (topFormality + bottomFormality) / 2;
+        const formalityDesc = avgFormality > 6 ? '격식 있으면서도 자연스러운' : '캐주얼하면서도 세련된';
+        
+        fallbackReasoning += `${topBrand} ${topName}이(가) 상체 비율을 잡아주고, ${bottomBrand} ${bottomName}이(가) 하체 라인을 정돈해주거든요. ${formalityDesc} 무드가 완성되죠. `;
+      }
+      
+      // 아우터나 액세서리로 킬링 포인트
+      if (outerProduct) {
+        const outerName = (outerProduct.name || '').split(' ').slice(0, 2).join(' ');
+        fallbackReasoning += `킬링 포인트? ${outerProduct.brand || ''} ${outerName}의 레이어링이 ${occasion} 분위기를 완성해요!`;
+      } else if (etcProduct) {
+        const etcName = (etcProduct.name || '').split(' ').slice(0, 2).join(' ');
+        fallbackReasoning += `킬링 포인트? ${etcProduct.brand || ''} ${etcName}이(가) 전체 룩에 센스를 더해요!`;
       } else {
-        fallbackReasoning += `세련되고 균형 잡힌 코디네이션이에요!`;
+        fallbackReasoning += `킬링 포인트? 각 아이템의 formality 밸런스가 ${occasion}에서 자연스러운 시선 집중을 만들죠!`;
       }
       
       ragResponse = {
