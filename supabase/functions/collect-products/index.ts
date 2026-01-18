@@ -965,7 +965,102 @@ async function collectWithScrapfly(
   return allProducts;
 }
 
-// ============= Upsert Products =============
+// ============= High-Resolution Image URL Transformer =============
+function getHighResImageUrl(imageUrl: string, merchantId: string): string {
+  if (!imageUrl) return imageUrl;
+  
+  // Paul Smith: upgrade from w_614 to w_1200
+  if (merchantId === 'paulsmith' && imageUrl.includes('w_614')) {
+    return imageUrl.replace('w_614', 'w_1200');
+  }
+  
+  // WConcept: upgrade width parameters
+  if (merchantId === 'wconcept' && imageUrl.includes('w=')) {
+    return imageUrl.replace(/w=\d+/, 'w=1200');
+  }
+  
+  // Posty: upgrade image size
+  if (merchantId === 'posty' && imageUrl.includes('/resize/')) {
+    return imageUrl.replace(/\/resize\/\d+/, '/resize/1200');
+  }
+  
+  // StockX: remove resize parameters for original quality
+  if (merchantId === 'stockx' && imageUrl.includes('?w=')) {
+    return imageUrl.split('?')[0];
+  }
+  
+  return imageUrl;
+}
+
+// ============= Download and Store Image =============
+async function downloadAndStoreImage(
+  supabase: any,
+  productId: string,
+  imageUrl: string,
+  merchantId: string
+): Promise<string | null> {
+  try {
+    // Get high-res version
+    const highResUrl = getHighResImageUrl(imageUrl, merchantId);
+    console.log(`[ImageDownload] Downloading: ${highResUrl.substring(0, 100)}...`);
+    
+    const imageResponse = await fetch(highResUrl, {
+      headers: {
+        'Accept': 'image/*',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Referer': highResUrl.split('/').slice(0, 3).join('/'),
+      },
+    });
+
+    if (!imageResponse.ok) {
+      console.error(`[ImageDownload] Failed to fetch: HTTP ${imageResponse.status}`);
+      return null;
+    }
+
+    const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+    let extension = 'jpg';
+    if (contentType.includes('png')) extension = 'png';
+    else if (contentType.includes('webp')) extension = 'webp';
+    else if (contentType.includes('avif')) extension = 'avif';
+    else if (contentType.includes('gif')) extension = 'gif';
+
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const imageUint8 = new Uint8Array(imageBuffer);
+
+    // Skip if too large
+    if (imageUint8.length > 5 * 1024 * 1024) {
+      console.error(`[ImageDownload] Image too large: ${imageUint8.length} bytes`);
+      return null;
+    }
+
+    // Upload to storage
+    const fileName = `${merchantId}/${productId}.${extension}`;
+    const { error: uploadError } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, imageUint8, {
+        contentType: contentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error(`[ImageDownload] Upload failed:`, uploadError);
+      return null;
+    }
+
+    // Get public URL
+    const { data: publicUrlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName);
+
+    console.log(`[ImageDownload] Success: ${publicUrlData.publicUrl}`);
+    return publicUrlData.publicUrl;
+  } catch (error) {
+    console.error(`[ImageDownload] Error:`, error);
+    return null;
+  }
+}
+
+// ============= Upsert Products with Image Download =============
 async function upsertProducts(
   supabase: any, 
   products: (Product & { style_tags: string[] })[]
@@ -973,10 +1068,14 @@ async function upsertProducts(
   let inserted = 0;
   let updated = 0;
   let errors = 0;
+  
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const storageBaseUrl = `${supabaseUrl}/storage/v1/object/public/product-images`;
 
   for (const product of products) {
     try {
-      const { error } = await supabase
+      // First, upsert the product
+      const { data: upsertedProduct, error } = await supabase
         .from('products_cache')
         .upsert({
           merchant_id: product.merchant_id,
@@ -997,13 +1096,42 @@ async function upsertProducts(
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'product_url',
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) {
         console.error('[Upsert] Error:', error);
         errors++;
-      } else {
-        inserted++;
+        continue;
+      }
+
+      inserted++;
+      
+      // If image_url exists and is external, download and store it
+      if (product.image_url && !product.image_url.startsWith(storageBaseUrl)) {
+        const productId = upsertedProduct?.id;
+        if (productId) {
+          const storageUrl = await downloadAndStoreImage(
+            supabase,
+            productId,
+            product.image_url,
+            product.merchant_id
+          );
+          
+          if (storageUrl) {
+            // Update with storage URL
+            await supabase
+              .from('products_cache')
+              .update({ 
+                image_url: storageUrl,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', productId);
+              
+            console.log(`[Upsert] Image stored for ${product.name}`);
+          }
+        }
       }
     } catch (e) {
       console.error('[Upsert] Exception:', e);
