@@ -359,6 +359,42 @@ serve(async (req) => {
             });
           }
 
+          // 캐시된 상품들로 스타일링 설명 생성
+          const topItem = lookItems.find(i => i.category === '상의');
+          const bottomItem = lookItems.find(i => i.category === '하의' || i.category === '원피스');
+          const outerItem = lookItems.find(i => i.category === '아우터');
+          const etcItems = lookItems.filter(i => ['신발', '가방', '액세서리'].includes(i.category));
+          
+          // 상품 기반 스타일 컨셉 생성
+          const brandMix = [...new Set(lookItems.map(i => i.product?.brand).filter(Boolean))].slice(0, 3).join(' × ');
+          const conceptTags = [...new Set(lookItems.flatMap(i => i.product?.dna_meta?.concepts || []))].slice(0, 3);
+          
+          const lookName = conceptTags.length > 0 
+            ? `${conceptTags[0]} ${gender} ${occasion} 룩`
+            : `${gender} ${occasion} 추천 룩`;
+          
+          // 구체적인 스타일링 설명 생성
+          let styleReasoning = '';
+          if (topItem?.product && bottomItem?.product) {
+            styleReasoning = `이 룩의 핵심은 ${topItem.product.brand || '세련된'} ${topItem.product.name.split(' ').slice(0, 3).join(' ')}과(와) ${bottomItem.product.brand || ''} ${bottomItem.product.name.split(' ').slice(0, 3).join(' ')}의 조화예요. `;
+          } else if (topItem?.product) {
+            styleReasoning = `${topItem.product.brand || ''} ${topItem.product.name.split(' ').slice(0, 4).join(' ')}을(를) 중심으로 한 코디네이션이에요. `;
+          }
+          
+          if (outerItem?.product) {
+            styleReasoning += `${outerItem.product.name.split(' ').slice(0, 3).join(' ')}으로 레이어링하면 ${occasion}에 딱 맞는 무드가 완성되죠. `;
+          }
+          
+          if (etcItems.length > 0 && etcItems[0]?.product) {
+            styleReasoning += `킬링 포인트는 ${etcItems[0].product.name.split(' ').slice(0, 3).join(' ')}! 전체적인 룩에 포인트를 더해줘요.`;
+          } else {
+            styleReasoning += `${gender} ${occasion} 상황에서 자신감 있게 연출해보세요!`;
+          }
+          
+          const styleConcept = brandMix 
+            ? `👗 ${gender} ${occasion} 요청에 맞춘 "${brandMix}" 브랜드 믹스 스타일링`
+            : `👗 ${gender} ${occasion} 스타일 - "${userRequest.slice(0, 30)}..."에 맞춘 코디`;
+
           const elapsed = Date.now() - startTime;
           console.log(`[style-recommend] Cache response in ${elapsed}ms`);
 
@@ -366,9 +402,9 @@ serve(async (req) => {
             success: true,
             cacheHit: true,
             look: {
-              name: `${gender} ${occasion} 추천 룩`,
-              styleConcept: `🎨 ${gender} ${occasion} 스타일\n\n요청하신 "${userRequest}"에 맞춰 DNA 2.0 기반으로 코디를 구성했습니다.`,
-              styleReasoning: `${gender}의 ${occasion} 상황에 적합한 아이템들을 DNA 2.0의 formality 매칭으로 선택했습니다.`,
+              name: lookName,
+              styleConcept,
+              styleReasoning,
               items: lookItems,
               totalPrice: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
               autoSelectedTotal: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
@@ -786,12 +822,43 @@ JSON 응답:
         }
       }
       
+      // DNA 기반 fallback도 풍부한 설명 생성
+      const selectedFallbackProducts = selectedIds.map(id => {
+        for (const cat of CATEGORY_PRIORITY) {
+          const found = productsByPriority[cat]?.find(p => p.id === id);
+          if (found) return found;
+        }
+        return null;
+      }).filter(Boolean);
+      
+      const fallbackBrands = [...new Set(selectedFallbackProducts.map(p => p?.brand).filter(Boolean))].slice(0, 2);
+      const fallbackConcepts = [...new Set(selectedFallbackProducts.flatMap(p => p?.dna_meta?.concepts || []))].slice(0, 3);
+      
+      let fallbackReasoning = `${gender}의 ${occasion} 상황을 위해 DNA 2.0 매칭으로 선별했어요. `;
+      
+      const topProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'top');
+      const bottomProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'bottom' || p?.dna_meta?.item_slot === 'dress');
+      
+      if (topProduct && bottomProduct) {
+        fallbackReasoning += `${topProduct.brand || ''} 상의와 ${bottomProduct.brand || ''} 하의의 formality가 잘 맞아 조화로운 룩이 완성돼요. `;
+      }
+      
+      if (fallbackConcepts.length > 0) {
+        fallbackReasoning += `${fallbackConcepts.join(', ')} 컨셉이 녹아든 스타일이니 자신감 있게 연출해보세요!`;
+      } else {
+        fallbackReasoning += `세련되고 균형 잡힌 코디네이션이에요!`;
+      }
+      
       ragResponse = {
-        lookName: `${gender} ${occasion} 추천 룩`,
-        styleConcept: `🎨 ${gender} ${occasion} 스타일\n\n요청하신 "${userRequest}"에 맞춰 DNA 2.0 기반으로 코디를 구성했습니다.`,
-        styleReasoning: `${gender}의 ${occasion} 상황에 적합한 아이템들을 DNA 2.0의 formality 매칭으로 선택했습니다.`,
+        lookName: fallbackConcepts.length > 0 
+          ? `${fallbackConcepts[0]} ${gender} ${occasion} 룩`
+          : `${gender} ${occasion} 추천 룩`,
+        styleConcept: fallbackBrands.length > 0
+          ? `👗 "${fallbackBrands.join(' × ')}" 브랜드로 완성한 ${gender} ${occasion} 스타일`
+          : `👗 ${gender} ${occasion} 스타일 - "${userRequest.slice(0, 25)}..."에 맞춘 코디`,
+        styleReasoning: fallbackReasoning,
         selectedProductIds: selectedIds,
-        stylingTips: '자신만의 개성을 더해 스타일링해보세요.'
+        stylingTips: '나만의 악세서리로 포인트를 더해보세요!'
       };
     }
 
