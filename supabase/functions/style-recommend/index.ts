@@ -809,12 +809,8 @@ JSON 응답:
         
         const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
         
-        const wouldBeWithinBudget = runningTotal + product.price <= budget;
-        const isAutoSelected = wouldBeWithinBudget;
-        
-        if (isAutoSelected) {
-          runningTotal += product.price;
-        }
+        // 모든 추천 상품은 기본 선택 (예산 제한 제거)
+        const isAutoSelected = true;
         
         lookItems.push({
           category: displayCat,

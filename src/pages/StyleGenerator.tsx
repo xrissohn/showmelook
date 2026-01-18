@@ -2851,9 +2851,8 @@ const StyleGenerator = () => {
           budget: data.look.budget || customBudget[0]
         });
 
-        // 예산 내 자동 선택된 아이템만 선택 상태로
-        const autoSelectedItems = transformedItems.filter((item: any) => item.isAutoSelected);
-        setSelectedTrendProducts(autoSelectedItems);
+        // 모든 추천 아이템을 기본 선택 상태로 (예산 무관)
+        setSelectedTrendProducts(transformedItems);
 
         toast({
           title: '스타일 추천 완료!',
