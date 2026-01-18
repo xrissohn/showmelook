@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, BarChart3, Trash2, Download, Image, ImageOff, Rss } from "lucide-react";
+import { CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, Package, RefreshCw, Play, RotateCcw, Zap, Dna, Trash2, ImageOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,28 +18,6 @@ interface DeeplinkResult {
   merchant_name?: string;
   original_url?: string;
   affiliate_url?: string;
-  error?: string;
-  message?: string;
-}
-
-interface Merchant {
-  id: string;
-  name: string;
-  name_ko: string;
-  base_url: string;
-  commission_rate: number;
-  scrape_type: string;
-  is_active: boolean;
-  last_collected_at: string | null;
-}
-
-interface CollectResult {
-  success: boolean;
-  merchant_id: string;
-  collected: number;
-  inserted: number;
-  updated: number;
-  errors: number;
   error?: string;
   message?: string;
 }
@@ -56,28 +34,6 @@ interface CachedProduct {
   is_in_stock: boolean;
   is_active: boolean;
   collected_at: string;
-}
-
-
-interface StyleV1Result {
-  success: boolean;
-  look?: {
-    items: Array<{
-      id: string;
-      name: string;
-      brand: string | null;
-      price: number;
-      image_url: string | null;
-      product_url: string;
-      category: string;
-      style_tags: string[] | null;
-    }>;
-    totalPrice: number;
-    styleTags: string[];
-    occasion: string;
-  };
-  message?: string;
-  error?: string;
 }
 
 interface StyleRecommendResult {
@@ -117,67 +73,13 @@ interface StyleRecommendResult {
   error?: string;
 }
 
-interface WebUnlockerResult {
-  success: boolean;
-  mode?: string;
-  total_urls?: number;
-  success_count?: number;
-  error_count?: number;
-  saved_count?: number;
-  results?: Array<{
-    name: string;
-    brand: string | null;
-    price: number;
-    original_price: number | null;
-    image_url: string | null;
-    category: string;
-    merchant_id: string;
-    product_url: string;
-    sizes: string[] | null;
-    is_in_stock: boolean;
-    color: string | null;
-    html_length?: number;
-  }>;
-  errors?: Array<{
-    url: string;
-    error: string;
-    html_sample?: string;
-  }>;
-  error?: string;
-}
-
-interface BatchCollectResult {
-  success: boolean;
-  merchants_processed: number;
-  total_saved: number;
-  results: Array<{
-    merchant_id: string;
-    merchant_name: string;
-    urls_tried: number;
-    success_count: number;
-    saved_count: number;
-    errors: string[];
-  }>;
-  error?: string;
-}
-
 const Admin = () => {
   const { toast } = useToast();
   
-  // Phase 1: Deeplink test state
+  // Deeplink test state
   const [productUrl, setProductUrl] = useState("");
   const [deeplinkResult, setDeeplinkResult] = useState<DeeplinkResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Merchants list state
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [merchantsLoading, setMerchantsLoading] = useState(false);
-
-  // Phase 2: Product collection state
-  const [selectedMerchant, setSelectedMerchant] = useState<string>("");
-  const [collectLimit, setCollectLimit] = useState("10");
-  const [collectResult, setCollectResult] = useState<CollectResult | null>(null);
-  const [isCollecting, setIsCollecting] = useState(false);
   
   // Products list state
   const [cachedProducts, setCachedProducts] = useState<CachedProduct[]>([]);
@@ -188,40 +90,18 @@ const Admin = () => {
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [productFilter, setProductFilter] = useState<'all' | 'active' | 'inactive'>('active');
 
-
-  // Style v1 test state
-  const [styleOccasion, setStyleOccasion] = useState("캐주얼");
-  const [styleGender, setStyleGender] = useState<"male" | "female" | "unisex">("female");
-  const [styleBudgetMax, setStyleBudgetMax] = useState("300000");
-  const [styleResult, setStyleResult] = useState<StyleV1Result | null>(null);
-  const [isStyleLoading, setIsStyleLoading] = useState(false);
-
   // Style-recommend (AI) test state
   const [aiUserRequest, setAiUserRequest] = useState("");
   const [aiGender, setAiGender] = useState("여성");
-  const [aiBudget, setAiBudget] = useState("200000");
   const [aiForceRefresh, setAiForceRefresh] = useState(false);
   const [aiResult, setAiResult] = useState<StyleRecommendResult | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // Web Unlocker test state
-  const [webUnlockerUrls, setWebUnlockerUrls] = useState("");
-  const [webUnlockerMode, setWebUnlockerMode] = useState<"preview" | "save">("preview");
-  const [webUnlockerResult, setWebUnlockerResult] = useState<WebUnlockerResult | null>(null);
-  const [isWebUnlockerLoading, setIsWebUnlockerLoading] = useState(false);
-
-  // Batch collect state
-  const [selectedMerchants, setSelectedMerchants] = useState<string[]>([]);
-  const [batchUrlsPerMerchant, setBatchUrlsPerMerchant] = useState("3");
-  const [batchResult, setBatchResult] = useState<BatchCollectResult | null>(null);
-  const [isBatchLoading, setIsBatchLoading] = useState(false);
-
-  // DNA 2.0 management state (simplified)
+  // DNA management state
   const [dnaStats, setDnaStats] = useState<{
     total: number;
     withDna: number;
     withoutDna: number;
-    byCategory: Record<string, { total: number; withDna: number }>;
     byTarget: Record<string, number>;
     bySlot: Record<string, number>;
   } | null>(null);
@@ -240,101 +120,9 @@ const Admin = () => {
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
 
-  // StockX image scraping state
-  const [stockxScrapeResult, setStockxScrapeResult] = useState<{
-    success: boolean;
-    total?: number;
-    updated?: number;
-    failed?: number;
-    results?: Array<{
-      id: string;
-      product_url: string;
-      image_url: string | null;
-      success: boolean;
-      error?: string;
-    }>;
-    message?: string;
-    error?: string;
-  } | null>(null);
-  const [isStockxScraping, setIsStockxScraping] = useState(false);
-  const [stockxScrapeLimit, setStockxScrapeLimit] = useState("5");
-
-  // Image validation state
-  const [imageValidationResult, setImageValidationResult] = useState<{
-    success: boolean;
-    checked?: number;
-    valid?: number;
-    invalid?: number;
-    deactivated?: number;
-    dryRun?: boolean;
-    invalidProducts?: Array<{ id: string; name: string; status: number }>;
-    error?: string;
-  } | null>(null);
-  const [isValidatingImages, setIsValidatingImages] = useState(false);
-  const [imageValidationDryRun, setImageValidationDryRun] = useState(true);
-
-  // Image download to storage state
-  const [imageDownloadMerchant, setImageDownloadMerchant] = useState<string>("");
-  const [imageDownloadLimit, setImageDownloadLimit] = useState("5");
-  const [isDownloadingImages, setIsDownloadingImages] = useState(false);
-  const [imageDownloadResult, setImageDownloadResult] = useState<{
-    success: boolean;
-    merchantId?: string;
-    total?: number;
-    updated?: number;
-    failed?: number;
-    remaining?: number;
-    results?: Array<{
-      productId: string;
-      productName: string;
-      originalUrl: string;
-      storageUrl?: string;
-      success: boolean;
-      error?: string;
-    }>;
-    error?: string;
-    message?: string;
-  } | null>(null);
-
-  // Batch download all images state
-  const [isDownloadingAllImages, setIsDownloadingAllImages] = useState(false);
-  const [downloadAllResult, setDownloadAllResult] = useState<{
-    success: boolean;
-    message?: string;
-    totalProducts?: number;
-    estimatedTimeMinutes?: number;
-    status?: string;
-    note?: string;
-    error?: string;
-  } | null>(null);
-
-  // Product feed test state
-  const [feedMerchant, setFeedMerchant] = useState<string>("11st");
-  const [isFeedTesting, setIsFeedTesting] = useState(false);
-  const [feedResult, setFeedResult] = useState<{
-    success: boolean;
-    merchant: string;
-    apiConnected: boolean;
-    totalProducts: number;
-    sampleProducts: Array<{
-      product_id?: string;
-      product_name?: string;
-      category_name?: string;
-      brand?: string;
-      price?: number | string;
-      sale_price?: number | string;
-      image_url?: string;
-      product_url?: string;
-      [key: string]: unknown;
-    }>;
-    fields: string[];
-    elapsedMs?: number;
-    error?: string;
-  } | null>(null);
-
   useEffect(() => {
-    loadMerchants();
     loadDnaStats();
+    loadProductStats();
   }, []);
 
   const testDeeplink = async () => {
@@ -378,97 +166,18 @@ const Admin = () => {
     }
   };
 
-  const loadMerchants = async () => {
-    setMerchantsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('merchants')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      setMerchants(data || []);
-    } catch (error: any) {
-      toast({
-        title: "머천트 로드 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setMerchantsLoading(false);
-    }
-  };
-
-  const collectProducts = async () => {
-    if (!selectedMerchant) {
-      toast({
-        title: "머천트 선택 필요",
-        description: "상품을 수집할 머천트를 선택해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCollecting(true);
-    setCollectResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('collect-products', {
-        body: { 
-          merchant_id: selectedMerchant,
-          limit: parseInt(collectLimit) || 10
-        },
-      });
-
-      if (error) throw error;
-      
-      setCollectResult(data);
-      
-      if (data.success) {
-        toast({
-          title: "상품 수집 완료",
-          description: `${data.collected}개 상품 중 ${data.inserted}개 저장됨`,
-        });
-        // Refresh merchants list to show updated last_collected_at
-        loadMerchants();
-        // Refresh product stats
-        loadProductStats();
-      } else {
-        toast({
-          title: "상품 수집 실패",
-          description: data.error || data.message,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('Collect products error:', error);
-      setCollectResult({ 
-        success: false, 
-        merchant_id: selectedMerchant,
-        collected: 0,
-        inserted: 0,
-        updated: 0,
-        errors: 0,
-        error: error.message 
-      });
-      toast({
-        title: "상품 수집 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsCollecting(false);
+  const openAffiliateLink = () => {
+    if (deeplinkResult?.affiliate_url) {
+      window.open(deeplinkResult.affiliate_url, '_blank');
     }
   };
 
   const loadProductStats = async () => {
     try {
-      // Get total count
       const { count: total } = await supabase
         .from('products_cache')
         .select('*', { count: 'exact', head: true });
 
-      // Get counts by merchant
       const { data: products } = await supabase
         .from('products_cache')
         .select('merchant_id');
@@ -492,7 +201,6 @@ const Admin = () => {
         .from('products_cache')
         .select('id, merchant_id, name, brand, price, image_url, category, style_tags, is_in_stock, is_active, collected_at');
       
-      // Apply filter
       if (filter === 'active') {
         query = query.eq('is_active', true);
       } else if (filter === 'inactive') {
@@ -615,59 +323,6 @@ const Admin = () => {
     }
   };
 
-  const openAffiliateLink = () => {
-    if (deeplinkResult?.affiliate_url) {
-      window.open(deeplinkResult.affiliate_url, '_blank');
-    }
-  };
-
-
-  const testStyleV1 = async () => {
-    setIsStyleLoading(true);
-    setStyleResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('style-v1', {
-        body: {
-          preferences: {
-            gender: styleGender,
-            style: [styleOccasion === '비즈니스' ? '포멀' : styleOccasion === '운동' ? '스포티' : '캐주얼'],
-            budget: { max: parseInt(styleBudgetMax) || 300000 },
-            occasion: styleOccasion,
-          },
-        },
-      });
-
-      if (error) throw error;
-      
-      setStyleResult(data);
-      
-      if (data.success) {
-        toast({
-          title: "룩 추천 완료",
-          description: `${data.look.items.length}개 아이템, 총 ₩${data.look.totalPrice.toLocaleString()}`,
-        });
-      } else {
-        toast({
-          title: "룩 추천 실패",
-          description: data.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error: unknown) {
-      console.error('Style v1 test error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setStyleResult({ success: false, error: errorMessage });
-      toast({
-        title: "룩 추천 실패",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsStyleLoading(false);
-    }
-  };
-
   const testStyleRecommend = async () => {
     if (!aiUserRequest.trim()) {
       toast({
@@ -686,7 +341,6 @@ const Admin = () => {
         body: {
           userRequest: aiUserRequest,
           gender: aiGender,
-          budget: parseInt(aiBudget) || 200000,
           forceRefresh: aiForceRefresh,
         },
       });
@@ -696,7 +350,7 @@ const Admin = () => {
       setAiResult(data);
       
       if (data.success) {
-        const cacheMsg = data.cacheHit ? '캐시 히트!' : `API: Gemini ${data.apiCalls?.gemini || 0}, SerpAPI ${data.apiCalls?.serpapi || 0}`;
+        const cacheMsg = data.cacheHit ? '캐시 히트!' : `API: Gemini ${data.apiCalls?.gemini || 0}`;
         toast({
           title: "AI 추천 완료",
           description: `${data.look?.items?.filter((i: any) => i.product)?.length || 0}개 아이템 추천 (${cacheMsg})`,
@@ -722,133 +376,8 @@ const Admin = () => {
     }
   };
 
-  const testWebUnlocker = async () => {
-    if (!webUnlockerUrls.trim()) {
-      toast({
-        title: "URL 입력 필요",
-        description: "상품 URL을 한 줄에 하나씩 입력해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsWebUnlockerLoading(true);
-    setWebUnlockerResult(null);
-
-    try {
-      const urls = webUnlockerUrls
-        .split('\n')
-        .map(u => u.trim())
-        .filter(u => u.length > 0);
-
-      const { data, error } = await supabase.functions.invoke('web-unlocker', {
-        body: { urls, mode: webUnlockerMode },
-      });
-
-      if (error) throw error;
-      
-      setWebUnlockerResult(data);
-      
-      if (data.success) {
-        toast({
-          title: "Web Unlocker 수집 완료",
-          description: webUnlockerMode === 'preview' 
-            ? `${data.success_count}개 상품 추출 성공 (오류: ${data.error_count})`
-            : `${data.saved_count}개 상품 저장됨`,
-        });
-      } else {
-        toast({
-          title: "수집 실패",
-          description: data.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error: unknown) {
-      console.error('Web Unlocker test error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setWebUnlockerResult({ success: false, error: errorMessage });
-      toast({
-        title: "Web Unlocker 오류",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsWebUnlockerLoading(false);
-    }
-  };
-
-  const runBatchCollect = async () => {
-    if (selectedMerchants.length === 0) {
-      toast({
-        title: "머천트 선택 필요",
-        description: "수집할 머천트를 1개 이상 선택해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsBatchLoading(true);
-    setBatchResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('batch-collect', {
-        body: { 
-          merchantIds: selectedMerchants,
-          urlsPerMerchant: parseInt(batchUrlsPerMerchant) || 3,
-        },
-      });
-
-      if (error) throw error;
-      
-      setBatchResult(data);
-      
-      if (data.success) {
-        toast({
-          title: "배치 수집 완료",
-          description: `${data.merchants_processed}개 머천트에서 ${data.total_saved}개 상품 저장됨`,
-        });
-        loadMerchants();
-        loadProductStats();
-      } else {
-        toast({
-          title: "배치 수집 실패",
-          description: data.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error: unknown) {
-      console.error('Batch collect error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setBatchResult({ success: false, merchants_processed: 0, total_saved: 0, results: [], error: errorMessage });
-      toast({
-        title: "배치 수집 오류",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsBatchLoading(false);
-    }
-  };
-
-  const toggleMerchantSelection = (merchantId: string) => {
-    setSelectedMerchants(prev => 
-      prev.includes(merchantId) 
-        ? prev.filter(id => id !== merchantId)
-        : [...prev, merchantId]
-    );
-  };
-
-  const selectAllMerchants = () => {
-    setSelectedMerchants(merchants.map(m => m.id));
-  };
-
-  const deselectAllMerchants = () => {
-    setSelectedMerchants([]);
-  };
-
   const loadDnaStats = async () => {
     try {
-      // Get total and DNA 2.0 counts (dna_meta)
       const { data: products } = await supabase
         .from('products_cache')
         .select('id, dna_meta, category')
@@ -860,16 +389,6 @@ const Admin = () => {
       const withDna = products.filter(p => p.dna_meta).length;
       const withoutDna = total - withDna;
 
-      // Group by category
-      const byCategory: Record<string, { total: number; withDna: number }> = {};
-      products.forEach(p => {
-        const cat = p.category || '미분류';
-        if (!byCategory[cat]) byCategory[cat] = { total: 0, withDna: 0 };
-        byCategory[cat].total++;
-        if (p.dna_meta) byCategory[cat].withDna++;
-      });
-
-      // DNA 2.0: target and slot distribution
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
       products.forEach(p => {
@@ -884,7 +403,7 @@ const Admin = () => {
         }
       });
 
-      setDnaStats({ total, withDna, withoutDna, byCategory, byTarget, bySlot });
+      setDnaStats({ total, withDna, withoutDna, byTarget, bySlot });
     } catch (error) {
       console.error('Error loading DNA stats:', error);
     }
@@ -931,612 +450,156 @@ const Admin = () => {
     }
   };
 
-  const scrapeStockxImages = async () => {
-    setIsStockxScraping(true);
-    setStockxScrapeResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('scrape-stockx-images', {
-        body: { limit: parseInt(stockxScrapeLimit) || 5 },
-      });
-
-      if (error) throw error;
-
-      setStockxScrapeResult(data);
-
-      if (data.success) {
-        toast({
-          title: "StockX 이미지 스크래핑 완료",
-          description: `${data.updated}/${data.total}개 이미지 업데이트됨`,
-        });
-        // Refresh product stats
-        loadProductStats();
-      }
-    } catch (error: any) {
-      console.error('StockX scrape error:', error);
-      setStockxScrapeResult({ success: false, error: error.message });
-      toast({
-        title: "StockX 스크래핑 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsStockxScraping(false);
-    }
-  };
-
-  const validateImages = async () => {
-    setIsValidatingImages(true);
-    setImageValidationResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('validate-images', {
-        body: { 
-          merchantId: 'stockx',
-          limit: 100,
-          dryRun: imageValidationDryRun
-        },
-      });
-
-      if (error) throw error;
-
-      setImageValidationResult(data);
-
-      if (data.success) {
-        if (imageValidationDryRun) {
-          toast({
-            title: "이미지 검증 완료 (미리보기)",
-            description: `${data.checked}개 중 ${data.invalid}개 이미지 오류 발견`,
-          });
-        } else {
-          toast({
-            title: "이미지 검증 및 비활성화 완료",
-            description: `${data.invalid}개 상품 비활성화됨`,
-          });
-          loadProductStats();
-          loadCachedProducts();
-        }
-      }
-    } catch (error: any) {
-      console.error('Image validation error:', error);
-      setImageValidationResult({ success: false, error: error.message });
-      toast({
-        title: "이미지 검증 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsValidatingImages(false);
-    }
-  };
-
-  const downloadImagesToStorage = async () => {
-    if (!imageDownloadMerchant) {
-      toast({
-        title: "머천트 선택 필요",
-        description: "이미지를 다운로드할 머천트를 선택해주세요.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsDownloadingImages(true);
-    setImageDownloadResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('batch-download-images', {
-        body: { 
-          merchantId: imageDownloadMerchant,
-          limit: parseInt(imageDownloadLimit) || 5
-        },
-      });
-
-      if (error) throw error;
-
-      setImageDownloadResult(data);
-
-      if (data.success) {
-        if (data.total === 0) {
-          toast({
-            title: "다운로드할 이미지 없음",
-            description: data.message || "모든 이미지가 이미 Storage에 저장되어 있습니다.",
-          });
-        } else {
-          toast({
-            title: "이미지 다운로드 완료",
-            description: `${data.updated}/${data.total}개 성공, ${data.remaining}개 남음`,
-          });
-          loadProductStats();
-        }
-      }
-    } catch (error: any) {
-      console.error('Image download error:', error);
-      setImageDownloadResult({ success: false, error: error.message });
-      toast({
-        title: "이미지 다운로드 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloadingImages(false);
-    }
-  };
-
-  const downloadAllImagesToStorage = async () => {
-    setIsDownloadingAllImages(true);
-    setDownloadAllResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('batch-download-all-images', {
-        body: {},
-      });
-
-      if (error) throw error;
-
-      setDownloadAllResult(data);
-
-      if (data.success) {
-        toast({
-          title: "전체 이미지 다운로드 시작",
-          description: data.note || `${data.totalProducts}개 상품 처리 시작 (약 ${data.estimatedTimeMinutes}분 소요)`,
-        });
-      }
-    } catch (error: any) {
-      console.error('Download all images error:', error);
-      setDownloadAllResult({ success: false, error: error.message });
-      toast({
-        title: "전체 이미지 다운로드 실패",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsDownloadingAllImages(false);
-    }
-  };
-
-  const testProductFeed = async () => {
-    setIsFeedTesting(true);
-    setFeedResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('test-product-feed', {
-        body: { merchant: feedMerchant },
-      });
-
-      if (error) throw error;
-
-      setFeedResult(data);
-
-      if (data.success) {
-        toast({
-          title: "피드 연결 성공",
-          description: `${data.merchant}: ${data.totalProducts}개 상품 (${data.elapsedMs}ms)`,
-        });
-      } else {
-        toast({
-          title: "피드 연결 실패",
-          description: data.error,
-          variant: "destructive",
-        });
-      }
-    } catch (error: any) {
-      console.error('Product feed test error:', error);
-      setFeedResult({
-        success: false,
-        merchant: feedMerchant,
-        apiConnected: false,
-        totalProducts: 0,
-        sampleProducts: [],
-        fields: [],
-        error: error.message,
-      });
-      toast({
-        title: "피드 테스트 오류",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsFeedTesting(false);
-    }
-  };
+  const dnaPercentage = dnaStats ? Math.round((dnaStats.withDna / dnaStats.total) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Admin 테스트 페이지</h1>
+          <h1 className="text-3xl font-bold text-foreground">Admin 관리 페이지</h1>
           <p className="text-muted-foreground">
-            ShowMeLook 제휴 시스템 단계별 테스트
+            ShowMeLook 시스템 관리 및 테스트
           </p>
         </div>
 
-        {/* Phase Checklist */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="w-5 h-5" />
-              구현 단계 체크리스트
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PhaseItem 
-                phase={1} 
-                title="딥링크 + 인프라" 
-                items={[
-                  { done: true, label: "LINKPRICE_AFFILIATE_ID Secret" },
-                  { done: true, label: "merchants 테이블" },
-                  { done: true, label: "products_cache 테이블" },
-                  { done: true, label: "8개 머천트 데이터" },
-                  { done: true, label: "deeplink Edge Function" },
-                  { done: true, label: "/admin 테스트 페이지" },
-                ]}
-              />
-              <PhaseItem 
-                phase={2} 
-                title="상품 자동 수집" 
-                items={[
-                  { done: true, label: "collect-products Edge Function" },
-                  { done: true, label: "web-unlocker Edge Function" },
-                  { done: true, label: "스타일 태그 자동 분류" },
-                  { done: false, label: "CRON 스케줄 설정" },
-                ]}
-              />
-              <PhaseItem 
-                phase={3} 
-                title="규칙 기반 추천" 
-                items={[
-                  { done: true, label: "style_v1 Edge Function" },
-                  { done: true, label: "style-recommend Edge Function (AI)" },
-                  { done: false, label: "/recommend 페이지" },
-                ]}
-              />
-              <PhaseItem 
-                phase={4} 
-                title="DNA + RAG 고도화" 
-                items={[
-                  { done: true, label: "dna_text 컬럼 (products_cache)" },
-                  { done: true, label: "dna_batch Edge Function" },
-                  { done: true, label: "카테고리/성별 정규화" },
-                  { done: false, label: "style_v2 Edge Function" },
-                ]}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{productStats.total}</div>
+              <p className="text-sm text-muted-foreground">전체 상품</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-green-600">{dnaStats?.withDna || 0}</div>
+              <p className="text-sm text-muted-foreground">DNA 완료</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold text-orange-600">{dnaStats?.withoutDna || 0}</div>
+              <p className="text-sm text-muted-foreground">DNA 미생성</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-4">
+              <div className="text-2xl font-bold">{Object.keys(productStats.byMerchant).length}</div>
+              <p className="text-sm text-muted-foreground">머천트</p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="dna-management" className="space-y-4">
-          <TabsList className="flex w-full overflow-x-auto scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-            <TabsTrigger value="product-feed">
-              <Rss className="w-4 h-4 mr-1" />
-              상품피드
+        <Tabs defaultValue="dna" className="space-y-4">
+          <TabsList className="flex w-full overflow-x-auto">
+            <TabsTrigger value="dna">
+              <Dna className="w-4 h-4 mr-1" />
+              DNA 관리
             </TabsTrigger>
-            <TabsTrigger value="dna-management">DNA 관리</TabsTrigger>
-            <TabsTrigger value="admin-tools">관리도구</TabsTrigger>
-            <TabsTrigger value="missing-images">
+            <TabsTrigger value="recommend">
+              <ShoppingBag className="w-4 h-4 mr-1" />
+              AI 추천
+            </TabsTrigger>
+            <TabsTrigger value="deeplink">
+              <Link2 className="w-4 h-4 mr-1" />
+              딥링크
+            </TabsTrigger>
+            <TabsTrigger value="images">
               <ImageOff className="w-4 h-4 mr-1" />
-              이미지 누락
+              이미지 관리
             </TabsTrigger>
-            <TabsTrigger value="batch-collect">배치 수집</TabsTrigger>
-            <TabsTrigger value="style-recommend">AI 추천</TabsTrigger>
-            <TabsTrigger value="brightdata">BrightData</TabsTrigger>
-            <TabsTrigger value="style-v1">규칙 추천</TabsTrigger>
-            <TabsTrigger value="deeplink">딥링크</TabsTrigger>
-            <TabsTrigger value="merchants">머천트</TabsTrigger>
-            <TabsTrigger value="collect">상품 수집</TabsTrigger>
-            <TabsTrigger value="products">수집된 상품</TabsTrigger>
+            <TabsTrigger value="products">
+              <Package className="w-4 h-4 mr-1" />
+              상품 관리
+            </TabsTrigger>
+            <TabsTrigger value="tools">
+              <Zap className="w-4 h-4 mr-1" />
+              관리도구
+            </TabsTrigger>
           </TabsList>
 
-          {/* Product Feed Test Tab */}
-          <TabsContent value="product-feed" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Rss className="w-5 h-5" />
-                  상품 피드 API 테스트
-                </CardTitle>
-                <CardDescription>
-                  LinkPrice 상품피드 API 연결 상태를 확인하고 샘플 상품을 조회합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Feed Test Controls */}
-                <div className="flex flex-wrap items-end gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-1 block">머천트</label>
-                    <Select value={feedMerchant} onValueChange={setFeedMerchant}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="11st">11번가</SelectItem>
-                        <SelectItem value="coupang">쿠팡</SelectItem>
-                        <SelectItem value="gmarket">G마켓</SelectItem>
-                        <SelectItem value="auction">옥션</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <Button onClick={testProductFeed} disabled={isFeedTesting}>
-                    {isFeedTesting ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Play className="w-4 h-4 mr-2" />
-                    )}
-                    피드 테스트
-                  </Button>
-                </div>
-
-                {/* Feed Result */}
-                {feedResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    feedResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                  }`}>
-                    {feedResult.success ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">API 연결 성공</span>
-                            <Badge variant="secondary">{feedResult.merchant}</Badge>
-                          </div>
-                          {feedResult.elapsedMs && (
-                            <Badge variant="outline" className="text-xs">
-                              {feedResult.elapsedMs}ms
-                            </Badge>
-                          )}
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <span className="text-sm text-muted-foreground">총 상품 수</span>
-                            <p className="text-2xl font-bold">{feedResult.totalProducts.toLocaleString()}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm text-muted-foreground">필드 수</span>
-                            <p className="text-2xl font-bold">{feedResult.fields.length}</p>
-                          </div>
-                        </div>
-
-                        {/* Fields */}
-                        {feedResult.fields.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">응답 필드</h4>
-                            <div className="flex flex-wrap gap-1">
-                              {feedResult.fields.map((field) => (
-                                <Badge key={field} variant="outline" className="text-xs">
-                                  {field}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Sample Products */}
-                        {feedResult.sampleProducts.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-medium mb-2">샘플 상품 ({feedResult.sampleProducts.length}개)</h4>
-                            <div className="grid gap-2">
-                              {feedResult.sampleProducts.map((product, idx) => {
-                                // Handle different field names across merchants
-                                const productName = (product.product_name || product.subject || product.name || product.product_id) as string;
-                                const imageUrl = (product.image_url || product.img) as string;
-                                const productUrl = (product.product_url || product.url) as string;
-                                const categoryName = (product.category_name || product.category) as string;
-                                const salePrice = product.sale_price || product.price;
-                                const originalPrice = product.original_price || product.price;
-                                
-                                return (
-                                  <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                                    <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
-                                      {imageUrl ? (
-                                        <img 
-                                          src={imageUrl.replace('http://', 'https://')} 
-                                          alt={productName || '상품'}
-                                          className="w-full h-full object-cover"
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).style.display = 'none';
-                                          }}
-                                        />
-                                      ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                          <Package className="w-5 h-5" />
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium text-sm truncate">
-                                        {productName || '상품명 없음'}
-                                      </p>
-                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                        {product.brand && <span>{product.brand as string}</span>}
-                                        {categoryName && <Badge variant="secondary" className="text-xs">{categoryName}</Badge>}
-                                      </div>
-                                      <div className="flex items-center gap-2 text-sm mt-1">
-                                        {salePrice && (
-                                          <span className="font-bold text-primary">
-                                            ₩{Number(salePrice).toLocaleString()}
-                                          </span>
-                                        )}
-                                        {originalPrice && Number(originalPrice) > 0 && originalPrice !== salePrice && (
-                                          <span className="text-muted-foreground line-through text-xs">
-                                            ₩{Number(originalPrice).toLocaleString()}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    {productUrl && (
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => window.open(productUrl, '_blank')}
-                                      >
-                                        <ExternalLink className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-2 text-red-700 dark:text-red-400">
-                        <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-medium">API 연결 실패</span>
-                          <p className="text-sm mt-1">{feedResult.error}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Info */}
-                <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-                  <p className="font-medium mb-1">📋 지원 머천트 피드 API</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>11번가: https://api.linkprice.com/ci/product/deal/11st/{'{A코드}'}</li>
-                    <li>쿠팡: https://api.linkprice.com/ci/product/deal/coupang/{'{A코드}'}</li>
-                    <li>G마켓: https://api.linkprice.com/ci/product/deal/gmarket/{'{A코드}'}</li>
-                    <li>옥션: https://api.linkprice.com/ci/product/deal/auction/{'{A코드}'}</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* DNA Management Tab */}
-          <TabsContent value="dna-management" className="space-y-4">
+          <TabsContent value="dna" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Dna className="w-5 h-5" />
-                  상품 DNA 관리
+                  DNA 2.0 관리
                 </CardTitle>
                 <CardDescription>
                   상품 DNA(스타일 태그/특징/코디팁)를 배치로 생성하고 관리합니다.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* DNA Stats Overview */}
-                {dnaStats && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4" />
-                        DNA 2.0 현황
-                      </h3>
-                      <Button variant="outline" size="sm" onClick={loadDnaStats}>
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        새로고침
-                      </Button>
-                    </div>
-                    
-                    {/* Overall Progress - DNA 2.0 only */}
-                    <div className="p-4 border-2 border-primary/30 rounded-lg space-y-3 bg-primary/5">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium flex items-center gap-2">
-                          🧬 DNA 2.0 커버리지
-                        </span>
-                        <span className="font-bold text-primary">
-                          {dnaStats.withDna} / {dnaStats.total} ({Math.round((dnaStats.withDna / dnaStats.total) * 100)}%)
-                        </span>
-                      </div>
-                      <Progress value={(dnaStats.withDna / dnaStats.total) * 100} className="h-3" />
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 bg-primary rounded-full" />
-                          완료: {dnaStats.withDna}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 bg-muted rounded-full" />
-                          미생성: {dnaStats.withoutDna}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* DNA 2.0: Target Distribution */}
-                    {Object.keys(dnaStats.byTarget).length > 0 && (
-                      <div className="p-4 border rounded-lg space-y-3">
-                        <h4 className="text-sm font-medium flex items-center gap-2">
-                          👤 타겟 분포
-                        </h4>
-                        <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
-                          {Object.entries(dnaStats.byTarget)
-                            .sort((a, b) => b[1] - a[1])
-                            .map(([target, count]) => (
-                              <div key={target} className="p-2 bg-muted/50 rounded text-xs text-center">
-                                <p className="font-medium">{target.replace('adult_', '성인 ').replace('kids_', '키즈 ').replace('unisex', '유니섹스')}</p>
-                                <p className="text-muted-foreground">{count}</p>
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* DNA 2.0: Slot Distribution */}
-                    {Object.keys(dnaStats.bySlot).length > 0 && (
-                      <div className="p-4 border rounded-lg space-y-3">
-                        <h4 className="text-sm font-medium flex items-center gap-2">
-                          🏷️ 슬롯 분포
-                        </h4>
-                        <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-                          {Object.entries(dnaStats.bySlot)
-                            .sort((a, b) => b[1] - a[1])
-                            .map(([slot, count]) => {
-                              const slotLabels: Record<string, string> = {
-                                top: '상의', bottom: '하의', outer: '아우터', dress: '원피스',
-                                shoes: '신발', bag: '가방', accessory: '액세서리'
-                              };
-                              return (
-                                <div key={slot} className="p-2 bg-muted/50 rounded text-xs text-center">
-                                  <p className="font-medium">{slotLabels[slot] || slot}</p>
-                                  <p className="text-muted-foreground">{count}</p>
-                                </div>
-                              );
-                            })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Category Breakdown */}
-                    <div className="p-4 border rounded-lg space-y-3">
-                      <h4 className="text-sm font-medium">카테고리별 현황</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {Object.entries(dnaStats.byCategory)
-                          .sort((a, b) => b[1].total - a[1].total)
-                          .slice(0, 8)
-                          .map(([cat, stats]) => (
-                            <div key={cat} className="p-2 bg-muted/50 rounded text-sm">
-                              <p className="font-medium truncate">{cat}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {stats.withDna}/{stats.total} ({Math.round((stats.withDna / stats.total) * 100)}%)
-                              </p>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* DNA 2.0 Batch Generation */}
-                <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
+                {/* DNA Coverage */}
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2">
-                        <Dna className="w-4 h-4" />
-                        DNA 2.0 배치 생성
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        규칙 기반으로 빠르게 DNA 메타 정보를 생성합니다 (AI 호출 없음).
-                      </p>
+                    <h3 className="font-medium">DNA 2.0 커버리지</h3>
+                    <Button variant="outline" size="sm" onClick={loadDnaStats}>
+                      <RefreshCw className="w-4 h-4 mr-1" />
+                      새로고침
+                    </Button>
+                  </div>
+                  
+                  {dnaStats && (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>🧬 DNA 2.0 커버리지</span>
+                          <span className={dnaPercentage === 100 ? 'text-green-600 font-bold' : 'text-orange-600'}>
+                            {dnaStats.withDna} / {dnaStats.total} ({dnaPercentage}%)
+                          </span>
+                        </div>
+                        <Progress value={dnaPercentage} className="h-3" />
+                      </div>
+
+                      {/* Target Distribution */}
+                      {Object.keys(dnaStats.byTarget).length > 0 && (
+                        <div className="p-4 border rounded-lg space-y-2">
+                          <h4 className="text-sm font-medium">타겟 분포</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(dnaStats.byTarget)
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([target, count]) => (
+                                <Badge key={target} variant="secondary">
+                                  {target}: {count}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Slot Distribution */}
+                      {Object.keys(dnaStats.bySlot).length > 0 && (
+                        <div className="p-4 border rounded-lg space-y-2">
+                          <h4 className="text-sm font-medium">아이템 슬롯 분포</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(dnaStats.bySlot)
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([slot, count]) => (
+                                <Badge key={slot} variant="outline">
+                                  {slot}: {count}
+                                </Badge>
+                              ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  )}
+                </div>
+
+                {/* DNA Batch Generation */}
+                <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
+                  <div>
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Dna className="w-4 h-4" />
+                      DNA 2.0 배치 생성
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      규칙 기반으로 빠르게 DNA 메타 정보를 생성합니다 (AI 호출 없음).
+                    </p>
                   </div>
 
                   <div className="flex flex-wrap items-end gap-4">
@@ -1568,10 +631,6 @@ const Admin = () => {
                     </Button>
                   </div>
 
-                  <p className="text-xs text-muted-foreground">
-                    ⚡ AI 호출 없이 상품당 ~40ms로 빠르게 처리됩니다 (100개 ≈ 4초)
-                  </p>
-
                   {/* Batch Result */}
                   {dnaBatchResult && (
                     <div className={`p-4 rounded-lg border ${
@@ -1588,7 +647,7 @@ const Admin = () => {
                             </div>
                             {dnaBatchResult.timeMs && (
                               <Badge variant="secondary" className="text-xs">
-                                ⚡ {dnaBatchResult.timeMs}ms ({dnaBatchResult.avgTimePerProduct}ms/상품)
+                                ⚡ {dnaBatchResult.timeMs}ms
                               </Badge>
                             )}
                           </div>
@@ -1610,46 +669,6 @@ const Admin = () => {
                               <span className="font-medium">{dnaBatchResult.remaining}</span>
                             </div>
                           </div>
-                          
-                          {/* DNA 2.0 Stats */}
-                          {dnaBatchResult.stats && (
-                            <div className="grid grid-cols-2 gap-4 pt-2 border-t text-xs">
-                              <div>
-                                <span className="text-muted-foreground">타겟 분포:</span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {Object.entries(dnaBatchResult.stats.targetDistribution).map(([target, count]) => (
-                                    <Badge key={target} variant="secondary" className="text-xs">
-                                      {target}: {count}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">슬롯 분포:</span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {Object.entries(dnaBatchResult.stats.slotDistribution).map(([slot, count]) => (
-                                    <Badge key={slot} variant="outline" className="text-xs">
-                                      {slot}: {count}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {dnaBatchResult.sampleDNA && dnaBatchResult.sampleDNA.length > 0 && (
-                            <details className="mt-3 pt-3 border-t">
-                              <summary className="text-xs font-medium mb-2 cursor-pointer">생성된 DNA 샘플 ({dnaBatchResult.sampleDNA.length}개)</summary>
-                              <div className="space-y-2 mt-2">
-                                {dnaBatchResult.sampleDNA.slice(0, 3).map((sample) => (
-                                  <div key={sample.id} className="text-xs bg-white/50 dark:bg-black/20 p-2 rounded space-y-1">
-                                    <p className="font-medium truncate">{sample.name}</p>
-                                    <p><code className="break-all text-muted-foreground">{sample.dna_text}</code></p>
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
-                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
@@ -1664,650 +683,16 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Admin Tools Tab */}
-          <TabsContent value="admin-tools" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5" />
-                  관리 도구
-                </CardTitle>
-                <CardDescription>
-                  시스템 관리 및 테스트를 위한 도구들
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Generation Usage Reset */}
-                <div className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2">
-                        <RotateCcw className="w-4 h-4" />
-                        일일 생성 횟수 초기화
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        오늘의 스타일 생성 횟수를 0으로 리셋합니다.
-                      </p>
-                    </div>
-                    <Button 
-                      variant="destructive"
-                      onClick={async () => {
-                        try {
-                          const { data: { user } } = await supabase.auth.getUser();
-                          if (!user) {
-                            toast({
-                              title: "로그인 필요",
-                              description: "로그인 후 사용해주세요.",
-                              variant: "destructive",
-                            });
-                            return;
-                          }
-                          
-                          const today = new Date().toISOString().split('T')[0];
-                          const { error } = await supabase
-                            .from('daily_generation_usage')
-                            .update({ generation_count: 0, updated_at: new Date().toISOString() })
-                            .eq('user_id', user.id)
-                            .eq('usage_date', today);
-                          
-                          if (error) throw error;
-                          
-                          toast({
-                            title: "초기화 완료",
-                            description: "오늘의 생성 횟수가 0으로 초기화되었습니다.",
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "초기화 실패",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      횟수 초기화
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Cache Clear */}
-                <div className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4" />
-                        추천 캐시 초기화
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        스타일 추천 캐시를 삭제합니다.
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          const { error } = await supabase
-                            .from('style_cache')
-                            .delete()
-                            .lt('expires_at', new Date().toISOString());
-                          
-                          if (error) throw error;
-                          
-                          toast({
-                            title: "캐시 정리 완료",
-                            description: "만료된 캐시가 삭제되었습니다.",
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "캐시 정리 실패",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      만료 캐시 정리
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Delete All Today's Usage */}
-                <div className="p-4 border border-destructive/30 rounded-lg space-y-4 bg-destructive/5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2 text-destructive">
-                        <XCircle className="w-4 h-4" />
-                        전체 사용자 생성 횟수 초기화
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        모든 사용자의 오늘 생성 횟수를 초기화합니다. (주의!)
-                      </p>
-                    </div>
-                    <Button 
-                      variant="destructive"
-                      onClick={async () => {
-                        try {
-                          const today = new Date().toISOString().split('T')[0];
-                          const { error } = await supabase
-                            .from('daily_generation_usage')
-                            .update({ generation_count: 0, updated_at: new Date().toISOString() })
-                            .eq('usage_date', today);
-                          
-                          if (error) throw error;
-                          
-                          toast({
-                            title: "전체 초기화 완료",
-                            description: "모든 사용자의 오늘 생성 횟수가 초기화되었습니다.",
-                          });
-                        } catch (error: any) {
-                          toast({
-                            title: "초기화 실패",
-                            description: error.message,
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                    >
-                      전체 초기화
-                    </Button>
-                  </div>
-                </div>
-
-                {/* StockX Image Scraping */}
-                <div className="p-4 border-2 border-blue-500/30 rounded-lg space-y-4 bg-blue-500/5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2 text-blue-600">
-                        <Package className="w-4 h-4" />
-                        StockX 이미지 스크래핑
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        이미지가 없는 StockX 상품의 이미지를 스크래핑합니다.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Select value={stockxScrapeLimit} onValueChange={setStockxScrapeLimit}>
-                        <SelectTrigger className="w-[80px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5개</SelectItem>
-                          <SelectItem value="10">10개</SelectItem>
-                          <SelectItem value="20">20개</SelectItem>
-                          <SelectItem value="50">50개</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button 
-                        onClick={scrapeStockxImages}
-                        disabled={isStockxScraping}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {isStockxScraping ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4 mr-2" />
-                        )}
-                        스크래핑 시작
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* StockX Scrape Result */}
-                  {stockxScrapeResult && (
-                    <div className="mt-4 p-3 bg-muted rounded-lg space-y-3">
-                      {stockxScrapeResult.success ? (
-                        <>
-                          <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">
-                              {stockxScrapeResult.updated}/{stockxScrapeResult.total}개 이미지 업데이트
-                            </span>
-                          </div>
-                          {stockxScrapeResult.results && stockxScrapeResult.results.length > 0 && (
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                              {stockxScrapeResult.results.map((r, idx) => (
-                                <div key={idx} className={`flex items-center gap-2 p-2 rounded text-sm ${r.success ? 'bg-green-100' : 'bg-red-100'}`}>
-                                  {r.success ? (
-                                    <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                                  ) : (
-                                    <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <p className="truncate text-xs">{r.product_url}</p>
-                                    {r.success && r.image_url && (
-                                      <img src={r.image_url} alt="" className="w-12 h-12 object-contain mt-1 rounded" />
-                                    )}
-                                    {!r.success && r.error && (
-                                      <p className="text-xs text-red-600">{r.error}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2 text-red-600">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">오류: {stockxScrapeResult.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Image URL Validation */}
-                <div className="p-4 border-2 border-orange-500/30 rounded-lg space-y-4 bg-orange-500/5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2 text-orange-600">
-                        <XCircle className="w-4 h-4" />
-                        이미지 URL 검증 (404 체크)
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        실제로 로드되지 않는 이미지를 가진 상품을 찾아 비활성화합니다.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={imageValidationDryRun}
-                          onChange={(e) => setImageValidationDryRun(e.target.checked)}
-                          className="rounded"
-                        />
-                        미리보기만
-                      </label>
-                      <Button 
-                        onClick={validateImages}
-                        disabled={isValidatingImages}
-                        className="bg-orange-600 hover:bg-orange-700"
-                      >
-                        {isValidatingImages ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4 mr-2" />
-                        )}
-                        {imageValidationDryRun ? '검증 시작' : '검증 + 비활성화'}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Image Validation Result */}
-                  {imageValidationResult && (
-                    <div className="mt-4 p-3 bg-muted rounded-lg space-y-3">
-                      {imageValidationResult.success ? (
-                        <>
-                          <div className="flex items-center gap-2 text-orange-600">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">
-                              {imageValidationResult.checked}개 검사 → {imageValidationResult.valid}개 정상, {imageValidationResult.invalid}개 오류
-                              {!imageValidationResult.dryRun && ` (${imageValidationResult.deactivated}개 비활성화됨)`}
-                            </span>
-                          </div>
-                          {imageValidationResult.invalidProducts && imageValidationResult.invalidProducts.length > 0 && (
-                            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                              <p className="text-sm font-medium text-muted-foreground">오류 상품 목록:</p>
-                              {imageValidationResult.invalidProducts.map((p, idx) => (
-                                <div key={idx} className="flex items-center gap-2 p-2 rounded bg-red-100 text-sm">
-                                  <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                                  <div className="flex-1 min-w-0">
-                                    <p className="truncate">{p.name}</p>
-                                    <p className="text-xs text-red-600">HTTP {p.status}</p>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2 text-red-600">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">오류: {imageValidationResult.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Image Download to Storage */}
-                <div className="p-4 border rounded-lg space-y-4">
-                  <div>
-                    <h3 className="font-medium flex items-center gap-2">
-                      <Download className="w-4 h-4" />
-                      이미지 Storage 저장
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      외부 이미지 URL을 다운로드하여 영구 Storage에 저장합니다.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">머천트</label>
-                      <Select value={imageDownloadMerchant} onValueChange={setImageDownloadMerchant}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="머천트 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {merchants.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name_ko} ({m.name})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">다운로드 수</label>
-                      <Select value={imageDownloadLimit} onValueChange={setImageDownloadLimit}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1개</SelectItem>
-                          <SelectItem value="3">3개</SelectItem>
-                          <SelectItem value="5">5개</SelectItem>
-                          <SelectItem value="10">10개</SelectItem>
-                          <SelectItem value="20">20개</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex items-end">
-                      <Button 
-                        onClick={downloadImagesToStorage}
-                        disabled={isDownloadingImages || !imageDownloadMerchant}
-                        className="w-full"
-                      >
-                        {isDownloadingImages ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            다운로드 중...
-                          </>
-                        ) : (
-                          <>
-                            <Image className="w-4 h-4 mr-2" />
-                            Storage에 저장
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Download Result */}
-                  {imageDownloadResult && (
-                    <div className="mt-4 p-3 bg-muted rounded-lg space-y-2">
-                      {imageDownloadResult.success ? (
-                        <>
-                          <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">
-                              {imageDownloadResult.total === 0 
-                                ? '다운로드할 이미지 없음'
-                                : `${imageDownloadResult.updated}/${imageDownloadResult.total}개 저장 완료`
-                              }
-                            </span>
-                          </div>
-                          {(imageDownloadResult.remaining ?? 0) > 0 && (
-                            <p className="text-sm text-muted-foreground">
-                              남은 이미지: {imageDownloadResult.remaining}개
-                            </p>
-                          )}
-                          {imageDownloadResult.failed && imageDownloadResult.failed > 0 && (
-                            <p className="text-sm text-orange-600">
-                              실패: {imageDownloadResult.failed}개
-                            </p>
-                          )}
-                          {/* Results detail */}
-                          {imageDownloadResult.results && imageDownloadResult.results.length > 0 && (
-                            <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
-                              {imageDownloadResult.results.map((r, idx) => (
-                                <div key={idx} className={`text-xs p-2 rounded ${r.success ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
-                                  <div className="flex items-center gap-1">
-                                    {r.success ? (
-                                      <CheckCircle2 className="w-3 h-3 text-green-600" />
-                                    ) : (
-                                      <XCircle className="w-3 h-3 text-red-600" />
-                                    )}
-                                    <span className="truncate">{r.productName}</span>
-                                  </div>
-                                  {r.error && (
-                                    <p className="text-red-600 mt-1">{r.error}</p>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2 text-red-600">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">오류: {imageDownloadResult.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Download ALL Images to Storage */}
-                <div className="p-4 border-2 border-green-500/30 rounded-lg space-y-4 bg-green-500/5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2 text-green-600">
-                        <Download className="w-4 h-4" />
-                        전체 상품 이미지 다운로드
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        모든 상품의 외부 이미지를 고화질로 Storage에 저장합니다. (백그라운드 실행)
-                      </p>
-                    </div>
-                    <Button 
-                      onClick={downloadAllImagesToStorage}
-                      disabled={isDownloadingAllImages}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {isDownloadingAllImages ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          시작 중...
-                        </>
-                      ) : (
-                        <>
-                          <Download className="w-4 h-4 mr-2" />
-                          전체 다운로드 시작
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Download All Result */}
-                  {downloadAllResult && (
-                    <div className={`mt-4 p-3 rounded-lg space-y-2 ${
-                      downloadAllResult.success 
-                        ? 'bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800'
-                        : 'bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800'
-                    }`}>
-                      {downloadAllResult.success ? (
-                        <>
-                          <div className="flex items-center gap-2 text-green-600">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">
-                              {downloadAllResult.message}
-                            </span>
-                          </div>
-                          <div className="text-sm space-y-1 text-muted-foreground">
-                            <p>📦 처리 대상: {downloadAllResult.totalProducts}개 상품</p>
-                            <p>⏱️ 예상 소요: 약 {downloadAllResult.estimatedTimeMinutes}분</p>
-                            <p>🔄 상태: {downloadAllResult.status === 'processing' ? '백그라운드 처리 중...' : '완료'}</p>
-                          </div>
-                          {downloadAllResult.note && (
-                            <p className="text-xs text-green-600 mt-2">
-                              💡 {downloadAllResult.note}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-2 text-red-600">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">오류: {downloadAllResult.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Batch Collect Tab */}
-          <TabsContent value="batch-collect" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Play className="w-5 h-5" />
-                  8개 머천트 배치 수집
-                </CardTitle>
-                <CardDescription>
-                  선택한 머천트에서 Bright Data Proxy를 사용하여 상품을 일괄 수집합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Merchant Selection */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">머천트 선택</label>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={selectAllMerchants}>
-                        전체 선택
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={deselectAllMerchants}>
-                        전체 해제
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    {merchants.map((m) => (
-                      <button
-                        key={m.id}
-                        onClick={() => toggleMerchantSelection(m.id)}
-                        className={`p-3 rounded-lg border text-left transition-colors ${
-                          selectedMerchants.includes(m.id)
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'bg-card hover:bg-muted border-border'
-                        }`}
-                      >
-                        <p className="font-medium text-sm">{m.name_ko}</p>
-                        <p className="text-xs opacity-80">{m.name}</p>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedMerchants.length}개 머천트 선택됨
-                  </p>
-                </div>
-
-                {/* URLs per merchant */}
-                <div>
-                  <label className="text-sm font-medium mb-2 block">머천트별 URL 수</label>
-                  <Select value={batchUrlsPerMerchant} onValueChange={setBatchUrlsPerMerchant}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="URL 수 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2">2개</SelectItem>
-                      <SelectItem value="3">3개</SelectItem>
-                      <SelectItem value="5">5개</SelectItem>
-                      <SelectItem value="10">10개</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button 
-                  onClick={runBatchCollect} 
-                  disabled={isBatchLoading || selectedMerchants.length === 0} 
-                  className="w-full"
-                  size="lg"
-                >
-                  {isBatchLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Play className="w-4 h-4 mr-2" />
-                  )}
-                  {isBatchLoading 
-                    ? `수집 중... (${selectedMerchants.length}개 머천트)` 
-                    : `${selectedMerchants.length}개 머천트에서 수집 시작`}
-                </Button>
-
-                {/* Batch Result */}
-                {batchResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    batchResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                  }`}>
-                    {batchResult.success ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span className="font-medium">
-                            {batchResult.merchants_processed}개 머천트 처리 완료, 
-                            총 {batchResult.total_saved}개 상품 저장
-                          </span>
-                        </div>
-                        
-                        {/* Results per merchant */}
-                        <div className="space-y-2">
-                          {batchResult.results.map((r) => (
-                            <div key={r.merchant_id} className="p-3 bg-card rounded border">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium">{r.merchant_name}</span>
-                                <div className="flex gap-2 text-sm">
-                                  <Badge variant="outline">시도: {r.urls_tried}</Badge>
-                                  <Badge variant="secondary">성공: {r.success_count}</Badge>
-                                  <Badge variant="default">저장: {r.saved_count}</Badge>
-                                </div>
-                              </div>
-                              {r.errors.length > 0 && (
-                                <div className="mt-2 text-xs text-red-600 dark:text-red-400">
-                                  {r.errors.slice(0, 2).map((e, i) => (
-                                    <p key={i} className="truncate">{e}</p>
-                                  ))}
-                                  {r.errors.length > 2 && (
-                                    <p>... +{r.errors.length - 2}개 더</p>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                        <XCircle className="w-5 h-5" />
-                        <span className="font-medium">배치 수집 실패: {batchResult.error}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-
-          {/* Style Recommend (AI) Test Tab */}
-          <TabsContent value="style-recommend" className="space-y-4">
+          {/* AI Recommend Tab */}
+          <TabsContent value="recommend" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingBag className="w-5 h-5" />
-                  AI 스타일 추천 (style-recommend)
+                  AI 스타일 추천
                 </CardTitle>
                 <CardDescription>
-                  Gemini AI가 스타일을 추론하고, 캐시된 상품 또는 SerpAPI 검색 결과로 룩을 조합합니다.
+                  GPT-5가 스타일을 추론하고, DNA 2.0 기반으로 룩을 조합합니다.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -2321,7 +706,7 @@ const Admin = () => {
                       onKeyDown={(e) => e.key === 'Enter' && testStyleRecommend()}
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium mb-2 block">성별</label>
                       <Select value={aiGender} onValueChange={setAiGender}>
@@ -2334,15 +719,6 @@ const Admin = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">총 예산</label>
-                      <Input
-                        type="number"
-                        placeholder="200000"
-                        value={aiBudget}
-                        onChange={(e) => setAiBudget(e.target.value)}
-                      />
-                    </div>
                     <div className="flex items-end">
                       <label className="flex items-center gap-2 text-sm pb-2">
                         <input
@@ -2354,22 +730,6 @@ const Admin = () => {
                         캐시 무시 (새로 생성)
                       </label>
                     </div>
-                  </div>
-                </div>
-
-                {/* Sample Requests */}
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium mb-2">예시 요청:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {["캐주얼 데이트룩", "비즈니스 캐주얼", "여름 휴가 스타일", "파티룩", "미니멀 데일리"].map((q) => (
-                      <button 
-                        key={q}
-                        onClick={() => setAiUserRequest(q)}
-                        className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
-                      >
-                        {q}
-                      </button>
-                    ))}
                   </div>
                 </div>
 
@@ -2391,57 +751,26 @@ const Admin = () => {
                   }`}>
                     {aiResult.success && aiResult.look ? (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                             <CheckCircle2 className="w-5 h-5" />
                             <span className="font-medium">{aiResult.look.name}</span>
-                            {aiResult.cacheHit && (
-                              <Badge variant="secondary">캐시 히트!</Badge>
-                            )}
+                            {aiResult.cacheHit && <Badge variant="secondary">캐시 히트</Badge>}
                           </div>
                           <div className="text-right">
                             <p className="text-lg font-bold">₩{aiResult.look.totalPrice.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {aiResult.look.items.filter(i => i.product).length}개 아이템
-                            </p>
                           </div>
                         </div>
                         
-                        {/* API Calls & Stats */}
-                        {aiResult.apiCalls && (
-                          <div className="flex flex-wrap gap-2 text-xs">
-                            <Badge variant="outline">Gemini: {aiResult.apiCalls.gemini}회</Badge>
-                            <Badge variant="outline">SerpAPI: {aiResult.apiCalls.serpapi}회</Badge>
-                            {aiResult.stats && (
-                              <>
-                                <Badge variant="secondary">캐시: {aiResult.stats.foundInCache}</Badge>
-                                <Badge variant="secondary">SerpAPI: {aiResult.stats.foundViaSerpapi}</Badge>
-                                {aiResult.stats.notFound > 0 && (
-                                  <Badge variant="destructive">미발견: {aiResult.stats.notFound}</Badge>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Style Tags */}
-                        <div className="flex flex-wrap gap-1">
-                          {aiResult.look.styleTags.map((tag) => (
-                            <Badge key={tag} variant="secondary">{tag}</Badge>
-                          ))}
-                        </div>
-
-                        {/* Styling Tips */}
                         {aiResult.look.stylingTips && (
-                          <div className="p-3 bg-muted rounded-lg text-sm">
-                            <p className="font-medium mb-1">💡 스타일링 팁</p>
-                            <p>{aiResult.look.stylingTips}</p>
-                          </div>
+                          <p className="text-sm text-muted-foreground italic">
+                            💡 {aiResult.look.stylingTips}
+                          </p>
                         )}
 
                         {/* Look Items Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                          {aiResult.look.items.map((item, idx) => (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {aiResult.look.items.filter(item => item.product).map((item, idx) => (
                             <div key={idx} className="border rounded-lg overflow-hidden bg-card">
                               <div className="aspect-square bg-muted relative">
                                 {item.product?.image_url ? (
@@ -2459,259 +788,34 @@ const Admin = () => {
                                     <Package className="w-8 h-8 text-muted-foreground" />
                                   </div>
                                 )}
-                                <Badge className="absolute top-1 left-1 text-xs" variant="default">
+                                <Badge className="absolute top-1 left-1 text-xs" variant="secondary">
                                   {item.category}
-                                </Badge>
-                                <Badge className="absolute top-1 right-1 text-xs" variant={
-                                  item.source === 'cache' ? 'secondary' : 
-                                  item.source === 'serpapi' ? 'outline' : 'destructive'
-                                }>
-                                  {item.source === 'cache' ? '캐시' : 
-                                   item.source === 'serpapi' ? 'SerpAPI' : '없음'}
                                 </Badge>
                               </div>
                               <div className="p-2">
-                                {item.product ? (
-                                  <>
-                                    <p className="text-xs font-medium line-clamp-2 mb-1">{item.product.name}</p>
-                                    <p className="text-sm font-bold text-primary">
-                                      ₩{item.product.price.toLocaleString()}
-                                    </p>
-                                    {item.affiliateUrl && (
-                                      <a 
-                                        href={item.affiliateUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
-                                      >
-                                        <ExternalLink className="w-3 h-3" />
-                                        구매하기 (제휴)
-                                      </a>
-                                    )}
-                                  </>
-                                ) : (
-                                  <p className="text-xs text-muted-foreground">상품 없음</p>
+                                <p className="text-xs font-medium line-clamp-2 mb-1">{item.product?.name}</p>
+                                <p className="text-xs text-muted-foreground">{item.product?.brand}</p>
+                                <p className="text-sm font-bold mt-1">₩{item.product?.price.toLocaleString()}</p>
+                                {item.affiliateUrl && (
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full mt-2 text-xs"
+                                    onClick={() => window.open(item.affiliateUrl!, '_blank')}
+                                  >
+                                    <ExternalLink className="w-3 h-3 mr-1" />
+                                    구매하기
+                                  </Button>
                                 )}
                               </div>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">추천 실패: {aiResult.error}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Web Unlocker Test Tab */}
-          <TabsContent value="brightdata" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="w-5 h-5" />
-                  Bright Data Web Unlocker
-                </CardTitle>
-                <CardDescription>
-                  Bright Data Web Unlocker API를 사용하여 봇 차단을 우회하고 상품 정보를 수집합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">상품 URL (한 줄에 하나씩, 최대 10개)</label>
-                    <textarea
-                      className="w-full h-40 p-3 border rounded-lg font-mono text-sm resize-none"
-                      placeholder={`https://www.wconcept.co.kr/Product/300124178\nhttps://www.musinsa.com/app/goods/2994785\nhttps://www.29cm.co.kr/products/12345`}
-                      value={webUnlockerUrls}
-                      onChange={(e) => setWebUnlockerUrls(e.target.value)}
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">모드</label>
-                      <Select value={webUnlockerMode} onValueChange={(v) => setWebUnlockerMode(v as "preview" | "save")}>
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="모드 선택" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="preview">미리보기 (저장 안함)</SelectItem>
-                          <SelectItem value="save">저장 (DB에 저장)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex-1 text-sm text-muted-foreground">
-                      <p>• <strong>미리보기</strong>: HTML 파싱 결과 확인 (DB 저장 X)</p>
-                      <p>• <strong>저장</strong>: 결과를 products_cache 테이블에 저장</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sample URLs */}
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium mb-2">테스트 URL:</p>
-                  <div className="flex flex-wrap gap-2">
-                    <button 
-                      onClick={() => setWebUnlockerUrls("https://www.wconcept.co.kr/Product/300124178")}
-                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
-                    >
-                      W Concept
-                    </button>
-                    <button 
-                      onClick={() => setWebUnlockerUrls("https://www.musinsa.com/app/goods/2994785")}
-                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
-                    >
-                      Musinsa
-                    </button>
-                    <button 
-                      onClick={() => setWebUnlockerUrls("https://www.29cm.co.kr/products/2794631")}
-                      className="px-2 py-1 rounded bg-muted hover:bg-muted/80 text-xs"
-                    >
-                      29CM
-                    </button>
-                  </div>
-                </div>
-
-                <Button onClick={testWebUnlocker} disabled={isWebUnlockerLoading} className="w-full">
-                  {isWebUnlockerLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <Database className="w-4 h-4 mr-2" />
-                  )}
-                  {webUnlockerMode === 'preview' ? 'HTML 파싱 테스트' : '수집 및 저장'}
-                </Button>
-
-                {/* Result */}
-                {webUnlockerResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    webUnlockerResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                  }`}>
-                    {webUnlockerResult.success ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span className="font-medium">
-                            {webUnlockerResult.mode === 'preview' ? '파싱 완료' : '저장 완료'}
-                          </span>
-                          <Badge variant="secondary">성공: {webUnlockerResult.success_count}</Badge>
-                          {webUnlockerResult.error_count && webUnlockerResult.error_count > 0 && (
-                            <Badge variant="destructive">실패: {webUnlockerResult.error_count}</Badge>
-                          )}
-                        </div>
-                        
-                        {/* Stats */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                          <div className="p-2 bg-muted rounded">
-                            <p className="text-muted-foreground">요청 URL</p>
-                            <p className="font-bold">{webUnlockerResult.total_urls}개</p>
-                          </div>
-                          <div className="p-2 bg-muted rounded">
-                            <p className="text-muted-foreground">파싱 성공</p>
-                            <p className="font-bold">{webUnlockerResult.success_count}개</p>
-                          </div>
-                          <div className="p-2 bg-muted rounded">
-                            <p className="text-muted-foreground">파싱 실패</p>
-                            <p className="font-bold">{webUnlockerResult.error_count}개</p>
-                          </div>
-                          {webUnlockerResult.mode === 'save' && (
-                            <div className="p-2 bg-muted rounded">
-                              <p className="text-muted-foreground">DB 저장</p>
-                              <p className="font-bold">{webUnlockerResult.saved_count}개</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Products Grid */}
-                        {webUnlockerResult.results && webUnlockerResult.results.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">추출된 상품:</p>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-96 overflow-y-auto">
-                              {webUnlockerResult.results.map((product, idx) => (
-                                <div key={idx} className="border rounded-lg overflow-hidden bg-card">
-                                  <div className="aspect-square bg-muted relative">
-                                    {product.image_url ? (
-                                      <img 
-                                        src={product.image_url} 
-                                        alt={product.name}
-                                        className="w-full h-full object-cover"
-                                        onError={(e) => {
-                                          const target = e.target as HTMLImageElement;
-                                          target.src = '/placeholder.svg';
-                                        }}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                        <Package className="w-8 h-8 text-muted-foreground" />
-                                      </div>
-                                    )}
-                                    <Badge className="absolute top-1 left-1 text-xs" variant="secondary">
-                                      {product.merchant_id}
-                                    </Badge>
-                                    {product.is_in_stock ? (
-                                      <Badge className="absolute top-1 right-1 text-xs" variant="default">재고</Badge>
-                                    ) : (
-                                      <Badge className="absolute top-1 right-1 text-xs" variant="destructive">품절</Badge>
-                                    )}
-                                  </div>
-                                  <div className="p-2">
-                                    <p className="text-xs font-medium line-clamp-2 mb-1">{product.name}</p>
-                                    <p className="text-xs text-muted-foreground">{product.brand || '-'}</p>
-                                    <div className="flex items-baseline gap-1 mt-1">
-                                      <p className="text-sm font-bold">₩{product.price?.toLocaleString()}</p>
-                                      {product.original_price && product.original_price > product.price && (
-                                        <p className="text-xs text-muted-foreground line-through">
-                                          ₩{product.original_price.toLocaleString()}
-                                        </p>
-                                      )}
-                                    </div>
-                                    <div className="flex gap-1 mt-1">
-                                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
-                                      {product.color && (
-                                        <Badge variant="secondary" className="text-xs">{product.color}</Badge>
-                                      )}
-                                    </div>
-                                    {product.sizes && product.sizes.length > 0 && (
-                                      <p className="text-xs text-muted-foreground mt-1">
-                                        사이즈: {product.sizes.slice(0, 3).join(', ')}{product.sizes.length > 3 ? '...' : ''}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Errors */}
-                        {webUnlockerResult.errors && webUnlockerResult.errors.length > 0 && (
-                          <details className="text-xs">
-                            <summary className="cursor-pointer text-red-600 font-medium">
-                              실패한 URL ({webUnlockerResult.errors.length}개)
-                            </summary>
-                            <div className="mt-2 space-y-2">
-                              {webUnlockerResult.errors.map((err, idx) => (
-                                <div key={idx} className="p-2 bg-red-50 dark:bg-red-950 rounded">
-                                  <p className="font-mono text-xs break-all">{err.url}</p>
-                                  <p className="text-red-600">{err.error}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <XCircle className="w-5 h-5" />
-                        <span>{webUnlockerResult.error}</span>
+                        <span className="font-medium">추천 실패: {aiResult.error}</span>
                       </div>
                     )}
                   </div>
@@ -2720,209 +824,33 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-
-          {/* Style V1 Test Tab */}
-          <TabsContent value="style-v1" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5" />
-                  Phase 3: 규칙 기반 룩 추천 (style-v1)
-                </CardTitle>
-                <CardDescription>
-                  products_cache의 상품으로 카테고리별 1개씩 조합하여 룩을 추천합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">TPO/상황</label>
-                    <Select value={styleOccasion} onValueChange={setStyleOccasion}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="상황 선택" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="캐주얼">캐주얼</SelectItem>
-                        <SelectItem value="비즈니스">비즈니스</SelectItem>
-                        <SelectItem value="데이트">데이트</SelectItem>
-                        <SelectItem value="파티">파티</SelectItem>
-                        <SelectItem value="운동">운동</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">성별</label>
-                    <Select value={styleGender} onValueChange={(v) => setStyleGender(v as "male" | "female" | "unisex")}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="성별 선택" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="female">여성</SelectItem>
-                        <SelectItem value="male">남성</SelectItem>
-                        <SelectItem value="unisex">무관</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">최대 예산</label>
-                    <Input
-                      type="number"
-                      placeholder="300000"
-                      value={styleBudgetMax}
-                      onChange={(e) => setStyleBudgetMax(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <Button onClick={testStyleV1} disabled={isStyleLoading} className="w-full">
-                  {isStyleLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                  )}
-                  룩 추천 생성
-                </Button>
-
-                {/* Result */}
-                {styleResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    styleResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                  }`}>
-                    {styleResult.success && styleResult.look ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="w-5 h-5" />
-                            <span className="font-medium">{styleResult.message}</span>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-lg font-bold">₩{styleResult.look.totalPrice.toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">{styleResult.look.items.length}개 아이템</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-wrap gap-1">
-                          {styleResult.look.styleTags.map((tag) => (
-                            <Badge key={tag} variant="secondary">{tag}</Badge>
-                          ))}
-                        </div>
-
-                        {/* Look Items Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                          {styleResult.look.items.map((item) => (
-                            <div key={item.id} className="border rounded-lg overflow-hidden bg-card">
-                              <div className="aspect-square bg-muted relative">
-                                {item.image_url ? (
-                                  <img 
-                                    src={item.image_url} 
-                                    alt={item.name}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = '/placeholder.svg';
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <Package className="w-8 h-8 text-muted-foreground" />
-                                  </div>
-                                )}
-                                <Badge className="absolute top-1 left-1 text-xs" variant="default">
-                                  {item.category}
-                                </Badge>
-                              </div>
-                              <div className="p-2">
-                                <p className="text-xs font-medium line-clamp-2 mb-1">{item.name}</p>
-                                <p className="text-sm font-bold text-primary">
-                                  ₩{item.price.toLocaleString()}
-                                </p>
-                                <a 
-                                  href={item.product_url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1"
-                                >
-                                  <ExternalLink className="w-3 h-3" />
-                                  구매하기
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                          <XCircle className="w-5 h-5" />
-                          <span className="font-medium">추천 실패: {styleResult.error}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Missing Images Tab */}
-          <TabsContent value="missing-images" className="space-y-4">
-            <MissingImagesManager />
-          </TabsContent>
-
-          {/* Deeplink Test Tab */}
+          {/* Deeplink Tab */}
           <TabsContent value="deeplink" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Link2 className="w-5 h-5" />
-                  딥링크 변환 테스트
+                  딥링크 생성 테스트
                 </CardTitle>
                 <CardDescription>
-                  상품 URL을 입력하면 링크프라이스 제휴 링크로 변환합니다.
+                  상품 URL을 입력하면 링크프라이스 제휴 딥링크를 생성합니다.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
                   <Input
-                    placeholder="https://www.wconcept.co.kr/Product/12345678"
+                    placeholder="상품 URL 입력 (예: https://www.wconcept.co.kr/Product/...)"
                     value={productUrl}
                     onChange={(e) => setProductUrl(e.target.value)}
-                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && testDeeplink()}
                   />
                   <Button onClick={testDeeplink} disabled={isLoading}>
                     {isLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      "변환"
+                      <Link2 className="w-4 h-4" />
                     )}
                   </Button>
-                </div>
-
-                {/* Sample URLs */}
-                <div className="text-sm text-muted-foreground">
-                  <p className="font-medium mb-2">테스트 URL 예시:</p>
-                  <div className="space-y-1">
-                    <button 
-                      onClick={() => setProductUrl("https://www.wconcept.co.kr/Product/307494735")}
-                      className="block text-primary hover:underline text-left"
-                    >
-                      더블유컨셉: https://www.wconcept.co.kr/Product/307494735
-                    </button>
-                    <button 
-                      onClick={() => setProductUrl("https://www.posty.kr/product/123456")}
-                      className="block text-primary hover:underline text-left"
-                    >
-                      포스티: https://www.posty.kr/product/123456
-                    </button>
-                    <button 
-                      onClick={() => setProductUrl("https://www.jestina.co.kr/product/view?productNo=12345")}
-                      className="block text-primary hover:underline text-left"
-                    >
-                      제이에스티나: https://www.jestina.co.kr/product/view?productNo=12345
-                    </button>
-                  </div>
                 </div>
 
                 {/* Result */}
@@ -2936,35 +864,22 @@ const Admin = () => {
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
                           <CheckCircle2 className="w-5 h-5" />
-                          <span className="font-medium">딥링크 생성 성공</span>
+                          <span className="font-medium">딥링크 생성 완료</span>
                           <Badge variant="secondary">{deeplinkResult.merchant_name}</Badge>
                         </div>
-                        <div className="space-y-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">원본 URL:</span>
-                            <p className="font-mono text-xs break-all">{deeplinkResult.original_url}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">제휴 URL:</span>
-                            <p className="font-mono text-xs break-all">{deeplinkResult.affiliate_url}</p>
-                          </div>
+                        <div className="space-y-1 text-sm">
+                          <p><span className="text-muted-foreground">원본:</span> <code className="text-xs break-all">{deeplinkResult.original_url}</code></p>
+                          <p><span className="text-muted-foreground">제휴:</span> <code className="text-xs break-all">{deeplinkResult.affiliate_url}</code></p>
                         </div>
-                        <Button 
-                          onClick={openAffiliateLink}
-                          variant="outline" 
-                          size="sm"
-                          className="gap-2"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          새 탭에서 열기
+                        <Button onClick={openAffiliateLink} variant="outline" size="sm">
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          링크 열기
                         </Button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
                         <XCircle className="w-5 h-5" />
-                        <span className="font-medium">
-                          {deeplinkResult.error}: {deeplinkResult.message}
-                        </span>
+                        <span className="font-medium">{deeplinkResult.error || deeplinkResult.message}</span>
                       </div>
                     )}
                   </div>
@@ -2973,178 +888,21 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Merchants List Tab */}
-          <TabsContent value="merchants" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingBag className="w-5 h-5" />
-                  등록된 머천트 목록
-                </CardTitle>
-                <CardDescription>
-                  링크프라이스 제휴 머천트 8개
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button onClick={loadMerchants} disabled={merchantsLoading}>
-                  {merchantsLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                  )}
-                  머천트 목록 새로고침
-                </Button>
-
-                {merchants.length > 0 && (
-                  <div className="grid gap-3">
-                    {merchants.map((merchant) => (
-                      <div 
-                        key={merchant.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Badge variant={merchant.is_active ? "default" : "secondary"}>
-                            {merchant.id}
-                          </Badge>
-                          <div>
-                            <p className="font-medium">{merchant.name_ko}</p>
-                            <p className="text-sm text-muted-foreground">{merchant.base_url}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 text-right">
-                          <div className="text-sm">
-                            <Badge variant="outline">{merchant.commission_rate}%</Badge>
-                            <Badge variant="secondary" className="ml-1">{merchant.scrape_type}</Badge>
-                          </div>
-                          {merchant.last_collected_at && (
-                            <span className="text-xs text-muted-foreground">
-                              최근 수집: {new Date(merchant.last_collected_at).toLocaleDateString('ko-KR')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Missing Images Tab */}
+          <TabsContent value="images" className="space-y-4">
+            <MissingImagesManager />
           </TabsContent>
 
-          {/* Collect Products Tab */}
-          <TabsContent value="collect" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="w-5 h-5" />
-                  상품 수집 테스트
-                </CardTitle>
-                <CardDescription>
-                  선택한 머천트에서 상품을 수집하고 products_cache에 저장합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Select value={selectedMerchant} onValueChange={setSelectedMerchant}>
-                    <SelectTrigger className="w-[200px]">
-                      <SelectValue placeholder="머천트 선택" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {merchants.map((m) => (
-                        <SelectItem key={m.id} value={m.id}>
-                          {m.name_ko} ({m.scrape_type})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  
-                  <Input
-                    type="number"
-                    placeholder="수집 개수"
-                    value={collectLimit}
-                    onChange={(e) => setCollectLimit(e.target.value)}
-                    className="w-[120px]"
-                  />
-                  
-                  <Button onClick={collectProducts} disabled={isCollecting || !selectedMerchant}>
-                    {isCollecting ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : (
-                      <Package className="w-4 h-4 mr-2" />
-                    )}
-                    수집 시작
-                  </Button>
-                </div>
-
-                {/* Collection Result */}
-                {collectResult && (
-                  <div className={`p-4 rounded-lg border ${
-                    collectResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
-                  }`}>
-                    {collectResult.success ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                          <CheckCircle2 className="w-5 h-5" />
-                          <span className="font-medium">상품 수집 완료</span>
-                          <Badge variant="secondary">{collectResult.merchant_id}</Badge>
-                        </div>
-                        <div className="grid grid-cols-4 gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">수집:</span>
-                            <p className="font-bold text-lg">{collectResult.collected}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">저장:</span>
-                            <p className="font-bold text-lg text-green-600">{collectResult.inserted}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">업데이트:</span>
-                            <p className="font-bold text-lg text-blue-600">{collectResult.updated}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">에러:</span>
-                            <p className="font-bold text-lg text-red-600">{collectResult.errors}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                        <XCircle className="w-5 h-5" />
-                        <span className="font-medium">
-                          {collectResult.error}: {collectResult.message}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Product Stats */}
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="font-medium mb-2">저장된 상품 통계</h4>
-                  <div className="text-2xl font-bold mb-2">총 {productStats.total}개</div>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(productStats.byMerchant).map(([merchantId, count]) => (
-                      <Badge key={merchantId} variant="outline">
-                        {merchantId}: {count}개
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Products List Tab */}
+          {/* Products Management Tab */}
           <TabsContent value="products" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Database className="w-5 h-5" />
-                  수집된 상품 관리
+                  상품 관리
                 </CardTitle>
                 <CardDescription>
-                  products_cache 상품 목록 - 이미지가 안 보이는 상품을 선택하여 삭제/비활성화할 수 있습니다
+                  products_cache 상품 목록 - 상품 삭제/비활성화
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -3250,15 +1008,6 @@ const Admin = () => {
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
-                                target.parentElement!.innerHTML = `
-                                  <div class="w-full h-full flex items-center justify-center bg-red-100 text-red-500">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                      <circle cx="12" cy="12" r="10"/>
-                                      <path d="m15 9-6 6"/>
-                                      <path d="m9 9 6 6"/>
-                                    </svg>
-                                  </div>
-                                `;
                               }}
                             />
                           ) : (
@@ -3271,9 +1020,6 @@ const Admin = () => {
                           <div className="flex items-center gap-1 mb-0.5 flex-wrap">
                             <Badge variant="outline" className="text-xs">{product.merchant_id}</Badge>
                             <Badge variant="secondary" className="text-xs">{product.category}</Badge>
-                            {!product.is_in_stock && (
-                              <Badge variant="destructive" className="text-xs">품절</Badge>
-                            )}
                             {!product.is_active && (
                               <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">비활성</Badge>
                             )}
@@ -3291,55 +1037,140 @@ const Admin = () => {
 
                 {cachedProducts.length === 0 && !productsLoading && (
                   <div className="text-center py-8 text-muted-foreground">
-                    상품이 없습니다. "새로고침" 버튼을 클릭하거나 필터를 변경해보세요.
+                    상품이 없습니다. "새로고침" 버튼을 클릭해주세요.
                   </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Admin Tools Tab */}
+          <TabsContent value="tools" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  관리 도구
+                </CardTitle>
+                <CardDescription>
+                  시스템 관리를 위한 도구들
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Generation Usage Reset */}
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <RotateCcw className="w-4 h-4" />
+                        일일 생성 횟수 초기화
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        오늘의 스타일 생성 횟수를 0으로 리셋합니다.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="destructive"
+                      onClick={async () => {
+                        try {
+                          const { data: { user } } = await supabase.auth.getUser();
+                          if (!user) {
+                            toast({
+                              title: "로그인 필요",
+                              description: "로그인 후 사용해주세요.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          
+                          const today = new Date().toISOString().split('T')[0];
+                          const { error } = await supabase
+                            .from('daily_generation_usage')
+                            .update({ generation_count: 0, updated_at: new Date().toISOString() })
+                            .eq('user_id', user.id)
+                            .eq('usage_date', today);
+                          
+                          if (error) throw error;
+                          
+                          toast({
+                            title: "초기화 완료",
+                            description: "오늘의 생성 횟수가 0으로 초기화되었습니다.",
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "초기화 실패",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      횟수 초기화
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Cache Clear */}
+                <div className="p-4 border rounded-lg space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4" />
+                        추천 캐시 정리
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        만료된 스타일 추천 캐시를 삭제합니다.
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const { error } = await supabase
+                            .from('style_cache')
+                            .delete()
+                            .lt('expires_at', new Date().toISOString());
+                          
+                          if (error) throw error;
+                          
+                          toast({
+                            title: "캐시 정리 완료",
+                            description: "만료된 캐시가 삭제되었습니다.",
+                          });
+                        } catch (error: any) {
+                          toast({
+                            title: "캐시 정리 실패",
+                            description: error.message,
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      만료 캐시 정리
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Product Stats */}
+                <div className="p-4 border rounded-lg space-y-4">
+                  <h3 className="font-medium">상품 통계</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {Object.entries(productStats.byMerchant)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([merchantId, count]) => (
+                        <div key={merchantId} className="p-3 bg-muted/50 rounded-lg">
+                          <p className="font-medium">{merchantId}</p>
+                          <p className="text-2xl font-bold">{count}</p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
-      </div>
-    </div>
-  );
-};
-
-// Phase checklist item component
-interface PhaseItemProps {
-  phase: number;
-  title: string;
-  items: { done: boolean; label: string }[];
-}
-
-const PhaseItem = ({ phase, title, items }: PhaseItemProps) => {
-  const completedCount = items.filter(i => i.done).length;
-  const isComplete = completedCount === items.length;
-  
-  return (
-    <div className={`p-4 rounded-lg border ${
-      isComplete 
-        ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-        : 'bg-muted/50'
-    }`}>
-      <div className="flex items-center gap-2 mb-3">
-        <Badge variant={isComplete ? "default" : "secondary"}>Phase {phase}</Badge>
-        <span className="font-medium">{title}</span>
-        <span className="text-xs text-muted-foreground ml-auto">
-          {completedCount}/{items.length}
-        </span>
-      </div>
-      <div className="space-y-1">
-        {items.map((item, idx) => (
-          <div key={idx} className="flex items-center gap-2 text-sm">
-            {item.done ? (
-              <CheckCircle2 className="w-4 h-4 text-green-600" />
-            ) : (
-              <XCircle className="w-4 h-4 text-muted-foreground" />
-            )}
-            <span className={item.done ? "text-foreground" : "text-muted-foreground"}>
-              {item.label}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   );
