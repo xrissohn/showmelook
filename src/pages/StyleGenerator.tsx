@@ -3627,31 +3627,6 @@ const StyleGenerator = () => {
 
                       {/* 예산 섹션 제거됨 - AI가 스타일에만 집중 */}
 
-                      {/* 스타일 생성 버튼 - 프롬프트 입력 후 바로 생성 */}
-                      <Button
-                        variant="gold"
-                        size="lg"
-                        className="w-full font-korean text-sm sm:text-base"
-                        onClick={generateStyleWithRecommendation}
-                        disabled={isGenerating || isCustomSearching || !customStylePrompt.trim() || !canGenerate}
-                      >
-                        {isGenerating || isCustomSearching ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '스타일 생성중...'}
-                          </>
-                        ) : !canGenerate ? (
-                          <>
-                            <Crown className="w-4 h-4 mr-2" />
-                            프리미엄으로 업그레이드
-                          </>
-                        ) : (
-                          <>
-                            <Camera className="w-4 h-4 mr-2" />
-                            {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
-                          </>
-                        )}
-                      </Button>
                       
                       {/* 추천만 먼저 보기 (선택적) */}
                       {subscription.canUseRecommendFirst && !customResult && (
