@@ -2456,9 +2456,6 @@ const StyleGenerator = () => {
       if (productsResult.data) setProducts(productsResult.data);
       
       staticDataLoadedRef.current = true;
-      
-      // AI 트렌드 키워드 (백그라운드, 비동기)
-      fetchTrendKeywords();
     }
     
     // 사용자 데이터 처리
@@ -2587,29 +2584,7 @@ const StyleGenerator = () => {
     }
   };
 
-  // 트렌드 키워드 AI 분석 불러오기
-  const fetchTrendKeywords = async () => {
-    setIsLoadingKeywords(true);
-    try {
-      const response = await supabase.functions.invoke('analyze-trends');
-      
-      if (response.error) {
-        console.error('Trend keywords fetch error:', response.error);
-        return;
-      }
-
-      const data = response.data;
-      if (data?.keywords && Array.isArray(data.keywords) && data.keywords.length > 0) {
-        setTrendKeywords(data.keywords);
-        console.log('Loaded', data.keywords.length, 'trend keywords from AI analysis');
-      }
-    } catch (error) {
-      console.error('Error fetching trend keywords:', error);
-      // 에러 시 기본 키워드 유지
-    } finally {
-      setIsLoadingKeywords(false);
-    }
-  };
+  // 트렌드 키워드는 기본값 사용 (analyze-trends 함수 제거됨)
 
   const toggleStylePreference = (styleId: string) => {
     setEditForm(prev => ({
