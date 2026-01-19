@@ -3,7 +3,7 @@
  * Premium 전용: 최대 5명 추가 가능
  */
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useFamilyProfiles, FamilyProfileInput } from '@/hooks/useFamilyProfiles';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -277,19 +277,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
   // Get signed URLs for profile avatars
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   
-  useState(() => {
-    profiles.forEach(async (profile) => {
-      if (profile.avatar_url && !signedUrls[profile.id]) {
-        const url = await getSignedUrl(profile.avatar_url);
-        if (url) {
-          setSignedUrls(prev => ({ ...prev, [profile.id]: url }));
-        }
-      }
-    });
-  });
-
-  // Refresh signed URLs when profiles change
-  useState(() => {
+  // Load signed URLs when profiles change
+  useEffect(() => {
     const loadUrls = async () => {
       const urls: Record<string, string> = {};
       for (const profile of profiles) {
@@ -300,8 +289,11 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       }
       setSignedUrls(urls);
     };
-    loadUrls();
-  });
+    
+    if (profiles.length > 0) {
+      loadUrls();
+    }
+  }, [profiles]);
 
   if (isLoading) {
     return (
