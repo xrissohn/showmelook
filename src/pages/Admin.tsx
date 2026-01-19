@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,12 +10,15 @@ import { Progress } from "@/components/ui/progress";
 import { 
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
-  AlertTriangle, FileSpreadsheet, Eye, RotateCw
+  AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
+import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import * as XLSX from 'xlsx';
 
 interface DeeplinkResult {
@@ -95,7 +99,10 @@ interface ExcelProduct {
 }
 
 const Admin = () => {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin, isLoading: roleLoading } = useAdminRole(user?.id);
   
   // Deeplink test state
   const [productUrl, setProductUrl] = useState("");
@@ -555,6 +562,27 @@ const Admin = () => {
 
   const dnaPercentage = dnaStats ? Math.round((dnaStats.withDna / dnaStats.total) * 100) : 0;
 
+  // 인증/권한 체크
+  if (authLoading || roleLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="text-center space-y-4">
+          <h1 className="text-2xl font-bold text-foreground">접근 권한 없음</h1>
+          <p className="text-muted-foreground">관리자만 접근할 수 있는 페이지입니다.</p>
+          <Button onClick={() => navigate('/')}>홈으로 돌아가기</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -634,6 +662,10 @@ const Admin = () => {
             <TabsTrigger value="products">
               <Package className="w-4 h-4 mr-1" />
               상품 관리
+            </TabsTrigger>
+            <TabsTrigger value="users">
+              <Users className="w-4 h-4 mr-1" />
+              사용자 관리
             </TabsTrigger>
             <TabsTrigger value="tools">
               <Zap className="w-4 h-4 mr-1" />
@@ -1312,6 +1344,11 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* User Management Tab */}
+          <TabsContent value="users" className="space-y-4">
+            <UserManagementPanel />
           </TabsContent>
         </Tabs>
       </div>
