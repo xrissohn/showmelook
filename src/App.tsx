@@ -16,7 +16,7 @@ const StyleGenerator = lazy(() => import("./pages/StyleGenerator"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Install = lazy(() => import("./pages/Install"));
 const Admin = lazy(() => import("./pages/Admin"));
-
+const Pricing = lazy(() => import("./pages/Pricing"));
 const MyPage = lazy(() => import("./pages/MyPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -57,6 +57,7 @@ const App = () => (
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/install" element={<Install />} />
                 <Route path="/admin" element={<Admin />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route path="/mypage" element={<MyPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

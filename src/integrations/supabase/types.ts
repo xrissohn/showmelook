@@ -94,6 +94,48 @@ export type Database = {
         }
         Relationships: []
       }
+      family_profiles: {
+        Row: {
+          avatar_url: string | null
+          body_type: string | null
+          created_at: string | null
+          full_name: string
+          gender: string | null
+          height: number | null
+          id: string
+          owner_user_id: string
+          relationship: string | null
+          updated_at: string | null
+          weight: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          body_type?: string | null
+          created_at?: string | null
+          full_name: string
+          gender?: string | null
+          height?: number | null
+          id?: string
+          owner_user_id: string
+          relationship?: string | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          body_type?: string | null
+          created_at?: string | null
+          full_name?: string
+          gender?: string | null
+          height?: number | null
+          id?: string
+          owner_user_id?: string
+          relationship?: string | null
+          updated_at?: string | null
+          weight?: number | null
+        }
+        Relationships: []
+      }
       generated_looks: {
         Row: {
           created_at: string
@@ -630,32 +672,65 @@ export type Database = {
         }
         Relationships: []
       }
-      user_subscriptions: {
+      user_roles: {
         Row: {
           created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_subscriptions: {
+        Row: {
+          billing_cycle: string | null
+          created_at: string | null
+          current_period_end: string | null
           daily_limit: number
           expires_at: string | null
+          gallery_limit: number
           id: string
+          max_profiles: number
           plan: string
           started_at: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          billing_cycle?: string | null
           created_at?: string | null
+          current_period_end?: string | null
           daily_limit?: number
           expires_at?: string | null
+          gallery_limit?: number
           id?: string
+          max_profiles?: number
           plan?: string
           started_at?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          billing_cycle?: string | null
           created_at?: string | null
+          current_period_end?: string | null
           daily_limit?: number
           expires_at?: string | null
+          gallery_limit?: number
           id?: string
+          max_profiles?: number
           plan?: string
           started_at?: string | null
           updated_at?: string | null
@@ -668,10 +743,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -798,6 +879,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
