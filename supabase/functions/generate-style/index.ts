@@ -47,6 +47,7 @@ serve(async (req) => {
     console.log('[generate-style] Products:', products);
     console.log('[generate-style] Product images count:', productImageUrls?.length || 0);
     console.log('[generate-style] Face composite:', useFaceComposite);
+    console.log('[generate-style] Avatar URL:', userAvatarUrl ? userAvatarUrl.substring(0, 80) + '...' : 'none');
 
     // Build the image generation prompt
     // Handle both Korean and English gender values
@@ -55,8 +56,10 @@ serve(async (req) => {
     const gender = isFemale ? '여성' : '남성';
     const height = userProfile?.height || 170;
     const bodyType = userProfile?.body_type || 'average';
+    const fullName = userProfile?.full_name || '';
     
     console.log('[generate-style] Profile gender:', userProfile?.gender, '-> Resolved:', gender);
+    console.log('[generate-style] Profile name:', fullName);
 
     let prompt = `Fashion photography of a stylish ${gender === '여성' ? 'Korean woman' : 'Korean man'}, ${height}cm tall, ${bodyType} build.
 
@@ -67,9 +70,20 @@ ${products}
 
 Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
-    // Add face composite instruction if enabled
+    // Add face composite instruction if enabled - CRITICAL: must use the provided reference photo
     if (useFaceComposite && userAvatarUrl) {
-      prompt += `\n\nIMPORTANT: The model's face should look natural and match the Korean aesthetic. Professional fashion model pose.`;
+      prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.
+
+Fashion photography of a stylish ${gender === '여성' ? 'Korean woman' : 'Korean man'}${fullName ? ` (${fullName})` : ''}, ${height}cm tall, ${bodyType} build.
+
+Style concept: ${style}
+
+Wearing these items:
+${products}
+
+IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, and appearance. Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
+
+Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
     }
 
     console.log('[generate-style] Prompt length:', prompt.length);
