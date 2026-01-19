@@ -1273,24 +1273,32 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                 선택
               </Button>
               {/* 필터 버튼 */}
-              <Button
-                variant={showFavoritesOnly ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className="flex items-center gap-1"
-              >
-                <Heart className={`w-4 h-4 ${showFavoritesOnly ? 'fill-current' : ''}`} />
-                <span className="font-korean hidden sm:inline">즐겨찾기</span>
-                {favoriteCount > 0 && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    showFavoritesOnly 
-                      ? 'bg-primary-foreground/20 text-primary-foreground' 
-                      : 'bg-accent text-accent-foreground'
-                  }`}>
-                    {favoriteCount}
-                  </span>
-                )}
-              </Button>
+              {showFavoritesOnly ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFavoritesOnly(false)}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span className="font-korean">전체 갤러리</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFavoritesOnly(true)}
+                  className="flex items-center gap-1"
+                >
+                  <Heart className="w-4 h-4" />
+                  <span className="font-korean hidden sm:inline">즐겨찾기</span>
+                  {favoriteCount > 0 && (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent text-accent-foreground">
+                      {favoriteCount}
+                    </span>
+                  )}
+                </Button>
+              )}
             </>
           )}
         </div>
