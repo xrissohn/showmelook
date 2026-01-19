@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useFeedback } from '@/hooks/useFeedback';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
@@ -3119,14 +3119,23 @@ const StyleGenerator = () => {
       <MainNavigation 
         rightContent={
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* 내 룩 버튼 with Badge */}
+            {/* 좋아요 상품 버튼 */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => navigate('/mypage?tab=likes')} 
+              className="p-2"
+            >
+              <Heart className="w-5 h-5" />
+            </Button>
+            {/* 내 갤러리 버튼 with Badge */}
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setActiveTab('mylooks')} 
               className={`p-2 relative ${activeTab === 'mylooks' ? 'text-accent bg-accent/10' : ''}`}
             >
-              <Heart className={`w-5 h-5 ${activeTab === 'mylooks' ? 'fill-accent' : ''}`} />
+              <Images className={`w-5 h-5 ${activeTab === 'mylooks' ? 'text-accent' : ''}`} />
               {myLooks.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                   {myLooks.length > 99 ? '99+' : myLooks.length}
