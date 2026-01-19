@@ -27,6 +27,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { LimitReachedBanner } from '@/components/subscription/LimitReachedBanner';
+import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSelector';
 interface StyleTrend {
   id: string;
   name: string;
@@ -2038,6 +2039,9 @@ const StyleGenerator = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [useFaceComposite, setUseFaceComposite] = useState(true);
   
+  // 선택된 프로필 (나 또는 가족/친구)
+  const [selectedGenerationProfile, setSelectedGenerationProfile] = useState<SelectedProfile | null>(null);
+  
   // 트렌드 기반 실시간 검색된 상품들
   const [trendProducts, setTrendProducts] = useState<CachedProduct[]>([]);
   const [isSearchingProducts, setIsSearchingProducts] = useState(false);
@@ -3308,15 +3312,30 @@ const StyleGenerator = () => {
           .filter(p => p.image_url)
           .map(p => p.image_url);
         
+        // 선택된 프로필 정보 (가족 프로필 또는 본인)
+        const profileToUse = selectedGenerationProfile?.type === 'family' 
+          ? {
+              ...userProfile,
+              full_name: selectedGenerationProfile.full_name,
+              avatar_url: selectedGenerationProfile.avatar_url,
+              height: selectedGenerationProfile.height,
+              weight: selectedGenerationProfile.weight,
+              body_type: selectedGenerationProfile.body_type,
+              gender: selectedGenerationProfile.gender,
+            }
+          : userProfile;
+        
+        const avatarToUse = selectedGenerationProfile?.avatar_url || userProfile?.avatar_url;
+        
         const { data: genData, error: genError } = await supabase.functions.invoke('generate-style', {
           body: {
             style: styleDesc,
             products: productsDesc,
             productDetails: productsWithDetails,
             productImageUrls: productImageUrls,
-            userProfile: userProfile,
-            useFaceComposite: useFaceComposite && !!userProfile?.avatar_url,
-            userAvatarUrl: userProfile?.avatar_url,
+            userProfile: profileToUse,
+            useFaceComposite: useFaceComposite && !!avatarToUse,
+            userAvatarUrl: avatarToUse,
             styleTrendId: selectedTrend?.id || null,
             productIds: productsWithDetails.map(p => p.id),
           },
@@ -3358,11 +3377,15 @@ const StyleGenerator = () => {
         }
 
         // Show appropriate toast
+        const currentAvatarUrl = selectedGenerationProfile?.avatar_url || userProfile?.avatar_url;
+        const toastDescription = useFaceComposite && currentAvatarUrl
+          ? selectedGenerationProfile?.type === 'family'
+            ? `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`
+            : '당신의 얼굴이 합성된 룩이 완성되었습니다.'
+          : '스타일 룩이 완성되었습니다.';
         toast({
           title: '스타일 생성 완료!',
-          description: useFaceComposite && userProfile?.avatar_url 
-            ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
-            : '당신만의 룩이 완성되었습니다.',
+          description: toastDescription,
         });
 
         // Save to database
@@ -3460,6 +3483,21 @@ const StyleGenerator = () => {
         .filter(p => p.image_url)
         .map(p => p.image_url);
 
+      // 선택된 프로필 정보 (가족 프로필 또는 본인)
+      const profileToUse = selectedGenerationProfile?.type === 'family' 
+        ? {
+            ...userProfile,
+            full_name: selectedGenerationProfile.full_name,
+            avatar_url: selectedGenerationProfile.avatar_url,
+            height: selectedGenerationProfile.height,
+            weight: selectedGenerationProfile.weight,
+            body_type: selectedGenerationProfile.body_type,
+            gender: selectedGenerationProfile.gender,
+          }
+        : userProfile;
+      
+      const avatarToUse = selectedGenerationProfile?.avatar_url || userProfile?.avatar_url;
+
       // Call AI generation edge function with face composite option
       const { data, error } = await supabase.functions.invoke('generate-style', {
         body: {
@@ -3467,9 +3505,9 @@ const StyleGenerator = () => {
           products: productsDescription,
           productDetails: productsWithDetails, // 상세 상품 정보 전달
           productImageUrls: productImageUrls, // 상품 이미지 URL 전달
-          userProfile: userProfile,
-          useFaceComposite: useFaceComposite && !!userProfile?.avatar_url,
-          userAvatarUrl: userProfile?.avatar_url,
+          userProfile: profileToUse,
+          useFaceComposite: useFaceComposite && !!avatarToUse,
+          userAvatarUrl: avatarToUse,
           styleTrendId: selectedTrend?.id || null,
           productIds: productsWithDetails.map(p => p.id),
         },
@@ -3502,11 +3540,14 @@ const StyleGenerator = () => {
         }
 
         // Show appropriate toast
+        const toastDescription = useFaceComposite && avatarToUse
+          ? selectedGenerationProfile?.type === 'family'
+            ? `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`
+            : '당신의 얼굴이 합성된 룩이 완성되었습니다.'
+          : '스타일 룩이 완성되었습니다.';
         toast({
           title: '스타일 생성 완료!',
-          description: useFaceComposite && userProfile?.avatar_url 
-            ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
-            : '당신만의 룩이 완성되었습니다.',
+          description: toastDescription,
         });
 
         // Save to database (only if not cached - edge function handles caching)
@@ -4188,21 +4229,37 @@ const StyleGenerator = () => {
               )}
 
 
-              {/* Face Composite Option */}
-              {userProfile?.avatar_url && (
+              {/* Profile Selection for Style Generation (Premium: can select family) */}
+              <ProfileSelector
+                userId={user?.id}
+                userProfile={userProfile}
+                isPremium={isPremium}
+                canUseFamilyProfiles={subscription.canUseFamilyProfiles}
+                selectedProfile={selectedGenerationProfile}
+                onProfileSelect={setSelectedGenerationProfile}
+              />
+
+              {/* Face Composite Option - 선택된 프로필의 아바타가 있을 때만 */}
+              {(selectedGenerationProfile?.avatar_url || userProfile?.avatar_url) && (
                 <div className="p-3 sm:p-4 rounded-xl border-2 border-border bg-secondary/50">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
                         <img 
-                          src={userProfile.avatar_url} 
-                          alt="Your face" 
+                          src={selectedGenerationProfile?.avatar_url || userProfile?.avatar_url || ''} 
+                          alt="Profile face" 
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">내 얼굴 합성하기</p>
-                        <p className="text-xs text-muted-foreground font-korean truncate">AI가 생성한 이미지에 내 얼굴을 합성합니다</p>
+                        <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
+                          {selectedGenerationProfile?.type === 'family' 
+                            ? `${selectedGenerationProfile.full_name} 얼굴 합성하기`
+                            : '내 얼굴 합성하기'}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-korean truncate">
+                          AI가 생성한 이미지에 {selectedGenerationProfile?.type === 'family' ? '선택한 프로필의' : '내'} 얼굴을 합성합니다
+                        </p>
                       </div>
                     </div>
                     <button
