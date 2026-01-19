@@ -3661,10 +3661,10 @@ const StyleGenerator = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => setActiveTab('mypage')} 
-              className={`p-2 ${activeTab === 'mypage' ? 'text-accent bg-accent/10' : ''}`}
+              onClick={() => navigate('/mypage')} 
+              className="p-2"
             >
-              <User className={`w-5 h-5 ${activeTab === 'mypage' ? 'fill-accent' : ''}`} />
+              <User className="w-5 h-5" />
             </Button>
             {/* 장바구니 */}
             <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2">

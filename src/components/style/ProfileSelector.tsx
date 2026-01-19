@@ -137,14 +137,14 @@ export const ProfileSelector = ({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">가족/친구 프로필</p>
+                <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">추가 모델</p>
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
                   <Crown className="w-3 h-3 mr-0.5 text-amber-500" />
                   Premium
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground font-korean truncate">
-                프리미엄으로 업그레이드하면 가족/친구를 위한 스타일도 생성할 수 있어요
+                프리미엄으로 업그레이드하면 다른 분을 위한 스타일도 생성할 수 있어요
               </p>
             </div>
           </div>
@@ -188,7 +188,7 @@ export const ProfileSelector = ({
                   <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
                     {currentDisplayProfile.full_name || '프로필 선택'}
                   </p>
-                  <Badge 
+                <Badge 
                     variant="secondary" 
                     className={`text-[10px] px-1.5 py-0.5 ${
                       currentDisplayProfile.type === 'self' 
@@ -196,7 +196,7 @@ export const ProfileSelector = ({
                         : 'bg-primary/20 text-primary'
                     }`}
                   >
-                    {currentDisplayProfile.type === 'self' ? '나' : '가족/친구'}
+                    {currentDisplayProfile.type === 'self' ? '나' : '모델'}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground font-korean truncate">
@@ -240,12 +240,12 @@ export const ProfileSelector = ({
             {familyProfiles.length > 0 && (
               <div className="flex items-center gap-2 py-2">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-korean">가족/친구</span>
+                <span className="text-xs text-muted-foreground font-korean">추가 모델</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
             )}
 
-            {/* 가족 프로필들 */}
+            {/* 모델 프로필들 */}
             {isLoading ? (
               <div className="p-4 text-center">
                 <p className="text-xs text-muted-foreground font-korean">로딩 중...</p>
@@ -254,7 +254,7 @@ export const ProfileSelector = ({
               <div className="p-4 text-center">
                 <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground font-korean">
-                  마이페이지에서 가족/친구 프로필을 추가해보세요
+                  마이페이지에서 추가 모델을 등록해보세요
                 </p>
               </div>
             ) : (
@@ -279,7 +279,7 @@ export const ProfileSelector = ({
                       {profile.full_name}
                     </p>
                     <p className="text-xs text-muted-foreground font-korean">
-                      {profile.relationship || '가족/친구'}
+                      {profile.relationship || '모델'}
                       {profile.gender && ` · ${profile.gender}`}
                     </p>
                   </div>

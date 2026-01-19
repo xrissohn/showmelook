@@ -203,7 +203,7 @@ const MyPage = () => {
             </TabsTrigger>
             <TabsTrigger value="family" className="flex items-center gap-1 text-xs sm:text-sm">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">가족</span>
+              <span className="hidden sm:inline">모델</span>
               {!subscription.canUseFamilyProfiles && (
                 <Crown className="w-3 h-3 text-amber-500" />
               )}
@@ -507,7 +507,7 @@ const MyPage = () => {
             </Card>
           </TabsContent>
 
-          {/* 가족 프로필 탭 */}
+          {/* 모델 프로필 탭 */}
           <TabsContent value="family" className="mt-4">
             {subscription.canUseFamilyProfiles ? (
               <FamilyProfileManager 
@@ -520,16 +520,16 @@ const MyPage = () => {
                   <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 flex items-center justify-center">
                     <Users className="w-8 h-8 text-amber-500" />
                   </div>
-                  <h3 className="text-lg font-bold mb-2 font-korean">가족/친구 프로필 관리</h3>
+                  <h3 className="text-lg font-bold mb-2 font-korean">추가 모델 등록</h3>
                   <p className="text-muted-foreground mb-4 font-korean text-sm">
-                    Premium 플랜에서 가족이나 친구 최대 5명의 프로필을 등록하고,<br />
-                    그들을 위한 스타일을 생성할 수 있어요.
+                    Premium 플랜에서 최대 5명의 모델을 등록하고,<br />
+                    그들을 위한 스타일 룩을 생성할 수 있어요.
                   </p>
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Crown className="w-4 h-4 text-amber-500" />
-                        최대 5명 프로필
+                        최대 5명 모델
                       </span>
                       <span className="flex items-center gap-1">
                         <Sparkles className="w-4 h-4 text-primary" />
