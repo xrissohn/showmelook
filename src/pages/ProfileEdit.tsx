@@ -32,6 +32,16 @@ const genderOptions = [
   { id: 'prefer_not_to_say', label: '선택 안함', emoji: '🔒' },
 ];
 
+const ageGroupOptions = [
+  { id: 'child', label: '아동 (12세 이하)', emoji: '👶' },
+  { id: 'teen', label: '10대', emoji: '🧒' },
+  { id: '20s', label: '20대', emoji: '🧑' },
+  { id: '30s', label: '30대', emoji: '👨‍💼' },
+  { id: '40s', label: '40대', emoji: '👨‍💼' },
+  { id: '50s', label: '50대', emoji: '🧓' },
+  { id: '60plus', label: '60대 이상', emoji: '👴' },
+];
+
 const ProfileEdit = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
