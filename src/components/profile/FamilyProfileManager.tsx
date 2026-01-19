@@ -131,7 +131,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <CardTitle className="font-korean">모델 프로필</CardTitle>
+            <CardTitle className="font-korean text-base">추가 모델</CardTitle>
           </div>
           <Badge variant="secondary">
             {currentCount}/{maxProfiles}명
