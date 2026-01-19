@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, ShoppingBag, Heart, ExternalLink } from "lucide-react";
+import { Loader2, ArrowLeft, ShoppingBag, ShoppingCart, Heart, ExternalLink, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import showmelookLogo from "@/assets/showmelook-logo.png";
+import { useAuth } from "@/hooks/useAuth";
+import { useGuestCart } from "@/hooks/useGuestCart";
 
 interface Product {
   id: string;
@@ -30,12 +32,49 @@ interface LookData {
   products?: Product[];
 }
 
+// Helper to update document meta tags dynamically
+const updateMetaTags = (metadata: {
+  title: string;
+  description: string;
+  image: string;
+  url: string;
+}) => {
+  // Update title
+  document.title = metadata.title;
+
+  // Helper to set meta content
+  const setMeta = (selector: string, content: string) => {
+    const el = document.querySelector(selector);
+    if (el) {
+      el.setAttribute("content", content);
+    }
+  };
+
+  // Update OG tags
+  setMeta('meta[property="og:title"]', metadata.title);
+  setMeta('meta[property="og:description"]', metadata.description);
+  setMeta('meta[property="og:image"]', metadata.image);
+  setMeta('meta[property="og:url"]', metadata.url);
+
+  // Update Twitter tags
+  setMeta('meta[name="twitter:title"]', metadata.title);
+  setMeta('meta[name="twitter:description"]', metadata.description);
+  setMeta('meta[name="twitter:image"]', metadata.image);
+  setMeta('meta[name="twitter:url"]', metadata.url);
+
+  // Update description
+  setMeta('meta[name="description"]', metadata.description);
+};
+
 const SharedLook = () => {
   const { lookId } = useParams<{ lookId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const guestCart = useGuestCart();
   const [look, setLook] = useState<LookData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchLook = async () => {
@@ -72,6 +111,20 @@ const SharedLook = () => {
             }
           }
         }
+
+        // Update OG meta tags dynamically
+        const description = lookData.prompt_used 
+          ? lookData.prompt_used.slice(0, 100) + (lookData.prompt_used.length > 100 ? "..." : "")
+          : "AI가 추천하는 나만의 스타일을 확인해보세요!";
+        
+        const tagStr = lookData.tags?.slice(0, 3).map((t: string) => `#${t}`).join(" ") || "";
+
+        updateMetaTags({
+          title: "쇼미룩 AI 스타일 추천",
+          description: `${description} ${tagStr}`.trim(),
+          image: imageUrl,
+          url: `https://showmelook.com/look/${lookId}`,
+        });
 
         // Fetch products if product_ids exist
         let products: Product[] = [];
@@ -116,6 +169,11 @@ const SharedLook = () => {
     };
 
     fetchLook();
+
+    // Cleanup: restore original meta tags on unmount
+    return () => {
+      document.title = "쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook";
+    };
   }, [lookId]);
 
   const handleProductClick = (product: Product) => {
@@ -123,8 +181,56 @@ const SharedLook = () => {
     window.open(url, "_blank");
   };
 
+  const handleAddToCart = async (product: Product, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    if (user) {
+      // Logged in: add to Supabase cart
+      try {
+        const { error } = await supabase.from("cart_items").insert({
+          user_id: user.id,
+          product_id: product.id,
+          product_name: product.name,
+          product_brand: product.brand,
+          product_price: product.price,
+          product_image_url: product.image_url,
+          product_url: product.affiliate_url || product.product_url,
+          quantity: 1,
+        });
+
+        if (error) throw error;
+        
+        setAddedToCart((prev) => new Set(prev).add(product.id));
+        toast.success("장바구니에 추가되었습니다");
+      } catch (err) {
+        console.error("Cart error:", err);
+        toast.error("장바구니 추가에 실패했습니다");
+      }
+    } else {
+      // Guest: add to localStorage cart
+      guestCart.addItem({
+        product_id: product.id,
+        product_name: product.name,
+        product_brand: product.brand,
+        product_price: product.price,
+        product_image_url: product.image_url,
+        product_url: product.product_url,
+        affiliate_url: product.affiliate_url,
+      });
+
+      setAddedToCart((prev) => new Set(prev).add(product.id));
+      toast.success("장바구니에 추가되었습니다", {
+        description: "로그인하면 장바구니가 계정에 저장됩니다.",
+      });
+    }
+  };
+
   const handleTryStyle = () => {
     navigate("/style");
+  };
+
+  const handleViewCart = () => {
+    navigate("/cart");
   };
 
   if (loading) {
@@ -159,6 +265,8 @@ const SharedLook = () => {
     );
   }
 
+  const cartItemCount = user ? 0 : guestCart.getItemCount();
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -170,9 +278,25 @@ const SharedLook = () => {
           >
             <img src={showmelookLogo} alt="ShowMeLook" className="h-8 w-auto" />
           </button>
-          <Button variant="outline" size="sm" onClick={handleTryStyle}>
-            나도 만들어보기
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Cart button with count */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleViewCart}
+              className="relative"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cartItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              )}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleTryStyle}>
+              나도 만들어보기
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -261,14 +385,39 @@ const SharedLook = () => {
                         </span>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full mt-2 text-xs"
-                    >
-                      <ExternalLink className="w-3 h-3 mr-1" />
-                      구매하기
-                    </Button>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        variant={addedToCart.has(product.id) ? "secondary" : "outline"}
+                        className="flex-1 text-xs"
+                        onClick={(e) => handleAddToCart(product, e)}
+                        disabled={addedToCart.has(product.id)}
+                      >
+                        {addedToCart.has(product.id) ? (
+                          <>
+                            <Check className="w-3 h-3 mr-1" />
+                            담김
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="w-3 h-3 mr-1" />
+                            담기
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="flex-1 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleProductClick(product);
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        구매
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
