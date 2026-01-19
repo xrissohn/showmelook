@@ -11,8 +11,9 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useFeedback } from '@/hooks/useFeedback';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
@@ -23,6 +24,8 @@ import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useImagePreloader } from '@/hooks/useImagePreloader';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { LimitReachedBanner } from '@/components/subscription/LimitReachedBanner';
 interface StyleTrend {
   id: string;
   name: string;
@@ -1763,6 +1766,11 @@ const StyleGenerator = () => {
   const navigate = useNavigate();
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  // 구독 상태 (스타일 추천 먼저 받기 제한용)
+  const subscription = useSubscription(user?.id);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<'recommend-first' | 'gallery-limit' | 'daily-limit'>('recommend-first');
+
   const { 
     isPremium, 
     remainingCount, 
@@ -3358,26 +3366,43 @@ const StyleGenerator = () => {
 
                       {/* 예산 섹션 제거됨 - AI가 스타일에만 집중 */}
 
-                      {/* 추천 버튼 */}
-                      <Button
-                        variant="hero"
-                        size="lg"
-                        className="w-full font-korean text-sm sm:text-base"
-                        onClick={handleCustomStyleSearch}
-                        disabled={isCustomSearching || !customStylePrompt.trim()}
-                      >
-                        {isCustomSearching ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            AI가 스타일을 분석중...
-                          </>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            스타일 추천받기
-                          </>
-                        )}
-                      </Button>
+                      {/* 추천 버튼 - Free 플랜은 비활성화 */}
+                      {subscription.canUseRecommendFirst ? (
+                        <Button
+                          variant="hero"
+                          size="lg"
+                          className="w-full font-korean text-sm sm:text-base"
+                          onClick={handleCustomStyleSearch}
+                          disabled={isCustomSearching || !customStylePrompt.trim()}
+                        >
+                          {isCustomSearching ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              AI가 스타일을 분석중...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              스타일 추천받기
+                            </>
+                          )}
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="lg"
+                          className="w-full font-korean text-sm sm:text-base relative overflow-hidden group"
+                          onClick={() => {
+                            setUpgradeReason('recommend-first');
+                            setShowUpgradeModal(true);
+                          }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
+                          <span className="text-muted-foreground">스타일 추천받기</span>
+                          <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CollapsibleContent>
@@ -4507,6 +4532,14 @@ const StyleGenerator = () => {
           )}
         </div>
       )}
+
+      {/* 업그레이드 모달 */}
+      <UpgradeModal
+        open={showUpgradeModal}
+        onOpenChange={setShowUpgradeModal}
+        reason={upgradeReason}
+        currentPlan={subscription.plan}
+      />
     </div>
   );
 };

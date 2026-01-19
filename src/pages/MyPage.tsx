@@ -1,14 +1,18 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart } from "lucide-react";
+import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { LazyImage } from "@/components/LazyImage";
 import MainNavigation from "@/components/MainNavigation";
+import { FamilyProfileManager } from "@/components/profile/FamilyProfileManager";
+import { PLAN_CONFIG, formatPrice } from "@/lib/planConfig";
 import { 
   useRecommendationHistory, 
   useLikedProducts, 
@@ -32,9 +36,10 @@ const MyPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const subscription = useSubscription(user?.id);
   
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("likes");
+  const [activeTab, setActiveTab] = useState("subscription");
 
   // React Query 훅 사용 (5분 캐싱)
   const { data: recommendations = [], isLoading: isLoadingRecs } = useRecommendationHistory();
@@ -145,13 +150,15 @@ const MyPage = () => {
     return null;
   }
 
-  if (authLoading || isLoading) {
+  if (authLoading || isLoading || subscription.isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  const planConfig = PLAN_CONFIG[subscription.plan];
 
   return (
     <div className="min-h-screen bg-background">
@@ -181,16 +188,114 @@ const MyPage = () => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="likes" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="subscription" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">구독</span>
+            </TabsTrigger>
+            <TabsTrigger value="likes" className="flex items-center gap-1 text-xs sm:text-sm">
               <Heart className="w-4 h-4" />
-              관심 상품 ({likedProducts.length})
+              <span className="hidden sm:inline">관심</span> ({likedProducts.length})
             </TabsTrigger>
-            <TabsTrigger value="history" className="flex items-center gap-2">
+            <TabsTrigger value="history" className="flex items-center gap-1 text-xs sm:text-sm">
               <History className="w-4 h-4" />
-              추천 히스토리
+              <span className="hidden sm:inline">히스토리</span>
             </TabsTrigger>
+            {subscription.canUseFamilyProfiles && (
+              <TabsTrigger value="family" className="flex items-center gap-1 text-xs sm:text-sm">
+                <Users className="w-4 h-4" />
+                <span className="hidden sm:inline">가족</span>
+              </TabsTrigger>
+            )}
           </TabsList>
+
+          {/* 구독 상태 탭 */}
+          <TabsContent value="subscription" className="mt-4 space-y-4">
+            {/* 현재 플랜 카드 */}
+            <Card className={`overflow-hidden ${
+              subscription.plan === 'premium' ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20' :
+              subscription.plan === 'pro' ? 'border-primary bg-gradient-to-br from-primary/5 to-accent/5' :
+              ''
+            }`}>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Crown className={`w-5 h-5 ${
+                      subscription.plan === 'premium' ? 'text-amber-500' :
+                      subscription.plan === 'pro' ? 'text-primary' :
+                      'text-muted-foreground'
+                    }`} />
+                    <CardTitle className="font-korean">{planConfig.nameKo} 플랜</CardTitle>
+                  </div>
+                  <Badge variant={subscription.plan === 'free' ? 'secondary' : 'default'} className={
+                    subscription.plan === 'premium' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white' :
+                    subscription.plan === 'pro' ? 'bg-gradient-to-r from-primary to-accent text-white' :
+                    ''
+                  }>
+                    {planConfig.name}
+                  </Badge>
+                </div>
+                {subscription.currentPeriodEnd && (
+                  <CardDescription className="font-korean">
+                    만료일: {subscription.currentPeriodEnd.toLocaleDateString('ko-KR')}
+                  </CardDescription>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 주요 기능 요약 */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-muted-foreground font-korean">일일 생성</p>
+                    <p className="font-bold font-korean">
+                      {subscription.dailyLimit === -1 ? '무제한' : `${subscription.dailyLimit}회`}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-muted-foreground font-korean">갤러리 저장</p>
+                    <p className="font-bold font-korean">
+                      {subscription.galleryLimit === -1 ? '무제한' : `${subscription.galleryLimit}장`}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-muted-foreground font-korean">프로필 관리</p>
+                    <p className="font-bold font-korean">{subscription.maxProfiles}명</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-background/50">
+                    <p className="text-muted-foreground font-korean">히스토리 보관</p>
+                    <p className="font-bold font-korean">
+                      {subscription.historyDays === -1 ? '영구' : `${subscription.historyDays}일`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 업그레이드 버튼 */}
+                {subscription.plan !== 'premium' && (
+                  <Button
+                    variant="hero"
+                    className="w-full font-korean"
+                    onClick={() => navigate('/pricing')}
+                  >
+                    <Crown className="w-4 h-4 mr-2" />
+                    {subscription.plan === 'free' ? 'Pro로 업그레이드' : 'Premium으로 업그레이드'}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 프로필 설정 링크 */}
+            <Card>
+              <CardContent className="p-4">
+                <Button
+                  variant="outline"
+                  className="w-full font-korean"
+                  onClick={() => navigate('/profile-edit')}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  프로필 설정
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* 관심 상품 탭 */}
           <TabsContent value="likes" className="mt-4">
@@ -400,6 +505,16 @@ const MyPage = () => {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* 가족 프로필 탭 (Premium 전용) */}
+          {subscription.canUseFamilyProfiles && (
+            <TabsContent value="family" className="mt-4">
+              <FamilyProfileManager 
+                userId={user?.id || ''} 
+                maxProfiles={subscription.maxProfiles - 1}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
     </div>
