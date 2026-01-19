@@ -103,6 +103,16 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
             <>
               {/* Desktop Navigation */}
               <div className="hidden sm:flex items-center gap-3">
+                {/* 요금제 */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/pricing')} 
+                  className="font-korean text-sm px-3"
+                >
+                  요금제
+                </Button>
+                
                 {/* 앱 설치 */}
                 <Button 
                   variant="ghost" 
