@@ -96,6 +96,7 @@ export type Database = {
       }
       family_profiles: {
         Row: {
+          age_group: string | null
           avatar_url: string | null
           body_type: string | null
           created_at: string | null
@@ -109,6 +110,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          age_group?: string | null
           avatar_url?: string | null
           body_type?: string | null
           created_at?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          age_group?: string | null
           avatar_url?: string | null
           body_type?: string | null
           created_at?: string | null
@@ -475,6 +478,7 @@ export type Database = {
       profiles: {
         Row: {
           age: number | null
+          age_group: string | null
           avatar_url: string | null
           body_type: string | null
           created_at: string
@@ -489,6 +493,7 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          age_group?: string | null
           avatar_url?: string | null
           body_type?: string | null
           created_at?: string
@@ -503,6 +508,7 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          age_group?: string | null
           avatar_url?: string | null
           body_type?: string | null
           created_at?: string

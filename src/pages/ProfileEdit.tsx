@@ -52,6 +52,7 @@ const ProfileEdit = () => {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [bodyType, setBodyType] = useState('');
   const [gender, setGender] = useState('');
+  const [ageGroup, setAgeGroup] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null);
@@ -83,6 +84,7 @@ const ProfileEdit = () => {
           setSelectedStyles(data.style_preferences || []);
           setBodyType(data.body_type || '');
           setGender(data.gender || '');
+          setAgeGroup((data as any).age_group || '');
           setCurrentAvatarUrl(data.avatar_url);
           
           // Generate signed URL for display if avatar exists
@@ -168,8 +170,9 @@ const ProfileEdit = () => {
           style_preferences: selectedStyles,
           body_type: bodyType || null,
           gender: gender || null,
+          age_group: ageGroup || null,
           avatar_url: avatarPath,
-        })
+        } as any)
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -300,6 +303,26 @@ const ProfileEdit = () => {
                       }`}
                     >
                       <span className="text-foreground font-medium text-sm font-korean">{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="font-korean">연령대</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {ageGroupOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setAgeGroup(option.id)}
+                      className={`p-3 rounded-xl border-2 transition-all text-left ${
+                        ageGroup === option.id
+                          ? 'border-accent bg-accent/5'
+                          : 'border-border hover:border-accent/50'
+                      }`}
+                    >
+                      <span className="text-lg mr-2">{option.emoji}</span>
+                      <span className="text-foreground font-medium text-sm font-korean">{option.label}</span>
                     </button>
                   ))}
                 </div>
