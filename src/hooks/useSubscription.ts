@@ -79,7 +79,7 @@ export const useSubscription = (userId: string | undefined) => {
       const effectiveConfig = isAdmin ? {
         dailyLimit: -1,
         galleryLimit: -1,
-        maxProfiles: 100,
+        maxProfiles: 6, // 본인 + 5명 (관리자도 동일)
         canUseRecommendFirst: true,
         hasWatermark: false,
         hdDownload: true,
