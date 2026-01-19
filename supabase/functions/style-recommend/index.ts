@@ -1127,7 +1127,11 @@ async function generateAffiliateUrl(
   if (product.merchant_id) {
     const merchant = merchants.find(m => m.id === product.merchant_id);
     if (merchant?.deeplink_template) {
-      return merchant.deeplink_template.replace('{url}', encodeURIComponent(product.product_url));
+      const encodedUrl = encodeURIComponent(product.product_url);
+      return merchant.deeplink_template
+        .replace('{affiliate_id}', affiliateId)
+        .replace('{encoded_url}', encodedUrl)
+        .replace('{url}', encodedUrl); // 호환성 유지
     }
   }
 
