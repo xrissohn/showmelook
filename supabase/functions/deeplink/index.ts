@@ -22,18 +22,18 @@ const DOMAIN_TO_MERCHANT: Record<string, string> = {
   'stockx.com': 'stockx',
 };
 
-// 머천트 딥링크 템플릿 (DB 조회 실패 시 Fallback)
+// 머천트 딥링크 템플릿 (DB 조회 실패 시 Fallback) - LinkPrice API 형식 사용
 const MERCHANT_TEMPLATES: Record<string, string> = {
-  'paulsmith': 'https://click.linkprice.com/click.php?m=paulsmith&a={affiliate_id}&l=0000&u={encoded_url}',
-  'posty': 'https://click.linkprice.com/click.php?m=posty&a={affiliate_id}&l=0000&u={encoded_url}',
-  'stories': 'https://click.linkprice.com/click.php?m=stories&a={affiliate_id}&l=0000&u={encoded_url}',
-  'arket': 'https://click.linkprice.com/click.php?m=arket&a={affiliate_id}&l=0000&u={encoded_url}',
-  'benetton1': 'https://click.linkprice.com/click.php?m=benetton1&a={affiliate_id}&l=0000&u={encoded_url}',
-  'wconcept': 'https://click.linkprice.com/click.php?m=wconcept&a={affiliate_id}&l=0000&u={encoded_url}',
-  'hfashion': 'https://click.linkprice.com/click.php?m=hfashion&a={affiliate_id}&l=0000&u={encoded_url}',
-  'jestina': 'https://click.linkprice.com/click.php?m=jestina&a={affiliate_id}&l=0000&u={encoded_url}',
-  'stockx': 'https://click.linkprice.com/click.php?m=stockx&a={affiliate_id}&l=0000&u={encoded_url}',
-  'kream': 'https://click.linkprice.com/click.php?m=kream&a={affiliate_id}&l=0000&u={encoded_url}',
+  'paulsmith': 'https://click.linkprice.com/click.php?m=paulsmith&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'posty': 'https://click.linkprice.com/click.php?m=posty&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'stories': 'https://click.linkprice.com/click.php?m=stories&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'arket': 'https://click.linkprice.com/click.php?m=arket&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'benetton1': 'https://click.linkprice.com/click.php?m=benetton1&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'wconcept': 'https://click.linkprice.com/click.php?m=wconcept&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'hfashion': 'https://click.linkprice.com/click.php?m=hfashion&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'jestina': 'https://click.linkprice.com/click.php?m=jestina&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'stockx': 'https://click.linkprice.com/click.php?m=stockx&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'kream': 'https://click.linkprice.com/click.php?m=kream&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
 };
 
 // 도메인으로 머천트 ID 추출 (전체 도메인 매칭)
