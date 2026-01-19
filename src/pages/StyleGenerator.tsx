@@ -888,6 +888,8 @@ const GeneratedStyleImage = ({
               onLike={onProductLike}
               likedProducts={likedProducts}
               purchasingProductId={purchasingProductId}
+              imageUrl={src}
+              enableAIPositioning={true}
             />
           )}
           {/* 저장/공유 버튼 오버레이 */}
