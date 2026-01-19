@@ -4321,7 +4321,7 @@ const StyleGenerator = () => {
                 ) : (
                   <>
                     <img src={showmelookLogo} alt="" className="w-5 h-5 object-contain" />
-                    {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
+                    스타일 생성
                   </>
                 )}
               </Button>
@@ -5011,7 +5011,7 @@ const StyleGenerator = () => {
             ) : (
               <>
                 <img src={showmelookLogo} alt="" className="w-5 h-5 object-contain" />
-                {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
+                스타일 생성
               </>
             )}
           </Button>
