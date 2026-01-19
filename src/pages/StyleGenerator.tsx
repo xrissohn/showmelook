@@ -400,10 +400,14 @@ const shareToSNS = async (
   imageUrl: string, 
   platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy',
   addWatermark: boolean = false,
-  logoUrl?: string
+  logoUrl?: string,
+  lookId?: string
 ) => {
   const shareText = '👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요! #ShowMeLook #AI패션 #스타일추천';
-  const shareUrl = window.location.origin;
+  // 실제 look ID가 있으면 공유 페이지 URL 사용, 없으면 기본 URL
+  const shareUrl = lookId 
+    ? `${window.location.origin}/look/${lookId}` 
+    : window.location.origin;
 
   switch (platform) {
     case 'instagram':
@@ -461,7 +465,7 @@ const shareToSNS = async (
 
     case 'copy':
       try {
-        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        await navigator.clipboard.writeText(shareUrl);
         return { success: true, message: '링크가 복사되었습니다!' };
       } catch (err) {
         return { success: false, message: '복사에 실패했습니다.' };
@@ -479,7 +483,8 @@ const ShareButtons = ({
   className = '',
   compact = false,
   isPremium = false,
-  logoUrl
+  logoUrl,
+  lookId
 }: { 
   imageUrl: string; 
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
@@ -487,6 +492,7 @@ const ShareButtons = ({
   compact?: boolean;
   isPremium?: boolean;
   logoUrl?: string;
+  lookId?: string;
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -512,7 +518,7 @@ const ShareButtons = ({
   };
 
   const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
-    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl);
+    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, lookId);
     setIsShareOpen(false);
     onShare?.(platform, result);
   };
@@ -703,6 +709,7 @@ const GeneratedStyleImage = ({
   onProductLike,
   likedProducts = new Set(),
   purchasingProductId,
+  lookId,
 }: { 
   src: string; 
   alt: string;
@@ -715,6 +722,7 @@ const GeneratedStyleImage = ({
   onProductLike?: (product: GeneratedStyleImageProduct) => void;
   likedProducts?: Set<string>;
   purchasingProductId?: string | null;
+  lookId?: string;
 }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -884,7 +892,7 @@ const GeneratedStyleImage = ({
           {/* 저장/공유 버튼 오버레이 */}
           {!isLoading && (
             <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} />
+              <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} lookId={lookId} />
             </div>
           )}
         </>
@@ -1590,6 +1598,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                         compact
                         isPremium={isPremium}
                         logoUrl={showmelookWatermarkFull}
+                        lookId={look.id}
                       />
                     </div>
                     {/* 좋아요 버튼 */}
@@ -1871,6 +1880,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                     isPremium={isPremium}
                     logoUrl={showmelookWatermarkFull}
                     compact
+                    lookId={selectedLook.id}
                   />
                 </div>
               </>
@@ -2012,6 +2022,7 @@ const StyleGenerator = () => {
   const [selectedTrend, setSelectedTrend] = useState<StyleTrend | null>(null);
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [generatedLookId, setGeneratedLookId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
@@ -3356,13 +3367,16 @@ const StyleGenerator = () => {
 
         // Save to database
         if (!genData.cached) {
-          await supabase.from('generated_looks').insert({
+          const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: genData.imagePath || genData.imageUrl,
             prompt_used: `${styleDesc} 스타일, ${productsDesc}`,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map((p: any) => p.id),
-          });
+          }).select('id').single();
+          if (insertedLook?.id) {
+            setGeneratedLookId(insertedLook.id);
+          }
         }
 
         fetchData(); // Refresh my looks
@@ -3497,13 +3511,16 @@ const StyleGenerator = () => {
 
         // Save to database (only if not cached - edge function handles caching)
         if (!data.cached) {
-          await supabase.from('generated_looks').insert({
+          const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: data.imagePath || data.imageUrl,
             prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map(p => p.id),
-          });
+          }).select('id').single();
+          if (insertedLook?.id) {
+            setGeneratedLookId(insertedLook.id);
+          }
         }
 
         fetchData(); // Refresh my looks
@@ -4437,6 +4454,7 @@ const StyleGenerator = () => {
                           });
                         }
                       }}
+                      lookId={generatedLookId || undefined}
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
