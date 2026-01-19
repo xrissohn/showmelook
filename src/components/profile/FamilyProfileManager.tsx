@@ -1,10 +1,11 @@
 /**
- * FamilyProfileManager - 가족 프로필 관리 UI
+ * FamilyProfileManager - 모델 프로필 관리 UI
  * Premium 전용: 최대 5명 추가 가능
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useFamilyProfiles, FamilyProfileInput } from '@/hooks/useFamilyProfiles';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Users, Pencil, Trash2, User, Heart, X } from 'lucide-react';
+import { Plus, Users, Pencil, Trash2, Camera, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface FamilyProfileManagerProps {
@@ -43,11 +44,17 @@ const bodyTypes = [
 ];
 
 export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileManagerProps) => {
-  const { profiles, isLoading, canAddMore, currentCount, addProfile, updateProfile, deleteProfile } = useFamilyProfiles(userId, maxProfiles);
+  const { profiles, isLoading, canAddMore, currentCount, addProfile, updateProfile, deleteProfile, refetch } = useFamilyProfiles(userId, maxProfiles);
   const { toast } = useToast();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState<FamilyProfileInput>({
     full_name: '',
     relationship: '',
@@ -66,6 +73,60 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       weight: undefined,
       body_type: '',
     });
+    setAvatarPreview(null);
+    setAvatarFile(null);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: '이미지 파일만 업로드 가능해요',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: '파일 크기는 5MB 이하여야 해요',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setAvatarFile(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadAvatar = async (profileId: string): Promise<string | null> => {
+    if (!avatarFile) return null;
+
+    try {
+      const fileExt = avatarFile.name.split('.').pop();
+      const filePath = `family/${userId}/${profileId}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, avatarFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      return filePath;
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      return null;
+    }
   };
 
   const handleAdd = async () => {
@@ -77,18 +138,102 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       return;
     }
 
-    const success = await addProfile(formData);
-    if (success) {
-      setIsAddDialogOpen(false);
-      resetForm();
+    setIsUploading(true);
+    try {
+      // First, add the profile to get its ID
+      const success = await addProfile(formData);
+      
+      if (success && avatarFile) {
+        // Fetch the latest profile to get its ID
+        const { data: newProfiles } = await supabase
+          .from('family_profiles')
+          .select('id')
+          .eq('owner_user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (newProfiles?.[0]) {
+          const avatarPath = await uploadAvatar(newProfiles[0].id);
+          if (avatarPath) {
+            await updateProfile(newProfiles[0].id, { avatar_url: avatarPath });
+          }
+        }
+      }
+
+      if (success) {
+        setIsAddDialogOpen(false);
+        resetForm();
+      }
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleEditAvatarUpload = async (profileId: string, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: '이미지 파일만 업로드 가능해요',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: '파일 크기는 5MB 이하여야 해요',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `family/${userId}/${profileId}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      await updateProfile(profileId, { avatar_url: filePath });
+      
+      toast({
+        title: '사진 업로드 완료',
+        description: '프로필 사진이 업데이트되었어요.',
+      });
+
+      refetch();
+    } catch (error) {
+      console.error('Avatar upload error:', error);
+      toast({
+        title: '사진 업로드 실패',
+        description: '다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
   const handleUpdate = async (profileId: string) => {
-    const success = await updateProfile(profileId, formData);
-    if (success) {
+    setIsUploading(true);
+    try {
+      if (avatarFile) {
+        const avatarPath = await uploadAvatar(profileId);
+        if (avatarPath) {
+          await updateProfile(profileId, { ...formData, avatar_url: avatarPath });
+        } else {
+          await updateProfile(profileId, formData);
+        }
+      } else {
+        await updateProfile(profileId, formData);
+      }
       setEditingProfile(null);
       resetForm();
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -106,8 +251,57 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       weight: profile.weight || undefined,
       body_type: profile.body_type || '',
     });
+    // Set avatar preview from existing avatar
+    if (profile.avatar_url) {
+      getSignedUrl(profile.avatar_url).then(url => {
+        if (url) setAvatarPreview(url);
+      });
+    } else {
+      setAvatarPreview(null);
+    }
+    setAvatarFile(null);
     setEditingProfile(profile.id);
   };
+
+  const getSignedUrl = async (path: string): Promise<string | null> => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    
+    const { data } = await supabase.storage
+      .from('avatars')
+      .createSignedUrl(path, 3600);
+    
+    return data?.signedUrl || null;
+  };
+
+  // Get signed URLs for profile avatars
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  
+  useState(() => {
+    profiles.forEach(async (profile) => {
+      if (profile.avatar_url && !signedUrls[profile.id]) {
+        const url = await getSignedUrl(profile.avatar_url);
+        if (url) {
+          setSignedUrls(prev => ({ ...prev, [profile.id]: url }));
+        }
+      }
+    });
+  });
+
+  // Refresh signed URLs when profiles change
+  useState(() => {
+    const loadUrls = async () => {
+      const urls: Record<string, string> = {};
+      for (const profile of profiles) {
+        if (profile.avatar_url) {
+          const url = await getSignedUrl(profile.avatar_url);
+          if (url) urls[profile.id] = url;
+        }
+      }
+      setSignedUrls(urls);
+    };
+    loadUrls();
+  });
 
   if (isLoading) {
     return (
@@ -149,12 +343,28 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
             key={profile.id}
             className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border"
           >
-            <Avatar className="w-12 h-12">
-              <AvatarImage src={profile.avatar_url || ''} />
-              <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white">
-                {profile.full_name.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-12 h-12">
+                <AvatarImage src={signedUrls[profile.id] || ''} />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white">
+                  {profile.full_name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              {/* Quick avatar upload button */}
+              <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors">
+                <Camera className="w-3 h-3" />
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleEditAvatarUpload(profile.id, file);
+                  }}
+                  disabled={isUploading}
+                />
+              </label>
+            </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -170,6 +380,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                 {profile.height && <span> · {profile.height}cm</span>}
                 {profile.weight && <span> · {profile.weight}kg</span>}
               </div>
+              {/* Warning if no avatar */}
+              {!profile.avatar_url && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  <AlertCircle className="w-3 h-3" />
+                  <span className="font-korean">얼굴 합성에는 사진이 필요해요</span>
+                </div>
+              )}
             </div>
             
             <div className="flex gap-1">
@@ -213,7 +430,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
             </Button>
           </DialogTrigger>
           
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-korean">모델 추가</DialogTitle>
               <DialogDescription className="font-korean">
@@ -222,6 +439,37 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
             </DialogHeader>
             
             <div className="space-y-4 mt-4">
+              {/* Avatar Upload Section */}
+              <div className="flex flex-col items-center gap-3">
+                <div 
+                  className="relative cursor-pointer group"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Avatar className="w-20 h-20 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary transition-colors">
+                    {avatarPreview ? (
+                      <AvatarImage src={avatarPreview} />
+                    ) : (
+                      <AvatarFallback className="bg-muted">
+                        <Camera className="w-8 h-8 text-muted-foreground" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <p className="text-xs text-muted-foreground font-korean text-center">
+                  프로필 사진을 등록하면 얼굴 합성이 가능해요
+                </p>
+              </div>
+
               <div>
                 <Label className="font-korean">이름 *</Label>
                 <Input
@@ -320,6 +568,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                     setIsAddDialogOpen(false);
                     resetForm();
                   }}
+                  disabled={isUploading}
                 >
                   취소
                 </Button>
@@ -327,8 +576,16 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   variant="hero"
                   className="flex-1 font-korean"
                   onClick={handleAdd}
+                  disabled={isUploading}
                 >
-                  추가하기
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      업로드 중...
+                    </>
+                  ) : (
+                    '추가하기'
+                  )}
                 </Button>
               </div>
             </div>
@@ -337,7 +594,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
 
         {/* Edit Dialog */}
         <Dialog open={!!editingProfile} onOpenChange={(open) => !open && setEditingProfile(null)}>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="font-korean">프로필 수정</DialogTitle>
               <DialogDescription className="font-korean">
@@ -346,6 +603,37 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
             </DialogHeader>
             
             <div className="space-y-4 mt-4">
+              {/* Avatar Upload Section */}
+              <div className="flex flex-col items-center gap-3">
+                <div 
+                  className="relative cursor-pointer group"
+                  onClick={() => editFileInputRef.current?.click()}
+                >
+                  <Avatar className="w-20 h-20 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary transition-colors">
+                    {avatarPreview ? (
+                      <AvatarImage src={avatarPreview} />
+                    ) : (
+                      <AvatarFallback className="bg-muted">
+                        <Camera className="w-8 h-8 text-muted-foreground" />
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                <input
+                  ref={editFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+                <p className="text-xs text-muted-foreground font-korean text-center">
+                  프로필 사진을 등록하면 얼굴 합성이 가능해요
+                </p>
+              </div>
+
               <div>
                 <Label className="font-korean">이름 *</Label>
                 <Input
@@ -444,6 +732,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                     setEditingProfile(null);
                     resetForm();
                   }}
+                  disabled={isUploading}
                 >
                   취소
                 </Button>
@@ -451,8 +740,16 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   variant="hero"
                   className="flex-1 font-korean"
                   onClick={() => editingProfile && handleUpdate(editingProfile)}
+                  disabled={isUploading}
                 >
-                  저장하기
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      업로드 중...
+                    </>
+                  ) : (
+                    '저장하기'
+                  )}
                 </Button>
               </div>
             </div>
