@@ -14,6 +14,7 @@ import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeedback } from '@/hooks/useFeedback';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock } from 'lucide-react';
+import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
@@ -678,19 +679,42 @@ const ShareButtons = ({
   );
 };
 
-// 메인 생성 이미지용 컴포넌트 (로고 워터마크 + 퍼센트 로딩 + 파티클)
+// 메인 생성 이미지용 컴포넌트 (로고 워터마크 + 퍼센트 로딩 + 파티클 + 인터랙티브 태그)
+interface GeneratedStyleImageProduct {
+  id: string;
+  name: string;
+  brand: string | null;
+  price: number;
+  image_url: string | null;
+  product_url: string;
+  category: string;
+  affiliate_url?: string;
+}
+
 const GeneratedStyleImage = ({ 
   src, 
   alt,
   logoSrc,
   onShare,
-  isPremium = false
+  isPremium = false,
+  products = [],
+  onProductPurchase,
+  onProductAddToCart,
+  onProductLike,
+  likedProducts = new Set(),
+  purchasingProductId,
 }: { 
   src: string; 
   alt: string;
   logoSrc: string;
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
   isPremium?: boolean;
+  products?: GeneratedStyleImageProduct[];
+  onProductPurchase?: (product: GeneratedStyleImageProduct) => void;
+  onProductAddToCart?: (product: GeneratedStyleImageProduct) => void;
+  onProductLike?: (product: GeneratedStyleImageProduct) => void;
+  likedProducts?: Set<string>;
+  purchasingProductId?: string | null;
 }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -846,9 +870,20 @@ const GeneratedStyleImage = ({
                 : 'blur-0 scale-100 opacity-100'
             }`}
           />
+          {/* 인터랙티브 상품 태그 */}
+          {!isLoading && products.length > 0 && onProductPurchase && (
+            <InteractiveProductTags
+              products={products}
+              onPurchase={onProductPurchase}
+              onAddToCart={onProductAddToCart}
+              onLike={onProductLike}
+              likedProducts={likedProducts}
+              purchasingProductId={purchasingProductId}
+            />
+          )}
           {/* 저장/공유 버튼 오버레이 */}
           {!isLoading && (
-            <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} />
             </div>
           )}
@@ -4223,6 +4258,21 @@ const StyleGenerator = () => {
                       alt="Generated style"
                       logoSrc={showmelookWatermarkFull}
                       isPremium={isPremium}
+                      products={selectedTrendProducts.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        brand: p.brand,
+                        price: p.price,
+                        image_url: p.image_url,
+                        product_url: p.product_url,
+                        category: p.category,
+                        affiliate_url: p.affiliate_url,
+                      }))}
+                      onProductPurchase={(product) => handlePurchase(product as CachedProduct)}
+                      onProductAddToCart={(product) => addCachedProductToCart(product as CachedProduct)}
+                      onProductLike={(product) => toggleLike(product as CachedProduct)}
+                      likedProducts={likedProducts}
+                      purchasingProductId={purchasingProductId}
                       onShare={(platform, result) => {
                         if (result.message) {
                           toast({
