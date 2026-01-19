@@ -5,8 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { DataPreloaderProvider } from "@/contexts/DataPreloaderContext";
 import { Loader2 } from "lucide-react";
-
 // Lazy load pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -42,27 +42,29 @@ const PageLoader = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/profile-setup" element={<ProfileSetup />} />
-              <Route path="/profile-edit" element={<ProfileEdit />} />
-              <Route path="/style" element={<StyleGenerator />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/install" element={<Install />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/mypage" element={<MyPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </TooltipProvider>
+      <DataPreloaderProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/profile-setup" element={<ProfileSetup />} />
+                <Route path="/profile-edit" element={<ProfileEdit />} />
+                <Route path="/style" element={<StyleGenerator />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/install" element={<Install />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/mypage" element={<MyPage />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </TooltipProvider>
+      </DataPreloaderProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

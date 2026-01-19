@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { usePreloadedData } from '@/contexts/DataPreloaderContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1763,6 +1764,18 @@ const StyleGenerator = () => {
     refetch: refetchLimit 
   } = useGenerationLimit(user?.id);
 
+  // 프리로드된 데이터 사용 (로그인 시 백그라운드에서 미리 로드됨)
+  const { 
+    profile: preloadedProfile, 
+    looks: preloadedLooks, 
+    isProfileLoading: isPreloadingProfile,
+    isLooksLoading: isPreloadingLooks,
+    refreshProfile,
+    refreshLooks: refreshPreloadedLooks,
+    addLook: addPreloadedLook,
+    updateProfile: updatePreloadedProfile
+  } = usePreloadedData();
+
   const [trends, setTrends] = useState<StyleTrend[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [selectedTrend, setSelectedTrend] = useState<StyleTrend | null>(null);
@@ -2397,6 +2410,40 @@ const StyleGenerator = () => {
     }
   }, [user, authLoading, navigate]);
 
+  // 프리로드된 데이터가 있으면 바로 사용 (로그인 시 백그라운드에서 이미 로드됨)
+  useEffect(() => {
+    if (preloadedProfile && !userProfile) {
+      setUserProfile(preloadedProfile);
+      setEditForm({
+        height: preloadedProfile.height?.toString() || '',
+        weight: preloadedProfile.weight?.toString() || '',
+        body_type: preloadedProfile.body_type || '',
+        style_preferences: preloadedProfile.style_preferences || [],
+      });
+      
+      // 프로필의 성별 정보로 초기 성별 설정
+      if (preloadedProfile.gender) {
+        const genderMap: Record<string, 'female' | 'male' | 'kids'> = {
+          'female': 'female',
+          'male': 'male',
+          '여성': 'female',
+          '남성': 'male',
+          'kids': 'kids',
+          '키즈': 'kids',
+        };
+        const mappedGender = genderMap[preloadedProfile.gender.toLowerCase()] || 'female';
+        setCustomGender(mappedGender);
+      }
+    }
+  }, [preloadedProfile, userProfile]);
+
+  // 프리로드된 룩 데이터 사용
+  useEffect(() => {
+    if (preloadedLooks.length > 0 && myLooks.length === 0) {
+      setMyLooks(preloadedLooks as GeneratedLook[]);
+    }
+  }, [preloadedLooks, myLooks.length]);
+
   useEffect(() => {
     fetchData();
   }, [user]);
@@ -2408,6 +2455,10 @@ const StyleGenerator = () => {
   const fetchData = async () => {
     // 정적 데이터는 한 번만 로드 (trends, products)
     const shouldFetchStaticData = !staticDataLoadedRef.current;
+    
+    // 프리로드된 데이터가 있으면 사용자 데이터 로드 건너뛰기
+    const hasPreloadedProfile = !!preloadedProfile;
+    const hasPreloadedLooks = preloadedLooks.length > 0;
     
     // 병렬 로딩으로 속도 최적화
     const staticPromises: Promise<any>[] = [];
@@ -2421,24 +2472,30 @@ const StyleGenerator = () => {
       );
     }
     
-    // 2. 사용자 데이터 (looks, profile) - 로그인 시
-    if (user) {
-      userPromises.push(
-        Promise.resolve(
-          supabase
-            .from('generated_looks')
-            .select('*')
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-        ),
-        Promise.resolve(
-          supabase
-            .from('profiles')
-            .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
-            .eq('user_id', user.id)
-            .single()
-        )
-      );
+    // 2. 사용자 데이터 (looks, profile) - 프리로드 안 됐을 때만 로드
+    if (user && (!hasPreloadedLooks || !hasPreloadedProfile)) {
+      if (!hasPreloadedLooks) {
+        userPromises.push(
+          Promise.resolve(
+            supabase
+              .from('generated_looks')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+          )
+        );
+      }
+      if (!hasPreloadedProfile) {
+        userPromises.push(
+          Promise.resolve(
+            supabase
+              .from('profiles')
+              .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
+              .eq('user_id', user.id)
+              .single()
+          )
+        );
+      }
     }
     
     // 병렬 실행
@@ -2458,82 +2515,71 @@ const StyleGenerator = () => {
       staticDataLoadedRef.current = true;
     }
     
-    // 사용자 데이터 처리
-    if (user && userResults.length >= 2) {
-      const looksResult = userResults[0];
-      const profileResult = userResults[1];
+    // 사용자 데이터 처리 (프리로드 안 됐을 때만)
+    if (user && userResults.length > 0) {
+      let resultIndex = 0;
       
-      // Looks 처리 - Signed URL 배치 생성 (핵심 최적화!)
-      if (looksResult.data && looksResult.data.length > 0) {
-        const looksData = looksResult.data;
+      // Looks 처리 - 프리로드 안 됐을 때만
+      if (!hasPreloadedLooks && userResults[resultIndex]) {
+        const looksResult = userResults[resultIndex];
+        resultIndex++;
         
-        // 파일 경로만 필터링 (http로 시작하지 않는 것들)
-        const pathsNeedingSigning = looksData
-          .map((look: any, index: number) => ({ index, path: look.image_url }))
-          .filter((item: any) => item.path && !item.path.startsWith('http') && !item.path.startsWith('data:'));
-        
-        let signedUrlMap: Record<number, string> = {};
-        
-        if (pathsNeedingSigning.length > 0) {
-          // 🚀 배치 처리: N번의 API 호출 -> 1번으로 감소!
-          const paths = pathsNeedingSigning.map((item: any) => item.path);
-          const { data: signedData } = await supabase.storage
-            .from('generated-looks')
-            .createSignedUrls(paths, 3600);
+        if (looksResult.data && looksResult.data.length > 0) {
+          const looksData = looksResult.data;
           
-          if (signedData) {
-            pathsNeedingSigning.forEach((item: any, i: number) => {
-              if (signedData[i]?.signedUrl) {
-                signedUrlMap[item.index] = signedData[i].signedUrl;
-              }
-            });
-          }
+          // Public bucket이므로 직접 URL 사용
+          const looksWithUrls = looksData.map((look: any) => {
+            let imageUrl = look.image_url;
+            if (imageUrl && !imageUrl.startsWith('http') && !imageUrl.startsWith('data:')) {
+              const { data } = supabase.storage.from('generated-looks').getPublicUrl(imageUrl);
+              imageUrl = data.publicUrl;
+            }
+            return { ...look, image_url: imageUrl };
+          });
+          
+          setMyLooks(looksWithUrls);
+        } else {
+          setMyLooks([]);
         }
-        
-        // Signed URL 적용
-        const looksWithUrls = looksData.map((look: any, index: number) => ({
-          ...look,
-          image_url: signedUrlMap[index] || look.image_url,
-        }));
-        
-        setMyLooks(looksWithUrls);
-      } else {
-        setMyLooks([]);
       }
       
-      // Profile 처리
-      if (profileResult.data) {
-        const profileData = profileResult.data;
+      // Profile 처리 - 프리로드 안 됐을 때만
+      if (!hasPreloadedProfile && userResults[resultIndex]) {
+        const profileResult = userResults[resultIndex];
         
-        // Avatar Signed URL (단일이라 개별 처리)
-        let avatarDisplayUrl = profileData.avatar_url;
-        if (profileData.avatar_url && !profileData.avatar_url.startsWith('http') && !profileData.avatar_url.startsWith('data:')) {
-          const { data: signedData } = await supabase.storage
-            .from('avatars')
-            .createSignedUrl(profileData.avatar_url, 3600);
-          avatarDisplayUrl = signedData?.signedUrl || profileData.avatar_url;
-        }
-        
-        setUserProfile({ ...profileData, avatar_url: avatarDisplayUrl });
-        setEditForm({
-          height: profileData.height?.toString() || '',
-          weight: profileData.weight?.toString() || '',
-          body_type: profileData.body_type || '',
-          style_preferences: profileData.style_preferences || [],
-        });
-        
-        // 프로필의 성별 정보로 초기 성별 설정
-        if (profileData.gender) {
-          const genderMap: Record<string, 'female' | 'male' | 'kids'> = {
-            'female': 'female',
-            'male': 'male',
-            '여성': 'female',
-            '남성': 'male',
-            'kids': 'kids',
-            '키즈': 'kids',
-          };
-          const mappedGender = genderMap[profileData.gender.toLowerCase()] || 'female';
-          setCustomGender(mappedGender);
+        if (profileResult.data) {
+          const profileData = profileResult.data;
+          
+          // Avatar Signed URL (단일이라 개별 처리)
+          let avatarDisplayUrl = profileData.avatar_url;
+          if (profileData.avatar_url && !profileData.avatar_url.startsWith('http') && !profileData.avatar_url.startsWith('data:')) {
+            const { data: signedData } = await supabase.storage
+              .from('avatars')
+              .createSignedUrl(profileData.avatar_url, 3600);
+            avatarDisplayUrl = signedData?.signedUrl || profileData.avatar_url;
+          }
+          
+          setUserProfile({ ...profileData, avatar_url: avatarDisplayUrl });
+          setEditForm({
+            height: profileData.height?.toString() || '',
+            weight: profileData.weight?.toString() || '',
+            body_type: profileData.body_type || '',
+            style_preferences: profileData.style_preferences || [],
+          });
+          
+          // 프로필의 성별 정보로 초기 성별 설정
+          if (profileData.gender) {
+            const genderMap: Record<string, 'female' | 'male' | 'kids'> = {
+              'female': 'female',
+              'male': 'male',
+              '여성': 'female',
+              '남성': 'male',
+              'kids': 'kids',
+              '키즈': 'kids',
+            };
+            const mappedGender = genderMap[profileData.gender.toLowerCase()] || 'female';
+            setCustomGender(mappedGender);
+          }
         }
       }
     }
