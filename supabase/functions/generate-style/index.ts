@@ -154,7 +154,7 @@ Full body fashion photoshoot, professional studio lighting, clean white backgrou
     const imageData = generatedImage.replace(/^data:image\/\w+;base64,/, '');
     const imageBytes = Uint8Array.from(atob(imageData), c => c.charCodeAt(0));
     
-    const fileName = `generated-looks/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
     
     const { error: uploadError } = await supabase.storage
       .from('generated-looks')
