@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, X, User, LogOut, ImageIcon } from 'lucide-react';
+import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, X, User, LogOut, ImageIcon, Crown } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
@@ -226,6 +226,13 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                             >
                               <User className={`w-5 h-5 ${isActive('/mypage') ? 'text-primary' : 'text-muted-foreground'}`} />
                               마이페이지
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/pricing')}
+                              className={getMenuItemClass('/pricing')}
+                            >
+                              <Crown className={`w-5 h-5 ${isActive('/pricing') ? 'text-primary' : 'text-amber-500'}`} />
+                              요금제
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
