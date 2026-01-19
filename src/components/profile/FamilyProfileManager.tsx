@@ -113,14 +113,18 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     if (!avatarFile) return null;
 
     try {
-      const fileExt = avatarFile.name.split('.').pop();
-      const filePath = `family/${userId}/${profileId}.${fileExt}`;
+      const fileExt = avatarFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+      // Path must start with userId for RLS policy: auth.uid() = foldername(name)[1]
+      const filePath = `${userId}/family-${profileId}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, avatarFile, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Avatar upload error:', uploadError);
+        throw uploadError;
+      }
 
       return filePath;
     } catch (error) {
@@ -188,14 +192,18 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
 
     setIsUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const filePath = `family/${userId}/${profileId}.${fileExt}`;
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      // Path must start with userId for RLS policy: auth.uid() = foldername(name)[1]
+      const filePath = `${userId}/family-${profileId}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw uploadError;
+      }
 
       await updateProfile(profileId, { avatar_url: filePath });
       
