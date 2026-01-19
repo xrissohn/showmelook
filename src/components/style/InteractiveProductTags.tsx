@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
-import { X, ExternalLink, ShoppingBag, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { X, ExternalLink, ShoppingBag, Heart, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TaggedProduct {
   id: string;
@@ -19,6 +20,13 @@ interface ProductTagPosition {
   category: string;
 }
 
+interface AIAnalyzedPosition {
+  category: string;
+  x: number;
+  y: number;
+  confidence: number;
+}
+
 // 카테고리별 기본 위치 (이미지 내 상대 위치 %)
 const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
   'top': { x: 50, y: 25, category: 'top' },
@@ -27,6 +35,7 @@ const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
   '아우터': { x: 50, y: 20, category: '아우터' },
   'bottom': { x: 50, y: 60, category: 'bottom' },
   '하의': { x: 50, y: 60, category: '하의' },
+  '원피스': { x: 50, y: 45, category: '원피스' },
   'shoes': { x: 50, y: 90, category: 'shoes' },
   '신발': { x: 50, y: 90, category: '신발' },
   'accessory': { x: 20, y: 30, category: 'accessory' },
@@ -52,6 +61,19 @@ const getOffsetPosition = (basePos: ProductTagPosition, index: number): ProductT
   };
 };
 
+// 카테고리 매핑 (다양한 표현을 통일)
+const normalizeCategory = (category: string): string => {
+  const lower = category.toLowerCase();
+  if (['top', '상의', 'shirt', 'blouse', 'sweater'].some(k => lower.includes(k))) return '상의';
+  if (['outer', '아우터', 'jacket', 'coat'].some(k => lower.includes(k))) return '아우터';
+  if (['bottom', '하의', 'pants', 'skirt', 'jeans'].some(k => lower.includes(k))) return '하의';
+  if (['dress', '원피스'].some(k => lower.includes(k))) return '원피스';
+  if (['shoes', '신발', 'sneaker', 'boot'].some(k => lower.includes(k))) return '신발';
+  if (['bag', '가방', 'backpack', 'clutch'].some(k => lower.includes(k))) return '가방';
+  if (['accessory', '액세서리', 'jewelry', 'watch', 'necklace'].some(k => lower.includes(k))) return '액세서리';
+  return category;
+};
+
 interface InteractiveProductTagsProps {
   products: TaggedProduct[];
   onPurchase: (product: TaggedProduct) => void;
@@ -59,6 +81,10 @@ interface InteractiveProductTagsProps {
   onLike?: (product: TaggedProduct) => void;
   likedProducts?: Set<string>;
   purchasingProductId?: string | null;
+  imageUrl?: string; // AI 분석을 위한 이미지 URL
+  enableAIPositioning?: boolean; // AI 위치 분석 활성화
+  cachedPositions?: AIAnalyzedPosition[]; // 캐시된 AI 분석 위치
+  onPositionsAnalyzed?: (positions: AIAnalyzedPosition[]) => void; // 분석 완료 콜백
 }
 
 export function InteractiveProductTags({
@@ -68,20 +94,75 @@ export function InteractiveProductTags({
   onLike,
   likedProducts = new Set(),
   purchasingProductId,
+  imageUrl,
+  enableAIPositioning = false,
+  cachedPositions,
+  onPositionsAnalyzed,
 }: InteractiveProductTagsProps) {
   const [selectedProduct, setSelectedProduct] = useState<TaggedProduct | null>(null);
   const [showAllTags, setShowAllTags] = useState(true);
+  const [aiPositions, setAiPositions] = useState<AIAnalyzedPosition[]>(cachedPositions || []);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
+  const hasAnalyzed = useRef(false);
+
+  // AI 위치 분석 실행
+  useEffect(() => {
+    if (
+      enableAIPositioning && 
+      imageUrl && 
+      products.length > 0 && 
+      !cachedPositions?.length && 
+      !hasAnalyzed.current
+    ) {
+      hasAnalyzed.current = true;
+      analyzeImagePositions();
+    }
+  }, [enableAIPositioning, imageUrl, products.length, cachedPositions]);
+
+  const analyzeImagePositions = async () => {
+    if (!imageUrl || products.length === 0) return;
+
+    setIsAnalyzing(true);
+    try {
+      const categories = [...new Set(products.map(p => normalizeCategory(p.category)))];
+      
+      const { data, error } = await supabase.functions.invoke('analyze-image-positions', {
+        body: { image_url: imageUrl, categories }
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data?.positions?.length > 0) {
+        setAiPositions(data.positions);
+        onPositionsAnalyzed?.(data.positions);
+      }
+    } catch (error) {
+      console.error('Failed to analyze image positions:', error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // 카테고리별로 상품 그룹화하고 위치 계산
   const categoryCount: Record<string, number> = {};
   const productsWithPositions = products.map((product) => {
-    const category = product.category?.toLowerCase() || 'accessory';
-    const categoryIndex = categoryCount[category] || 0;
-    categoryCount[category] = categoryIndex + 1;
+    const normalizedCategory = normalizeCategory(product.category);
+    const categoryIndex = categoryCount[normalizedCategory] || 0;
+    categoryCount[normalizedCategory] = categoryIndex + 1;
     
-    const basePosition = DEFAULT_POSITIONS[category] || DEFAULT_POSITIONS[product.category] || { x: 50, y: 50, category: 'default' };
-    const position = getOffsetPosition(basePosition, categoryIndex);
+    // AI 분석 위치가 있으면 우선 사용
+    const aiPos = aiPositions.find(p => normalizeCategory(p.category) === normalizedCategory);
+    let position: ProductTagPosition;
+    
+    if (aiPos && aiPos.confidence > 0.3) {
+      position = getOffsetPosition({ x: aiPos.x, y: aiPos.y, category: normalizedCategory }, categoryIndex);
+    } else {
+      const basePosition = DEFAULT_POSITIONS[normalizedCategory] || 
+                          DEFAULT_POSITIONS[product.category] || 
+                          { x: 50, y: 50, category: 'default' };
+      position = getOffsetPosition(basePosition, categoryIndex);
+    }
     
     return { product, position };
   });

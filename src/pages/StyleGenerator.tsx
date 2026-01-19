@@ -926,6 +926,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
   const [newTag, setNewTag] = useState('');
   const [isSavingMemo, setIsSavingMemo] = useState(false);
   
+  // 상품 태그 상태
+  const [lookProducts, setLookProducts] = useState<CachedProduct[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [purchasingProductId, setPurchasingProductId] = useState<string | null>(null);
+  const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
+  
   // 스와이프 제스처 상태
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -1163,6 +1169,149 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedLook, currentIndex, filteredLooks.length, showDeleteConfirm, isEditingMemo, goToPrevious, goToNext]);
+  
+  // 선택된 룩의 상품 정보 로드
+  useEffect(() => {
+    if (!selectedLook?.product_ids?.length) {
+      setLookProducts([]);
+      return;
+    }
+    
+    const loadProducts = async () => {
+      setIsLoadingProducts(true);
+      try {
+        const { data, error } = await supabase
+          .from('products_cache')
+          .select('*')
+          .in('id', selectedLook.product_ids!)
+          .eq('is_active', true);
+        
+        if (error) throw error;
+        
+        if (data) {
+          const products: CachedProduct[] = data.map(p => ({
+            id: p.id,
+            name: p.name,
+            brand: p.brand,
+            price: p.price,
+            image_url: p.image_url,
+            product_url: p.product_url,
+            category: p.category,
+            style_tags: p.style_tags,
+          }));
+          setLookProducts(products);
+        }
+      } catch (error) {
+        console.error('Failed to load products:', error);
+        setLookProducts([]);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    
+    loadProducts();
+  }, [selectedLook?.id, selectedLook?.product_ids]);
+  
+  // 좋아요 상품 로드
+  useEffect(() => {
+    const loadLikedProducts = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      const { data } = await supabase
+        .from('liked_products')
+        .select('product_id')
+        .eq('user_id', user.id);
+      
+      if (data) {
+        setLikedProducts(new Set(data.map(d => d.product_id)));
+      }
+    };
+    
+    loadLikedProducts();
+  }, []);
+  
+  // 상품 구매 핸들러
+  const handleProductPurchase = async (product: CachedProduct) => {
+    if (!product.product_url) {
+      toast({
+        title: '구매 링크 없음',
+        description: '이 상품의 구매 링크가 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setPurchasingProductId(product.id);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('deeplink', {
+        body: { product_url: product.product_url }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.success && data?.affiliate_url) {
+        window.open(data.affiliate_url, '_blank', 'noopener,noreferrer');
+      } else {
+        window.open(product.product_url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      console.error('Deeplink error:', error);
+      window.open(product.product_url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setPurchasingProductId(null);
+    }
+  };
+  
+  // 상품 좋아요 토글
+  const handleProductLike = async (product: CachedProduct) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast({
+        title: '로그인 필요',
+        description: '좋아요를 하려면 로그인이 필요합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    const isLiked = likedProducts.has(product.id);
+    
+    try {
+      if (isLiked) {
+        await supabase
+          .from('liked_products')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('product_id', product.id);
+        
+        setLikedProducts(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(product.id);
+          return newSet;
+        });
+      } else {
+        await supabase
+          .from('liked_products')
+          .insert({
+            user_id: user.id,
+            product_id: product.id,
+            product_name: product.name,
+            product_brand: product.brand,
+            product_price: product.price,
+            product_image_url: product.image_url,
+            product_url: product.product_url,
+            product_category: product.category,
+            style_tags: product.style_tags,
+          });
+        
+        setLikedProducts(prev => new Set([...prev, product.id]));
+      }
+    } catch (error) {
+      console.error('Like toggle error:', error);
+    }
+  };
   
   // 룩 클릭 핸들러
   const handleLookClick = (look: GeneratedLook, index: number) => {
@@ -1530,12 +1679,43 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
           >
-            <img 
-              src={selectedLook.image_url} 
-              alt="Generated look" 
-              className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
-              draggable={false}
-            />
+            {/* 이미지와 상품 태그 컨테이너 */}
+            <div className="relative">
+              <img 
+                src={selectedLook.image_url} 
+                alt="Generated look" 
+                className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
+                draggable={false}
+              />
+              
+              {/* 상품 태그 (product_ids가 있고 상품이 로드된 경우) */}
+              {lookProducts.length > 0 && !isEditingMemo && (
+                <InteractiveProductTags
+                  products={lookProducts}
+                  onPurchase={handleProductPurchase}
+                  onLike={handleProductLike}
+                  likedProducts={likedProducts}
+                  purchasingProductId={purchasingProductId}
+                  imageUrl={selectedLook.image_url}
+                  enableAIPositioning={true}
+                />
+              )}
+              
+              {/* 상품 로딩 중 표시 */}
+              {isLoadingProducts && selectedLook.product_ids?.length && (
+                <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white text-xs rounded-full flex items-center gap-1.5">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  상품 정보 로딩 중...
+                </div>
+              )}
+              
+              {/* 상품 없음 표시 */}
+              {!isLoadingProducts && selectedLook.product_ids?.length && lookProducts.length === 0 && (
+                <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white/60 text-xs rounded-full">
+                  상품 정보를 찾을 수 없음
+                </div>
+              )}
+            </div>
             
             {/* 스와이프 힌트 - 모바일만 */}
             <div className="sm:hidden text-center mt-2">
