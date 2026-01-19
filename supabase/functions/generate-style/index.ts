@@ -49,9 +49,14 @@ serve(async (req) => {
     console.log('[generate-style] Face composite:', useFaceComposite);
 
     // Build the image generation prompt
-    const gender = userProfile?.gender === 'female' ? '여성' : '남성';
+    // Handle both Korean and English gender values
+    const genderValue = userProfile?.gender?.toLowerCase() || '';
+    const isFemale = genderValue === 'female' || genderValue === '여성' || genderValue === '여';
+    const gender = isFemale ? '여성' : '남성';
     const height = userProfile?.height || 170;
     const bodyType = userProfile?.body_type || 'average';
+    
+    console.log('[generate-style] Profile gender:', userProfile?.gender, '-> Resolved:', gender);
 
     let prompt = `Fashion photography of a stylish ${gender === '여성' ? 'Korean woman' : 'Korean man'}, ${height}cm tall, ${bodyType} build.
 
