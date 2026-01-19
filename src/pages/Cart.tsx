@@ -4,8 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ShoppingBag, ExternalLink, Loader2 } from 'lucide-react';
+import { Trash2, ShoppingBag, ExternalLink, Loader2, LogIn } from 'lucide-react';
 import MainNavigation from '@/components/MainNavigation';
+import { useGuestCart, GuestCartItem } from '@/hooks/useGuestCart';
 
 interface CartItem {
   id: string;
@@ -17,29 +18,78 @@ interface CartItem {
   product_price: number | null;
   product_image_url: string | null;
   product_url: string | null;
+  affiliate_url?: string;
 }
 
 const Cart = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const guestCart = useGuestCart();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingItems, setPurchasingItems] = useState<Set<string>>(new Set());
   const [bulkPurchasing, setBulkPurchasing] = useState(false);
 
+  // Merge guest cart to user cart on login
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate('/auth');
+    const mergeGuestCart = async () => {
+      if (user && guestCart.items.length > 0) {
+        try {
+          const insertPromises = guestCart.items.map(item =>
+            supabase.from('cart_items').upsert({
+              user_id: user.id,
+              product_id: item.product_id,
+              product_name: item.product_name,
+              product_brand: item.product_brand,
+              product_price: item.product_price,
+              product_image_url: item.product_image_url,
+              product_url: item.affiliate_url || item.product_url,
+              quantity: item.quantity,
+            }, { onConflict: 'user_id,product_id' })
+          );
+
+          await Promise.all(insertPromises);
+          guestCart.clearCart();
+          toast({
+            title: '장바구니 동기화',
+            description: '게스트 장바구니가 계정에 저장되었습니다.',
+          });
+        } catch (e) {
+          console.error('Failed to merge guest cart:', e);
+        }
+      }
+    };
+
+    if (user && !authLoading) {
+      mergeGuestCart();
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading]);
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (user) {
       fetchCartItems();
+    } else {
+      // Use guest cart items
+      const guestItems: CartItem[] = guestCart.items.map(item => ({
+        id: item.id,
+        product_id: item.product_id,
+        quantity: item.quantity,
+        product_source: null,
+        product_name: item.product_name,
+        product_brand: item.product_brand,
+        product_price: item.product_price,
+        product_image_url: item.product_image_url,
+        product_url: item.product_url,
+        affiliate_url: item.affiliate_url,
+      }));
+      setCartItems(guestItems);
+      setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading, guestCart.items]);
 
   const fetchCartItems = async () => {
     if (!user) return;
@@ -58,45 +108,63 @@ const Cart = () => {
   };
 
   const removeItem = async (itemId: string) => {
-    const { error } = await supabase
-      .from('cart_items')
-      .delete()
-      .eq('id', itemId);
+    if (user) {
+      const { error } = await supabase
+        .from('cart_items')
+        .delete()
+        .eq('id', itemId);
 
-    if (error) {
-      toast({
-        title: '오류',
-        description: '아이템 삭제 중 문제가 발생했습니다.',
-        variant: 'destructive',
-      });
+      if (error) {
+        toast({
+          title: '오류',
+          description: '아이템 삭제 중 문제가 발생했습니다.',
+          variant: 'destructive',
+        });
+        return;
+      }
     } else {
-      setCartItems(prev => prev.filter(item => item.id !== itemId));
-      toast({
-        title: '삭제됨',
-        description: '장바구니에서 아이템이 삭제되었습니다.',
-      });
+      // Guest: find product_id from cartItems and remove
+      const item = cartItems.find(i => i.id === itemId);
+      if (item) {
+        guestCart.removeItem(item.product_id);
+      }
     }
+
+    setCartItems(prev => prev.filter(item => item.id !== itemId));
+    toast({
+      title: '삭제됨',
+      description: '장바구니에서 아이템이 삭제되었습니다.',
+    });
   };
 
   const updateQuantity = async (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) return;
 
-    const { error } = await supabase
-      .from('cart_items')
-      .update({ quantity: newQuantity })
-      .eq('id', itemId);
+    if (user) {
+      const { error } = await supabase
+        .from('cart_items')
+        .update({ quantity: newQuantity })
+        .eq('id', itemId);
 
-    if (!error) {
-      setCartItems(prev =>
-        prev.map(item =>
-          item.id === itemId ? { ...item, quantity: newQuantity } : item
-        )
-      );
+      if (error) return;
+    } else {
+      const item = cartItems.find(i => i.id === itemId);
+      if (item) {
+        guestCart.updateQuantity(item.product_id, newQuantity);
+      }
     }
+
+    setCartItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, quantity: newQuantity } : item
+      )
+    );
   };
 
   const handlePurchase = async (item: CartItem) => {
-    if (!item.product_url) {
+    const productUrl = item.affiliate_url || item.product_url;
+    
+    if (!productUrl) {
       toast({
         title: '오류',
         description: '상품 URL이 없습니다.',
@@ -108,6 +176,16 @@ const Cart = () => {
     setPurchasingItems(prev => new Set(prev).add(item.id));
 
     try {
+      // If already have affiliate URL, use it directly
+      if (item.affiliate_url) {
+        window.open(item.affiliate_url, '_blank');
+        toast({
+          title: '구매 페이지 열기',
+          description: `${item.product_name} 구매 페이지로 이동합니다.`,
+        });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('deeplink', {
         body: { product_url: item.product_url }
       });
@@ -121,12 +199,10 @@ const Cart = () => {
           description: `${item.product_name} 구매 페이지로 이동합니다.`,
         });
       } else {
-        // 딥링크 실패 시 원본 URL로 이동
         window.open(item.product_url, '_blank');
       }
     } catch (error) {
       console.error('Deeplink error:', error);
-      // 오류 시에도 원본 URL로 이동
       window.open(item.product_url, '_blank');
     } finally {
       setPurchasingItems(prev => {
@@ -143,7 +219,7 @@ const Cart = () => {
   );
 
   const handleBulkPurchase = async () => {
-    const itemsWithUrl = cartItems.filter(item => item.product_url);
+    const itemsWithUrl = cartItems.filter(item => item.product_url || item.affiliate_url);
     
     if (itemsWithUrl.length === 0) {
       toast({
@@ -157,25 +233,29 @@ const Cart = () => {
     setBulkPurchasing(true);
 
     try {
-      // 모든 상품에 대해 딥링크 생성
-      const deeplinkPromises = itemsWithUrl.map(item =>
-        supabase.functions.invoke('deeplink', {
+      const deeplinkPromises = itemsWithUrl.map(async item => {
+        // Use existing affiliate URL if available
+        if (item.affiliate_url) {
+          return { item, affiliateUrl: item.affiliate_url, error: null };
+        }
+
+        const { data, error } = await supabase.functions.invoke('deeplink', {
           body: { product_url: item.product_url }
-        }).then(({ data, error }) => ({
+        });
+
+        return {
           item,
           affiliateUrl: data?.success ? data.affiliate_url : item.product_url,
           error
-        }))
-      );
+        };
+      });
 
       const results = await Promise.all(deeplinkPromises);
       
-      // 약간의 딜레이를 두고 각 URL 열기 (팝업 차단 방지)
       let openedCount = 0;
       for (let i = 0; i < results.length; i++) {
-        const { item, affiliateUrl } = results[i];
+        const { affiliateUrl } = results[i];
         if (affiliateUrl) {
-          // 첫 번째는 바로, 나머지는 약간의 딜레이
           setTimeout(() => {
             window.open(affiliateUrl, '_blank');
           }, i * 500);
@@ -199,7 +279,7 @@ const Cart = () => {
     }
   };
 
-  const purchasableItemsCount = cartItems.filter(item => item.product_url).length;
+  const purchasableItemsCount = cartItems.filter(item => item.product_url || item.affiliate_url).length;
 
   if (authLoading || loading) {
     return (
@@ -211,10 +291,32 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header - using shared navigation */}
       <MainNavigation showBackButton title="장바구니" />
 
       <div className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-3xl">
+        {/* Guest notice banner */}
+        {!user && cartItems.length > 0 && (
+          <div className="mb-4 p-4 bg-accent/10 rounded-xl border border-accent/20 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-foreground font-korean">
+                로그인하면 장바구니가 저장됩니다
+              </p>
+              <p className="text-xs text-muted-foreground font-korean">
+                현재 게스트 장바구니를 사용 중입니다
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/auth')}
+              className="font-korean"
+            >
+              <LogIn className="w-4 h-4 mr-1" />
+              로그인
+            </Button>
+          </div>
+        )}
+
         {cartItems.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
@@ -285,7 +387,7 @@ const Cart = () => {
                         </button>
                       </div>
 
-                      {item.product_url && (
+                      {(item.product_url || item.affiliate_url) && (
                         <Button
                           variant="gold"
                           size="sm"
