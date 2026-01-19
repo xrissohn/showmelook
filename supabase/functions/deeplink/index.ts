@@ -66,7 +66,7 @@ serve(async (req) => {
   }
 
   try {
-    const { product_url } = await req.json();
+    const { product_url, force_api } = await req.json();
 
     if (!product_url) {
       return new Response(
@@ -75,7 +75,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('[deeplink] Converting product URL:', product_url);
+    console.log('[deeplink] Converting product URL:', product_url, 'force_api:', force_api);
 
     const affiliateId = Deno.env.get('LINKPRICE_AFFILIATE_ID');
     if (!affiliateId) {
@@ -91,45 +91,52 @@ serve(async (req) => {
     const domain = urlObj.hostname.replace('www.', '');
     const merchantName = domain.split('.')[0];
     
-    // 1. DB에서 모든 머천트를 조회하여 base_url로 매칭
+    // force_api=true인 경우 API만 사용
+    if (force_api) {
+      console.log('[deeplink] Force API mode - skipping template');
+    }
+    
+    // 1. DB에서 모든 머천트를 조회하여 base_url로 매칭 (force_api가 아닌 경우)
     let merchantTemplate: string | null = null;
     let matchedMerchantId: string | null = null;
     
-    try {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-      
-      const { data: merchants } = await supabase
-        .from('merchants')
-        .select('id, base_url, deeplink_template')
-        .eq('is_active', true);
-      
-      if (merchants) {
-        for (const merchant of merchants) {
-          // base_url에서 도메인 추출하여 비교
-          try {
-            const merchantBaseUrl = new URL(merchant.base_url);
-            const merchantDomain = merchantBaseUrl.hostname.toLowerCase().replace('www.', '');
-            
-            // 동일 도메인인지 확인
-            if (domain === merchantDomain || domain.includes(merchantDomain.split('.')[0])) {
-              matchedMerchantId = merchant.id;
-              merchantTemplate = merchant.deeplink_template;
-              console.log('[deeplink] Found merchant from DB by base_url:', matchedMerchantId);
-              break;
+    if (!force_api) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        const { data: merchants } = await supabase
+          .from('merchants')
+          .select('id, base_url, deeplink_template')
+          .eq('is_active', true);
+        
+        if (merchants) {
+          for (const merchant of merchants) {
+            // base_url에서 도메인 추출하여 비교
+            try {
+              const merchantBaseUrl = new URL(merchant.base_url);
+              const merchantDomain = merchantBaseUrl.hostname.toLowerCase().replace('www.', '');
+              
+              // 동일 도메인인지 확인
+              if (domain === merchantDomain || domain.includes(merchantDomain.split('.')[0])) {
+                matchedMerchantId = merchant.id;
+                merchantTemplate = merchant.deeplink_template;
+                console.log('[deeplink] Found merchant from DB by base_url:', matchedMerchantId);
+                break;
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
           }
         }
+      } catch (dbError) {
+        console.log('[deeplink] DB lookup failed, using fallback');
       }
-    } catch (dbError) {
-      console.log('[deeplink] DB lookup failed, using fallback');
     }
     
-    // 2. DB 매칭 실패 시 도메인 매핑으로 Fallback
-    if (!matchedMerchantId) {
+    // 2. DB 매칭 실패 시 도메인 매핑으로 Fallback (force_api가 아닌 경우)
+    if (!force_api && !matchedMerchantId) {
       matchedMerchantId = extractMerchantIdFromDomain(product_url);
       if (matchedMerchantId && MERCHANT_TEMPLATES[matchedMerchantId]) {
         merchantTemplate = MERCHANT_TEMPLATES[matchedMerchantId];
@@ -137,8 +144,8 @@ serve(async (req) => {
       }
     }
 
-    // 3. 머천트 템플릿이 있으면 바로 사용
-    if (merchantTemplate && matchedMerchantId) {
+    // 3. 머천트 템플릿이 있으면 바로 사용 (force_api가 아닌 경우)
+    if (!force_api && merchantTemplate && matchedMerchantId) {
       const affiliateUrl = merchantTemplate
         .replace('{affiliate_id}', affiliateId)
         .replace('{encoded_url}', encodedUrl)
