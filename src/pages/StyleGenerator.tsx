@@ -4239,42 +4239,6 @@ const StyleGenerator = () => {
                 onProfileSelect={setSelectedGenerationProfile}
               />
 
-              {/* Face Composite Option - 선택된 프로필의 아바타가 있을 때만 */}
-              {(selectedGenerationProfile?.avatar_url || userProfile?.avatar_url) && (
-                <div className="p-3 sm:p-4 rounded-xl border-2 border-border bg-secondary/50">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                        <img 
-                          src={selectedGenerationProfile?.avatar_url || userProfile?.avatar_url || ''} 
-                          alt="Profile face" 
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                          {selectedGenerationProfile?.type === 'family' 
-                            ? `${selectedGenerationProfile.full_name} 얼굴 합성하기`
-                            : '내 얼굴 합성하기'}
-                        </p>
-                        <p className="text-xs text-muted-foreground font-korean truncate">
-                          AI가 생성한 이미지에 {selectedGenerationProfile?.type === 'family' ? '선택한 프로필의' : '내'} 얼굴을 합성합니다
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setUseFaceComposite(!useFaceComposite)}
-                      className={`w-12 h-6 rounded-full transition-colors relative ${
-                        useFaceComposite ? 'bg-accent' : 'bg-muted'
-                      }`}
-                    >
-                      <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                        useFaceComposite ? 'translate-x-6' : 'translate-x-0.5'
-                      }`} />
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Daily Generation Limit Display */}
               <div className="p-3 sm:p-4 rounded-xl border-2 border-border bg-secondary/50">
