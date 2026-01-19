@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ArrowLeft, ShoppingBag, ShoppingCart, Heart, ExternalLink, Check } from "lucide-react";
+import { Loader2, ShoppingBag, ShoppingCart, ExternalLink, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import showmelookLogo from "@/assets/showmelook-logo.png";
 import { useAuth } from "@/hooks/useAuth";
 import { useGuestCart } from "@/hooks/useGuestCart";
+import MainNavigation from "@/components/MainNavigation";
 
 interface Product {
   id: string;
@@ -269,15 +269,9 @@ const SharedLook = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2"
-          >
-            <img src={showmelookLogo} alt="ShowMeLook" className="h-8 w-auto" />
-          </button>
+      {/* Header - using shared navigation */}
+      <MainNavigation 
+        rightContent={
           <div className="flex items-center gap-2">
             {/* Cart button with count */}
             <Button
@@ -293,14 +287,14 @@ const SharedLook = () => {
                 </span>
               )}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleTryStyle}>
+            <Button variant="hero" size="sm" onClick={handleTryStyle} className="font-korean rounded-full">
               나도 만들어보기
             </Button>
           </div>
-        </div>
-      </header>
+        }
+      />
 
-      <main className="container mx-auto px-4 py-6 max-w-4xl">
+      <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-6 max-w-4xl">
         {/* Style Image */}
         <div className="relative rounded-2xl overflow-hidden shadow-xl mb-6">
           <img
