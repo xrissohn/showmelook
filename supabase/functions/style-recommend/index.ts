@@ -1099,6 +1099,21 @@ async function generateAffiliateUrl(
 ): Promise<string | null> {
   if (!product.product_url) return null;
 
+  // 머천트 딥링크 템플릿 우선 사용 (더 안정적)
+  if (product.merchant_id) {
+    const merchant = merchants.find(m => m.id === product.merchant_id);
+    if (merchant?.deeplink_template) {
+      const encodedUrl = encodeURIComponent(product.product_url);
+      const affiliateUrl = merchant.deeplink_template
+        .replace('{affiliate_id}', affiliateId)
+        .replace('{encoded_url}', encodedUrl)
+        .replace('{url}', encodedUrl);
+      console.log(`[generateAffiliateUrl] ${merchant.name}: ${product.product_url} -> ${affiliateUrl}`);
+      return affiliateUrl;
+    }
+  }
+
+  // Fallback: LinkPrice API (머천트 템플릿이 없는 경우)
   try {
     const encodedUrl = encodeURIComponent(product.product_url);
     const apiUrl = `https://api.linkprice.com/ci/service/custom_link_xml?a_id=${affiliateId}&url=${encodedUrl}&mode=json`;
@@ -1110,10 +1125,10 @@ async function generateAffiliateUrl(
       try {
         const linkPriceData = JSON.parse(responseText);
         if (linkPriceData.result === 'S' && linkPriceData.url) {
+          console.log(`[generateAffiliateUrl] LinkPrice API: ${product.product_url} -> ${linkPriceData.url}`);
           return linkPriceData.url;
         }
       } catch {
-        // Not JSON, try as plain text
         if (responseText.startsWith('http')) {
           return responseText.trim();
         }
@@ -1121,18 +1136,6 @@ async function generateAffiliateUrl(
     }
   } catch (error) {
     console.error('[generateAffiliateUrl] Error:', error);
-  }
-
-  // Fallback: 머천트별 딥링크 템플릿
-  if (product.merchant_id) {
-    const merchant = merchants.find(m => m.id === product.merchant_id);
-    if (merchant?.deeplink_template) {
-      const encodedUrl = encodeURIComponent(product.product_url);
-      return merchant.deeplink_template
-        .replace('{affiliate_id}', affiliateId)
-        .replace('{encoded_url}', encodedUrl)
-        .replace('{url}', encodedUrl); // 호환성 유지
-    }
   }
 
   return product.product_url;
