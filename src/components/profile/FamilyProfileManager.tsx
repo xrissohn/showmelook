@@ -23,12 +23,11 @@ interface FamilyProfileManagerProps {
 }
 
 const relationships = [
-  { value: '가족', label: '가족', emoji: '👨‍👩‍👧' },
-  { value: '애인', label: '애인', emoji: '💑' },
-  { value: '친구', label: '친구', emoji: '👫' },
-  { value: '부모님', label: '부모님', emoji: '👴' },
-  { value: '자녀', label: '자녀', emoji: '👶' },
-  { value: '형제자매', label: '형제자매', emoji: '👯' },
+  { value: '뮤즈', label: '뮤즈', emoji: '✨' },
+  { value: '파트너', label: '파트너', emoji: '💫' },
+  { value: '베스티', label: '베스티', emoji: '👯' },
+  { value: '스타일 메이트', label: '스타일 메이트', emoji: '🔥' },
+  { value: '패밀리', label: '패밀리', emoji: '🏠' },
 ];
 
 const genders = [
@@ -132,14 +131,14 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <CardTitle className="font-korean">가족 프로필</CardTitle>
+            <CardTitle className="font-korean">모델 프로필</CardTitle>
           </div>
           <Badge variant="secondary">
             {currentCount}/{maxProfiles}명
           </Badge>
         </div>
         <CardDescription className="font-korean">
-          소중한 사람의 스타일도 함께 만들어보세요
+          소중한 사람을 위한 스타일도 함께 만들어보세요
         </CardDescription>
       </CardHeader>
       
@@ -196,8 +195,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
         {profiles.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-korean">아직 추가된 가족 프로필이 없어요</p>
-            <p className="text-sm font-korean">소중한 사람의 스타일도 만들어보세요!</p>
+            <p className="font-korean">아직 등록된 모델이 없어요</p>
+            <p className="text-sm font-korean">소중한 사람을 위한 스타일도 만들어보세요!</p>
           </div>
         )}
 
@@ -210,15 +209,15 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               disabled={!canAddMore}
             >
               <Plus className="w-4 h-4 mr-2" />
-              {canAddMore ? '프로필 추가하기' : `최대 ${maxProfiles}명까지 추가 가능`}
+              {canAddMore ? '모델 추가하기' : `최대 ${maxProfiles}명까지 추가 가능`}
             </Button>
           </DialogTrigger>
           
           <DialogContent>
             <DialogHeader>
-              <DialogTitle className="font-korean">가족 프로필 추가</DialogTitle>
+              <DialogTitle className="font-korean">모델 추가</DialogTitle>
               <DialogDescription className="font-korean">
-                소중한 사람의 정보를 입력해주세요
+                스타일을 만들어줄 분의 정보를 입력해주세요
               </DialogDescription>
             </DialogHeader>
             
