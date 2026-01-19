@@ -2942,6 +2942,232 @@ const StyleGenerator = () => {
     }
   };
 
+  // 새로운 통합 함수: 프롬프트만으로 추천 + 생성을 동시에 실행
+  const generateStyleWithRecommendation = async () => {
+    if (!user) return;
+
+    // Check limit before generating
+    if (!canGenerate) {
+      toast({
+        title: '일일 생성 횟수 초과',
+        description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 프롬프트 필수
+    if (!customStylePrompt.trim()) {
+      toast({
+        title: '스타일 프롬프트를 입력해주세요',
+        description: '원하는 스타일을 설명해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // 생성 시작 - 두 작업 동시 시작
+    setIsGenerating(true);
+    setIsCustomSearching(true);
+    
+    // 생성 시작 시 결과 영역으로 스크롤
+    setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+    
+    // 성별 매핑
+    const genderMapping: Record<string, string> = {
+      'female': '여성',
+      'male': '남성',
+      'unisex': '유니섹스',
+      'kids': '여성'
+    };
+    const genderKo = genderMapping[customGender] || '여성';
+
+    // 1. 스타일 추천 시작 (비동기로 진행)
+    const recommendationPromise = supabase.functions.invoke('style-recommend', {
+      body: {
+        userRequest: customStylePrompt,
+        gender: genderKo,
+        budget: customBudget[0],
+        forceRefresh: false,
+        age: customGender === 'kids' ? (customAge || 10) : customAge
+      }
+    });
+
+    // 2. 이미지 생성 시작 (추천 결과를 기다리지 않고 진행 - 프롬프트 기반)
+    const generatePromise = (async () => {
+      try {
+        // 먼저 추천 결과를 기다려서 상품 정보 획득
+        const { data: recData, error: recError } = await recommendationPromise;
+        
+        if (recError) throw recError;
+        
+        let transformedItems: CachedProduct[] = [];
+        let styleDesc = customStylePrompt;
+        let productsDesc = '스타일리시한 아이템';
+        
+        if (recData?.success && recData?.look) {
+          transformedItems = recData.look.items
+            .filter((item: any) => item.product !== null)
+            .map((item: any) => ({
+              id: item.product.id,
+              name: item.product.name,
+              brand: item.product.brand,
+              price: item.product.price,
+              image_url: item.product.image_url,
+              product_url: item.product.product_url,
+              category: item.category,
+              style_tags: item.product.style_tags,
+              affiliate_url: item.affiliateUrl,
+              isAutoSelected: item.isAutoSelected
+            }));
+
+          // 추천 결과 즉시 UI에 반영
+          setCustomResult({
+            items: transformedItems,
+            styleConcept: recData.look.styleConcept || recData.look.name || '스타일 추천',
+            styleReasoning: recData.look.styleReasoning || recData.look.stylingTips || '',
+            totalPrice: recData.look.totalPrice || 0,
+            autoSelectedTotal: recData.look.autoSelectedTotal || 0,
+            autoSelectedCount: recData.look.autoSelectedCount || 0,
+            budget: recData.look.budget || customBudget[0]
+          });
+          
+          setSelectedTrendProducts(transformedItems);
+          setIsCustomSearching(false);
+          
+          styleDesc = recData.look.styleConcept || recData.look.name || customStylePrompt;
+          productsDesc = transformedItems.map(p => {
+            const brandPart = p.brand ? `${p.brand} ` : '';
+            return `${brandPart}${p.name}`;
+          }).join(', ') || '기본 아이템';
+          
+          // 히스토리 저장
+          if (user) {
+            try {
+              const { data: historyData } = await supabase.from('recommendation_history').insert({
+                user_id: user.id,
+                prompt: customStylePrompt,
+                gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
+                budget: customBudget[0],
+                style_concept: recData.look.name || '',
+                style_reasoning: recData.look.stylingTips || '',
+                items: transformedItems as any,
+                total_price: recData.look.totalPrice || 0
+              }).select('id').single();
+              
+              if (historyData) {
+                setLastRecommendationId(historyData.id);
+                setFeedbackGiven(null);
+              }
+            } catch (saveError) {
+              console.error('Failed to save to history:', saveError);
+            }
+          }
+        } else {
+          setIsCustomSearching(false);
+        }
+        
+        // 이미지 생성
+        const productsWithDetails = transformedItems.map(p => ({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          category: p.category,
+          image_url: p.image_url,
+        }));
+        
+        const productImageUrls = productsWithDetails
+          .filter(p => p.image_url)
+          .map(p => p.image_url);
+        
+        const { data: genData, error: genError } = await supabase.functions.invoke('generate-style', {
+          body: {
+            style: styleDesc,
+            products: productsDesc,
+            productDetails: productsWithDetails,
+            productImageUrls: productImageUrls,
+            userProfile: userProfile,
+            useFaceComposite: useFaceComposite && !!userProfile?.avatar_url,
+            userAvatarUrl: userProfile?.avatar_url,
+            styleTrendId: selectedTrend?.id || null,
+            productIds: productsWithDetails.map(p => p.id),
+          },
+        });
+        
+        if (genError) throw genError;
+        return { genData, productsWithDetails, styleDesc, productsDesc };
+      } catch (error) {
+        throw error;
+      }
+    })();
+
+    try {
+      const result = await generatePromise;
+      const { genData, productsWithDetails, styleDesc, productsDesc } = result;
+
+      // Handle limit exceeded error
+      if (genData?.limitExceeded) {
+        toast({
+          title: '일일 생성 횟수 초과',
+          description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+          variant: 'destructive',
+        });
+        refetchLimit();
+        return;
+      }
+
+      if (genData?.imageUrl) {
+        setGeneratedImage(genData.imageUrl);
+        
+        // 생성 완료 시 결과 영역으로 스크롤
+        setTimeout(() => {
+          resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
+        // Update local limit state
+        if (typeof genData.remainingCount === 'number') {
+          updateAfterGeneration(genData.isPremium, genData.remainingCount);
+        }
+
+        // Show appropriate toast
+        toast({
+          title: '스타일 생성 완료!',
+          description: useFaceComposite && userProfile?.avatar_url 
+            ? '당신의 얼굴이 합성된 룩이 완성되었습니다.' 
+            : '당신만의 룩이 완성되었습니다.',
+        });
+
+        // Save to database
+        if (!genData.cached) {
+          await supabase.from('generated_looks').insert({
+            user_id: user.id,
+            image_url: genData.imagePath || genData.imageUrl,
+            prompt_used: `${styleDesc} 스타일, ${productsDesc}`,
+            style_trend_id: selectedTrend?.id || null,
+            product_ids: productsWithDetails.map((p: any) => p.id),
+          });
+        }
+
+        fetchData(); // Refresh my looks
+      }
+    } catch (error: any) {
+      console.error('Error generating style:', error);
+      
+      const errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      toast({
+        title: '생성 실패',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGenerating(false);
+      setIsCustomSearching(false);
+    }
+  };
+
+  // 기존 generateStyle 함수 (이미 추천 결과가 있을 때 사용)
   const generateStyle = async () => {
     if (!user) return;
 
@@ -3366,41 +3592,43 @@ const StyleGenerator = () => {
 
                       {/* 예산 섹션 제거됨 - AI가 스타일에만 집중 */}
 
-                      {/* 추천 버튼 - Free 플랜은 비활성화 */}
-                      {subscription.canUseRecommendFirst ? (
+                      {/* 스타일 생성 버튼 - 프롬프트 입력 후 바로 생성 */}
+                      <Button
+                        variant="gold"
+                        size="lg"
+                        className="w-full font-korean text-sm sm:text-base"
+                        onClick={generateStyleWithRecommendation}
+                        disabled={isGenerating || isCustomSearching || !customStylePrompt.trim() || !canGenerate}
+                      >
+                        {isGenerating || isCustomSearching ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '스타일 생성중...'}
+                          </>
+                        ) : !canGenerate ? (
+                          <>
+                            <Crown className="w-4 h-4 mr-2" />
+                            프리미엄으로 업그레이드
+                          </>
+                        ) : (
+                          <>
+                            <Camera className="w-4 h-4 mr-2" />
+                            {useFaceComposite && userProfile?.avatar_url ? '내 얼굴로 스타일 생성' : '스타일 생성하기'}
+                          </>
+                        )}
+                      </Button>
+                      
+                      {/* 추천만 먼저 보기 (선택적) */}
+                      {subscription.canUseRecommendFirst && !customResult && (
                         <Button
-                          variant="hero"
-                          size="lg"
-                          className="w-full font-korean text-sm sm:text-base"
+                          variant="outline"
+                          size="sm"
+                          className="w-full font-korean text-xs"
                           onClick={handleCustomStyleSearch}
                           disabled={isCustomSearching || !customStylePrompt.trim()}
                         >
-                          {isCustomSearching ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              AI가 스타일을 분석중...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-4 h-4 mr-2" />
-                              스타일 추천받기
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="lg"
-                          className="w-full font-korean text-sm sm:text-base relative overflow-hidden group"
-                          onClick={() => {
-                            setUpgradeReason('recommend-first');
-                            setShowUpgradeModal(true);
-                          }}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
-                          <span className="text-muted-foreground">스타일 추천받기</span>
-                          <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">Pro</span>
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          상품 추천만 먼저 보기
                         </Button>
                       )}
                     </div>
@@ -3830,13 +4058,13 @@ const StyleGenerator = () => {
                 variant="gold"
                 size="xl"
                 className="w-full font-korean hidden lg:flex"
-                onClick={generateStyle}
-                disabled={isGenerating || !canGenerate}
+                onClick={customStylePrompt.trim() ? generateStyleWithRecommendation : generateStyle}
+                disabled={isGenerating || isCustomSearching || !canGenerate || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
               >
-                {isGenerating ? (
+                {isGenerating || isCustomSearching ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    생성 중...
+                    {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '생성 중...'}
                   </>
                 ) : !canGenerate ? (
                   <>
@@ -3871,7 +4099,7 @@ const StyleGenerator = () => {
             {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
             <div 
               ref={resultRef}
-              className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !generatedImage ? 'hidden lg:block' : ''}`}
+              className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''}`}
             >
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
@@ -4504,13 +4732,13 @@ const StyleGenerator = () => {
             variant="gold"
             size="lg"
             className="w-full font-korean shadow-lg shadow-accent/20"
-            onClick={generateStyle}
-            disabled={isGenerating || !canGenerate}
+            onClick={customStylePrompt.trim() ? generateStyleWithRecommendation : generateStyle}
+            disabled={isGenerating || isCustomSearching || !canGenerate || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
           >
-            {isGenerating ? (
+            {isGenerating || isCustomSearching ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                생성 중...
+                {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '생성 중...'}
               </>
             ) : !canGenerate ? (
               <>
