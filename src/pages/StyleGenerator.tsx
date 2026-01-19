@@ -3087,7 +3087,8 @@ const StyleGenerator = () => {
           gender: genderKo,
           budget: customBudget[0],
           forceRefresh: false,
-          age: customGender === 'kids' ? (customAge || 10) : customAge
+          age: customGender === 'kids' ? (customAge || 10) : customAge,
+          ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group
         }
       });
 
@@ -3223,7 +3224,8 @@ const StyleGenerator = () => {
         gender: genderKo,
         budget: customBudget[0],
         forceRefresh: false,
-        age: customGender === 'kids' ? (customAge || 10) : customAge
+        age: customGender === 'kids' ? (customAge || 10) : customAge,
+        ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group
       }
     });
 

@@ -53,6 +53,7 @@ const ProfileSetup = () => {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [bodyType, setBodyType] = useState('');
   const [gender, setGender] = useState('');
+  const [ageGroup, setAgeGroup] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,6 +117,7 @@ const ProfileSetup = () => {
           style_preferences: selectedStyles,
           body_type: bodyType || null,
           gender: gender || null,
+          age_group: ageGroup || null,
           avatar_url: avatarPath,
         })
         .eq('user_id', user.id);
@@ -285,6 +287,26 @@ const ProfileSetup = () => {
                         }`}
                       >
                         <span className="text-foreground font-medium font-korean">{type.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="font-korean">연령대 (선택)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {ageGroupOptions.map((option) => (
+                      <button
+                        key={option.id}
+                        onClick={() => setAgeGroup(option.id)}
+                        className={`p-4 rounded-xl border-2 transition-all text-left ${
+                          ageGroup === option.id
+                            ? 'border-accent bg-accent/5'
+                            : 'border-border hover:border-accent/50'
+                        }`}
+                      >
+                        <span className="text-xl mr-2">{option.emoji}</span>
+                        <span className="text-foreground font-medium font-korean">{option.label}</span>
                       </button>
                     ))}
                   </div>

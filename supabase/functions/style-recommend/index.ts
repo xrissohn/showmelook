@@ -57,6 +57,20 @@ interface RAGStyleResponse {
 // Category priority for auto-selection (순서: 상의 → 하의 → 아우터 → 기타)
 const CATEGORY_PRIORITY = ['상의', '하의', '아우터', '기타'];
 
+// 연령대 코드를 한글 레이블로 변환
+function getAgeGroupLabel(ageGroup: string): string {
+  const labels: Record<string, string> = {
+    'child': '아동',
+    'teen': '10대',
+    '20s': '20대',
+    '30s': '30대',
+    '40s': '40대',
+    '50s': '50대',
+    '60plus': '60대 이상',
+  };
+  return labels[ageGroup] || '성인';
+}
+
 // Generate cache key from request parameters
 function generateCacheKey(gender: string, style: string, occasion: string, budget: number): string {
   const normalized = `${gender}|${style}|${occasion}|${Math.floor(budget / 50000) * 50000}`;
@@ -287,7 +301,7 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age } = await req.json();
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup } = await req.json();
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
@@ -303,7 +317,10 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const isKids = age !== undefined && age <= 12;
+    // 연령대 처리 - ageGroup이 있으면 우선 사용, 없으면 age로 계산
+    const isKids = ageGroup === 'child' || (age !== undefined && age <= 12);
+    const ageGroupLabel = ageGroup ? getAgeGroupLabel(ageGroup) : (age ? `${Math.floor(age / 10) * 10}대` : '성인');
+    
     const requestedConcepts = extractConcepts(userRequest);
     const requestedOccasions = extractOccasions(userRequest);
     const occasion = requestedOccasions[0] || '캐주얼';
@@ -740,7 +757,8 @@ Vogue, Elle, GQ, Harper's Bazaar에서 "미래에서 온 스타일 아이콘"으
 - DNA 2.0 상품 우선! formality ±2 이내 매칭
 - 컨셉: "${requestedConcepts.join(', ')}"
 - 같은 브랜드 2개 초과 금지 (다양성이 핵심!)
-- 타겟: ${isKids ? '키즈' : gender}, 시즌: ${requestedSeason}
+- 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}, 시즌: ${requestedSeason}
+- 연령대 특성 고려: ${ageGroupLabel}의 라이프스타일과 취향에 맞는 스타일링 제안
 - occasion: ${requestedOccasions.join(', ')}
 
 💡 예산은 무시하세요. 오직 "이 조합이 최고인가?"만 생각하세요.
