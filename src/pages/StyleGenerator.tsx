@@ -4236,7 +4236,26 @@ const StyleGenerator = () => {
                 isPremium={isPremium}
                 canUseFamilyProfiles={subscription.canUseFamilyProfiles}
                 selectedProfile={selectedGenerationProfile}
-                onProfileSelect={setSelectedGenerationProfile}
+                onProfileSelect={(profile) => {
+                  setSelectedGenerationProfile(profile);
+                  // 선택된 프로필의 성별을 customGender에 자동 반영
+                  if (profile.gender) {
+                    const genderMap: Record<string, 'female' | 'male' | 'unisex' | 'kids'> = {
+                      '여성': 'female',
+                      '남성': 'male',
+                      'female': 'female',
+                      'male': 'male',
+                      'unisex': 'unisex',
+                      '유니섹스': 'unisex',
+                      'kids': 'kids',
+                      '키즈': 'kids',
+                    };
+                    const mappedGender = genderMap[profile.gender.toLowerCase()] || genderMap[profile.gender];
+                    if (mappedGender) {
+                      setCustomGender(mappedGender);
+                    }
+                  }
+                }}
               />
 
 
