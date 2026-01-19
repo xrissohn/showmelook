@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download } from 'lucide-react';
+import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown } from 'lucide-react';
+import { PLAN_CONFIG, formatPrice } from '@/lib/planConfig';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -439,6 +440,123 @@ const Landing = () => {
               <p className="font-korean text-muted-foreground">{item.desc}</p>
             </HoverParticleCard>
           ))}
+          </div>
+        </div>
+      </ScrollSection>
+
+      {/* Pricing Section */}
+      <ScrollSection className="py-16 sm:py-24 px-4 sm:px-6 bg-muted/30 relative overflow-hidden" delay={100}>
+        <div id="pricing" className="absolute -top-20" />
+        
+        {/* Background effects */}
+        <FloatingOrb className="top-10 right-[10%] w-48 h-48 opacity-10" gradient="bg-gradient-brand" delay={0} />
+        <FloatingOrb className="bottom-10 left-[10%] w-64 h-64 opacity-10" gradient="bg-gradient-sky" delay={1.5} />
+        
+        {/* Sparkle decorations */}
+        <SparklesStar className="top-20 left-[12%] w-5 h-5" delay={0} />
+        <SparklesStar className="top-32 right-[15%] w-6 h-6" delay={0.5} />
+        <SparklesStar className="bottom-24 left-[20%] w-4 h-4" delay={1} />
+        
+        <div className="container mx-auto max-w-5xl relative z-10">
+          <div className="text-center mb-10 sm:mb-14">
+            <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
+              <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 animate-twinkle" />
+              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Pricing Plans</span>
+              <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 animate-twinkle" style={{ animationDelay: '0.5s' }} />
+            </div>
+            <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
+              나에게 맞는 플랜 선택
+            </h2>
+            <p className="text-sm sm:text-lg font-korean text-muted-foreground">
+              무료로 시작하고, 필요할 때 업그레이드하세요
+            </p>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
+            {(['free', 'pro', 'premium'] as const).map((planKey, i) => {
+              const plan = PLAN_CONFIG[planKey];
+              const isPro = planKey === 'pro';
+              
+              return (
+                <HoverParticleCard 
+                  key={planKey}
+                  className={`relative bg-card rounded-2xl p-5 sm:p-6 border transition-all duration-300 hover:shadow-xl ${
+                    isPro 
+                      ? 'border-primary shadow-lg ring-2 ring-primary/20' 
+                      : 'border-border hover:border-primary/30'
+                  }`}
+                >
+                  {/* Popular badge */}
+                  {isPro && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-gradient-brand text-white text-xs font-medium px-3 py-1 rounded-full shadow-md">
+                        가장 인기
+                      </span>
+                    </div>
+                  )}
+                  
+                  <div className="text-center mb-4">
+                    <h3 className="font-korean text-lg sm:text-xl font-semibold text-foreground mb-1">
+                      {plan.nameKo}
+                    </h3>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-2xl sm:text-3xl font-bold text-foreground">
+                        {formatPrice(plan.monthlyPrice)}
+                      </span>
+                      {plan.monthlyPrice > 0 && (
+                        <span className="text-sm text-muted-foreground">/월</span>
+                      )}
+                    </div>
+                    {plan.yearlyDiscount > 0 && (
+                      <p className="text-xs text-accent mt-1">
+                        연간 결제 시 {plan.yearlyDiscount}% 할인
+                      </p>
+                    )}
+                  </div>
+                  
+                  {/* Key features - show top 4 */}
+                  <ul className="space-y-2 mb-5">
+                    {plan.features.slice(0, 4).map((feature, j) => (
+                      <li key={j} className="flex items-start gap-2 text-sm">
+                        <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                          plan.highlightFeatures?.includes(feature) 
+                            ? 'text-accent' 
+                            : 'text-primary'
+                        }`} />
+                        <span className={`font-korean ${
+                          plan.highlightFeatures?.includes(feature) 
+                            ? 'text-accent font-medium' 
+                            : 'text-muted-foreground'
+                        }`}>
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <Button 
+                    variant={isPro ? 'hero' : 'outline'} 
+                    className="w-full font-korean rounded-full"
+                    onClick={() => navigate(planKey === 'free' ? '/auth' : '/pricing')}
+                  >
+                    {planKey === 'free' ? '무료로 시작' : '자세히 보기'}
+                  </Button>
+                </HoverParticleCard>
+              );
+            })}
+          </div>
+          
+          {/* CTA to pricing page */}
+          <div className="text-center">
+            <Button 
+              variant="ghost" 
+              onClick={() => navigate('/pricing')}
+              className="font-korean text-muted-foreground hover:text-primary group"
+            >
+              모든 기능 비교하기
+              <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </Button>
           </div>
         </div>
       </ScrollSection>
