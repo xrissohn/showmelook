@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings } from "lucide-react";
+import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { LazyImage } from "@/components/LazyImage";
 import MainNavigation from "@/components/MainNavigation";
@@ -37,6 +39,7 @@ const MyPage = () => {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const subscription = useSubscription(user?.id);
+  const { profile: userProfile, isLoading: profileLoading } = useUserProfile();
   
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("subscription");
@@ -50,7 +53,7 @@ const MyPage = () => {
   const unlikeProduct = useUnlikeProduct();
   const addToCart = useAddToCart();
 
-  const isLoading = isLoadingRecs || isLoadingLikes;
+  const isLoading = isLoadingRecs || isLoadingLikes || profileLoading;
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price) + '원';
@@ -508,32 +511,92 @@ const MyPage = () => {
           </TabsContent>
 
           {/* 모델 프로필 탭 */}
-          <TabsContent value="family" className="mt-4">
+          <TabsContent value="family" className="mt-4 space-y-4">
+            {/* 내 프로필 (항상 표시) */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  <CardTitle className="font-korean text-base">내 프로필</CardTitle>
+                  <Badge variant="default" className="bg-primary text-primary-foreground">메인</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-border">
+                  <Avatar className="w-14 h-14">
+                    <AvatarImage src={userProfile?.avatar_url || ''} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-lg">
+                      {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold font-korean">
+                        {userProfile?.full_name || user?.email?.split('@')[0] || '나'}
+                      </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground font-korean">
+                      {userProfile?.gender && <span>{userProfile.gender}</span>}
+                      {userProfile?.height && <span> · {userProfile.height}cm</span>}
+                      {userProfile?.weight && <span> · {userProfile.weight}kg</span>}
+                      {userProfile?.body_type && <span> · {userProfile.body_type === 'slim' ? '마른 체형' : userProfile.body_type === 'average' ? '보통 체형' : userProfile.body_type === 'muscular' ? '근육질' : userProfile.body_type === 'curvy' ? '볼륨 체형' : userProfile.body_type}</span>}
+                    </div>
+                    {userProfile?.style_preferences && userProfile.style_preferences.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {userProfile.style_preferences.slice(0, 3).map((pref, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs">
+                            {pref}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate('/profile-edit')}
+                    className="text-xs"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 추가 모델 섹션 - Premium만 */}
             {subscription.canUseFamilyProfiles ? (
               <FamilyProfileManager 
                 userId={user?.id || ''} 
-                maxProfiles={subscription.maxProfiles - 1}
+                maxProfiles={5}
               />
             ) : (
               <Card className="border-dashed">
-                <CardContent className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/20 dark:to-orange-900/20 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-amber-500" />
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-muted-foreground" />
+                    <CardTitle className="font-korean text-base">추가 모델</CardTitle>
+                    <Badge variant="outline" className="text-amber-500 border-amber-500">
+                      <Crown className="w-3 h-3 mr-1" />
+                      Premium
+                    </Badge>
                   </div>
-                  <h3 className="text-lg font-bold mb-2 font-korean">추가 모델 등록</h3>
+                </CardHeader>
+                <CardContent className="text-center py-8">
                   <p className="text-muted-foreground mb-4 font-korean text-sm">
-                    Premium 플랜에서 최대 5명의 모델을 등록하고,<br />
+                    Premium 플랜에서 최대 5명의 추가 모델을 등록하고,<br />
                     그들을 위한 스타일 룩을 생성할 수 있어요.
                   </p>
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Crown className="w-4 h-4 text-amber-500" />
-                        최대 5명 모델
+                        최대 5명
                       </span>
                       <span className="flex items-center gap-1">
                         <Sparkles className="w-4 h-4 text-primary" />
-                        얼굴 합성 생성
+                        얼굴 합성
                       </span>
                     </div>
                     <Button
