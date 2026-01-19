@@ -3312,8 +3312,8 @@ const StyleGenerator = () => {
           .filter(p => p.image_url)
           .map(p => p.image_url);
         
-        // 선택된 프로필 정보 (가족 프로필 또는 본인)
-        const profileToUse = selectedGenerationProfile?.type === 'family' 
+        // 선택된 프로필 정보 (항상 selectedGenerationProfile 우선 사용)
+        const profileToUse = selectedGenerationProfile 
           ? {
               ...userProfile,
               full_name: selectedGenerationProfile.full_name,
@@ -3483,8 +3483,8 @@ const StyleGenerator = () => {
         .filter(p => p.image_url)
         .map(p => p.image_url);
 
-      // 선택된 프로필 정보 (가족 프로필 또는 본인)
-      const profileToUse = selectedGenerationProfile?.type === 'family' 
+      // 선택된 프로필 정보 (항상 selectedGenerationProfile 우선 사용)
+      const profileToUse = selectedGenerationProfile 
         ? {
             ...userProfile,
             full_name: selectedGenerationProfile.full_name,
@@ -4305,7 +4305,7 @@ const StyleGenerator = () => {
                 variant="gold"
                 size="xl"
                 className="w-full font-korean hidden lg:flex"
-                onClick={customStylePrompt.trim() ? generateStyleWithRecommendation : generateStyle}
+                onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
                 disabled={isGenerating || isCustomSearching || !canGenerate || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
               >
                 {isGenerating || isCustomSearching ? (
@@ -4995,7 +4995,7 @@ const StyleGenerator = () => {
             variant="gold"
             size="lg"
             className="w-full font-korean shadow-lg shadow-accent/20"
-            onClick={customStylePrompt.trim() ? generateStyleWithRecommendation : generateStyle}
+            onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
             disabled={isGenerating || isCustomSearching || !canGenerate || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
           >
             {isGenerating || isCustomSearching ? (
