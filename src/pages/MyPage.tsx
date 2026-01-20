@@ -429,11 +429,17 @@ const MyPage = () => {
                                 {rec.style_concept || rec.prompt}
                               </h3>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {formatDate(rec.created_at)} · {rec.gender === 'female' ? '여성' : '남성'} · 예산 {formatPrice(rec.budget)}
+                                {formatDate(rec.created_at)} · {rec.gender === 'female' ? '여성' : '남성'}
                               </p>
                               <p className="text-sm font-medium text-primary mt-1">
                                 총 {formatPrice(rec.total_price)} ({rec.items.length}개 아이템)
                               </p>
+                              {/* AI 스타일 추천 설명 */}
+                              {rec.style_reasoning && (
+                                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                                  💡 {rec.style_reasoning}
+                                </p>
+                              )}
                             </div>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
@@ -469,7 +475,7 @@ const MyPage = () => {
                           <div className="px-4 pb-4 border-t border-border pt-4 animate-in fade-in-50 duration-200">
                             {rec.style_reasoning && (
                               <p className="text-sm text-muted-foreground mb-4">
-                                {rec.style_reasoning}
+                                💡 {rec.style_reasoning}
                               </p>
                             )}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
