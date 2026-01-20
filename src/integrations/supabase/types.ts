@@ -106,6 +106,7 @@ export type Database = {
           id: string
           owner_user_id: string
           relationship: string | null
+          style_preferences: string[] | null
           updated_at: string | null
           weight: number | null
         }
@@ -120,6 +121,7 @@ export type Database = {
           id?: string
           owner_user_id: string
           relationship?: string | null
+          style_preferences?: string[] | null
           updated_at?: string | null
           weight?: number | null
         }
@@ -134,6 +136,7 @@ export type Database = {
           id?: string
           owner_user_id?: string
           relationship?: string | null
+          style_preferences?: string[] | null
           updated_at?: string | null
           weight?: number | null
         }

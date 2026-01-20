@@ -17,6 +17,8 @@ export interface FamilyProfile {
   weight: number | null;
   body_type: string | null;
   gender: string | null;
+  age_group: string | null;
+  style_preferences: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +31,8 @@ export interface FamilyProfileInput {
   weight?: number;
   body_type?: string;
   gender?: string;
+  age_group?: string;
+  style_preferences?: string[];
 }
 
 export const useFamilyProfiles = (userId: string | undefined, maxProfiles: number = 5) => {
@@ -87,6 +91,8 @@ export const useFamilyProfiles = (userId: string | undefined, maxProfiles: numbe
           weight: input.weight || null,
           body_type: input.body_type || null,
           gender: input.gender || null,
+          age_group: input.age_group || null,
+          style_preferences: input.style_preferences || null,
         });
 
       if (error) throw error;

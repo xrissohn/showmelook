@@ -43,6 +43,27 @@ const bodyTypes = [
   { value: 'curvy', label: '볼륨 체형' },
 ];
 
+const ageGroupOptions = [
+  { value: 'child', label: '아동 (12세 이하)' },
+  { value: 'teen', label: '10대' },
+  { value: '20s', label: '20대' },
+  { value: '30s', label: '30대' },
+  { value: '40s', label: '40대' },
+  { value: '50s', label: '50대' },
+  { value: '60plus', label: '60대 이상' },
+];
+
+const styleOptions = [
+  { value: 'casual', label: '캐주얼' },
+  { value: 'minimal', label: '미니멀' },
+  { value: 'street', label: '스트릿' },
+  { value: 'sporty', label: '스포티' },
+  { value: 'classic', label: '클래식' },
+  { value: 'romantic', label: '로맨틱' },
+  { value: 'modern', label: '모던' },
+  { value: 'vintage', label: '빈티지' },
+];
+
 export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileManagerProps) => {
   const { profiles, isLoading, canAddMore, currentCount, addProfile, updateProfile, deleteProfile, refetch } = useFamilyProfiles(userId, maxProfiles);
   const { toast } = useToast();
@@ -62,6 +83,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     height: undefined,
     weight: undefined,
     body_type: '',
+    age_group: '',
+    style_preferences: [],
   });
 
   const resetForm = () => {
@@ -72,9 +95,22 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       height: undefined,
       weight: undefined,
       body_type: '',
+      age_group: '',
+      style_preferences: [],
     });
     setAvatarPreview(null);
     setAvatarFile(null);
+  };
+
+  const toggleStylePreference = (style: string) => {
+    setFormData(prev => {
+      const current = prev.style_preferences || [];
+      if (current.includes(style)) {
+        return { ...prev, style_preferences: current.filter(s => s !== style) };
+      } else {
+        return { ...prev, style_preferences: [...current, style] };
+      }
+    });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -258,6 +294,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       height: profile.height || undefined,
       weight: profile.weight || undefined,
       body_type: profile.body_type || '',
+      age_group: profile.age_group || '',
+      style_preferences: profile.style_preferences || [],
     });
     // Set avatar preview from existing avatar
     if (profile.avatar_url) {
@@ -559,6 +597,45 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   </SelectContent>
                 </Select>
               </div>
+
+              <div>
+                <Label className="font-korean">연령대</Label>
+                <Select
+                  value={formData.age_group}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, age_group: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="연령대 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ageGroupOptions.map((a) => (
+                      <SelectItem key={a.value} value={a.value}>
+                        {a.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="font-korean">선호 스타일</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {styleOptions.map((style) => (
+                    <button
+                      key={style.value}
+                      type="button"
+                      onClick={() => toggleStylePreference(style.value)}
+                      className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                        formData.style_preferences?.includes(style.value)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {style.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               
               <div className="flex gap-2 pt-4">
                 <Button
@@ -722,6 +799,45 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div>
+                <Label className="font-korean">연령대</Label>
+                <Select
+                  value={formData.age_group}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, age_group: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="연령대 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ageGroupOptions.map((a) => (
+                      <SelectItem key={a.value} value={a.value}>
+                        {a.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="font-korean">선호 스타일</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {styleOptions.map((style) => (
+                    <button
+                      key={style.value}
+                      type="button"
+                      onClick={() => toggleStylePreference(style.value)}
+                      className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                        formData.style_preferences?.includes(style.value)
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border hover:border-primary/50'
+                      }`}
+                    >
+                      {style.label}
+                    </button>
+                  ))}
+                </div>
               </div>
               
               <div className="flex gap-2 pt-4">
