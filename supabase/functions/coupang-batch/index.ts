@@ -6,13 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 수집 대상 카테고리
+// 수집 대상 카테고리 (패션만)
 const FASHION_CATEGORIES = [
   { id: 1001, name: "여성패션" },
   { id: 1002, name: "남성패션" },
   { id: 1030, name: "유아동패션" },
-  { id: 1017, name: "스포츠/레저" },
-  { id: 1010, name: "뷰티" },
 ];
 
 // HMAC-SHA256 signature generation
