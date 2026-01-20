@@ -450,13 +450,8 @@ const shareToSNS = async (
 ) => {
   const hashtags = generateHashtags(prompt, tags);
   const shareText = `👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요!\n\n${hashtags}`;
-  // 실제 look ID가 있으면 공유 페이지 URL 사용, 없으면 기본 URL
-  // 배포된 URL(showmelook.lovable.app) 사용
-  const baseUrl = window.location.hostname.includes('lovable.app') || 
-                  window.location.hostname.includes('lovableproject.com') ||
-                  window.location.hostname === 'showmelook.com'
-    ? 'https://showmelook.lovable.app'
-    : window.location.origin;
+  // 커스텀 도메인 showmelook.com을 기본 URL로 사용
+  const baseUrl = 'https://showmelook.com';
   const shareUrl = lookId 
     ? `${baseUrl}/look/${lookId}` 
     : baseUrl;
