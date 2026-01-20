@@ -1863,20 +1863,45 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                           <ShoppingBag className="w-4 h-4 text-accent" />
                           추천 상품 ({lookProducts.length}개)
                         </h4>
-                        <div className="space-y-2 max-h-28 overflow-y-auto scrollbar-hide">
+                        <div className="space-y-2 max-h-36 overflow-y-auto scrollbar-hide">
                           {lookProducts.map((product, idx) => (
                             <div 
                               key={product.id} 
-                              className="flex justify-between items-center text-sm bg-white/10 hover:bg-white/15 transition-colors rounded-lg px-3 py-2"
+                              className="flex items-center gap-2 text-sm bg-white/10 hover:bg-white/20 transition-all rounded-lg px-3 py-2.5 group"
                               style={{ animationDelay: `${idx * 0.1}s` }}
                             >
-                              <span className="text-white/90 truncate flex-1 font-korean">
-                                {product.brand && <span className="text-accent font-medium">{product.brand} </span>}
-                                {product.name}
-                              </span>
-                              <span className="text-white font-semibold ml-2 whitespace-nowrap">
-                                {product.price?.toLocaleString()}원
-                              </span>
+                              {/* 상품 이미지 썸네일 */}
+                              {product.image_url && (
+                                <img 
+                                  src={product.image_url} 
+                                  alt={product.name}
+                                  className="w-10 h-10 rounded-md object-cover flex-shrink-0 border border-white/20"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <span className="text-white/90 truncate block font-korean text-xs">
+                                  {product.brand && <span className="text-accent font-medium">{product.brand} </span>}
+                                  {product.name}
+                                </span>
+                                <span className="text-white font-semibold text-sm">
+                                  {product.price?.toLocaleString()}원
+                                </span>
+                              </div>
+                              {/* 개별 구매 버튼 */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-shrink-0 h-8 px-2.5 text-xs bg-accent/20 border-accent/50 text-white hover:bg-accent hover:text-white transition-all opacity-80 group-hover:opacity-100"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (product.product_url) {
+                                    handleProductPurchase(product);
+                                  }
+                                }}
+                              >
+                                <ExternalLink className="w-3 h-3 mr-1" />
+                                구매
+                              </Button>
                             </div>
                           ))}
                         </div>
@@ -1890,27 +1915,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                             </span>
                           </div>
                         </div>
-                        
-                        {/* 상품 구매하기 버튼 */}
-                        <Button
-                          variant="gold"
-                          size="lg"
-                          className="w-full mt-4 font-korean gap-2 animate-pulse hover:animate-none"
-                          style={{ animationDuration: '3s' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // 첫 번째 상품의 딥링크로 이동 (또는 모든 상품 보기 모달)
-                            if (lookProducts.length > 0 && lookProducts[0].product_url) {
-                              handleProductPurchase(lookProducts[0]);
-                            }
-                          }}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          상품 구매하기
-                        </Button>
                       </div>
                     )}
-                    
                     {/* 태그 */}
                     {selectedLook.tags && selectedLook.tags.length > 0 && (
                       <div>
