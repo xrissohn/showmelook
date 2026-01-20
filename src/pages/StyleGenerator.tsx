@@ -1758,7 +1758,38 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             {/* 3D 카드 플립 컨테이너 */}
             <div 
               className="perspective-1000 cursor-pointer"
-              onClick={() => !isEditingMemo && setIsFlipped(!isFlipped)}
+              onClick={() => {
+                if (isEditingMemo) return;
+                
+                // 햅틱 피드백 (모바일)
+                if ('vibrate' in navigator) {
+                  navigator.vibrate(30);
+                }
+                
+                // 플립 효과음
+                try {
+                  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                  const oscillator = audioContext.createOscillator();
+                  const gainNode = audioContext.createGain();
+                  
+                  oscillator.connect(gainNode);
+                  gainNode.connect(audioContext.destination);
+                  
+                  oscillator.type = 'sine';
+                  oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                  oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
+                  
+                  gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+                  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                  
+                  oscillator.start(audioContext.currentTime);
+                  oscillator.stop(audioContext.currentTime + 0.15);
+                } catch (e) {
+                  // Audio context not available, silently fail
+                }
+                
+                setIsFlipped(!isFlipped);
+              }}
             >
               <div 
                 className={`relative transform-style-3d transition-transform duration-600 ${
