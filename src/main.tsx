@@ -2,14 +2,16 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 
+// Kakao JavaScript App Key (Publishable)
+const KAKAO_JS_KEY = '6472d48745d328a7ba0b61053c1f06d0';
+
 // Initialize Kakao SDK on app start
 const initKakao = () => {
-  const kakaoKey = import.meta.env.VITE_KAKAO_JS_KEY;
   const Kakao = (window as any).Kakao;
   
-  if (Kakao && !Kakao.isInitialized() && kakaoKey) {
+  if (Kakao && !Kakao.isInitialized() && KAKAO_JS_KEY) {
     try {
-      Kakao.init(kakaoKey);
+      Kakao.init(KAKAO_JS_KEY);
       console.log('Kakao SDK initialized successfully');
     } catch (e) {
       console.error('Kakao SDK initialization error:', e);

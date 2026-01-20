@@ -508,14 +508,12 @@ const shareToSNS = async (
         
         // main.tsx에서 초기화 시도했지만 실패했을 수 있으므로 재시도
         if (!Kakao.isInitialized()) {
-          const kakaoKey = import.meta.env.VITE_KAKAO_JS_KEY;
-          if (kakaoKey) {
-            try {
-              Kakao.init(kakaoKey);
-              console.log('Kakao SDK initialized in shareToSNS');
-            } catch (initErr) {
-              console.error('Kakao init error:', initErr);
-            }
+          const kakaoKey = '6472d48745d328a7ba0b61053c1f06d0';
+          try {
+            Kakao.init(kakaoKey);
+            console.log('Kakao SDK initialized in shareToSNS');
+          } catch (initErr) {
+            console.error('Kakao init error:', initErr);
           }
         }
         
