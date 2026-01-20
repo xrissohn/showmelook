@@ -10,7 +10,7 @@ const Terms = () => {
         
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 font-korean">
           <p className="text-muted-foreground">
-            시행일: 2024년 1월 1일
+            시행일: 2026년 1월 1일
           </p>
 
           <section className="space-y-4">
@@ -122,7 +122,7 @@ const Terms = () => {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">부칙</h2>
             <p className="text-foreground/80 leading-relaxed">
-              이 약관은 2024년 1월 1일부터 시행됩니다.
+              이 약관은 2026년 1월 1일부터 시행됩니다.
             </p>
           </section>
         </div>
