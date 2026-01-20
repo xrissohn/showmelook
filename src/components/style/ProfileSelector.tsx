@@ -25,6 +25,7 @@ export interface SelectedProfile {
   body_type: string | null;
   gender: string | null;
   age_group?: string | null;
+  style_preferences?: string[] | null;
 }
 
 interface ProfileSelectorProps {
@@ -37,6 +38,7 @@ interface ProfileSelectorProps {
     body_type: string | null;
     gender: string | null;
     age_group?: string | null;
+    style_preferences?: string[] | null;
   } | null;
   isPremium: boolean;
   canUseFamilyProfiles: boolean;
@@ -95,6 +97,7 @@ export const ProfileSelector = ({
         body_type: userProfile.body_type,
         gender: userProfile.gender,
         age_group: userProfile.age_group,
+        style_preferences: userProfile.style_preferences,
       });
     }
   }, [userProfile, selectedProfile, onProfileSelect]);
@@ -111,6 +114,7 @@ export const ProfileSelector = ({
         body_type: userProfile.body_type,
         gender: userProfile.gender,
         age_group: userProfile.age_group,
+        style_preferences: userProfile.style_preferences,
       });
       setIsOpen(false);
     }
@@ -127,6 +131,7 @@ export const ProfileSelector = ({
       body_type: profile.body_type,
       gender: profile.gender,
       age_group: (profile as any).age_group,
+      style_preferences: (profile as any).style_preferences,
     });
     setIsOpen(false);
   };

@@ -3008,7 +3008,8 @@ const StyleGenerator = () => {
         body: {
           userRequest,
           gender,
-          forceRefresh: false
+          forceRefresh: false,
+          stylePreferences: userProfile?.style_preferences
         }
       });
       
@@ -3088,7 +3089,8 @@ const StyleGenerator = () => {
           budget: customBudget[0],
           forceRefresh: false,
           age: customGender === 'kids' ? (customAge || 10) : customAge,
-          ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group
+          ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group,
+          stylePreferences: selectedGenerationProfile?.style_preferences || userProfile?.style_preferences
         }
       });
 
@@ -3225,7 +3227,8 @@ const StyleGenerator = () => {
         budget: customBudget[0],
         forceRefresh: false,
         age: customGender === 'kids' ? (customAge || 10) : customAge,
-        ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group
+        ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group,
+        stylePreferences: selectedGenerationProfile?.style_preferences || userProfile?.style_preferences
       }
     });
 
