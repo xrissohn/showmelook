@@ -1908,8 +1908,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         </h3>
                       )}
                       
-                      {/* 설명 (styleReasoning 또는 기본 메시지) */}
-                      <div className="relative pl-3 border-l-2 border-accent/40">
+                      {/* 설명 (styleReasoning) - 스크롤 가능 */}
+                      <div className="relative pl-3 border-l-2 border-accent/40 max-h-32 overflow-y-auto scrollbar-hide">
                         <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
                           {selectedLook.style_reasoning || (
                             lookProducts.length > 0 
