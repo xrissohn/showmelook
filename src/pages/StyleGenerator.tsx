@@ -3885,13 +3885,17 @@ const StyleGenerator = () => {
 
         // Save to database (only if not cached - edge function handles caching)
         if (!data.cached) {
+          // customResult에서 styleReasoning 가져오기 (AI 추천 시 생성된 설명)
+          const styleReasoningToSave = customResult?.styleReasoning || null;
+          console.log('[generateStyle] Saving with styleReasoning:', styleReasoningToSave?.substring(0, 100), 'length:', styleReasoningToSave?.length || 0);
+          
           const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: data.imagePath || data.imageUrl,
             prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map(p => p.id),
-            style_reasoning: null, // 수동 선택 시에는 AI 추천이 없음
+            style_reasoning: styleReasoningToSave,
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
@@ -3905,7 +3909,7 @@ const StyleGenerator = () => {
               created_at: new Date().toISOString(),
               style_trend_id: selectedTrend?.id || null,
               product_ids: productsWithDetails.map(p => p.id),
-              style_reasoning: null,
+              style_reasoning: styleReasoningToSave,
             });
           }
         }
