@@ -457,7 +457,7 @@ const shareToSNS = async (
 
   switch (platform) {
     case 'instagram':
-      // Instagram은 직접 공유가 불가능하므로 이미지 저장 후 안내
+      // Instagram은 직접 공유가 불가능하므로 이미지 저장 + 안내 토스트
       const downloaded = await downloadImage(
         imageUrl, 
         'showmelook-style-instagram.png',
@@ -471,12 +471,10 @@ const shareToSNS = async (
         } catch (err) {
           console.log('해시태그 복사 실패');
         }
-        // 모바일 확인
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile) {
-          window.open('instagram://library?AssetPath=', '_blank');
-        }
-        return { success: true, message: '이미지가 저장되었습니다. 해시태그가 클립보드에 복사되었어요!' };
+        return { 
+          success: true, 
+          message: '📸 이미지가 저장되었습니다!\n해시태그가 복사되었으니 인스타그램에 붙여넣기 해주세요.' 
+        };
       }
       return { success: false, message: '이미지 저장에 실패했습니다.' };
 
@@ -497,23 +495,62 @@ const shareToSNS = async (
       return { success: true };
 
     case 'kakao':
-      // 카카오톡 공유 (SDK 없이 기본 링크 공유)
-      if (navigator.share) {
+      // 카카오톡 SDK 공유
+      try {
+        const Kakao = (window as any).Kakao;
+        const kakaoKey = import.meta.env.VITE_KAKAO_JS_KEY;
+        
+        if (!Kakao) {
+          console.error('Kakao SDK not loaded');
+          // SDK 로드 실패 시 링크 복사로 fallback
+          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+          return { success: true, message: '카카오톡 SDK 로딩 실패. 링크가 복사되었습니다!' };
+        }
+        
+        // 카카오 SDK 초기화 (아직 안 된 경우)
+        if (!Kakao.isInitialized() && kakaoKey) {
+          Kakao.init(kakaoKey);
+        }
+        
+        if (!Kakao.isInitialized()) {
+          console.error('Kakao SDK initialization failed');
+          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+          return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
+        }
+        
+        // 카카오톡 공유하기
+        Kakao.Share.sendDefault({
+          objectType: 'feed',
+          content: {
+            title: '👗 ShowMeLook AI 스타일',
+            description: prompt ? `${prompt.slice(0, 50)}...` : 'AI가 만든 나만의 스타일을 확인해보세요!',
+            imageUrl: imageUrl,
+            link: {
+              mobileWebUrl: shareUrl,
+              webUrl: shareUrl,
+            },
+          },
+          buttons: [
+            {
+              title: '스타일 보기',
+              link: {
+                mobileWebUrl: shareUrl,
+                webUrl: shareUrl,
+              },
+            },
+          ],
+        });
+        return { success: true };
+      } catch (err) {
+        console.error('Kakao share error:', err);
+        // 에러 시 링크 복사로 fallback
         try {
-          await navigator.share({
-            title: 'ShowMeLook AI 스타일',
-            text: shareText,
-            url: shareUrl,
-          });
-          return { success: true };
-        } catch (err) {
-          // 사용자가 취소한 경우
-          return { success: false };
+          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+          return { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' };
+        } catch {
+          return { success: false, message: '공유에 실패했습니다.' };
         }
       }
-      // 카카오톡 링크로 이동
-      window.open(`https://story.kakao.com/share?url=${encodeURIComponent(shareUrl)}`, '_blank');
-      return { success: true };
 
     case 'copy':
       try {
