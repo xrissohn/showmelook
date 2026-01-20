@@ -1891,25 +1891,29 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
                   
                   <div className="relative flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
-                    {/* 스타일 개요 */}
-                    {selectedLook.prompt_used && (
+                    {/* AI 스타일리스트 추천 - 메인 설명 */}
+                    {selectedLook.style_reasoning ? (
+                      <div className="bg-gradient-to-br from-accent/25 via-primary/20 to-accent/15 rounded-xl p-5 border border-accent/40 shadow-lg">
+                        <h3 className="text-base font-bold text-white flex items-center gap-2 font-korean mb-3">
+                          <div className="relative">
+                            <Sparkles className="w-5 h-5 text-accent" />
+                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full animate-ping" />
+                          </div>
+                          StyloX 스타일리스트 추천
+                        </h3>
+                        <p className="text-sm text-white/95 font-korean leading-relaxed whitespace-pre-wrap">
+                          {selectedLook.style_reasoning}
+                        </p>
+                      </div>
+                    ) : selectedLook.prompt_used && (
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                         <h3 className="text-sm font-bold text-white flex items-center gap-2 font-korean mb-2">
                           <Sparkles className="w-4 h-4 text-accent animate-pulse" />
-                          스타일 개요
+                          스타일 컨셉
                         </h3>
-                        <p className="text-sm text-white/80 font-korean leading-relaxed">{selectedLook.prompt_used}</p>
-                      </div>
-                    )}
-                    
-                    {/* AI 스타일 추천 설명 */}
-                    {selectedLook.style_reasoning && (
-                      <div className="bg-gradient-to-r from-accent/20 to-primary/20 rounded-xl p-4 border border-accent/30">
-                        <h4 className="text-sm font-semibold text-accent flex items-center gap-1.5 font-korean mb-1.5">
-                          <Lightbulb className="w-4 h-4 animate-bounce" style={{ animationDuration: '2s' }} />
-                          AI 스타일리스트 추천
-                        </h4>
-                        <p className="text-sm text-white/90 font-korean leading-relaxed">{selectedLook.style_reasoning}</p>
+                        <p className="text-sm text-white/80 font-korean leading-relaxed">
+                          {selectedLook.prompt_used.split(',')[0]}
+                        </p>
                       </div>
                     )}
                     
