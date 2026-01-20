@@ -1891,19 +1891,30 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
                   
                   <div className="relative flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
-                    {/* AI 스타일리스트 추천 - 메인 설명 */}
+                    {/* AI 스타일리스트 추천 - 제목 + 설명 */}
                     {selectedLook.style_reasoning ? (
                       <div className="bg-gradient-to-br from-accent/25 via-primary/20 to-accent/15 rounded-xl p-5 border border-accent/40 shadow-lg">
-                        <h3 className="text-base font-bold text-white flex items-center gap-2 font-korean mb-3">
-                          <div className="relative">
-                            <Sparkles className="w-5 h-5 text-accent" />
-                            <div className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full animate-ping" />
+                        {/* 라벨 */}
+                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20 mb-3">
+                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                            <Sparkles className="w-2.5 h-2.5 text-white" />
                           </div>
-                          StyloX 스타일리스트 추천
-                        </h3>
-                        <p className="text-sm text-white/95 font-korean leading-relaxed whitespace-pre-wrap">
-                          {selectedLook.style_reasoning}
-                        </p>
+                          <span className="text-[10px] font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                        </div>
+                        
+                        {/* 제목 (styleConcept) */}
+                        {selectedLook.prompt_used && (
+                          <h3 className="text-base font-bold text-white font-korean mb-3 leading-tight">
+                            👗 {selectedLook.prompt_used}
+                          </h3>
+                        )}
+                        
+                        {/* 설명 (styleReasoning) */}
+                        <div className="relative pl-3 border-l-2 border-accent/40">
+                          <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
+                            {selectedLook.style_reasoning}
+                          </p>
+                        </div>
                       </div>
                     ) : selectedLook.prompt_used && (
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
@@ -1912,7 +1923,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                           스타일 컨셉
                         </h3>
                         <p className="text-sm text-white/80 font-korean leading-relaxed">
-                          {selectedLook.prompt_used.split(',')[0]}
+                          {selectedLook.prompt_used}
                         </p>
                       </div>
                     )}
@@ -3698,10 +3709,11 @@ const StyleGenerator = () => {
 
         // Save to database
         if (!genData.cached) {
+          const styleConcept = customResult?.styleConcept || `${styleDesc} 스타일`;
           const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: genData.imagePath || genData.imageUrl,
-            prompt_used: `${styleDesc} 스타일, ${productsDesc}`,
+            prompt_used: styleConcept,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map((p: any) => p.id),
             style_reasoning: customResult?.styleReasoning || null,
@@ -3713,7 +3725,7 @@ const StyleGenerator = () => {
             addPreloadedLook({
               id: insertedLook.id,
               image_url: genData.imagePath || genData.imageUrl,
-              prompt_used: `${styleDesc} 스타일, ${productsDesc}`,
+              prompt_used: styleConcept,
               is_favorite: false,
               created_at: new Date().toISOString(),
               style_trend_id: selectedTrend?.id || null,
