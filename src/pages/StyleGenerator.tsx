@@ -451,11 +451,11 @@ const shareToSNS = async (
   const hashtags = generateHashtags(prompt, tags);
   const shareText = `👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요!\n\n${hashtags}`;
   // 실제 look ID가 있으면 공유 페이지 URL 사용, 없으면 기본 URL
-  // 프로덕션 환경에서는 showmelook.com 사용, 그 외에는 현재 origin 사용
+  // 배포된 URL(showmelook.lovable.app) 사용
   const baseUrl = window.location.hostname.includes('lovable.app') || 
                   window.location.hostname.includes('lovableproject.com') ||
                   window.location.hostname === 'showmelook.com'
-    ? 'https://showmelook.com'
+    ? 'https://showmelook.lovable.app'
     : window.location.origin;
   const shareUrl = lookId 
     ? `${baseUrl}/look/${lookId}` 
@@ -467,7 +467,7 @@ const shareToSNS = async (
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
       if (isMobile) {
-        // 모바일에서는 이미지를 새 탭에서 열어서 길게 눌러 저장하도록 안내
+        // Web Share API 지원 확인 (파일 공유 가능 여부)
         try {
           // 클립보드에 해시태그 복사
           try {
@@ -476,10 +476,26 @@ const shareToSNS = async (
             console.log('해시태그 복사 실패');
           }
           
-          // 이미지를 새 탭에서 열기 (사용자가 길게 눌러 저장 가능)
-          window.open(imageUrl, '_blank');
+          // 이미지를 Blob으로 변환하여 Web Share API로 공유 시도
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const file = new File([blob], 'showmelook-style.jpg', { type: 'image/jpeg' });
           
-          // 잠시 후 인스타그램 스토리 카메라 열기
+          // Web Share API로 직접 공유 (갤러리 저장 및 앱 선택 가능)
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: '👗 ShowMeLook AI 스타일',
+              text: hashtags,
+            });
+            return { 
+              success: true, 
+              message: '📸 공유 완료!\n해시태그가 클립보드에 복사되었습니다.' 
+            };
+          }
+          
+          // Web Share API 지원하지 않으면 기존 방식
+          window.open(imageUrl, '_blank');
           setTimeout(() => {
             window.location.href = 'instagram://story-camera';
           }, 500);
@@ -544,7 +560,7 @@ const shareToSNS = async (
         
         // main.tsx에서 초기화 시도했지만 실패했을 수 있으므로 재시도
         if (!Kakao.isInitialized()) {
-          const kakaoKey = '6472d48745d328a7ba0b61053c1f06d0';
+          const kakaoKey = 'e5f9085240afd55f52cc0a0a37081761';
           try {
             Kakao.init(kakaoKey);
             console.log('Kakao SDK initialized in shareToSNS');
