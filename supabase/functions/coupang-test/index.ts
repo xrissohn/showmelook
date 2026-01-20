@@ -166,7 +166,6 @@ serve(async (req) => {
       const authorization = await generateHmacSignature("GET", fullPath, accessKey, secretKey);
       
       console.log("Calling Coupang API:", fullPath);
-      console.log("Authorization:", authorization.substring(0, 50) + "...");
       
       const response = await fetch(`https://api-gateway.coupang.com${fullPath}`, {
         method: "GET",
@@ -178,7 +177,6 @@ serve(async (req) => {
       
       const responseText = await response.text();
       console.log("Coupang API Response Status:", response.status);
-      console.log("Coupang API Response:", responseText.substring(0, 500));
       
       if (!response.ok) {
         return new Response(
@@ -206,15 +204,30 @@ serve(async (req) => {
       }
       
       // 상품 데이터 추출 및 DNA 생성
-      const products = data.data?.productData || [];
-      const processedProducts = products.map((item: any) => {
+      const searchProducts = data.data?.productData || [];
+      const processedProducts = searchProducts.map((item: any) => {
+        // 실제 상품 이미지 URL 추출 시도
+        // ads-partners 이미지는 광고 배너이므로 실제 상품 이미지로 변환 시도
+        let imageUrl = item.productImage || item.imageUrl || "";
+        
+        // 쿠팡 실제 상품 이미지 URL 패턴으로 변환 시도
+        // productId를 사용해 실제 이미지 URL 생성
+        const productId = item.productId;
+        if (productId) {
+          // 쿠팡 상품 이미지 URL 형식 시도
+          imageUrl = `https://thumbnail7.coupangcdn.com/thumbnails/remote/492x492ex/image/retail/images/product-main/${productId}.jpg`;
+        }
+        
         const product = {
           name: item.productName || item.itemName || "상품명 없음",
           price: item.productPrice || item.salePrice || 0,
           brand: item.brandName || "쿠팡",
-          image_url: item.productImage || item.imageUrl,
+          image_url: imageUrl,
+          original_api_image: item.productImage, // 원본 API 이미지 (비교용)
           product_url: item.productUrl || item.landingUrl,
+          product_id: productId,
           category: item.categoryName || "패션",
+          isRocket: item.isRocket,
         };
         
         const { dna_meta, dna_text } = generateDNA(product);
@@ -232,6 +245,151 @@ serve(async (req) => {
           success: true, 
           action: "search",
           keyword,
+          total: processedProducts.length,
+          products: processedProducts,
+          raw_response: data,
+          note: "productImage from API is ads banner. Try goldbox action for better images."
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // 1.5 GoldBox API (베스트 상품 - 더 나은 이미지 제공)
+    if (action === "goldbox") {
+      const categoryId = body.categoryId || 115573; // 115573 = 패션의류
+      const apiPath = "/v2/providers/affiliate_open_api/apis/openapi/products/goldbox";
+      const queryParams = `categoryId=${categoryId}&limit=${limit}`;
+      const fullPath = `${apiPath}?${queryParams}`;
+      
+      const authorization = await generateHmacSignature("GET", fullPath, accessKey, secretKey);
+      
+      console.log("Calling Coupang GoldBox API:", fullPath);
+      
+      const response = await fetch(`https://api-gateway.coupang.com${fullPath}`, {
+        method: "GET",
+        headers: {
+          "Authorization": authorization,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      const responseText = await response.text();
+      console.log("Coupang GoldBox Response Status:", response.status);
+      
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `쿠팡 GoldBox API 오류: ${response.status}`,
+            details: responseText
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "JSON 파싱 실패",
+            raw: responseText
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action: "goldbox",
+          categoryId,
+          raw_response: data
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // 1.6 BestCategories API (카테고리별 베스트 - 실제 상품 이미지 제공)
+    if (action === "best") {
+      // 1001 = 여성패션, 1002 = 남성패션
+      const categoryId = body.categoryId || 1002;
+      const apiPath = `/v2/providers/affiliate_open_api/apis/openapi/v1/products/bestcategories/${categoryId}`;
+      const queryParams = `limit=${limit}`;
+      const fullPath = `${apiPath}?${queryParams}`;
+      
+      const authorization = await generateHmacSignature("GET", fullPath, accessKey, secretKey);
+      
+      console.log("Calling Coupang BestCategories API:", fullPath);
+      
+      const response = await fetch(`https://api-gateway.coupang.com${fullPath}`, {
+        method: "GET",
+        headers: {
+          "Authorization": authorization,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      const responseText = await response.text();
+      console.log("Coupang BestCategories Response Status:", response.status);
+      
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `쿠팡 BestCategories API 오류: ${response.status}`,
+            details: responseText
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "JSON 파싱 실패",
+            raw: responseText
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+        );
+      }
+      
+      // 상품 데이터 추출 및 DNA 생성
+      const bestProducts = data.data || [];
+      const processedProducts = bestProducts.map((item: any) => {
+        const product = {
+          name: item.productName || "상품명 없음",
+          price: item.productPrice || item.salePrice || 0,
+          brand: item.vendorName || "쿠팡",
+          image_url: item.productImage, // coupangcdn.com 실제 이미지
+          product_url: item.productUrl,
+          product_id: item.productId,
+          category: item.categoryName || "패션",
+          isRocket: item.isRocket,
+        };
+        
+        const { dna_meta, dna_text } = generateDNA(product);
+        
+        return {
+          ...product,
+          dna_meta,
+          dna_text,
+          source: "coupang",
+        };
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          action: "best",
+          categoryId,
+          categoryName: categoryId === 1001 ? "여성패션" : categoryId === 1002 ? "남성패션" : `카테고리 ${categoryId}`,
           total: processedProducts.length,
           products: processedProducts,
           raw_response: data
