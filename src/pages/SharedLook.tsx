@@ -337,7 +337,7 @@ const SharedLook = () => {
               <ShoppingBag className="w-5 h-5" />
               스타일 상품
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {look.products.map((product) => (
                 <Card
                   key={product.id}
@@ -356,45 +356,46 @@ const SharedLook = () => {
                         <ShoppingBag className="w-8 h-8 text-muted-foreground" />
                       </div>
                     )}
-                    <Badge className="absolute top-2 left-2 text-xs">
+                    <Badge className="absolute top-2 left-2 text-[10px] sm:text-xs px-1.5 py-0.5">
                       {product.category}
                     </Badge>
                   </div>
-                  <CardContent className="p-3">
+                  <CardContent className="p-2 sm:p-3">
                     {product.brand && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                         {product.brand}
                       </p>
                     )}
-                    <p className="text-sm font-medium truncate mb-1">
+                    <p className="text-xs sm:text-sm font-medium truncate mb-1">
                       {product.name}
                     </p>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-accent">
+                    <div className="flex items-baseline gap-1 flex-wrap">
+                      <span className="font-bold text-accent text-xs sm:text-sm">
                         {product.price.toLocaleString()}원
                       </span>
                       {product.original_price && product.original_price > product.price && (
-                        <span className="text-xs text-muted-foreground line-through">
+                        <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
                           {product.original_price.toLocaleString()}원
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-2 mt-2">
+                    {/* Mobile: Stack buttons vertically */}
+                    <div className="flex flex-col gap-1.5 mt-2 sm:flex-row sm:gap-2">
                       <Button
                         size="sm"
                         variant={addedToCart.has(product.id) ? "secondary" : "outline"}
-                        className="flex-1 text-xs"
+                        className="w-full h-8 text-[10px] sm:text-xs px-2"
                         onClick={(e) => handleAddToCart(product, e)}
                         disabled={addedToCart.has(product.id)}
                       >
                         {addedToCart.has(product.id) ? (
                           <>
-                            <Check className="w-3 h-3 mr-1" />
+                            <Check className="w-3 h-3 mr-1 shrink-0" />
                             담김
                           </>
                         ) : (
                           <>
-                            <ShoppingCart className="w-3 h-3 mr-1" />
+                            <ShoppingCart className="w-3 h-3 mr-1 shrink-0" />
                             담기
                           </>
                         )}
@@ -402,13 +403,13 @@ const SharedLook = () => {
                       <Button
                         size="sm"
                         variant="default"
-                        className="flex-1 text-xs"
+                        className="w-full h-8 text-[10px] sm:text-xs px-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleProductClick(product);
                         }}
                       >
-                        <ExternalLink className="w-3 h-3 mr-1" />
+                        <ExternalLink className="w-3 h-3 mr-1 shrink-0" />
                         구매
                       </Button>
                     </div>

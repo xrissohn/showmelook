@@ -462,7 +462,6 @@ const shareToSNS = async (
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
       if (isMobile) {
-        // Web Share API 지원 확인 (파일 공유 가능 여부)
         try {
           // 클립보드에 해시태그 복사
           try {
@@ -478,26 +477,45 @@ const shareToSNS = async (
           
           // Web Share API로 직접 공유 (갤러리 저장 및 앱 선택 가능)
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: '👗 ShowMeLook AI 스타일',
-              text: hashtags,
-            });
-            return { 
-              success: true, 
-              message: '📸 공유 완료!\n해시태그가 클립보드에 복사되었습니다.' 
-            };
+            try {
+              await navigator.share({
+                files: [file],
+                title: '👗 ShowMeLook AI 스타일',
+                text: hashtags,
+              });
+              return { 
+                success: true, 
+                message: '📸 공유 완료!\n해시태그가 클립보드에 복사되었습니다.' 
+              };
+            } catch (shareErr) {
+              // 사용자가 공유 취소한 경우 - 에러 아님
+              if ((shareErr as Error).name === 'AbortError') {
+                return { success: true, message: '공유가 취소되었습니다.' };
+              }
+              console.log('Web Share API failed:', shareErr);
+            }
           }
           
-          // Web Share API 지원하지 않으면 기존 방식
-          window.open(imageUrl, '_blank');
+          // Web Share API 실패 시 - 다운로드 후 인스타그램 딥링크
+          // 이미지 다운로드를 위해 a 태그 사용 (모바일 갤러리 저장)
+          const downloadUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = downloadUrl;
+          link.download = 'showmelook-style.jpg';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(downloadUrl);
+          
+          // 다운로드 후 인스타그램 앱 열기
           setTimeout(() => {
+            // 인스타그램 스토리 카메라 딥링크
             window.location.href = 'instagram://story-camera';
-          }, 500);
+          }, 1000);
           
           return { 
             success: true, 
-            message: '📸 이미지가 새 탭에서 열렸습니다!\n\n1️⃣ 이미지를 길게 눌러 저장하세요\n2️⃣ 인스타그램에서 갤러리 이미지를 선택하세요\n3️⃣ 해시태그를 붙여넣기 해주세요' 
+            message: '📸 이미지가 저장되었습니다!\n\n1️⃣ 인스타그램이 열리면\n2️⃣ 갤러리에서 저장된 이미지를 선택하세요\n3️⃣ 해시태그를 붙여넣기 해주세요' 
           };
         } catch (err) {
           console.log('Instagram share failed:', err);
@@ -570,13 +588,17 @@ const shareToSNS = async (
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
         
+        // 이미지 URL을 공개 URL로 변환 (signed URL이 아닌 직접 접근 가능한 URL 필요)
+        // 카카오톡은 서버에서 이미지를 가져오므로 signed URL이 필요
+        let kakaoImageUrl = imageUrl;
+        
         // 카카오톡 공유하기
         Kakao.Share.sendDefault({
           objectType: 'feed',
           content: {
-            title: '👗 ShowMeLook AI 스타일',
-            description: prompt ? `${prompt.slice(0, 50)}...` : 'AI가 만든 나만의 스타일을 확인해보세요!',
-            imageUrl: imageUrl,
+            title: '👗 쇼미룩 AI 스타일',
+            description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+            imageUrl: kakaoImageUrl,
             link: {
               mobileWebUrl: shareUrl,
               webUrl: shareUrl,
