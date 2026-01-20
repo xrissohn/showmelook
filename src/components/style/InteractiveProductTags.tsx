@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { X, ExternalLink, ShoppingBag, Heart, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
+import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 
 interface TaggedProduct {
   id: string;
@@ -12,6 +13,7 @@ interface TaggedProduct {
   product_url: string;
   category: string;
   affiliate_url?: string;
+  merchant_id?: string | null;
 }
 
 interface ProductTagPosition {
@@ -304,6 +306,10 @@ export function InteractiveProductTags({
               </h3>
               <p className="text-xl font-bold text-foreground">
                 ₩{selectedProduct.price.toLocaleString()}
+              </p>
+              {/* 제휴 공시 문구 */}
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                {getProductAffiliateDisclosure(selectedProduct.product_url, selectedProduct.merchant_id)}
               </p>
             </div>
 

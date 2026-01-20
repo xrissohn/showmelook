@@ -29,6 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { LimitReachedBanner } from '@/components/subscription/LimitReachedBanner';
 import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSelector';
+import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 interface StyleTrend {
   id: string;
   name: string;
@@ -64,6 +65,7 @@ interface CachedProduct {
   style_tags: string[] | null;
   affiliate_url?: string;
   isAutoSelected?: boolean;
+  merchant_id?: string | null;
 }
 
 interface GeneratedLook {
@@ -2066,6 +2068,10 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                                 </span>
                                 <span className="text-white font-semibold text-sm">
                                   {product.price?.toLocaleString()}원
+                                </span>
+                                {/* 제휴 공시 문구 */}
+                                <span className="text-white/50 block text-[8px] mt-0.5 leading-tight">
+                                  {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
                                 </span>
                               </div>
                               {/* 개별 구매 버튼 */}

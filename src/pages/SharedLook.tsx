@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useGuestCart } from "@/hooks/useGuestCart";
 import MainNavigation from "@/components/MainNavigation";
+import { getProductAffiliateDisclosure } from "@/lib/affiliateDisclosure";
 
 // 카카오톡 인앱 브라우저 감지
 const isKakaoInAppBrowser = (): boolean => {
@@ -51,6 +52,7 @@ interface Product {
   product_url: string;
   category: string;
   affiliate_url?: string;
+  merchant_id?: string | null;
 }
 
 interface LookData {
@@ -501,6 +503,10 @@ const SharedLook = () => {
                         </span>
                       )}
                     </div>
+                    {/* 제휴 공시 문구 */}
+                    <p className="text-[8px] sm:text-[9px] text-muted-foreground mt-1 leading-tight">
+                      {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
+                    </p>
                     {/* Mobile: Stack buttons vertically */}
                     <div className="flex flex-col gap-1.5 mt-2 sm:flex-row sm:gap-2">
                       <Button
