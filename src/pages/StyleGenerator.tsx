@@ -451,9 +451,15 @@ const shareToSNS = async (
   const hashtags = generateHashtags(prompt, tags);
   const shareText = `👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요!\n\n${hashtags}`;
   // 실제 look ID가 있으면 공유 페이지 URL 사용, 없으면 기본 URL
-  const shareUrl = lookId 
-    ? `${window.location.origin}/look/${lookId}` 
+  // 프로덕션 환경에서는 showmelook.com 사용, 그 외에는 현재 origin 사용
+  const baseUrl = window.location.hostname.includes('lovable.app') || 
+                  window.location.hostname.includes('lovableproject.com') ||
+                  window.location.hostname === 'showmelook.com'
+    ? 'https://showmelook.com'
     : window.location.origin;
+  const shareUrl = lookId 
+    ? `${baseUrl}/look/${lookId}` 
+    : baseUrl;
 
   switch (platform) {
     case 'instagram':
@@ -461,45 +467,29 @@ const shareToSNS = async (
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
       if (isMobile) {
-        // 모바일에서는 인스타그램 스토리로 공유 시도
+        // 모바일에서는 이미지를 새 탭에서 열어서 길게 눌러 저장하도록 안내
         try {
-          // 먼저 이미지를 다운로드하고 클립보드에 해시태그 복사
-          const downloaded = await downloadImage(
-            imageUrl, 
-            'showmelook-style-instagram.png',
-            addWatermark,
-            logoUrl
-          );
-          
-          if (downloaded) {
-            // 클립보드에 해시태그 복사
-            try {
-              await navigator.clipboard.writeText(hashtags);
-            } catch (err) {
-              console.log('해시태그 복사 실패');
-            }
-            
-            // 인스타그램 앱 딥링크 시도 (스토리 카메라)
-            // instagram://story-camera 또는 instagram://library
-            const instagramUrl = 'instagram://story-camera';
-            
-            // 딥링크 시도 전에 fallback 타이머 설정
-            const timeout = setTimeout(() => {
-              // 앱이 열리지 않으면 이미 이미지 저장됨, 안내만 표시
-            }, 2000);
-            
-            window.location.href = instagramUrl;
-            clearTimeout(timeout);
-            
-            return { 
-              success: true, 
-              message: '📸 인스타그램 스토리가 열립니다!\n저장된 이미지를 갤러리에서 선택하고 해시태그를 붙여넣기 해주세요.' 
-            };
+          // 클립보드에 해시태그 복사
+          try {
+            await navigator.clipboard.writeText(hashtags);
+          } catch (err) {
+            console.log('해시태그 복사 실패');
           }
-          return { success: false, message: '이미지 저장에 실패했습니다.' };
+          
+          // 이미지를 새 탭에서 열기 (사용자가 길게 눌러 저장 가능)
+          window.open(imageUrl, '_blank');
+          
+          // 잠시 후 인스타그램 스토리 카메라 열기
+          setTimeout(() => {
+            window.location.href = 'instagram://story-camera';
+          }, 500);
+          
+          return { 
+            success: true, 
+            message: '📸 이미지가 새 탭에서 열렸습니다!\n\n1️⃣ 이미지를 길게 눌러 저장하세요\n2️⃣ 인스타그램에서 갤러리 이미지를 선택하세요\n3️⃣ 해시태그를 붙여넣기 해주세요' 
+          };
         } catch (err) {
-          console.log('Instagram deep link failed:', err);
-          // 딥링크 실패시 기존 방식으로 fallback
+          console.log('Instagram share failed:', err);
         }
       }
       
@@ -1950,11 +1940,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     </div>
                   )}
                   
-                  {/* 플립 힌트 (앞면) */}
-                  <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean">
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    탭하여 상세 정보 보기
-                  </div>
+                  {/* 플립 힌트 (앞면) - 뒤집히면 숨김 */}
+                  {!isFlipped && (
+                    <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean backface-hidden">
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      탭하여 상세 정보 보기
+                    </div>
+                  )}
                 </div>
                 
                 {/* 뒷면 - 스타일 정보 카드 (화려한 그라데이션) */}
