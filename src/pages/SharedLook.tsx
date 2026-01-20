@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ShoppingBag, ShoppingCart, ExternalLink, Check } from "lucide-react";
+import { Loader2, ShoppingBag, ShoppingCart, ExternalLink, Check, Copy, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,37 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { useGuestCart } from "@/hooks/useGuestCart";
 import MainNavigation from "@/components/MainNavigation";
+
+// 카카오톡 인앱 브라우저 감지
+const isKakaoInAppBrowser = (): boolean => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  return userAgent.includes('kakaotalk');
+};
+
+// iOS 감지
+const isIOS = (): boolean => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  return /iphone|ipad|ipod/.test(userAgent);
+};
+
+// Android 감지
+const isAndroid = (): boolean => {
+  const userAgent = navigator.userAgent.toLowerCase();
+  return /android/.test(userAgent);
+};
+
+// 외부 브라우저로 열기 시도
+const openInExternalBrowser = (url: string): void => {
+  if (isAndroid()) {
+    // Android: Chrome Intent로 열기
+    const intentUrl = `intent://${url.replace('https://', '')}#Intent;scheme=https;package=com.android.chrome;end`;
+    window.location.href = intentUrl;
+  } else if (isIOS()) {
+    // iOS: 다양한 방법 시도
+    // 1. x-safari-https 스키마 시도 (일부 앱에서 지원)
+    window.location.href = url;
+  }
+};
 
 interface Product {
   id: string;
@@ -75,6 +106,27 @@ const SharedLook = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
+  const [showKakaoRedirectUI, setShowKakaoRedirectUI] = useState(false);
+  const [isKakaoWebView, setIsKakaoWebView] = useState(false);
+
+  // 카카오톡 인앱 브라우저 감지 및 외부 브라우저 열기 시도
+  useEffect(() => {
+    if (isKakaoInAppBrowser()) {
+      setIsKakaoWebView(true);
+      
+      // Android에서는 자동 리다이렉트 시도
+      if (isAndroid()) {
+        openInExternalBrowser(window.location.href);
+        // 리다이렉트가 실패하면 UI 표시
+        setTimeout(() => {
+          setShowKakaoRedirectUI(true);
+        }, 500);
+      } else {
+        // iOS에서는 바로 UI 표시 (자동 리다이렉트가 어려움)
+        setShowKakaoRedirectUI(true);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const fetchLook = async () => {
@@ -232,6 +284,76 @@ const SharedLook = () => {
   const handleViewCart = () => {
     navigate("/cart");
   };
+
+  // 링크 복사 핸들러
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success("링크가 복사되었습니다", {
+        description: "Safari 또는 Chrome에서 붙여넣기 해주세요",
+      });
+    } catch (err) {
+      console.error("Copy failed:", err);
+      toast.error("링크 복사에 실패했습니다");
+    }
+  };
+
+  // 카카오톡 인앱 브라우저 리다이렉트 UI
+  if (showKakaoRedirectUI && isKakaoWebView) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="max-w-sm w-full text-center space-y-6">
+          <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto">
+            <Smartphone className="w-10 h-10 text-accent" />
+          </div>
+          
+          <div className="space-y-2">
+            <h2 className="text-xl font-bold">외부 브라우저에서 열기</h2>
+            <p className="text-sm text-muted-foreground">
+              카카오톡 내 브라우저에서는 일부 기능이 제한됩니다.
+              <br />
+              더 나은 경험을 위해 외부 브라우저에서 열어주세요.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {isAndroid() && (
+              <Button 
+                className="w-full" 
+                onClick={() => openInExternalBrowser(window.location.href)}
+              >
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Chrome에서 열기
+              </Button>
+            )}
+            
+            <Button 
+              variant={isAndroid() ? "outline" : "default"}
+              className="w-full" 
+              onClick={handleCopyLink}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              링크 복사하기
+            </Button>
+            
+            {isIOS() && (
+              <p className="text-xs text-muted-foreground">
+                링크를 복사한 후 Safari에서 붙여넣기 해주세요
+              </p>
+            )}
+
+            <Button 
+              variant="ghost" 
+              className="w-full text-muted-foreground" 
+              onClick={() => setShowKakaoRedirectUI(false)}
+            >
+              이대로 보기
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
