@@ -104,6 +104,77 @@
 
   <body>
     <div id="root"></div>
+    
+    <!-- 카카오톡 인앱 브라우저 사전 감지 및 리다이렉트 (React 로드 전에 실행) -->
+    <script>
+      (function() {
+        var ua = navigator.userAgent.toLowerCase();
+        var isKakaoInApp = ua.indexOf('kakaotalk') > -1;
+        var isLookPage = window.location.pathname.indexOf('/look/') === 0;
+        
+        if (isKakaoInApp && isLookPage) {
+          var currentUrl = window.location.href;
+          var isIOS = /iphone|ipad|ipod/.test(ua);
+          var isAndroid = /android/.test(ua);
+          
+          // 루트 요소에 리다이렉트 UI 표시
+          var root = document.getElementById('root');
+          root.innerHTML = '<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center;">' +
+            '<div style="max-width:360px;width:100%;">' +
+              '<div style="width:80px;height:80px;background:rgba(212,175,55,0.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d4af37" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>' +
+              '</div>' +
+              '<h1 style="font-size:20px;font-weight:700;margin-bottom:12px;">외부 브라우저에서 열기</h1>' +
+              '<p style="font-size:14px;color:rgba(255,255,255,0.7);line-height:1.5;margin-bottom:32px;">' +
+                '카카오톡 내 브라우저에서는<br>일부 기능이 제한됩니다.<br>더 나은 경험을 위해 외부 브라우저로 열어주세요.' +
+              '</p>' +
+              '<div style="display:flex;flex-direction:column;gap:12px;">' +
+                (isAndroid ? '<a href="intent://' + currentUrl.replace('https://','') + '#Intent;scheme=https;package=com.android.chrome;end" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;background:linear-gradient(135deg,#d4af37 0%,#c4a030 100%);color:#1a1a2e;">Chrome에서 열기</a>' : '') +
+                '<button onclick="copyLink()" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 20px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;border:none;' + (isIOS ? 'background:linear-gradient(135deg,#d4af37 0%,#c4a030 100%);color:#1a1a2e;' : 'background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);') + '">링크 복사하기</button>' +
+                (isIOS ? '<p style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:8px;">링크를 복사한 후 Safari에서 붙여넣기 해주세요</p>' : '') +
+                '<button onclick="continueHere()" style="display:flex;align-items:center;justify-content:center;padding:14px 20px;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;background:transparent;color:rgba(255,255,255,0.5);border:none;">이대로 보기</button>' +
+              '</div>' +
+              '<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;opacity:0;transition:opacity 0.3s;">링크가 복사되었습니다!</div>' +
+            '</div>' +
+          '</div>';
+          
+          // 복사 함수 정의
+          window.copyLink = function() {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(currentUrl).then(showToast).catch(function() { fallbackCopy(currentUrl); });
+            } else {
+              fallbackCopy(currentUrl);
+            }
+          };
+          
+          window.fallbackCopy = function(text) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.cssText = 'position:fixed;left:-999999px;';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { document.execCommand('copy'); showToast(); } catch(e) { alert('링크: ' + text); }
+            document.body.removeChild(textArea);
+          };
+          
+          window.showToast = function() {
+            var toast = document.getElementById('toast');
+            toast.style.opacity = '1';
+            setTimeout(function() { toast.style.opacity = '0'; }, 2000);
+          };
+          
+          window.continueHere = function() {
+            // React 앱 로드 허용
+            location.reload();
+          };
+          
+          // 이 경우 React 앱 로드를 중단
+          window.__KAKAO_REDIRECT_UI__ = true;
+        }
+      })();
+    </script>
+    
     <!-- Kakao SDK -->
     <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.0/kakao.min.js" integrity="sha384-l+xbElFSnPZ2rOaPrU//2FF5B4LB8FiX5q4fXYTlfcG4PGpMkE1vcL7kNXI6Cci0" crossorigin="anonymous"></script>
     <script type="module" src="/src/main.tsx"></script>

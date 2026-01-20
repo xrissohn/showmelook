@@ -592,12 +592,9 @@ const shareToSNS = async (
         // 카카오톡은 서버에서 이미지를 가져오므로 signed URL이 필요
         let kakaoImageUrl = imageUrl;
         
-        // 카카오톡 인앱 브라우저 호환을 위해 share-preview Edge Function URL 사용
-        // 이 URL은 카카오톡 인앱 브라우저를 감지하여 외부 브라우저 리다이렉트 UI 제공
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mggedvvzpwxlgrhatrau.supabase.co';
-        const kakaoShareUrl = lookId 
-          ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
-          : shareUrl;
+        // 카카오톡 공유 URL - index.html의 인라인 스크립트가 카카오톡 인앱 브라우저 감지 및 리다이렉트 UI 표시
+        // 앱 직접 URL 사용 (showmelook.com/look/xxx)
+        const kakaoShareUrl = shareUrl;
         
         // 카카오톡 공유하기
         Kakao.Share.sendDefault({
