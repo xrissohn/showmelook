@@ -592,6 +592,13 @@ const shareToSNS = async (
         // 카카오톡은 서버에서 이미지를 가져오므로 signed URL이 필요
         let kakaoImageUrl = imageUrl;
         
+        // 카카오톡 인앱 브라우저 호환을 위해 share-preview Edge Function URL 사용
+        // 이 URL은 카카오톡 인앱 브라우저를 감지하여 외부 브라우저 리다이렉트 UI 제공
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://mggedvvzpwxlgrhatrau.supabase.co';
+        const kakaoShareUrl = lookId 
+          ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
+          : shareUrl;
+        
         // 카카오톡 공유하기
         Kakao.Share.sendDefault({
           objectType: 'feed',
@@ -600,16 +607,16 @@ const shareToSNS = async (
             description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
             imageUrl: kakaoImageUrl,
             link: {
-              mobileWebUrl: shareUrl,
-              webUrl: shareUrl,
+              mobileWebUrl: kakaoShareUrl,
+              webUrl: kakaoShareUrl,
             },
           },
           buttons: [
             {
               title: '스타일 보기',
               link: {
-                mobileWebUrl: shareUrl,
-                webUrl: shareUrl,
+                mobileWebUrl: kakaoShareUrl,
+                webUrl: kakaoShareUrl,
               },
             },
           ],
