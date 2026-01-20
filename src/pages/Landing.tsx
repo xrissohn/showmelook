@@ -621,6 +621,23 @@ const Landing = () => {
                 </button>
               ))}
             </div>
+
+            {/* Legal links */}
+            <div className="flex items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
+              <button 
+                onClick={() => navigate('/privacy')}
+                className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
+              >
+                개인정보 처리방침
+              </button>
+              <span className="text-muted-foreground/50">|</span>
+              <button 
+                onClick={() => navigate('/terms')}
+                className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
+              >
+                서비스 이용약관
+              </button>
+            </div>
             
             {/* Divider with gradient */}
             <div className="w-24 sm:w-32 h-0.5 bg-gradient-brand rounded-full mb-4 sm:mb-6 opacity-50" />
