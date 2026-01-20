@@ -2746,12 +2746,12 @@ const StyleGenerator = () => {
     }
   }, [preloadedProfile, userProfile]);
 
-  // 프리로드된 룩 데이터 사용
+  // 프리로드된 룩 데이터와 동기화 (새 룩 추가 시에도 반영)
   useEffect(() => {
-    if (preloadedLooks.length > 0 && myLooks.length === 0) {
+    if (preloadedLooks.length > 0) {
       setMyLooks(preloadedLooks as GeneratedLook[]);
     }
-  }, [preloadedLooks, myLooks.length]);
+  }, [preloadedLooks]);
 
   useEffect(() => {
     fetchData();
@@ -3467,10 +3467,19 @@ const StyleGenerator = () => {
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
+            
+            // 글로벌 캐시에 새 룩 즉시 추가 (갤러리 동기화)
+            addPreloadedLook({
+              id: insertedLook.id,
+              image_url: genData.imagePath || genData.imageUrl,
+              prompt_used: `${styleDesc} 스타일, ${productsDesc}`,
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              style_trend_id: selectedTrend?.id || null,
+              product_ids: productsWithDetails.map((p: any) => p.id),
+            });
           }
         }
-
-        fetchData(); // Refresh my looks
       }
     } catch (error: any) {
       console.error('Error generating style:', error);
@@ -3629,10 +3638,19 @@ const StyleGenerator = () => {
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
+            
+            // 글로벌 캐시에 새 룩 즉시 추가 (갤러리 동기화)
+            addPreloadedLook({
+              id: insertedLook.id,
+              image_url: data.imagePath || data.imageUrl,
+              prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
+              is_favorite: false,
+              created_at: new Date().toISOString(),
+              style_trend_id: selectedTrend?.id || null,
+              product_ids: productsWithDetails.map(p => p.id),
+            });
           }
         }
-
-        fetchData(); // Refresh my looks
       }
     } catch (error: any) {
       console.error('Error generating style:', error);
