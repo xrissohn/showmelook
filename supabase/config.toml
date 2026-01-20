@@ -66,3 +66,15 @@ verify_jwt = false
 
 [functions.register-product]
 verify_jwt = false
+
+[functions.send-verification-email]
+verify_jwt = false
+
+[functions.verify-email-code]
+verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.reset-password]
+verify_jwt = false

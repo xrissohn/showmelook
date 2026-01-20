@@ -94,6 +94,39 @@ export type Database = {
         }
         Relationships: []
       }
+      email_verifications: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          purpose: string
+          verification_code: string
+          verified_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          verification_code: string
+          verified_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          purpose?: string
+          verification_code?: string
+          verified_at?: string | null
+        }
+        Relationships: []
+      }
       family_profiles: {
         Row: {
           age_group: string | null
@@ -764,6 +797,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_verifications: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
