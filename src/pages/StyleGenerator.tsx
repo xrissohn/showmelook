@@ -397,14 +397,57 @@ const downloadImage = async (
 };
 
 // SNS 공유 함수
+// 해시태그 생성 함수
+const generateHashtags = (prompt?: string, tags?: string[]): string => {
+  const baseHashtags = ['#ShowMeLook', '#AI패션', '#스타일추천'];
+  const dynamicHashtags: string[] = [];
+  
+  // 태그에서 해시태그 생성
+  if (tags && tags.length > 0) {
+    tags.slice(0, 5).forEach(tag => {
+      // 공백 제거하고 해시태그로 변환
+      const cleanTag = tag.replace(/\s+/g, '').replace(/[^가-힣a-zA-Z0-9]/g, '');
+      if (cleanTag && cleanTag.length > 1) {
+        dynamicHashtags.push(`#${cleanTag}`);
+      }
+    });
+  }
+  
+  // 프롬프트에서 키워드 추출
+  if (prompt) {
+    const styleKeywords = [
+      '캐주얼', '미니멀', '스트릿', '클래식', '스포티', '모던', '빈티지', '시크',
+      '데일리', '오피스', '데이트', '여행', '파티', '포멀', '럭셔리', '키치',
+      '로맨틱', '보헤미안', '프레피', '아티스틱', '이지웨어', '액티브',
+      'casual', 'minimal', 'street', 'classic', 'sporty', 'modern', 'vintage', 'chic'
+    ];
+    
+    styleKeywords.forEach(keyword => {
+      if (prompt.toLowerCase().includes(keyword.toLowerCase())) {
+        const hashTag = `#${keyword.replace(/\s+/g, '')}`;
+        if (!dynamicHashtags.includes(hashTag) && !baseHashtags.includes(hashTag)) {
+          dynamicHashtags.push(hashTag);
+        }
+      }
+    });
+  }
+  
+  // 최대 8개의 해시태그로 제한
+  const allHashtags = [...baseHashtags, ...dynamicHashtags.slice(0, 5)];
+  return allHashtags.join(' ');
+};
+
 const shareToSNS = async (
   imageUrl: string, 
   platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy',
   addWatermark: boolean = false,
   logoUrl?: string,
-  lookId?: string
+  lookId?: string,
+  prompt?: string,
+  tags?: string[]
 ) => {
-  const shareText = '👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요! #ShowMeLook #AI패션 #스타일추천';
+  const hashtags = generateHashtags(prompt, tags);
+  const shareText = `👗 ShowMeLook AI가 만든 나만의 스타일을 확인해보세요!\n\n${hashtags}`;
   // 실제 look ID가 있으면 공유 페이지 URL 사용, 없으면 기본 URL
   const shareUrl = lookId 
     ? `${window.location.origin}/look/${lookId}` 
@@ -420,12 +463,18 @@ const shareToSNS = async (
         logoUrl
       );
       if (downloaded) {
+        // 클립보드에 해시태그 복사
+        try {
+          await navigator.clipboard.writeText(hashtags);
+        } catch (err) {
+          console.log('해시태그 복사 실패');
+        }
         // 모바일 확인
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
         if (isMobile) {
           window.open('instagram://library?AssetPath=', '_blank');
         }
-        return { success: true, message: '이미지가 저장되었습니다. Instagram 앱에서 업로드해주세요.' };
+        return { success: true, message: '이미지가 저장되었습니다. 해시태그가 클립보드에 복사되었어요!' };
       }
       return { success: false, message: '이미지 저장에 실패했습니다.' };
 
@@ -466,8 +515,8 @@ const shareToSNS = async (
 
     case 'copy':
       try {
-        await navigator.clipboard.writeText(shareUrl);
-        return { success: true, message: '링크가 복사되었습니다!' };
+        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+        return { success: true, message: '링크와 해시태그가 복사되었습니다!' };
       } catch (err) {
         return { success: false, message: '복사에 실패했습니다.' };
       }
@@ -485,7 +534,9 @@ const ShareButtons = ({
   compact = false,
   hasWatermark = true, // Pro 이상이면 false
   logoUrl,
-  lookId
+  lookId,
+  prompt,
+  tags
 }: {
   imageUrl: string; 
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
@@ -494,6 +545,8 @@ const ShareButtons = ({
   hasWatermark?: boolean; // Pro 이상이면 false
   logoUrl?: string;
   lookId?: string;
+  prompt?: string;
+  tags?: string[];
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -519,7 +572,7 @@ const ShareButtons = ({
   };
 
   const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
-    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, lookId);
+    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, lookId, prompt, tags);
     setIsShareOpen(false);
     onShare?.(platform, result);
   };
@@ -711,6 +764,8 @@ const GeneratedStyleImage = ({
   likedProducts = new Set(),
   purchasingProductId,
   lookId,
+  prompt,
+  tags,
 }: { 
   src: string; 
   alt: string;
@@ -724,6 +779,8 @@ const GeneratedStyleImage = ({
   likedProducts?: Set<string>;
   purchasingProductId?: string | null;
   lookId?: string;
+  prompt?: string;
+  tags?: string[];
 }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -895,7 +952,7 @@ const GeneratedStyleImage = ({
           {/* 저장/공유 버튼 오버레이 */}
           {!isLoading && (
             <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <ShareButtons imageUrl={src} onShare={onShare} compact hasWatermark={hasWatermark} logoUrl={logoSrc} lookId={lookId} />
+              <ShareButtons imageUrl={src} onShare={onShare} compact hasWatermark={hasWatermark} logoUrl={logoSrc} lookId={lookId} prompt={prompt} tags={tags} />
             </div>
           )}
         </>
@@ -1602,6 +1659,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         hasWatermark={hasWatermark}
                         logoUrl={showmelookWatermarkFull}
                         lookId={look.id}
+                        prompt={look.prompt_used || undefined}
+                        tags={look.tags || undefined}
                       />
                     </div>
                     {/* 좋아요 버튼 */}
@@ -1884,6 +1943,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     logoUrl={showmelookWatermarkFull}
                     compact
                     lookId={selectedLook.id}
+                    prompt={selectedLook.prompt_used || undefined}
+                    tags={selectedLook.tags || undefined}
                   />
                 </div>
               </>
@@ -4529,6 +4590,8 @@ const StyleGenerator = () => {
                         }
                       }}
                       lookId={generatedLookId || undefined}
+                      prompt={customStylePrompt}
+                      tags={selectedTrendProducts.map(p => p.category)}
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
