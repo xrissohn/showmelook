@@ -301,7 +301,7 @@ serve(async (req) => {
 
   try {
     const startTime = Date.now();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup } = await req.json();
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences } = await req.json();
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
@@ -758,7 +758,7 @@ Vogue, Elle, GQ, Harper's Bazaar에서 "미래에서 온 스타일 아이콘"으
 - 컨셉: "${requestedConcepts.join(', ')}"
 - 같은 브랜드 2개 초과 금지 (다양성이 핵심!)
 - 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}, 시즌: ${requestedSeason}
-- 연령대 특성 고려: ${ageGroupLabel}의 라이프스타일과 취향에 맞는 스타일링 제안
+- 연령대 특성 고려: ${ageGroupLabel}의 라이프스타일과 취향에 맞는 스타일링 제안${stylePreferences?.length > 0 ? `\n- 고객 선호 스타일: ${stylePreferences.join(', ')} - 이 취향을 최대한 반영해주세요!` : ''}
 - occasion: ${requestedOccasions.join(', ')}
 
 💡 예산은 무시하세요. 오직 "이 조합이 최고인가?"만 생각하세요.

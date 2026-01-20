@@ -32,8 +32,10 @@ const relationships = [
 ];
 
 const genders = [
-  { value: '남성', label: '남성' },
-  { value: '여성', label: '여성' },
+  { value: '남성', label: '남성', emoji: '👨' },
+  { value: '여성', label: '여성', emoji: '👩' },
+  { value: '유니섹스', label: '유니섹스', emoji: '🧑' },
+  { value: '선택안함', label: '선택 안함', emoji: '🔒' },
 ];
 
 const bodyTypes = [
