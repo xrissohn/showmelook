@@ -105,7 +105,7 @@
   <body>
     <div id="root"></div>
     
-    <!-- 카카오톡 인앱 브라우저 사전 감지 - 로딩 후 자동으로 React 앱 로드 -->
+    <!-- 카카오톡 인앱 브라우저 사전 감지 - 로딩 오버레이 표시 -->
     <script>
       (function() {
         var ua = navigator.userAgent.toLowerCase();
@@ -113,18 +113,46 @@
         var isLookPage = window.location.pathname.indexOf('/look/') === 0;
         
         if (isKakaoInApp && isLookPage) {
-          // 로딩 UI를 잠시 표시한 후 React 앱이 자연스럽게 로드되도록 함
-          var root = document.getElementById('root');
-          root.innerHTML = '<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center;">' +
+          // 로딩 오버레이를 body에 추가 (root 외부에 별도로)
+          var overlay = document.createElement('div');
+          overlay.id = 'kakao-loading-overlay';
+          overlay.innerHTML = '<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center;z-index:99999;">' +
             '<div style="width:60px;height:60px;border:3px solid rgba(212,175,55,0.3);border-top-color:#d4af37;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:24px;"></div>' +
             '<p style="font-size:16px;font-weight:500;color:rgba(255,255,255,0.9);">스타일을 불러오는 중...</p>' +
             '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>' +
           '</div>';
+          document.body.insertBefore(overlay, document.body.firstChild);
           
-          // 잠시 후 로딩 UI를 제거하고 React 앱이 정상적으로 마운트되도록 함
+          // React 앱이 충분히 로드될 때까지 기다린 후 오버레이 제거
+          var checkInterval = setInterval(function() {
+            var root = document.getElementById('root');
+            // React 앱이 로드되면 root에 자식 요소가 생김
+            if (root && root.children.length > 0) {
+              // 페이드 아웃 효과
+              overlay.style.transition = 'opacity 0.3s ease';
+              overlay.style.opacity = '0';
+              setTimeout(function() {
+                if (overlay.parentNode) {
+                  overlay.parentNode.removeChild(overlay);
+                }
+              }, 300);
+              clearInterval(checkInterval);
+            }
+          }, 100);
+          
+          // 최대 10초 후에는 무조건 오버레이 제거 (타임아웃 안전장치)
           setTimeout(function() {
-            root.innerHTML = '';
-          }, 800);
+            clearInterval(checkInterval);
+            if (overlay.parentNode) {
+              overlay.style.transition = 'opacity 0.3s ease';
+              overlay.style.opacity = '0';
+              setTimeout(function() {
+                if (overlay.parentNode) {
+                  overlay.parentNode.removeChild(overlay);
+                }
+              }, 300);
+            }
+          }, 10000);
         }
       })();
     </script>
