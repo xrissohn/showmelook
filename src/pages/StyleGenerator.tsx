@@ -498,7 +498,6 @@ const shareToSNS = async (
       // 카카오톡 SDK 공유
       try {
         const Kakao = (window as any).Kakao;
-        const kakaoKey = import.meta.env.VITE_KAKAO_JS_KEY;
         
         if (!Kakao) {
           console.error('Kakao SDK not loaded');
@@ -507,13 +506,21 @@ const shareToSNS = async (
           return { success: true, message: '카카오톡 SDK 로딩 실패. 링크가 복사되었습니다!' };
         }
         
-        // 카카오 SDK 초기화 (아직 안 된 경우)
-        if (!Kakao.isInitialized() && kakaoKey) {
-          Kakao.init(kakaoKey);
+        // main.tsx에서 초기화 시도했지만 실패했을 수 있으므로 재시도
+        if (!Kakao.isInitialized()) {
+          const kakaoKey = import.meta.env.VITE_KAKAO_JS_KEY;
+          if (kakaoKey) {
+            try {
+              Kakao.init(kakaoKey);
+              console.log('Kakao SDK initialized in shareToSNS');
+            } catch (initErr) {
+              console.error('Kakao init error:', initErr);
+            }
+          }
         }
         
         if (!Kakao.isInitialized()) {
-          console.error('Kakao SDK initialization failed');
+          console.error('Kakao SDK not initialized. Key available:', !!import.meta.env.VITE_KAKAO_JS_KEY);
           await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
