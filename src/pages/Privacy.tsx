@@ -10,7 +10,7 @@ const Privacy = () => {
         
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 font-korean">
           <p className="text-muted-foreground">
-            시행일: 2024년 1월 1일
+            시행일: 2026년 1월 1일
           </p>
 
           <section className="space-y-4">
@@ -99,14 +99,14 @@ const Privacy = () => {
             </p>
             <div className="bg-muted/50 p-4 rounded-lg text-foreground/80">
               <p>개인정보 보호책임자</p>
-              <p>이메일: privacy@showmelook.com</p>
+              <p>이메일: xrissohn@gmail.com</p>
             </div>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">9. 개인정보 처리방침 변경</h2>
             <p className="text-foreground/80 leading-relaxed">
-              이 개인정보 처리방침은 2024년 1월 1일부터 적용됩니다. 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여 고지할 것입니다.
+              이 개인정보 처리방침은 2026년 1월 1일부터 적용됩니다. 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여 고지할 것입니다.
             </p>
           </section>
         </div>
