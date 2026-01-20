@@ -645,7 +645,7 @@ const Landing = () => {
             {/* Copyright with sparkles */}
             <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1.5 sm:gap-2">
               <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-twinkle flex-shrink-0" />
-              <span>© 2025 ShowMeLook</span>
+              <span>© 2026 ShowMeLook</span>
               <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 animate-twinkle flex-shrink-0" style={{ animationDelay: '0.5s' }} />
             </p>
           </div>
