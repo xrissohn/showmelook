@@ -1,6 +1,6 @@
 /**
  * UserManagementPanel - 관리자용 사용자 관리 패널
- * 사용자 검색, 플랜 변경, 역할 부여
+ * 사용자 검색, 플랜 변경, 역할 부여, 결제 알림 대기자 관리
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Users, Crown, Shield, User, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Users, Crown, Shield, User, RefreshCw, ChevronLeft, ChevronRight, Bell, Mail, Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -26,6 +27,15 @@ interface UserData {
   daily_limit: number;
 }
 
+interface PaymentNotifyRequest {
+  id: string;
+  email: string;
+  requested_plan: string;
+  reason: string;
+  created_at: string;
+  user_id: string;
+}
+
 const ITEMS_PER_PAGE = 20;
 
 export const UserManagementPanel = () => {
@@ -35,6 +45,11 @@ export const UserManagementPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  
+  // Payment notify requests
+  const [notifyRequests, setNotifyRequests] = useState<PaymentNotifyRequest[]>([]);
+  const [isNotifyLoading, setIsNotifyLoading] = useState(false);
+  const [copiedEmails, setCopiedEmails] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -93,9 +108,45 @@ export const UserManagementPanel = () => {
     }
   }, [currentPage, searchTerm, toast]);
 
+  const fetchNotifyRequests = useCallback(async () => {
+    setIsNotifyLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('product_feedback')
+        .select('*')
+        .eq('action_type', 'payment_notify_request')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const requests: PaymentNotifyRequest[] = (data || []).map(item => {
+        const context = item.context as Record<string, unknown> || {};
+        return {
+          id: item.id,
+          email: String(context.email || ''),
+          requested_plan: String(context.requested_plan || ''),
+          reason: String(context.reason || ''),
+          created_at: String(context.created_at || item.created_at || ''),
+          user_id: item.user_id,
+        };
+      });
+
+      setNotifyRequests(requests);
+    } catch (error) {
+      console.error('Error fetching notify requests:', error);
+      toast({
+        title: '알림 신청 목록 로드 실패',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsNotifyLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchNotifyRequests();
+  }, [fetchUsers, fetchNotifyRequests]);
 
   const handlePlanChange = async (userId: string, newPlan: string) => {
     try {
@@ -157,6 +208,40 @@ export const UserManagementPanel = () => {
     }
   };
 
+  const handleDeleteNotifyRequest = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('product_feedback')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: '삭제 완료',
+      });
+      
+      fetchNotifyRequests();
+    } catch (error) {
+      console.error('Error deleting notify request:', error);
+      toast({
+        title: '삭제 실패',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const copyAllEmails = () => {
+    const emails = notifyRequests.map(r => r.email).filter(Boolean).join(', ');
+    navigator.clipboard.writeText(emails);
+    setCopiedEmails(true);
+    toast({
+      title: '이메일 복사 완료',
+      description: `${notifyRequests.length}개 이메일이 클립보드에 복사되었습니다.`,
+    });
+    setTimeout(() => setCopiedEmails(false), 2000);
+  };
+
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   const getPlanBadge = (plan: string) => {
@@ -181,6 +266,18 @@ export const UserManagementPanel = () => {
     }
   };
 
+  const getReasonLabel = (reason: string) => {
+    const labels: Record<string, string> = {
+      'daily-limit': '일일 생성 한도',
+      'gallery-limit': '갤러리 한도',
+      'hd-download': 'HD 다운로드',
+      'family-profile': '가족 프로필',
+      'family-limit': '프로필 한도',
+      'recommend-first': '추천 우선',
+    };
+    return labels[reason] || reason;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -189,127 +286,225 @@ export const UserManagementPanel = () => {
             <Users className="w-5 h-5 text-primary" />
             <CardTitle className="font-korean">사용자 관리</CardTitle>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchUsers}
-            disabled={isLoading}
-          >
-            <RefreshCw className={`w-4 h-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-            새로고침
-          </Button>
         </div>
         <CardDescription className="font-korean">
-          총 {totalCount}명의 사용자
+          총 {totalCount}명의 사용자 | 결제 알림 대기: {notifyRequests.length}명
         </CardDescription>
       </CardHeader>
       
       <CardContent>
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="이름으로 검색..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-10"
-          />
-        </div>
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="users" className="gap-2">
+              <Users className="w-4 h-4" />
+              사용자 목록
+            </TabsTrigger>
+            <TabsTrigger value="notify" className="gap-2">
+              <Bell className="w-4 h-4" />
+              결제 대기자
+              {notifyRequests.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{notifyRequests.length}</Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-        {/* User List */}
-        <div className="space-y-3">
-          {isLoading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-20 w-full" />
-            ))
-          ) : users.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground font-korean">
-              사용자가 없습니다
-            </div>
-          ) : (
-            users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
-              >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold font-korean truncate">
-                      {user.full_name || '(이름 없음)'}
-                    </span>
-                    {getPlanBadge(user.plan)}
-                    {getRoleBadge(user.role)}
-                  </div>
-                  <div className="text-sm text-muted-foreground font-korean">
-                    가입: {format(new Date(user.created_at), 'yyyy년 M월 d일', { locale: ko })}
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Select
-                    value={user.plan}
-                    onValueChange={(value) => handlePlanChange(user.id, value)}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="free">Free</SelectItem>
-                      <SelectItem value="pro">Pro</SelectItem>
-                      <SelectItem value="premium">Premium</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select
-                    value={user.role || 'user'}
-                    onValueChange={(value) => handleRoleChange(user.id, value === 'user' ? null : value)}
-                  >
-                    <SelectTrigger className="w-[100px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="moderator">Moderator</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          {/* Users Tab */}
+          <TabsContent value="users" className="space-y-4">
+            {/* Search & Refresh */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="이름으로 검색..."
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-10"
+                />
               </div>
-            ))
-          )}
-        </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={fetchUsers}
+                disabled={isLoading}
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => p - 1)}
-              disabled={currentPage === 1}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {currentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setCurrentPage(p => p + 1)}
-              disabled={currentPage === totalPages}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        )}
+            {/* User List */}
+            <div className="space-y-3">
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))
+              ) : users.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground font-korean">
+                  사용자가 없습니다
+                </div>
+              ) : (
+                users.map((user) => (
+                  <div
+                    key={user.id}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold font-korean truncate">
+                          {user.full_name || '(이름 없음)'}
+                        </span>
+                        {getPlanBadge(user.plan)}
+                        {getRoleBadge(user.role)}
+                      </div>
+                      <div className="text-sm text-muted-foreground font-korean">
+                        가입: {format(new Date(user.created_at), 'yyyy년 M월 d일', { locale: ko })}
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Select
+                        value={user.plan}
+                        onValueChange={(value) => handlePlanChange(user.id, value)}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      
+                      <Select
+                        value={user.role || 'user'}
+                        onValueChange={(value) => handleRoleChange(user.id, value === 'user' ? null : value)}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="user">User</SelectItem>
+                          <SelectItem value="moderator">Moderator</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {currentPage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => p + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Payment Notify Tab */}
+          <TabsContent value="notify" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground font-korean">
+                결제 시스템 출시 시 알림을 받고 싶어하는 사용자 목록
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyAllEmails}
+                  disabled={notifyRequests.length === 0}
+                >
+                  {copiedEmails ? (
+                    <CheckCircle2 className="w-4 h-4 mr-1 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4 mr-1" />
+                  )}
+                  전체 이메일 복사
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={fetchNotifyRequests}
+                  disabled={isNotifyLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 ${isNotifyLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+            </div>
+
+            {isNotifyLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full" />
+              ))
+            ) : notifyRequests.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground font-korean">
+                <Bell className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>아직 결제 알림 신청자가 없습니다</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notifyRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 flex items-center justify-center">
+                      <Mail className="w-5 h-5 text-amber-600" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{request.email}</span>
+                        <Badge variant="outline">{request.requested_plan}</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {getReasonLabel(request.reason)}
+                        </Badge>
+                      </div>
+                      <div className="text-sm text-muted-foreground font-korean">
+                        신청: {format(new Date(request.created_at), 'yyyy년 M월 d일 HH:mm', { locale: ko })}
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteNotifyRequest(request.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
     </Card>
   );
