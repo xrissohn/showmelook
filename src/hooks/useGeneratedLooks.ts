@@ -10,6 +10,9 @@ interface GeneratedLook {
   created_at: string;
   style_trend_id: string | null;
   product_ids: string[] | null;
+  memo?: string | null;
+  tags?: string[] | null;
+  style_reasoning?: string | null;
 }
 
 export function useGeneratedLooks() {

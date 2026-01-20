@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeedback } from '@/hooks/useFeedback';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb } from 'lucide-react';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
@@ -75,6 +75,7 @@ interface GeneratedLook {
   prompt_used?: string | null;
   style_trend_id?: string | null;
   product_ids?: string[] | null;
+  style_reasoning?: string | null;
 }
 
 interface UserProfile {
@@ -1000,6 +1001,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   const [purchasingProductId, setPurchasingProductId] = useState<string | null>(null);
   const [likedProducts, setLikedProducts] = useState<Set<string>>(new Set());
   
+  // 카드 플립 상태
+  const [isFlipped, setIsFlipped] = useState(false);
+  
   // 스와이프 제스처 상태
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -1389,6 +1393,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setSelectedLook(look);
       setCurrentIndex(index);
       setIsEditingMemo(false);
+      setIsFlipped(false); // 플립 상태 초기화
     }
   };
   
@@ -1750,42 +1755,163 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
           >
-            {/* 이미지와 상품 태그 컨테이너 */}
-            <div className="relative">
-              <img 
-                src={selectedLook.image_url} 
-                alt="Generated look" 
-                className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
-                draggable={false}
-              />
-              
-              {/* 상품 태그 (product_ids가 있고 상품이 로드된 경우) */}
-              {lookProducts.length > 0 && !isEditingMemo && (
-                <InteractiveProductTags
-                  products={lookProducts}
-                  onPurchase={handleProductPurchase}
-                  onLike={handleProductLike}
-                  likedProducts={likedProducts}
-                  purchasingProductId={purchasingProductId}
-                  imageUrl={selectedLook.image_url}
-                  enableAIPositioning={true}
-                />
-              )}
-              
-              {/* 상품 로딩 중 표시 */}
-              {isLoadingProducts && selectedLook.product_ids?.length && (
-                <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white text-xs rounded-full flex items-center gap-1.5">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  상품 정보 로딩 중...
+            {/* 3D 카드 플립 컨테이너 */}
+            <div 
+              className="perspective-1000 cursor-pointer"
+              onClick={() => !isEditingMemo && setIsFlipped(!isFlipped)}
+            >
+              <div 
+                className={`relative transform-style-3d transition-transform duration-600 ${
+                  isFlipped ? 'rotate-y-180' : ''
+                }`}
+                style={{ transitionDuration: '0.6s' }}
+              >
+                {/* 앞면 - 생성된 이미지 */}
+                <div className="backface-hidden relative">
+                  <img 
+                    src={selectedLook.image_url} 
+                    alt="Generated look" 
+                    className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
+                    draggable={false}
+                  />
+                  
+                  {/* 상품 태그 (product_ids가 있고 상품이 로드된 경우) */}
+                  {lookProducts.length > 0 && !isEditingMemo && !isFlipped && (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <InteractiveProductTags
+                        products={lookProducts}
+                        onPurchase={handleProductPurchase}
+                        onLike={handleProductLike}
+                        likedProducts={likedProducts}
+                        purchasingProductId={purchasingProductId}
+                        imageUrl={selectedLook.image_url}
+                        enableAIPositioning={true}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* 상품 로딩 중 표시 */}
+                  {isLoadingProducts && selectedLook.product_ids?.length && (
+                    <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-foreground text-xs rounded-full flex items-center gap-1.5">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      상품 정보 로딩 중...
+                    </div>
+                  )}
+                  
+                  {/* 상품 없음 표시 */}
+                  {!isLoadingProducts && selectedLook.product_ids?.length && lookProducts.length === 0 && (
+                    <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-muted-foreground text-xs rounded-full">
+                      상품 정보를 찾을 수 없음
+                    </div>
+                  )}
+                  
+                  {/* 플립 힌트 (앞면) */}
+                  <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    탭하여 상세 정보 보기
+                  </div>
                 </div>
-              )}
-              
-              {/* 상품 없음 표시 */}
-              {!isLoadingProducts && selectedLook.product_ids?.length && lookProducts.length === 0 && (
-                <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-black/60 backdrop-blur-sm text-white/60 text-xs rounded-full">
-                  상품 정보를 찾을 수 없음
+                
+                {/* 뒷면 - 스타일 정보 카드 */}
+                <div 
+                  className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-card via-card/95 to-card rounded-lg overflow-hidden shadow-2xl flex flex-col"
+                  style={{ minHeight: '300px', maxHeight: '55vh' }}
+                >
+                  <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
+                    {/* 스타일 개요 */}
+                    {selectedLook.prompt_used && (
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2 font-korean mb-2">
+                          <Sparkles className="w-4 h-4 text-accent" />
+                          스타일 개요
+                        </h3>
+                        <p className="text-sm text-muted-foreground font-korean leading-relaxed">{selectedLook.prompt_used}</p>
+                      </div>
+                    )}
+                    
+                    {/* AI 스타일 추천 설명 */}
+                    {selectedLook.style_reasoning && (
+                      <div className="bg-accent/10 rounded-lg p-3">
+                        <h4 className="text-sm font-semibold text-accent flex items-center gap-1.5 font-korean mb-1.5">
+                          <Lightbulb className="w-4 h-4" />
+                          AI 스타일리스트 추천
+                        </h4>
+                        <p className="text-sm text-foreground/80 font-korean leading-relaxed">{selectedLook.style_reasoning}</p>
+                      </div>
+                    )}
+                    
+                    {/* 추천 상품 정보 */}
+                    {lookProducts.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground font-korean mb-2 flex items-center gap-1.5">
+                          <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                          추천 상품 ({lookProducts.length}개)
+                        </h4>
+                        <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide">
+                          {lookProducts.map(product => (
+                            <div key={product.id} className="flex justify-between items-center text-sm bg-muted/50 rounded-lg px-3 py-2">
+                              <span className="text-foreground/80 truncate flex-1 font-korean">
+                                {product.brand && <span className="text-accent font-medium">{product.brand} </span>}
+                                {product.name}
+                              </span>
+                              <span className="text-foreground font-semibold ml-2 whitespace-nowrap">
+                                {product.price?.toLocaleString()}원
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* 총 가격 */}
+                        <div className="border-t border-border pt-2 mt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-semibold text-foreground font-korean">총 가격</span>
+                            <span className="text-lg font-bold text-accent">
+                              {lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}원
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 태그 */}
+                    {selectedLook.tags && selectedLook.tags.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-semibold text-foreground font-korean mb-2">태그</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {selectedLook.tags.map((tag, i) => (
+                            <span key={i} className="text-xs bg-accent/20 text-accent px-2.5 py-1 rounded-full font-korean">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* 메모 */}
+                    {selectedLook.memo && (
+                      <div className="bg-muted/30 rounded-lg p-3">
+                        <h4 className="text-sm font-semibold text-foreground font-korean mb-1.5">메모</h4>
+                        <p className="text-sm text-muted-foreground font-korean italic">"{selectedLook.memo}"</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* 하단 정보 */}
+                  <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-card/80">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-korean">
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      탭하여 이미지로
+                    </div>
+                    <span className="text-xs text-muted-foreground font-korean">
+                      {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
             
             {/* 스와이프 힌트 - 모바일만 */}
@@ -3464,6 +3590,7 @@ const StyleGenerator = () => {
             prompt_used: `${styleDesc} 스타일, ${productsDesc}`,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map((p: any) => p.id),
+            style_reasoning: customResult?.styleReasoning || null,
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
@@ -3477,6 +3604,7 @@ const StyleGenerator = () => {
               created_at: new Date().toISOString(),
               style_trend_id: selectedTrend?.id || null,
               product_ids: productsWithDetails.map((p: any) => p.id),
+              style_reasoning: customResult?.styleReasoning || null,
             });
           }
         }
@@ -3635,6 +3763,7 @@ const StyleGenerator = () => {
             prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map(p => p.id),
+            style_reasoning: null, // 수동 선택 시에는 AI 추천이 없음
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
@@ -3648,6 +3777,7 @@ const StyleGenerator = () => {
               created_at: new Date().toISOString(),
               style_trend_id: selectedTrend?.id || null,
               product_ids: productsWithDetails.map(p => p.id),
+              style_reasoning: null,
             });
           }
         }
