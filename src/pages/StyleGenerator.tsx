@@ -3661,7 +3661,9 @@ const StyleGenerator = () => {
         });
         
         if (genError) throw genError;
-        return { genData, productsWithDetails, styleDesc, productsDesc };
+        const styleConcept = recData?.look?.styleConcept || recData?.look?.name || styleDesc;
+        const styleReasoning = recData?.look?.styleReasoning || recData?.look?.stylingTips || '';
+        return { genData, productsWithDetails, styleDesc, productsDesc, styleConcept, styleReasoning };
       } catch (error) {
         throw error;
       }
@@ -3669,7 +3671,7 @@ const StyleGenerator = () => {
 
     try {
       const result = await generatePromise;
-      const { genData, productsWithDetails, styleDesc, productsDesc } = result;
+      const { genData, productsWithDetails, styleDesc, productsDesc, styleConcept, styleReasoning } = result;
 
       // Handle limit exceeded error
       if (genData?.limitExceeded) {
@@ -3709,14 +3711,13 @@ const StyleGenerator = () => {
 
         // Save to database
         if (!genData.cached) {
-          const styleConcept = customResult?.styleConcept || `${styleDesc} 스타일`;
           const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: genData.imagePath || genData.imageUrl,
             prompt_used: styleConcept,
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map((p: any) => p.id),
-            style_reasoning: customResult?.styleReasoning || null,
+            style_reasoning: styleReasoning || null,
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
@@ -3730,7 +3731,7 @@ const StyleGenerator = () => {
               created_at: new Date().toISOString(),
               style_trend_id: selectedTrend?.id || null,
               product_ids: productsWithDetails.map((p: any) => p.id),
-              style_reasoning: customResult?.styleReasoning || null,
+              style_reasoning: styleReasoning || null,
             });
           }
         }
