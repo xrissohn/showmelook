@@ -3547,6 +3547,8 @@ const StyleGenerator = () => {
         let transformedItems: CachedProduct[] = [];
         let styleDesc = customStylePrompt;
         let productsDesc = '스타일리시한 아이템';
+        // 추천된 styleReasoning을 로컬 변수에 저장 (DB 저장 시 사용)
+        let capturedStyleReasoning = '';
         
         if (recData?.success && recData?.look) {
           transformedItems = recData.look.items
@@ -3564,11 +3566,14 @@ const StyleGenerator = () => {
               isAutoSelected: item.isAutoSelected
             }));
 
+          // styleReasoning 캡처 (DB 저장 시 이 값을 그대로 사용)
+          capturedStyleReasoning = recData.look.styleReasoning || recData.look.stylingTips || '';
+          
           // 추천 결과 즉시 UI에 반영
           setCustomResult({
             items: transformedItems,
             styleConcept: recData.look.styleConcept || recData.look.name || '스타일 추천',
-            styleReasoning: recData.look.styleReasoning || recData.look.stylingTips || '',
+            styleReasoning: capturedStyleReasoning,
             totalPrice: recData.look.totalPrice || 0,
             autoSelectedTotal: recData.look.autoSelectedTotal || 0,
             autoSelectedCount: recData.look.autoSelectedCount || 0,
@@ -3654,8 +3659,8 @@ const StyleGenerator = () => {
         
         if (genError) throw genError;
         const styleConcept = recData?.look?.styleConcept || recData?.look?.name || styleDesc;
-        const styleReasoning = recData?.look?.styleReasoning || recData?.look?.stylingTips || '';
-        return { genData, productsWithDetails, styleDesc, productsDesc, styleConcept, styleReasoning };
+        // 이미 캡처해둔 styleReasoning을 사용 (recData에서 다시 읽지 않음)
+        return { genData, productsWithDetails, styleDesc, productsDesc, styleConcept, styleReasoning: capturedStyleReasoning };
       } catch (error) {
         throw error;
       }
