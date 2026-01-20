@@ -3,7 +3,7 @@ import App from "./App.tsx";
 import "./index.css";
 
 // Kakao JavaScript App Key (Publishable)
-const KAKAO_JS_KEY = '6472d48745d328a7ba0b61053c1f06d0';
+const KAKAO_JS_KEY = 'e5f9085240afd55f52cc0a0a37081761';
 
 // Initialize Kakao SDK on app start
 const initKakao = () => {
