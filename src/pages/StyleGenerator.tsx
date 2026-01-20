@@ -30,6 +30,7 @@ import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 import { LimitReachedBanner } from '@/components/subscription/LimitReachedBanner';
 import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSelector';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
+import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 interface StyleTrend {
   id: string;
   name: string;
@@ -2539,6 +2540,9 @@ const StyleGenerator = () => {
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [lastRecommendationId, setLastRecommendationId] = useState<string | null>(null);
   
+  // 로딩 화면 광고 상품 (무료 회원 전용)
+  const [loadingAdsProducts, setLoadingAdsProducts] = useState<CachedProduct[]>([]);
+  
   // 티커 애니메이션 상태 (부드러운 스크롤)
   const tickerRef = useRef<HTMLDivElement>(null);
   const tickerAnimationRef = useRef<number | null>(null);
@@ -2851,6 +2855,60 @@ const StyleGenerator = () => {
 
     fetchLikedProducts();
   }, [user]);
+
+  // 로딩 화면 광고 상품 로드 (무료 회원용)
+  useEffect(() => {
+    const loadAdsProducts = async () => {
+      // 무료 회원이고 생성 중일 때만 상품 로드
+      if (subscription.plan !== 'free' || !isGenerating) return;
+      if (loadingAdsProducts.length > 0) return; // 이미 로드됨
+
+      try {
+        const { data, error } = await supabase
+          .from('products_cache')
+          .select('id, name, brand, price, image_url, product_url, category, style_tags, merchant_id')
+          .eq('is_active', true)
+          .eq('is_in_stock', true)
+          .not('image_url', 'is', null)
+          .not('image_url', 'like', '%ads-partners%')
+          .order('updated_at', { ascending: false })
+          .limit(20);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // 랜덤 셔플
+          const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, 10);
+          setLoadingAdsProducts(shuffled as CachedProduct[]);
+        }
+      } catch (error) {
+        console.error('Error loading ads products:', error);
+      }
+    };
+
+    loadAdsProducts();
+  }, [subscription.plan, isGenerating, loadingAdsProducts.length]);
+
+  // 광고 상품 클릭 핸들러
+  const handleAdsProductClick = async (product: CachedProduct) => {
+    let affiliateUrl = product.affiliate_url || product.product_url;
+
+    // 딥링크가 없으면 생성 시도
+    if (!product.affiliate_url && product.product_url) {
+      try {
+        const { data } = await supabase.functions.invoke('deeplink', {
+          body: { product_url: product.product_url }
+        });
+        if (data?.affiliate_url) {
+          affiliateUrl = data.affiliate_url;
+        }
+      } catch (error) {
+        console.error('Deeplink generation failed:', error);
+      }
+    }
+
+    window.open(affiliateUrl, '_blank');
+  };
 
   // 스타일 태그 색상 매핑
   const getTagColor = (tag: string): string => {
@@ -4950,6 +5008,14 @@ const StyleGenerator = () => {
                         </p>
                       </div>
                       
+                      {/* 무료 회원 전용 추천 상품 슬라이드 */}
+                      {subscription.plan === 'free' && loadingAdsProducts.length > 0 && (
+                        <LoadingProductAds
+                          products={loadingAdsProducts}
+                          onProductClick={handleAdsProductClick}
+                        />
+                      )}
+                      
                       {/* 프로그레스 바 */}
                       <div className="mt-6 sm:mt-8 w-48 sm:w-64 h-1.5 bg-secondary rounded-full overflow-hidden z-10">
                         <div 
@@ -4961,21 +5027,23 @@ const StyleGenerator = () => {
                         />
                       </div>
                       
-                      {/* 패션 아이콘 애니메이션 */}
-                      <div className="flex gap-4 mt-6 sm:mt-8 z-10">
-                        {['👗', '👔', '👟', '👜', '🧥'].map((emoji, i) => (
-                          <span
-                            key={i}
-                            className="text-xl sm:text-2xl"
-                            style={{
-                              animation: 'bounce 1.5s ease-in-out infinite',
-                              animationDelay: `${i * 0.15}s`,
-                            }}
-                          >
-                            {emoji}
-                          </span>
-                        ))}
-                      </div>
+                      {/* 패션 아이콘 애니메이션 - 프로 이상만 표시 */}
+                      {subscription.plan !== 'free' && (
+                        <div className="flex gap-4 mt-6 sm:mt-8 z-10">
+                          {['👗', '👔', '👟', '👜', '🧥'].map((emoji, i) => (
+                            <span
+                              key={i}
+                              className="text-xl sm:text-2xl"
+                              style={{
+                                animation: 'bounce 1.5s ease-in-out infinite',
+                                animationDelay: `${i * 0.15}s`,
+                              }}
+                            >
+                              {emoji}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : generatedImage ? (
                     <GeneratedStyleImage
