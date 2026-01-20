@@ -2036,81 +2036,96 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
               <p className="text-white/40 text-xs font-korean">← 스와이프하여 탐색 →</p>
             </div>
             
-            {/* 메모/태그 영역 */}
-            {isEditingMemo ? (
-              <div className="mt-4 w-full max-w-md bg-card rounded-xl p-4 space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground font-korean mb-2 block">메모</label>
-                  <Textarea
-                    value={editMemo}
-                    onChange={(e) => setEditMemo(e.target.value)}
-                    placeholder="이 룩에 대한 메모를 입력하세요..."
-                    className="resize-none h-20 font-korean"
-                    maxLength={200}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1 text-right">{editMemo.length}/200</p>
-                </div>
-                
-                <div>
-                  <label className="text-sm font-medium text-foreground font-korean mb-2 block">태그</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {editTags.map((tag, i) => (
-                      <span 
-                        key={i} 
-                        className="inline-flex items-center gap-1 text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full"
-                      >
-                        {tag}
-                        <button onClick={() => removeTag(tag)} className="hover:text-red-500">
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
+            {/* 메모/태그 모달 - fixed overlay로 화면 중앙에 표시 */}
+            {isEditingMemo && (
+              <div 
+                className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-4"
+                onClick={(e) => { e.stopPropagation(); setIsEditingMemo(false); }}
+              >
+                <div 
+                  className="bg-card rounded-2xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <h3 className="text-lg font-bold text-foreground font-korean mb-4">메모/태그 편집</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">메모</label>
+                      <Textarea
+                        value={editMemo}
+                        onChange={(e) => setEditMemo(e.target.value)}
+                        placeholder="이 룩에 대한 메모를 입력하세요..."
+                        className="resize-none h-20 font-korean"
+                        maxLength={200}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1 text-right">{editMemo.length}/200</p>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">태그</label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {editTags.map((tag, i) => (
+                          <span 
+                            key={i} 
+                            className="inline-flex items-center gap-1 text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full"
+                          >
+                            {tag}
+                            <button onClick={() => removeTag(tag)} className="hover:text-red-500">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          value={newTag}
+                          onChange={(e) => setNewTag(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))}
+                          placeholder="태그 입력..."
+                          className="flex-1 h-8 text-sm"
+                          maxLength={20}
+                        />
+                        <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
+                          추가
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {tagOptions.filter(t => !editTags.includes(t)).map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => addTag(tag)}
+                            className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/80 transition-colors font-korean"
+                          >
+                            + {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))}
-                      placeholder="태그 입력..."
-                      className="flex-1 h-8 text-sm"
-                      maxLength={20}
-                    />
-                    <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
-                      추가
+                  
+                  <div className="flex gap-2 mt-6">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 font-korean" 
+                      onClick={() => setIsEditingMemo(false)}
+                    >
+                      취소
+                    </Button>
+                    <Button 
+                      className="flex-1 font-korean" 
+                      onClick={saveMemoAndTags}
+                      disabled={isSavingMemo}
+                    >
+                      {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      저장
                     </Button>
                   </div>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {tagOptions.filter(t => !editTags.includes(t)).map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => addTag(tag)}
-                        className="text-xs px-2 py-1 rounded-full bg-muted hover:bg-muted/80 transition-colors font-korean"
-                      >
-                        + {tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1 font-korean" 
-                    onClick={() => setIsEditingMemo(false)}
-                  >
-                    취소
-                  </Button>
-                  <Button 
-                    className="flex-1 font-korean" 
-                    onClick={saveMemoAndTags}
-                    disabled={isSavingMemo}
-                  >
-                    {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                    저장
-                  </Button>
                 </div>
               </div>
-            ) : (
+            )}
+            
+            {/* 태그/메모 표시 (항상 표시) */}
+            {!isEditingMemo && (
               <>
                 {/* 태그/메모 표시 */}
                 {(selectedLook.tags?.length || selectedLook.memo) && (
