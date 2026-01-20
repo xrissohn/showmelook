@@ -820,6 +820,7 @@ JSON 응답:
           if (jsonMatch) {
             ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
             console.log(`[style-recommend] GPT-5 selected ${ragResponse.selectedProductIds.length} products in ${elapsed}ms`);
+            console.log(`[style-recommend] styleReasoning from GPT: ${ragResponse.styleReasoning?.slice(0, 200)}...`);
           }
         } else {
           const errorText = await gptResponse.text();
@@ -1053,19 +1054,22 @@ JSON 응답:
       await supabase.from('style_cache').upsert(lookData, { onConflict: 'cache_key' });
     }
 
+    // ragResponse가 없으면 기본값 처리
+    const finalStyleReasoning = ragResponse?.styleReasoning || ragResponse?.stylingTips || '';
+    
     const response = {
       success: true,
       cacheHit: false,
       look: {
-        name: ragResponse.lookName,
-        styleConcept: ragResponse.styleConcept,
-        styleReasoning: ragResponse.styleReasoning,
+        name: ragResponse?.lookName || '스타일 추천',
+        styleConcept: ragResponse?.styleConcept || '오늘의 룩',
+        styleReasoning: finalStyleReasoning,
         items: lookItems,
         totalPrice,
         autoSelectedTotal,
         autoSelectedCount,
         budget,
-        stylingTips: ragResponse.stylingTips,
+        stylingTips: ragResponse?.stylingTips || finalStyleReasoning,
       },
       apiCalls: { gpt5: gptCalls, serpapi: 0 },
       stats: {
@@ -1077,6 +1081,7 @@ JSON 응답:
     };
 
     console.log(`[style-recommend] Complete. ${lookItems.length} items, Total: ₩${totalPrice}`);
+    console.log(`[style-recommend] Final styleReasoning length: ${finalStyleReasoning.length}`);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
