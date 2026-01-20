@@ -1773,24 +1773,43 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   navigator.vibrate(30);
                 }
                 
-                // 플립 효과음
+                // 카드/종이 넘기는 효과음
                 try {
                   const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-                  const oscillator = audioContext.createOscillator();
-                  const gainNode = audioContext.createGain();
+                  const bufferSize = audioContext.sampleRate * 0.12; // 120ms
+                  const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+                  const output = noiseBuffer.getChannelData(0);
                   
-                  oscillator.connect(gainNode);
+                  // 화이트 노이즈 생성 (종이 마찰음)
+                  for (let i = 0; i < bufferSize; i++) {
+                    output[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+                  }
+                  
+                  const noiseSource = audioContext.createBufferSource();
+                  noiseSource.buffer = noiseBuffer;
+                  
+                  // 밴드패스 필터로 종이 느낌 강조
+                  const filter = audioContext.createBiquadFilter();
+                  filter.type = 'bandpass';
+                  filter.frequency.setValueAtTime(2500, audioContext.currentTime);
+                  filter.Q.setValueAtTime(0.8, audioContext.currentTime);
+                  
+                  // 하이패스로 저음 제거 (바스락 느낌)
+                  const highpass = audioContext.createBiquadFilter();
+                  highpass.type = 'highpass';
+                  highpass.frequency.setValueAtTime(800, audioContext.currentTime);
+                  
+                  const gainNode = audioContext.createGain();
+                  gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+                  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                  
+                  noiseSource.connect(filter);
+                  filter.connect(highpass);
+                  highpass.connect(gainNode);
                   gainNode.connect(audioContext.destination);
                   
-                  oscillator.type = 'sine';
-                  oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                  oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.1);
-                  
-                  gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-                  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
-                  
-                  oscillator.start(audioContext.currentTime);
-                  oscillator.stop(audioContext.currentTime + 0.15);
+                  noiseSource.start(audioContext.currentTime);
+                  noiseSource.stop(audioContext.currentTime + 0.12);
                 } catch (e) {
                   // Audio context not available, silently fail
                 }
