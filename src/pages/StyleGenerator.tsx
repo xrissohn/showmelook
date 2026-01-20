@@ -5072,6 +5072,9 @@ const StyleGenerator = () => {
                             <p className="text-sm font-semibold text-foreground mt-1">
                               ₩{product.price.toLocaleString()}
                             </p>
+                            <p className="text-[8px] text-muted-foreground mt-1 leading-tight font-korean">
+                              {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
+                            </p>
                           </div>
                           <div className="flex gap-1.5 mt-2">
                             <Button
@@ -5125,6 +5128,9 @@ const StyleGenerator = () => {
                           )}
                           <p className="text-sm text-muted-foreground">
                             ₩{product.price.toLocaleString()}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 font-korean">
+                            {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
                           </p>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
