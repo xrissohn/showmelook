@@ -190,6 +190,14 @@ export default {
           "50%": { filter: "hue-rotate(15deg)" },
           "100%": { filter: "hue-rotate(0deg)" },
         },
+        "card-flip-to-back": {
+          "0%": { transform: "rotateY(0deg)" },
+          "100%": { transform: "rotateY(180deg)" },
+        },
+        "card-flip-to-front": {
+          "0%": { transform: "rotateY(180deg)" },
+          "100%": { transform: "rotateY(0deg)" },
+        },
       },
       animation: {
         "sparkle": "sparkle 2s ease-in-out infinite",
@@ -205,6 +213,8 @@ export default {
         "pulse-brand": "pulse-brand 2s infinite",
         "gradient-shift": "gradient-shift 3s ease infinite",
         "gradient-flow": "gradient-flow 4s ease-in-out infinite",
+        "card-flip-to-back": "card-flip-to-back 0.6s ease-in-out forwards",
+        "card-flip-to-front": "card-flip-to-front 0.6s ease-in-out forwards",
       },
       backgroundImage: {
         "gradient-brand": "linear-gradient(135deg, hsl(10 85% 65%) 0%, hsl(330 75% 55%) 35%, hsl(280 70% 55%) 65%, hsl(200 85% 55%) 100%)",

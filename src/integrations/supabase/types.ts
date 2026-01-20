@@ -151,6 +151,7 @@ export type Database = {
           memo: string | null
           product_ids: string[] | null
           prompt_used: string | null
+          style_reasoning: string | null
           style_trend_id: string | null
           tags: string[] | null
           user_id: string
@@ -163,6 +164,7 @@ export type Database = {
           memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
+          style_reasoning?: string | null
           style_trend_id?: string | null
           tags?: string[] | null
           user_id: string
@@ -175,6 +177,7 @@ export type Database = {
           memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
+          style_reasoning?: string | null
           style_trend_id?: string | null
           tags?: string[] | null
           user_id?: string
