@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Trash2, ShoppingBag, ExternalLink, Loader2, LogIn } from 'lucide-react';
 import MainNavigation from '@/components/MainNavigation';
 import { useGuestCart, GuestCartItem } from '@/hooks/useGuestCart';
+import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 
 interface CartItem {
   id: string;
@@ -359,6 +360,10 @@ const Cart = () => {
                         </h3>
                         <p className="text-lg font-semibold text-foreground mt-1">
                           ₩{(item.product_price || 0).toLocaleString()}
+                        </p>
+                        {/* 제휴 공시 문구 */}
+                        <p className="text-[9px] text-muted-foreground mt-1 leading-tight">
+                          {getProductAffiliateDisclosure(item.product_url)}
                         </p>
                       </div>
                       <button
