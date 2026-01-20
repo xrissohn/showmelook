@@ -19,6 +19,8 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const MyPage = lazy(() => import("./pages/MyPage"));
 const SharedLook = lazy(() => import("./pages/SharedLook"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient configuration
@@ -61,6 +63,8 @@ const App = () => (
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/mypage" element={<MyPage />} />
                 <Route path="/look/:lookId" element={<SharedLook />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/terms" element={<Terms />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
