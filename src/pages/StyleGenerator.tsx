@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeedback } from '@/hooks/useFeedback';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle } from 'lucide-react';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.png';
@@ -1812,49 +1812,69 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   </div>
                 </div>
                 
-                {/* 뒷면 - 스타일 정보 카드 */}
+                {/* 뒷면 - 스타일 정보 카드 (화려한 그라데이션) */}
                 <div 
-                  className="absolute inset-0 backface-hidden rotate-y-180 bg-gradient-to-br from-card via-card/95 to-card rounded-lg overflow-hidden shadow-2xl flex flex-col"
+                  className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col"
                   style={{ minHeight: '300px', maxHeight: '55vh' }}
                 >
-                  <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
+                  {/* 화려한 그라데이션 배경 */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/80 to-slate-900" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/10" />
+                  
+                  {/* 반짝이는 파티클 효과 */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="absolute top-4 left-8 w-1.5 h-1.5 bg-accent rounded-full animate-pulse" style={{ animationDelay: '0s' }} />
+                    <div className="absolute top-12 right-12 w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: '0.3s' }} />
+                    <div className="absolute top-20 left-1/3 w-1 h-1 bg-white/60 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }} />
+                    <div className="absolute bottom-24 right-8 w-1.5 h-1.5 bg-accent/80 rounded-full animate-pulse" style={{ animationDelay: '0.9s' }} />
+                    <div className="absolute bottom-32 left-12 w-1 h-1 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '1.2s' }} />
+                  </div>
+                  
+                  {/* 상단 장식 라인 */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
+                  
+                  <div className="relative flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
                     {/* 스타일 개요 */}
                     {selectedLook.prompt_used && (
-                      <div>
-                        <h3 className="text-sm font-bold text-foreground flex items-center gap-2 font-korean mb-2">
-                          <Sparkles className="w-4 h-4 text-accent" />
+                      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                        <h3 className="text-sm font-bold text-white flex items-center gap-2 font-korean mb-2">
+                          <Sparkles className="w-4 h-4 text-accent animate-pulse" />
                           스타일 개요
                         </h3>
-                        <p className="text-sm text-muted-foreground font-korean leading-relaxed">{selectedLook.prompt_used}</p>
+                        <p className="text-sm text-white/80 font-korean leading-relaxed">{selectedLook.prompt_used}</p>
                       </div>
                     )}
                     
                     {/* AI 스타일 추천 설명 */}
                     {selectedLook.style_reasoning && (
-                      <div className="bg-accent/10 rounded-lg p-3">
+                      <div className="bg-gradient-to-r from-accent/20 to-primary/20 rounded-xl p-4 border border-accent/30">
                         <h4 className="text-sm font-semibold text-accent flex items-center gap-1.5 font-korean mb-1.5">
-                          <Lightbulb className="w-4 h-4" />
+                          <Lightbulb className="w-4 h-4 animate-bounce" style={{ animationDuration: '2s' }} />
                           AI 스타일리스트 추천
                         </h4>
-                        <p className="text-sm text-foreground/80 font-korean leading-relaxed">{selectedLook.style_reasoning}</p>
+                        <p className="text-sm text-white/90 font-korean leading-relaxed">{selectedLook.style_reasoning}</p>
                       </div>
                     )}
                     
                     {/* 추천 상품 정보 */}
                     {lookProducts.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-semibold text-foreground font-korean mb-2 flex items-center gap-1.5">
-                          <ShoppingBag className="w-4 h-4 text-muted-foreground" />
+                      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                        <h4 className="text-sm font-semibold text-white font-korean mb-3 flex items-center gap-1.5">
+                          <ShoppingBag className="w-4 h-4 text-accent" />
                           추천 상품 ({lookProducts.length}개)
                         </h4>
-                        <div className="space-y-2 max-h-32 overflow-y-auto scrollbar-hide">
-                          {lookProducts.map(product => (
-                            <div key={product.id} className="flex justify-between items-center text-sm bg-muted/50 rounded-lg px-3 py-2">
-                              <span className="text-foreground/80 truncate flex-1 font-korean">
+                        <div className="space-y-2 max-h-28 overflow-y-auto scrollbar-hide">
+                          {lookProducts.map((product, idx) => (
+                            <div 
+                              key={product.id} 
+                              className="flex justify-between items-center text-sm bg-white/10 hover:bg-white/15 transition-colors rounded-lg px-3 py-2"
+                              style={{ animationDelay: `${idx * 0.1}s` }}
+                            >
+                              <span className="text-white/90 truncate flex-1 font-korean">
                                 {product.brand && <span className="text-accent font-medium">{product.brand} </span>}
                                 {product.name}
                               </span>
-                              <span className="text-foreground font-semibold ml-2 whitespace-nowrap">
+                              <span className="text-white font-semibold ml-2 whitespace-nowrap">
                                 {product.price?.toLocaleString()}원
                               </span>
                             </div>
@@ -1862,24 +1882,45 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         </div>
                         
                         {/* 총 가격 */}
-                        <div className="border-t border-border pt-2 mt-3">
+                        <div className="border-t border-white/20 pt-3 mt-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-foreground font-korean">총 가격</span>
-                            <span className="text-lg font-bold text-accent">
+                            <span className="text-sm font-semibold text-white font-korean">총 가격</span>
+                            <span className="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
                               {lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}원
                             </span>
                           </div>
                         </div>
+                        
+                        {/* 상품 구매하기 버튼 */}
+                        <Button
+                          variant="gold"
+                          size="lg"
+                          className="w-full mt-4 font-korean gap-2 animate-pulse hover:animate-none"
+                          style={{ animationDuration: '3s' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // 첫 번째 상품의 딥링크로 이동 (또는 모든 상품 보기 모달)
+                            if (lookProducts.length > 0 && lookProducts[0].product_url) {
+                              handleProductPurchase(lookProducts[0]);
+                            }
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          상품 구매하기
+                        </Button>
                       </div>
                     )}
                     
                     {/* 태그 */}
                     {selectedLook.tags && selectedLook.tags.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-foreground font-korean mb-2">태그</h4>
+                        <h4 className="text-sm font-semibold text-white font-korean mb-2">태그</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedLook.tags.map((tag, i) => (
-                            <span key={i} className="text-xs bg-accent/20 text-accent px-2.5 py-1 rounded-full font-korean">
+                            <span 
+                              key={i} 
+                              className="text-xs bg-gradient-to-r from-accent/30 to-primary/30 text-white border border-accent/40 px-2.5 py-1 rounded-full font-korean hover:from-accent/50 hover:to-primary/50 transition-all cursor-default"
+                            >
                               #{tag}
                             </span>
                           ))}
@@ -1889,20 +1930,23 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     
                     {/* 메모 */}
                     {selectedLook.memo && (
-                      <div className="bg-muted/30 rounded-lg p-3">
-                        <h4 className="text-sm font-semibold text-foreground font-korean mb-1.5">메모</h4>
-                        <p className="text-sm text-muted-foreground font-korean italic">"{selectedLook.memo}"</p>
+                      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
+                        <h4 className="text-sm font-semibold text-white font-korean mb-1.5 flex items-center gap-1.5">
+                          <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                          메모
+                        </h4>
+                        <p className="text-sm text-white/70 font-korean italic">"{selectedLook.memo}"</p>
                       </div>
                     )}
                   </div>
                   
-                  {/* 하단 정보 */}
-                  <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-card/80">
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-korean">
-                      <RotateCcw className="w-3.5 h-3.5" />
+                  {/* 하단 정보 - 그라데이션 포함 */}
+                  <div className="relative border-t border-white/10 px-5 py-3 flex items-center justify-between bg-black/30 backdrop-blur-sm">
+                    <div className="flex items-center gap-1.5 text-xs text-white/60 font-korean cursor-pointer hover:text-white/80 transition-colors">
+                      <RotateCcw className="w-3.5 h-3.5 hover:animate-spin" />
                       탭하여 이미지로
                     </div>
-                    <span className="text-xs text-muted-foreground font-korean">
+                    <span className="text-xs text-white/60 font-korean">
                       {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
                         year: 'numeric',
                         month: 'long',
@@ -1910,6 +1954,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       })}
                     </span>
                   </div>
+                  
+                  {/* 하단 장식 라인 */}
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent" />
                 </div>
               </div>
             </div>
