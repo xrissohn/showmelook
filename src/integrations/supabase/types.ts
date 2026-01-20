@@ -615,7 +615,10 @@ export type Database = {
           id: string
           image_url: string
           last_used_at: string | null
+          look_name: string | null
           product_ids: string[]
+          style_concept: string | null
+          style_reasoning: string | null
           style_trend_id: string | null
           use_count: number | null
         }
@@ -626,7 +629,10 @@ export type Database = {
           id?: string
           image_url: string
           last_used_at?: string | null
+          look_name?: string | null
           product_ids?: string[]
+          style_concept?: string | null
+          style_reasoning?: string | null
           style_trend_id?: string | null
           use_count?: number | null
         }
@@ -637,7 +643,10 @@ export type Database = {
           id?: string
           image_url?: string
           last_used_at?: string | null
+          look_name?: string | null
           product_ids?: string[]
+          style_concept?: string | null
+          style_reasoning?: string | null
           style_trend_id?: string | null
           use_count?: number | null
         }

@@ -376,58 +376,62 @@ serve(async (req) => {
             });
           }
 
-          // 캐시된 상품들로 스타일링 설명 생성
-          const topItem = lookItems.find(i => i.category === '상의');
-          const bottomItem = lookItems.find(i => i.category === '하의' || i.category === '원피스');
-          const outerItem = lookItems.find(i => i.category === '아우터');
-          const etcItems = lookItems.filter(i => ['신발', '가방', '액세서리'].includes(i.category));
+          // 🎯 캐시에 저장된 GPT 설명이 있으면 그대로 사용!
+          let styleReasoning = cachedLook.style_reasoning || '';
+          let styleConcept = cachedLook.style_concept || '';
+          let lookName = cachedLook.look_name || '';
           
-          // 상품 기반 스타일 컨셉 생성
-          const brandMix = [...new Set(lookItems.map(i => i.product?.brand).filter(Boolean))].slice(0, 3).join(' × ');
-          const conceptTags = [...new Set(lookItems.flatMap(i => i.product?.dna_meta?.concepts || []))].slice(0, 3);
-          
-          const lookName = conceptTags.length > 0 
-            ? `${conceptTags[0]} ${gender} ${occasion} 룩`
-            : `${gender} ${occasion} 추천 룩`;
-          
-          // 🎯 최고의 스타일리스트 톤으로 스타일링 설명 생성
-          let styleReasoning = '';
-          
-          // 훅 문장 - 이 룩의 핵심 포인트
-          if (topItem?.product && bottomItem?.product) {
-            const topBrand = topItem.product.brand || '';
-            const topName = topItem.product.name.split(' ').slice(0, 2).join(' ');
-            const bottomBrand = bottomItem.product.brand || '';
-            const bottomName = bottomItem.product.name.split(' ').slice(0, 2).join(' ');
+          // 캐시에 저장된 설명이 없는 경우에만 템플릿 생성 (구버전 캐시 호환)
+          if (!styleReasoning) {
+            const topItem = lookItems.find(i => i.category === '상의');
+            const bottomItem = lookItems.find(i => i.category === '하의' || i.category === '원피스');
+            const outerItem = lookItems.find(i => i.category === '아우터');
+            const etcItems = lookItems.filter(i => ['신발', '가방', '액세서리'].includes(i.category));
             
-            styleReasoning = `이 룩의 핵심은 '${conceptTags[0] || '세련된 조화'}'예요. `;
-            styleReasoning += `${topBrand} ${topName}의 실루엣이 상체 비율을 잡아주고, ${bottomBrand} ${bottomName}이(가) 하체 라인을 정돈해주거든요. `;
-          } else if (topItem?.product) {
-            const topBrand = topItem.product.brand || '';
-            const topName = topItem.product.name.split(' ').slice(0, 3).join(' ');
-            styleReasoning = `${topBrand} ${topName}이(가) 이 룩의 시그니처 피스예요. 깔끔한 핏감이 전체 무드를 좌우하죠. `;
-          }
-          
-          // 중간 설명 - 레이어링과 디테일
-          if (outerItem?.product) {
-            const outerBrand = outerItem.product.brand || '';
-            const outerName = outerItem.product.name.split(' ').slice(0, 2).join(' ');
-            const formalityDesc = (outerItem.product.dna_meta?.formality ?? 5) > 6 ? '격식 있는' : '편안한';
-            styleReasoning += `여기에 ${outerBrand} ${outerName}으로 레이어링하면 ${formalityDesc} ${occasion} 무드가 완성되죠. `;
-          }
-          
-          // 킬링 포인트 마무리
-          if (etcItems.length > 0 && etcItems[0]?.product) {
-            const etcName = etcItems[0].product.name.split(' ').slice(0, 2).join(' ');
-            const etcCategory = etcItems[0].category;
-            styleReasoning += `킬링 포인트? ${etcCategory}로 선택한 ${etcName}이(가) 전체 룩에 임팩트를 더해요!`;
+            const brandMix = [...new Set(lookItems.map(i => i.product?.brand).filter(Boolean))].slice(0, 3).join(' × ');
+            const conceptTags = [...new Set(lookItems.flatMap(i => i.product?.dna_meta?.concepts || []))].slice(0, 3);
+            
+            lookName = conceptTags.length > 0 
+              ? `${conceptTags[0]} ${gender} ${occasion} 룩`
+              : `${gender} ${occasion} 추천 룩`;
+            
+            if (topItem?.product && bottomItem?.product) {
+              const topBrand = topItem.product.brand || '';
+              const topName = topItem.product.name.split(' ').slice(0, 2).join(' ');
+              const bottomBrand = bottomItem.product.brand || '';
+              const bottomName = bottomItem.product.name.split(' ').slice(0, 2).join(' ');
+              
+              styleReasoning = `이 룩의 핵심은 '${conceptTags[0] || '세련된 조화'}'예요. `;
+              styleReasoning += `${topBrand} ${topName}의 실루엣이 상체 비율을 잡아주고, ${bottomBrand} ${bottomName}이(가) 하체 라인을 정돈해주거든요. `;
+            } else if (topItem?.product) {
+              const topBrand = topItem.product.brand || '';
+              const topName = topItem.product.name.split(' ').slice(0, 3).join(' ');
+              styleReasoning = `${topBrand} ${topName}이(가) 이 룩의 시그니처 피스예요. 깔끔한 핏감이 전체 무드를 좌우하죠. `;
+            }
+            
+            if (outerItem?.product) {
+              const outerBrand = outerItem.product.brand || '';
+              const outerName = outerItem.product.name.split(' ').slice(0, 2).join(' ');
+              const formalityDesc = (outerItem.product.dna_meta?.formality ?? 5) > 6 ? '격식 있는' : '편안한';
+              styleReasoning += `여기에 ${outerBrand} ${outerName}으로 레이어링하면 ${formalityDesc} ${occasion} 무드가 완성되죠. `;
+            }
+            
+            if (etcItems.length > 0 && etcItems[0]?.product) {
+              const etcName = etcItems[0].product.name.split(' ').slice(0, 2).join(' ');
+              const etcCategory = etcItems[0].category;
+              styleReasoning += `킬링 포인트? ${etcCategory}로 선택한 ${etcName}이(가) 전체 룩에 임팩트를 더해요!`;
+            } else {
+              styleReasoning += `킬링 포인트? 심플한 듯 디테일한 조화가 ${occasion}에서 시선을 사로잡죠!`;
+            }
+            
+            styleConcept = brandMix 
+              ? `👗 ${gender} ${occasion} 요청에 맞춘 "${brandMix}" 브랜드 믹스 스타일링`
+              : `👗 ${gender} ${occasion} 스타일 - "${userRequest.slice(0, 30)}..."에 맞춘 코디`;
+              
+            console.log(`[style-recommend] Cache had no styleReasoning, generated fallback`);
           } else {
-            styleReasoning += `킬링 포인트? 심플한 듯 디테일한 조화가 ${occasion}에서 시선을 사로잡죠!`;
+            console.log(`[style-recommend] Using cached styleReasoning (${styleReasoning.length} chars)`);
           }
-          
-          const styleConcept = brandMix 
-            ? `👗 ${gender} ${occasion} 요청에 맞춘 "${brandMix}" 브랜드 믹스 스타일링`
-            : `👗 ${gender} ${occasion} 스타일 - "${userRequest.slice(0, 30)}..."에 맞춘 코디`;
 
           const elapsed = Date.now() - startTime;
           console.log(`[style-recommend] Cache response in ${elapsed}ms`);
@@ -1041,21 +1045,26 @@ JSON 응답:
     const autoSelectedTotal = lookItems.filter(i => i.isAutoSelected).reduce((sum, item) => sum + (item.product?.price || 0), 0);
     const autoSelectedCount = lookItems.filter(i => i.isAutoSelected).length;
 
-    // Save to cache
+    // ragResponse에서 styleReasoning 먼저 추출
+    const finalStyleReasoning = ragResponse?.styleReasoning || ragResponse?.stylingTips || '';
+
+    // Save to cache - 이제 styleReasoning도 함께 저장!
     if (lookItems.length >= 2) {
       const lookData = {
         cache_key: cacheKey,
         product_ids: lookItems.map(l => l.product!.id),
         image_url: lookItems[0].product!.image_url || '',
         use_count: 1,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        // 🎯 GPT 생성 내용도 캐시에 저장!
+        style_reasoning: finalStyleReasoning || null,
+        style_concept: ragResponse?.styleConcept || null,
+        look_name: ragResponse?.lookName || null,
       };
 
       await supabase.from('style_cache').upsert(lookData, { onConflict: 'cache_key' });
+      console.log(`[style-recommend] Cached with styleReasoning (${finalStyleReasoning?.length || 0} chars)`);
     }
-
-    // ragResponse가 없으면 기본값 처리
-    const finalStyleReasoning = ragResponse?.styleReasoning || ragResponse?.stylingTips || '';
     
     const response = {
       success: true,
