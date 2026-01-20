@@ -457,14 +457,60 @@ const shareToSNS = async (
 
   switch (platform) {
     case 'instagram':
-      // Instagram은 직접 공유가 불가능하므로 이미지 저장 + 안내 토스트
-      const downloaded = await downloadImage(
+      // 모바일 감지
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // 모바일에서는 인스타그램 스토리로 공유 시도
+        try {
+          // 먼저 이미지를 다운로드하고 클립보드에 해시태그 복사
+          const downloaded = await downloadImage(
+            imageUrl, 
+            'showmelook-style-instagram.png',
+            addWatermark,
+            logoUrl
+          );
+          
+          if (downloaded) {
+            // 클립보드에 해시태그 복사
+            try {
+              await navigator.clipboard.writeText(hashtags);
+            } catch (err) {
+              console.log('해시태그 복사 실패');
+            }
+            
+            // 인스타그램 앱 딥링크 시도 (스토리 카메라)
+            // instagram://story-camera 또는 instagram://library
+            const instagramUrl = 'instagram://story-camera';
+            
+            // 딥링크 시도 전에 fallback 타이머 설정
+            const timeout = setTimeout(() => {
+              // 앱이 열리지 않으면 이미 이미지 저장됨, 안내만 표시
+            }, 2000);
+            
+            window.location.href = instagramUrl;
+            clearTimeout(timeout);
+            
+            return { 
+              success: true, 
+              message: '📸 인스타그램 스토리가 열립니다!\n저장된 이미지를 갤러리에서 선택하고 해시태그를 붙여넣기 해주세요.' 
+            };
+          }
+          return { success: false, message: '이미지 저장에 실패했습니다.' };
+        } catch (err) {
+          console.log('Instagram deep link failed:', err);
+          // 딥링크 실패시 기존 방식으로 fallback
+        }
+      }
+      
+      // 데스크톱이거나 딥링크 실패시 기존 방식
+      const downloadedDesktop = await downloadImage(
         imageUrl, 
         'showmelook-style-instagram.png',
         addWatermark,
         logoUrl
       );
-      if (downloaded) {
+      if (downloadedDesktop) {
         // 클립보드에 해시태그 복사
         try {
           await navigator.clipboard.writeText(hashtags);
