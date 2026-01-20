@@ -3568,6 +3568,8 @@ const StyleGenerator = () => {
 
           // styleReasoning 캡처 (DB 저장 시 이 값을 그대로 사용)
           capturedStyleReasoning = recData.look.styleReasoning || recData.look.stylingTips || '';
+          console.log('[StyleGenerator] capturedStyleReasoning:', capturedStyleReasoning);
+          console.log('[StyleGenerator] recData.look:', JSON.stringify(recData.look, null, 2).slice(0, 500));
           
           // 추천 결과 즉시 UI에 반영
           setCustomResult({
