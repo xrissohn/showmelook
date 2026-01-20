@@ -77,27 +77,47 @@ function getEmailTemplate(code: string, purpose: "signup" | "password_reset"): s
   `;
 }
 
-async function sendEmail(to: string, subject: string, html: string, fromEmail: string): Promise<{ success: boolean; error?: string }> {
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: fromEmail,
-      to: [to],
-      subject,
-      html,
-    }),
-  });
+async function sendEmail(to: string, subject: string, html: string): Promise<{ success: boolean; error?: string }> {
+  // Try with verified domain first, then fallback to resend.dev for testing
+  const fromOptions = [
+    "쇼미룩 <noreply@showmelook.com>",
+    "쇼미룩 <onboarding@resend.dev>",
+  ];
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    return { success: false, error: errorData.message || "Email send failed" };
+  for (const fromEmail of fromOptions) {
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${RESEND_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [to],
+          subject,
+          html,
+        }),
+      });
+
+      if (response.ok) {
+        console.log(`Email sent successfully using: ${fromEmail}`);
+        return { success: true };
+      }
+
+      const errorData = await response.json();
+      console.log(`Failed with ${fromEmail}:`, errorData.message);
+      
+      // Continue to next option
+    } catch (err) {
+      console.log(`Error with ${fromEmail}:`, err);
+    }
   }
 
-  return { success: true };
+  return { 
+    success: false, 
+    error: "이메일 발송 실패. Resend 도메인 인증이 필요합니다. https://resend.com/domains 에서 showmelook.com을 인증해주세요." 
+  };
 }
 
 serve(async (req) => {
@@ -176,21 +196,14 @@ serve(async (req) => {
       ? "[쇼미룩] 회원가입 인증코드" 
       : "[쇼미룩] 비밀번호 재설정 인증코드";
 
-    // Try primary email first
-    let result = await sendEmail(email, subject, getEmailTemplate(code, purpose), "쇼미룩 <noreply@showmelook.com>");
+    const result = await sendEmail(email, subject, getEmailTemplate(code, purpose));
     
     if (!result.success) {
-      console.log("Primary email failed, trying fallback:", result.error);
-      // Try fallback
-      result = await sendEmail(email, subject, getEmailTemplate(code, purpose), "쇼미룩 <onboarding@resend.dev>");
-      
-      if (!result.success) {
-        console.error("Fallback email also failed:", result.error);
-        return new Response(
-          JSON.stringify({ error: "이메일 발송에 실패했습니다." }),
-          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-        );
-      }
+      console.error("Email send failed:", result.error);
+      return new Response(
+        JSON.stringify({ error: result.error || "이메일 발송에 실패했습니다." }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     console.log(`Verification code sent to ${email} for ${purpose}`);
