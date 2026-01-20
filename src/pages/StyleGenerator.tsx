@@ -3710,7 +3710,8 @@ const StyleGenerator = () => {
 
         // Save to database
         if (!genData.cached) {
-          const { data: insertedLook } = await supabase.from('generated_looks').insert({
+          console.log('[StyleGenerator] About to save to DB, styleReasoning:', styleReasoning?.substring(0, 100), 'length:', styleReasoning?.length || 0);
+          const { data: insertedLook, error: insertError } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: genData.imagePath || genData.imageUrl,
             prompt_used: styleConcept,
@@ -3718,6 +3719,7 @@ const StyleGenerator = () => {
             product_ids: productsWithDetails.map((p: any) => p.id),
             style_reasoning: styleReasoning || null,
           }).select('id').single();
+          if (insertError) console.error('[StyleGenerator] DB insert error:', insertError);
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
             
