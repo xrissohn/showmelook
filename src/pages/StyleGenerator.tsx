@@ -3719,7 +3719,15 @@ const StyleGenerator = () => {
                         <Textarea
                           placeholder="예: 봄 데이트룩, 화사하고 로맨틱한 느낌으로 원피스나 블라우스 위주로 추천해줘"
                           value={customStylePrompt}
-                          onChange={(e) => setCustomStylePrompt(e.target.value)}
+                          onChange={(e) => {
+                            setCustomStylePrompt(e.target.value);
+                            // 새로운 프롬프트 입력 시 기존 추천 결과 리셋
+                            if (customResult) {
+                              setCustomResult(null);
+                              setSelectedTrendProducts([]);
+                              setFeedbackGiven(null);
+                            }
+                          }}
                           className="min-h-[80px] sm:min-h-[100px] resize-none font-korean text-sm sm:text-base"
                           disabled={isCustomSearching}
                         />
@@ -3873,8 +3881,8 @@ const StyleGenerator = () => {
                       {/* 예산 섹션 제거됨 - AI가 스타일에만 집중 */}
 
                       
-                      {/* 추천만 먼저 보기 (선택적) */}
-                      {subscription.canUseRecommendFirst && !customResult && (
+                      {/* 추천만 먼저 보기 (항상 표시) */}
+                      {subscription.canUseRecommendFirst && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -3883,7 +3891,26 @@ const StyleGenerator = () => {
                           disabled={isCustomSearching || !customStylePrompt.trim()}
                         >
                           <Sparkles className="w-3 h-3 mr-1" />
-                          상품 추천만 먼저 보기
+                          {customResult ? '새로운 추천 받기' : '상품 추천만 먼저 보기'}
+                        </Button>
+                      )}
+                      
+                      {/* 무료 회원용 새로 시작 버튼 */}
+                      {!subscription.canUseRecommendFirst && customResult && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full font-korean text-xs border-accent/30 text-accent hover:bg-accent/10"
+                          onClick={() => {
+                            setCustomResult(null);
+                            setSelectedTrendProducts([]);
+                            setCustomStylePrompt('');
+                            setFeedbackGiven(null);
+                            setGeneratedImage('');
+                          }}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          새로운 스타일 시작
                         </Button>
                       )}
                     </div>
