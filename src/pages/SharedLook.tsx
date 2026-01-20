@@ -341,7 +341,7 @@ const SharedLook = () => {
               {look.products.map((product) => (
                 <Card
                   key={product.id}
-                  className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
                   onClick={() => handleProductClick(product)}
                 >
                   <div className="aspect-square relative bg-muted">
