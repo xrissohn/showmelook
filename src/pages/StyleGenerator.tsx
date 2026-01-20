@@ -1891,42 +1891,34 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
                   
                   <div className="relative flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
-                    {/* AI 스타일리스트 추천 - 제목 + 설명 */}
-                    {selectedLook.style_reasoning ? (
-                      <div className="bg-gradient-to-br from-accent/25 via-primary/20 to-accent/15 rounded-xl p-5 border border-accent/40 shadow-lg">
-                        {/* 라벨 */}
-                        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20 mb-3">
-                          <div className="w-4 h-4 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                            <Sparkles className="w-2.5 h-2.5 text-white" />
-                          </div>
-                          <span className="text-[10px] font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                    {/* AI 스타일리스트 추천 */}
+                    <div className="bg-gradient-to-br from-accent/25 via-primary/20 to-accent/15 rounded-xl p-5 border border-accent/40 shadow-lg">
+                      {/* 라벨 */}
+                      <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20 mb-3">
+                        <div className="w-4 h-4 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+                          <Sparkles className="w-2.5 h-2.5 text-white" />
                         </div>
-                        
-                        {/* 제목 (styleConcept) */}
-                        {selectedLook.prompt_used && (
-                          <h3 className="text-base font-bold text-white font-korean mb-3 leading-tight">
-                            👗 {selectedLook.prompt_used}
-                          </h3>
-                        )}
-                        
-                        {/* 설명 (styleReasoning) */}
-                        <div className="relative pl-3 border-l-2 border-accent/40">
-                          <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
-                            {selectedLook.style_reasoning}
-                          </p>
-                        </div>
+                        <span className="text-[10px] font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
                       </div>
-                    ) : selectedLook.prompt_used && (
-                      <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
-                        <h3 className="text-sm font-bold text-white flex items-center gap-2 font-korean mb-2">
-                          <Sparkles className="w-4 h-4 text-accent animate-pulse" />
-                          스타일 컨셉
+                      
+                      {/* 제목 (prompt_used에서 제품명 제외) */}
+                      {selectedLook.prompt_used && (
+                        <h3 className="text-base font-bold text-white font-korean mb-3 leading-tight">
+                          👗 {selectedLook.prompt_used.split(' 스타일,')[0].replace('👗 ', '')}
                         </h3>
-                        <p className="text-sm text-white/80 font-korean leading-relaxed">
-                          {selectedLook.prompt_used}
+                      )}
+                      
+                      {/* 설명 (styleReasoning 또는 기본 메시지) */}
+                      <div className="relative pl-3 border-l-2 border-accent/40">
+                        <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
+                          {selectedLook.style_reasoning || (
+                            lookProducts.length > 0 
+                              ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요. 각 아이템의 조화로운 믹스가 스타일리시한 무드를 연출하죠!`
+                              : '스타일리시한 코디가 완성되었어요!'
+                          )}
                         </p>
                       </div>
-                    )}
+                    </div>
                     
                     {/* 추천 상품 정보 */}
                     {lookProducts.length > 0 && (
