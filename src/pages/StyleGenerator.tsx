@@ -483,23 +483,23 @@ const ShareButtons = ({
   onShare, 
   className = '',
   compact = false,
-  isPremium = false,
+  hasWatermark = true, // Pro 이상이면 false
   logoUrl,
   lookId
-}: { 
+}: {
   imageUrl: string; 
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
   className?: string;
   compact?: boolean;
-  isPremium?: boolean;
+  hasWatermark?: boolean; // Pro 이상이면 false
   logoUrl?: string;
   lookId?: string;
 }) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 비프리미엄 사용자는 워터마크 추가
-  const shouldAddWatermark = !isPremium;
+  // hasWatermark가 true면 워터마크 추가 (Free 회원)
+  const shouldAddWatermark = hasWatermark ?? true;
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -511,7 +511,7 @@ const ShareButtons = ({
     );
     setIsDownloading(false);
     const message = success 
-      ? isPremium 
+      ? !shouldAddWatermark 
         ? '이미지가 저장되었습니다!' 
         : '이미지가 저장되었습니다! (워터마크 포함)'
       : '저장에 실패했습니다.';
@@ -531,7 +531,7 @@ const ShareButtons = ({
           onClick={handleDownload}
           disabled={isDownloading}
           className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-          title={isPremium ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+          title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
         >
           {isDownloading ? (
             <Loader2 className="w-5 h-5 animate-spin text-foreground" />
@@ -551,11 +551,11 @@ const ShareButtons = ({
             <>
               <div className="fixed inset-0 z-40" onClick={() => setIsShareOpen(false)} />
               <div className="absolute right-0 top-12 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200">
-                {!isPremium && (
+                {shouldAddWatermark && (
                   <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                     <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                       <Crown className="w-3 h-3" />
-                      프리미엄 회원은 워터마크 없이 저장
+                      Pro 회원은 워터마크 없이 저장
                     </p>
                   </div>
                 )}
@@ -611,14 +611,14 @@ const ShareButtons = ({
         onClick={handleDownload}
         disabled={isDownloading}
         className="font-korean"
-        title={isPremium ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+        title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
       >
         {isDownloading ? (
           <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
         ) : (
           <Download className="w-4 h-4 mr-1.5" />
         )}
-        저장{!isPremium && ' 🏷️'}
+        저장{shouldAddWatermark && ' 🏷️'}
       </Button>
       <div className="relative">
         <Button
@@ -634,11 +634,11 @@ const ShareButtons = ({
           <>
             <div className="fixed inset-0 z-40" onClick={() => setIsShareOpen(false)} />
             <div className="absolute right-0 top-10 z-50 bg-background rounded-xl border border-border shadow-xl p-2 min-w-[160px] animate-in slide-in-from-top-2 fade-in duration-200">
-              {!isPremium && (
+              {shouldAddWatermark && (
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    프리미엄 회원은 워터마크 없이 저장
+                    Pro 회원은 워터마크 없이 저장
                   </p>
                 </div>
               )}
@@ -703,7 +703,7 @@ const GeneratedStyleImage = ({
   alt,
   logoSrc,
   onShare,
-  isPremium = false,
+  hasWatermark = true, // Pro 이상이면 false
   products = [],
   onProductPurchase,
   onProductAddToCart,
@@ -716,7 +716,7 @@ const GeneratedStyleImage = ({
   alt: string;
   logoSrc: string;
   onShare?: (platform: string, result: { success: boolean; message?: string }) => void;
-  isPremium?: boolean;
+  hasWatermark?: boolean;
   products?: GeneratedStyleImageProduct[];
   onProductPurchase?: (product: GeneratedStyleImageProduct) => void;
   onProductAddToCart?: (product: GeneratedStyleImageProduct) => void;
@@ -895,7 +895,7 @@ const GeneratedStyleImage = ({
           {/* 저장/공유 버튼 오버레이 */}
           {!isLoading && (
             <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <ShareButtons imageUrl={src} onShare={onShare} compact isPremium={isPremium} logoUrl={logoSrc} lookId={lookId} />
+              <ShareButtons imageUrl={src} onShare={onShare} compact hasWatermark={hasWatermark} logoUrl={logoSrc} lookId={lookId} />
             </div>
           )}
         </>
@@ -910,10 +910,10 @@ interface MyLooksGalleryProps {
   setMyLooks: React.Dispatch<React.SetStateAction<GeneratedLook[]>>;
   setActiveTab: (tab: 'generate' | 'mylooks' | 'mypage') => void;
   toast: ReturnType<typeof useToast>['toast'];
-  isPremium: boolean;
+  hasWatermark: boolean; // Pro 이상이면 false
 }
 
-const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }: MyLooksGalleryProps) => {
+const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark }: MyLooksGalleryProps) => {
   // 필터 상태
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
@@ -1599,7 +1599,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                           }
                         }}
                         compact
-                        isPremium={isPremium}
+                        hasWatermark={hasWatermark}
                         logoUrl={showmelookWatermarkFull}
                         lookId={look.id}
                       />
@@ -1880,7 +1880,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, isPremium }:
                         });
                       }
                     }}
-                    isPremium={isPremium}
+                    hasWatermark={hasWatermark}
                     logoUrl={showmelookWatermarkFull}
                     compact
                     lookId={selectedLook.id}
@@ -4503,7 +4503,7 @@ const StyleGenerator = () => {
                       src={generatedImage}
                       alt="Generated style"
                       logoSrc={showmelookWatermarkFull}
-                      isPremium={isPremium}
+                      hasWatermark={subscription.hasWatermark}
                       products={selectedTrendProducts.map(p => ({
                         id: p.id,
                         name: p.name,
@@ -4538,6 +4538,28 @@ const StyleGenerator = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* 다른 스타일 시도하기 버튼 - 생성 완료 후 표시 */}
+                {generatedImage && !isGenerating && (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="font-korean text-sm border-accent/30 text-accent hover:bg-accent/10"
+                      onClick={() => {
+                        setCustomResult(null);
+                        setSelectedTrendProducts([]);
+                        setCustomStylePrompt('');
+                        setFeedbackGiven(null);
+                        setGeneratedImage('');
+                        setGeneratedLookId(null);
+                      }}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      다른 스타일 시도하기
+                    </Button>
+                  </div>
+                )}
 
               {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
@@ -4730,7 +4752,7 @@ const StyleGenerator = () => {
             setMyLooks={setMyLooks}
             setActiveTab={setActiveTab}
             toast={toast}
-            isPremium={isPremium}
+            hasWatermark={subscription.hasWatermark}
           />
         ) : (
           /* My Page */
