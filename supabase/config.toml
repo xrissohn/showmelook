@@ -9,6 +9,12 @@ verify_jwt = true
 [functions.cleanup-cache]
 verify_jwt = false
 
+[functions.coupang-test]
+verify_jwt = false
+
+[functions.coupang-batch]
+verify_jwt = false
+
 [functions.deeplink]
 verify_jwt = false
 
