@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, ArrowLeft, Mail, KeyRound, User, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Mail, KeyRound, User, Loader2, Gift } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
@@ -50,6 +50,7 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [verificationId, setVerificationId] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,6 +144,31 @@ const Auth = () => {
     const { error } = await signUp(email, password, fullName);
     
     if (!error) {
+      // Get user data after signup
+      const { data: { user: newUser } } = await supabase.auth.getUser();
+      
+      // Apply referral code if provided
+      if (referralCode && newUser) {
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/apply-referral-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referral_code: referralCode,
+              new_user_id: newUser.id,
+              new_user_email: email,
+              new_user_name: fullName,
+            }),
+          });
+          const result = await response.json();
+          if (result.success) {
+            toast({ title: '🎉 추천 코드 적용!', description: result.message });
+          }
+        } catch (e) {
+          console.log('Referral code application failed:', e);
+        }
+      }
+      
       // Send welcome email
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/send-welcome-email`, {
@@ -207,6 +233,7 @@ const Auth = () => {
     setFullName('');
     setOtpCode('');
     setVerificationId('');
+    setReferralCode('');
     setSignupStep('email');
     setForgotStep('email');
     setResendCooldown(0);
@@ -415,6 +442,18 @@ const Auth = () => {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="font-korean flex items-center gap-2"><Gift className="w-4 h-4" /> 추천 코드 <span className="text-xs text-muted-foreground">(선택)</span></Label>
+                <Input 
+                  type="text" 
+                  placeholder="추천 코드가 있다면 입력하세요" 
+                  value={referralCode} 
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())} 
+                  maxLength={8}
+                  className="uppercase"
+                />
+                <p className="text-xs text-muted-foreground font-korean">추천 코드 입력 시 보너스 생성 5회를 받아요!</p>
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading} onClick={handleSignup}>
                 {isLoading ? '가입 중...' : '가입 완료'}

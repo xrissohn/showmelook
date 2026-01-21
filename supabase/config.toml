@@ -87,3 +87,15 @@ verify_jwt = false
 
 [functions.reset-password]
 verify_jwt = false
+
+[functions.apply-referral-code]
+verify_jwt = false
+
+[functions.send-referral-success-email]
+verify_jwt = false
+
+[functions.get-bonus-credits]
+verify_jwt = false
+
+[functions.consume-bonus-credit]
+verify_jwt = false

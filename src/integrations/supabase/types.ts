@@ -514,6 +514,36 @@ export type Database = {
           },
         ]
       }
+      profile_deletion_grace: {
+        Row: {
+          created_at: string | null
+          deleted_at: string | null
+          grace_period_ends_at: string
+          id: string
+          notified_at: string | null
+          profile_ids: string[]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          deleted_at?: string | null
+          grace_period_ends_at: string
+          id?: string
+          notified_at?: string | null
+          profile_ids: string[]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          deleted_at?: string | null
+          grace_period_ends_at?: string
+          id?: string
+          notified_at?: string | null
+          profile_ids?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           age: number | null
@@ -637,6 +667,78 @@ export type Database = {
           success_rate?: number | null
           updated_at?: string | null
           use_count?: number | null
+        }
+        Relationships: []
+      }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          used_count: number | null
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          used_count?: number | null
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          used_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      referral_rewards: {
+        Row: {
+          amount: number
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          is_permanent: boolean | null
+          referee_user_id: string
+          referral_code: string
+          referrer_user_id: string
+          remaining_amount: number
+          reward_type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_permanent?: boolean | null
+          referee_user_id: string
+          referral_code: string
+          referrer_user_id: string
+          remaining_amount?: number
+          reward_type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          is_permanent?: boolean | null
+          referee_user_id?: string
+          referral_code?: string
+          referrer_user_id?: string
+          remaining_amount?: number
+          reward_type?: string
         }
         Relationships: []
       }
