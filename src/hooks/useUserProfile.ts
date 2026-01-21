@@ -13,14 +13,15 @@ interface UserProfile {
 }
 
 export function useUserProfile() {
-  const { user } = useAuth();
+  // 모든 useState를 조건문 전에 선언 (React 훅 규칙)
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  
-  // Cache tracking
   const cacheRef = useRef<{ data: UserProfile; timestamp: number } | null>(null);
-  const CACHE_DURATION = 10 * 60 * 1000; // 10분 캐시 (프로필은 자주 안 변함)
+  const CACHE_DURATION = 10 * 60 * 1000; // 10분 캐시
+
+  // useAuth를 useState 이후에 호출
+  const { user } = useAuth();
 
   const fetchProfile = useCallback(async (forceRefresh = false) => {
     if (!user) {
