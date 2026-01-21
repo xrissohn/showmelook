@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User } from "lucide-react";
+import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { useReferral } from "@/hooks/useReferral";
 import { supabase } from "@/integrations/supabase/client";
 import { LazyImage } from "@/components/LazyImage";
 import MainNavigation from "@/components/MainNavigation";
@@ -40,9 +41,11 @@ const MyPage = () => {
   const { user, loading: authLoading } = useAuth();
   const subscription = useSubscription(user?.id);
   const { profile: userProfile, isLoading: profileLoading } = useUserProfile();
+  const referral = useReferral(user?.id);
   
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("subscription");
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // React Query 훅 사용 (5분 캐싱)
   const { data: recommendations = [], isLoading: isLoadingRecs } = useRecommendationHistory();
@@ -283,6 +286,71 @@ const MyPage = () => {
                     {subscription.plan === 'free' ? 'Pro로 업그레이드' : 'Premium으로 업그레이드'}
                   </Button>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* 친구 추천 카드 */}
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-5 h-5 text-primary" />
+                  <CardTitle className="font-korean text-lg">친구 추천</CardTitle>
+                </div>
+                <CardDescription className="font-korean">
+                  친구를 초대하고 보너스를 받으세요!
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* 내 추천 코드 */}
+                {referral.referralCode && (
+                  <div className="p-4 rounded-lg bg-background border border-primary/20">
+                    <p className="text-sm text-muted-foreground mb-2 font-korean">내 추천 코드</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 text-xl font-bold text-primary tracking-wider">
+                        {referral.referralCode.code}
+                      </code>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          const success = await referral.copyReferralCode();
+                          if (success) {
+                            setCodeCopied(true);
+                            toast({ title: '복사됨!', description: '추천 코드가 클립보드에 복사되었습니다.' });
+                            setTimeout(() => setCodeCopied(false), 2000);
+                          }
+                        }}
+                      >
+                        {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2 font-korean">
+                      {referral.referralCode.used_count}/{referral.referralCode.max_uses}명 추천 완료
+                    </p>
+                  </div>
+                )}
+
+                {/* 보너스 크레딧 */}
+                {referral.bonusCredits.total > 0 && (
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400 font-korean">활성 보너스</p>
+                    </div>
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-300">
+                      +{referral.bonusCredits.total}회
+                    </p>
+                    <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1 font-korean">
+                      일일 한도 소진 후 사용 가능
+                    </p>
+                  </div>
+                )}
+
+                {/* 리워드 안내 */}
+                <div className="text-sm text-muted-foreground font-korean space-y-1">
+                  <p>• Free/Pro: 추천 시 보너스 5회 (30일간 유효)</p>
+                  <p>• Premium: 추천 시 프로필 슬롯 +1 (영구)</p>
+                </div>
               </CardContent>
             </Card>
 
