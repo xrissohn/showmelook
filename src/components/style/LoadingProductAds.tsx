@@ -36,6 +36,11 @@ const ProductSlide = ({
     return new Intl.NumberFormat('ko-KR').format(price);
   };
 
+  // 할인율 계산
+  const discountRate = product.original_price && product.original_price > product.price
+    ? Math.round((1 - product.price / product.original_price) * 100)
+    : null;
+
   return (
     <div 
       className="relative bg-background/80 backdrop-blur-sm rounded-xl border border-border/50 p-3 cursor-pointer hover:border-accent/50 transition-all duration-300 group"
@@ -50,7 +55,13 @@ const ProductSlide = ({
 
       <div className="flex gap-3">
         {/* 상품 이미지 */}
-        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+          {/* 할인율 뱃지 */}
+          {discountRate && discountRate > 0 && (
+            <div className="absolute top-0 left-0 z-10 bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-br-lg">
+              {discountRate}%
+            </div>
+          )}
           {imageError || !product.image_url ? (
             <div className="w-full h-full flex items-center justify-center">
               <ImageOff className="w-6 h-6 text-muted-foreground/30" />
