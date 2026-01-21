@@ -174,11 +174,32 @@ export const useReferral = (userId: string | undefined) => {
     }
   }, [state.referralCode?.code]);
 
+  // 추천 링크 복사 (showmelook.com 도메인 사용)
+  const copyReferralLink = useCallback(async (): Promise<boolean> => {
+    if (!state.referralCode?.code) return false;
+    
+    try {
+      const referralLink = `https://showmelook.com/auth?ref=${state.referralCode.code}`;
+      await navigator.clipboard.writeText(referralLink);
+      return true;
+    } catch {
+      return false;
+    }
+  }, [state.referralCode?.code]);
+
+  // 추천 링크 생성
+  const getReferralLink = useCallback((): string | null => {
+    if (!state.referralCode?.code) return null;
+    return `https://showmelook.com/auth?ref=${state.referralCode.code}`;
+  }, [state.referralCode?.code]);
+
   return {
     ...state,
     refetch: fetchReferralData,
     consumeBonusCredit,
     applyReferralCode,
     copyReferralCode,
+    copyReferralLink,
+    getReferralLink,
   };
 };

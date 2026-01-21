@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check } from "lucide-react";
+import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,6 +46,7 @@ const MyPage = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("subscription");
   const [codeCopied, setCodeCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   // React Query 훅 사용 (5분 캐싱)
   const { data: recommendations = [], isLoading: isLoadingRecs } = useRecommendationHistory();
@@ -301,14 +302,32 @@ const MyPage = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* 내 추천 코드 */}
+                {/* 내 추천 링크 */}
                 {referral.referralCode && (
                   <div className="p-4 rounded-lg bg-background border border-primary/20">
-                    <p className="text-sm text-muted-foreground mb-2 font-korean">내 추천 코드</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 text-xl font-bold text-primary tracking-wider">
-                        {referral.referralCode.code}
+                    <p className="text-sm text-muted-foreground mb-2 font-korean">내 추천 링크</p>
+                    <div className="flex items-center gap-2 mb-3">
+                      <code className="flex-1 text-sm text-primary truncate">
+                        showmelook.com/auth?ref={referral.referralCode.code}
                       </code>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="hero"
+                        size="sm"
+                        className="flex-1 font-korean"
+                        onClick={async () => {
+                          const success = await referral.copyReferralLink();
+                          if (success) {
+                            setLinkCopied(true);
+                            toast({ title: '복사됨!', description: '추천 링크가 클립보드에 복사되었습니다.' });
+                            setTimeout(() => setLinkCopied(false), 2000);
+                          }
+                        }}
+                      >
+                        {linkCopied ? <Check className="w-4 h-4 mr-1" /> : <Link className="w-4 h-4 mr-1" />}
+                        링크 복사
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -322,9 +341,10 @@ const MyPage = () => {
                         }}
                       >
                         {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        코드
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2 font-korean">
+                    <p className="text-xs text-muted-foreground mt-3 font-korean">
                       {referral.referralCode.used_count}/{referral.referralCode.max_uses}명 추천 완료
                     </p>
                   </div>
