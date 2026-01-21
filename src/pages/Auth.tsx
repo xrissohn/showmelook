@@ -51,6 +51,7 @@ const Auth = () => {
   const [otpCode, setOtpCode] = useState('');
   const [verificationId, setVerificationId] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [hasStoredReferral, setHasStoredReferral] = useState(false);
   
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,6 +62,36 @@ const Auth = () => {
   const { signIn, signUp, user, sendVerificationEmail, verifyEmailCode, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // URL 파라미터에서 ref 코드 감지 및 localStorage 저장
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const refCode = urlParams.get('ref');
+    
+    if (refCode) {
+      // localStorage에 7일 만료로 저장
+      const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7일
+      localStorage.setItem('referral_code', refCode.toUpperCase());
+      localStorage.setItem('referral_code_expiry', expiry.toString());
+      
+      // URL에서 ref 파라미터 제거 (깔끔한 URL 유지)
+      window.history.replaceState({}, '', '/auth');
+      
+      toast({
+        title: '🎁 추천 링크로 접속하셨네요!',
+        description: '가입 완료 시 보너스가 자동 적용됩니다.',
+      });
+    }
+  }, [toast]);
+
+  // localStorage에 저장된 추천 코드 확인
+  useEffect(() => {
+    const storedCode = localStorage.getItem('referral_code');
+    const expiry = localStorage.getItem('referral_code_expiry');
+    if (storedCode && expiry && Date.now() < parseInt(expiry)) {
+      setHasStoredReferral(true);
+    }
+  }, []);
 
   // Countdown for resend button
   useEffect(() => {
@@ -147,14 +178,24 @@ const Auth = () => {
       // Get user data after signup
       const { data: { user: newUser } } = await supabase.auth.getUser();
       
-      // Apply referral code if provided
-      if (referralCode && newUser) {
+      // 추천 코드 우선순위: 직접 입력 > localStorage
+      let finalReferralCode = referralCode;
+      if (!finalReferralCode) {
+        const storedCode = localStorage.getItem('referral_code');
+        const expiry = localStorage.getItem('referral_code_expiry');
+        if (storedCode && expiry && Date.now() < parseInt(expiry)) {
+          finalReferralCode = storedCode;
+        }
+      }
+      
+      // Apply referral code if available
+      if (finalReferralCode && newUser) {
         try {
           const response = await fetch(`${SUPABASE_URL}/functions/v1/apply-referral-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              referral_code: referralCode,
+              referral_code: finalReferralCode,
               new_user_id: newUser.id,
               new_user_email: email,
               new_user_name: fullName,
@@ -164,6 +205,9 @@ const Auth = () => {
           if (result.success) {
             toast({ title: '🎉 추천 코드 적용!', description: result.message });
           }
+          // localStorage 정리
+          localStorage.removeItem('referral_code');
+          localStorage.removeItem('referral_code_expiry');
         } catch (e) {
           console.log('Referral code application failed:', e);
         }
