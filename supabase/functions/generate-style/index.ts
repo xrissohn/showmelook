@@ -57,11 +57,40 @@ serve(async (req) => {
     const height = userProfile?.height || 170;
     const bodyType = userProfile?.body_type || 'average';
     const fullName = userProfile?.full_name || '';
+    const ageGroup = userProfile?.age_group || '';
     
     console.log('[generate-style] Profile gender:', userProfile?.gender, '-> Resolved:', gender);
     console.log('[generate-style] Profile name:', fullName);
+    console.log('[generate-style] Age group:', ageGroup);
 
-    let prompt = `Fashion photography of a stylish ${gender === '여성' ? 'Korean woman' : 'Korean man'}, ${height}cm tall, ${bodyType} build.
+    // 연령대에 따른 모델 타입 결정
+    const getModelDescription = (ageGroup: string, gender: string): string => {
+      const ageGroupLower = ageGroup.toLowerCase();
+      if (ageGroupLower.includes('infant') || ageGroupLower.includes('영아') || ageGroupLower.includes('baby')) {
+        return gender === '여성' ? 'adorable Korean baby girl' : 'adorable Korean baby boy';
+      }
+      if (ageGroupLower.includes('toddler') || ageGroupLower.includes('유아')) {
+        return gender === '여성' ? 'cute Korean toddler girl (2-4 years old)' : 'cute Korean toddler boy (2-4 years old)';
+      }
+      if (ageGroupLower.includes('child') || ageGroupLower.includes('아동') || ageGroupLower.includes('kids')) {
+        return gender === '여성' ? 'stylish Korean girl (5-12 years old)' : 'stylish Korean boy (5-12 years old)';
+      }
+      if (ageGroupLower.includes('teen') || ageGroupLower.includes('청소년')) {
+        return gender === '여성' ? 'trendy Korean teenage girl' : 'trendy Korean teenage boy';
+      }
+      // 성인 기본값
+      return gender === '여성' ? 'stylish Korean woman' : 'stylish Korean man';
+    };
+
+    const modelDescription = getModelDescription(ageGroup, gender);
+    const isChildProfile = ageGroup.toLowerCase().includes('infant') || 
+                          ageGroup.toLowerCase().includes('영아') ||
+                          ageGroup.toLowerCase().includes('toddler') ||
+                          ageGroup.toLowerCase().includes('유아') ||
+                          ageGroup.toLowerCase().includes('child') ||
+                          ageGroup.toLowerCase().includes('아동');
+
+    let prompt = `Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
 
 Style concept: ${style}
 
@@ -70,11 +99,23 @@ ${products}
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
-    // Add face composite instruction if enabled - CRITICAL: must use the provided reference photo
+    // 얼굴 합성 프롬프트 추가 (아기/어린이 프로필용 특별 처리)
     if (useFaceComposite && userAvatarUrl) {
-      prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.
+      if (isChildProfile) {
+        // 아기/어린이 프로필: 참조 이미지의 느낌만 반영
+        prompt = `Fashion photography of a ${modelDescription} with a similar look and feel to the reference photo provided.
 
-Fashion photography of a stylish ${gender === '여성' ? 'Korean woman' : 'Korean man'}${fullName ? ` (${fullName})` : ''}, ${height}cm tall, ${bodyType} build.
+Style concept: ${style}
+
+Wearing these items:
+${products}
+
+IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo. Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+      } else {
+        // 성인 프로필: 얼굴 합성
+        prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.
+
+Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}.
 
 Style concept: ${style}
 
@@ -84,9 +125,11 @@ ${products}
 IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, and appearance. Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
 CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+      }
     }
 
     console.log('[generate-style] Prompt length:', prompt.length);
+    console.log('[generate-style] Is child profile:', isChildProfile);
 
     // Prepare messages for Nano Banana (Gemini image generation)
     const messages: any[] = [
@@ -184,7 +227,41 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     console.log('[generate-style] AI result received');
 
     // Extract image from response
-    const generatedImage = aiResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    let generatedImage = aiResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    // 이미지 생성 실패 시 얼굴 합성 없이 재시도
+    if (!generatedImage && useFaceComposite && userAvatarUrl) {
+      console.log('[generate-style] No image with face composite, retrying without...');
+      
+      // 기본 프롬프트로 재시도
+      const fallbackPrompt = `Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
+
+Style concept: ${style}
+
+Wearing these items:
+${products}
+
+IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+      
+      const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: [{ role: 'user', content: fallbackPrompt }],
+          modalities: ['image', 'text']
+        }),
+      });
+      
+      if (fallbackResponse.ok) {
+        const fallbackResult = await fallbackResponse.json();
+        generatedImage = fallbackResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        console.log('[generate-style] Fallback result:', generatedImage ? 'success' : 'failed');
+      }
+    }
     
     if (!generatedImage) {
       console.error('[generate-style] No image in response:', JSON.stringify(aiResult).slice(0, 500));
