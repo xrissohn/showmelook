@@ -102,3 +102,6 @@ verify_jwt = false
 
 [functions.generate-referral-code]
 verify_jwt = false
+
+[functions.cleanup-expired-profiles]
+verify_jwt = false
