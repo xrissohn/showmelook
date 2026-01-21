@@ -159,10 +159,77 @@ export const useSubscription = (userId: string | undefined) => {
     };
   }, [userId, state.maxProfiles, state.canUseFamilyProfiles]);
 
+  // 다운그레이드 시 초과 프로필에 대한 유예 기간 생성
+  const createGracePeriodForExcessProfiles = useCallback(async (newMaxProfiles: number): Promise<{ success: boolean; excessCount: number }> => {
+    if (!userId) return { success: false, excessCount: 0 };
+
+    try {
+      // 현재 가족 프로필 조회
+      const { data: familyProfiles } = await supabase
+        .from('family_profiles')
+        .select('id, full_name, created_at')
+        .eq('owner_user_id', userId)
+        .order('created_at', { ascending: true });
+
+      if (!familyProfiles || familyProfiles.length === 0) {
+        return { success: true, excessCount: 0 };
+      }
+
+      const maxFamily = newMaxProfiles - 1; // 본인 제외
+      const excessCount = familyProfiles.length - maxFamily;
+
+      if (excessCount <= 0) {
+        return { success: true, excessCount: 0 };
+      }
+
+      // 초과된 프로필 ID들 (가장 오래된 것부터)
+      const excessProfileIds = familyProfiles.slice(maxFamily).map(p => p.id);
+
+      // 3일 유예 기간 생성
+      const gracePeriodEndsAt = new Date();
+      gracePeriodEndsAt.setDate(gracePeriodEndsAt.getDate() + 3);
+
+      // 기존 유예 기간이 있는지 확인
+      const { data: existingGrace } = await supabase
+        .from('profile_deletion_grace')
+        .select('id')
+        .eq('user_id', userId)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (existingGrace) {
+        // 기존 유예 기간 업데이트
+        await supabase
+          .from('profile_deletion_grace')
+          .update({
+            profile_ids: excessProfileIds,
+            grace_period_ends_at: gracePeriodEndsAt.toISOString(),
+          })
+          .eq('id', existingGrace.id);
+      } else {
+        // 새 유예 기간 생성
+        await supabase
+          .from('profile_deletion_grace')
+          .insert({
+            user_id: userId,
+            profile_ids: excessProfileIds,
+            grace_period_ends_at: gracePeriodEndsAt.toISOString(),
+          });
+      }
+
+      console.log(`Grace period created for ${excessCount} excess profiles, ends at ${gracePeriodEndsAt.toISOString()}`);
+      return { success: true, excessCount };
+    } catch (error) {
+      console.error('Failed to create grace period:', error);
+      return { success: false, excessCount: 0 };
+    }
+  }, [userId]);
+
   return {
     ...state,
     refetch: fetchSubscription,
     checkGalleryLimit,
     checkFamilyProfileLimit,
+    createGracePeriodForExcessProfiles,
   };
 };
