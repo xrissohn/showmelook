@@ -63,34 +63,88 @@ serve(async (req) => {
     console.log('[generate-style] Profile name:', fullName);
     console.log('[generate-style] Age group:', ageGroup);
 
-    // 연령대에 따른 모델 타입 결정
-    const getModelDescription = (ageGroup: string, gender: string): string => {
-      const ageGroupLower = ageGroup.toLowerCase();
-      if (ageGroupLower.includes('infant') || ageGroupLower.includes('영아') || ageGroupLower.includes('baby')) {
-        return gender === '여성' ? 'adorable Korean baby girl' : 'adorable Korean baby boy';
+    // age_group을 분석하여 나이 범위 결정
+    const parseAgeGroup = (ageGroup: string): { minAge: number; maxAge: number; category: string } => {
+      if (!ageGroup) return { minAge: 20, maxAge: 40, category: 'adult' };
+      
+      const ag = ageGroup.toLowerCase();
+      
+      // 0-12개월, 영아
+      if (ag.includes('infant') || ag.includes('영아') || ag.includes('baby') || ag.includes('0-12') || ag.includes('개월')) {
+        return { minAge: 0, maxAge: 1, category: 'infant' };
       }
-      if (ageGroupLower.includes('toddler') || ageGroupLower.includes('유아')) {
-        return gender === '여성' ? 'cute Korean toddler girl (2-4 years old)' : 'cute Korean toddler boy (2-4 years old)';
+      // 1-3세, 유아
+      if (ag.includes('toddler') || ag.includes('유아') || ag.includes('1-3') || ag.includes('2세') || ag.includes('3세')) {
+        return { minAge: 1, maxAge: 3, category: 'toddler' };
       }
-      if (ageGroupLower.includes('child') || ageGroupLower.includes('아동') || ageGroupLower.includes('kids')) {
-        return gender === '여성' ? 'stylish Korean girl (5-12 years old)' : 'stylish Korean boy (5-12 years old)';
+      // 4-6세, 미취학 아동
+      if (ag.includes('preschool') || ag.includes('4-6') || ag.includes('4세') || ag.includes('5세') || ag.includes('6세')) {
+        return { minAge: 4, maxAge: 6, category: 'preschool' };
       }
-      if (ageGroupLower.includes('teen') || ageGroupLower.includes('청소년')) {
-        return gender === '여성' ? 'trendy Korean teenage girl' : 'trendy Korean teenage boy';
+      // 7-12세, 초등학생
+      if (ag.includes('child') || ag.includes('아동') || ag.includes('kids') || ag.includes('초등') || ag.includes('7-12') || ag.match(/[789]세|10세|11세|12세/)) {
+        return { minAge: 7, maxAge: 12, category: 'child' };
       }
-      // 성인 기본값
-      return gender === '여성' ? 'stylish Korean woman' : 'stylish Korean man';
+      // 13-18세, 청소년
+      if (ag.includes('teen') || ag.includes('청소년') || ag.includes('13-18') || ag.match(/1[345678]세/)) {
+        return { minAge: 13, maxAge: 18, category: 'teen' };
+      }
+      // 성인
+      return { minAge: 20, maxAge: 40, category: 'adult' };
     };
 
-    const modelDescription = getModelDescription(ageGroup, gender);
-    const isChildProfile = ageGroup.toLowerCase().includes('infant') || 
-                          ageGroup.toLowerCase().includes('영아') ||
-                          ageGroup.toLowerCase().includes('toddler') ||
-                          ageGroup.toLowerCase().includes('유아') ||
-                          ageGroup.toLowerCase().includes('child') ||
-                          ageGroup.toLowerCase().includes('아동');
+    const ageInfo = parseAgeGroup(ageGroup);
+    console.log('[generate-style] Parsed age info:', ageInfo);
 
-    let prompt = `Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
+    // 연령대에 따른 모델 타입 결정 (더 상세하게)
+    const getModelDescription = (ageInfo: { minAge: number; maxAge: number; category: string }, gender: string): string => {
+      const genderKo = gender === '여성' ? '여자' : '남자';
+      
+      switch (ageInfo.category) {
+        case 'infant':
+          return `adorable Korean baby ${gender === '여성' ? 'girl' : 'boy'} (under 1 year old, ${ageInfo.minAge}-${ageInfo.maxAge} months old baby). The baby should have chubby cheeks, round face, and look like an actual infant`;
+        case 'toddler':
+          return `cute Korean toddler ${gender === '여성' ? 'girl' : 'boy'} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The child should be very small, have round baby face, short limbs, and look like an actual toddler`;
+        case 'preschool':
+          return `adorable Korean ${gender === '여성' ? 'girl' : 'boy'} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, preschool age). The child should have childish proportions, small body, and innocent look`;
+        case 'child':
+          return `stylish Korean ${gender === '여성' ? 'girl' : 'boy'} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, elementary school age). The child should look like an actual ${ageInfo.minAge}-${ageInfo.maxAge} year old kid`;
+        case 'teen':
+          return `trendy Korean teenage ${gender === '여성' ? 'girl' : 'boy'} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The teenager should have youthful appearance appropriate for their age`;
+        default:
+          return gender === '여성' ? 'stylish Korean woman in her 20s-30s' : 'stylish Korean man in his 20s-30s';
+      }
+    };
+
+    const modelDescription = getModelDescription(ageInfo, gender);
+    const isChildProfile = ageInfo.category === 'infant' || 
+                          ageInfo.category === 'toddler' ||
+                          ageInfo.category === 'preschool' ||
+                          ageInfo.category === 'child';
+
+    // 연령에 맞는 체형 비율 설명 추가
+    const getBodyProportionHint = (category: string): string => {
+      switch (category) {
+        case 'infant':
+          return 'CRITICAL: The baby must have infant body proportions - very short limbs, large head relative to body, no neck visible, chubby baby legs and arms.';
+        case 'toddler':
+          return 'CRITICAL: The toddler must have toddler body proportions - short legs, round tummy, large head, small hands, typical of a 2-3 year old child.';
+        case 'preschool':
+          return 'CRITICAL: The child must have young child body proportions - shorter legs relative to adults, rounder face, smaller hands, typical of a 4-6 year old.';
+        case 'child':
+          return 'CRITICAL: The child must look like an elementary school student with appropriate body proportions for their age.';
+        case 'teen':
+          return 'The teenager should have youthful proportions appropriate for adolescence.';
+        default:
+          return '';
+      }
+    };
+
+    const bodyProportionHint = getBodyProportionHint(ageInfo.category);
+    
+    let prompt = `${ageInfo.category !== 'adult' ? `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. DO NOT generate an adult or teenager if the age is under 13.\n\n` : ''}Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
+
+${bodyProportionHint}
 
 Style concept: ${style}
 
@@ -102,15 +156,19 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     // 얼굴 합성 프롬프트 추가 (아기/어린이 프로필용 특별 처리)
     if (useFaceComposite && userAvatarUrl) {
       if (isChildProfile) {
-        // 아기/어린이 프로필: 참조 이미지의 느낌만 반영
-        prompt = `Fashion photography of a ${modelDescription} with a similar look and feel to the reference photo provided.
+        // 아기/어린이 프로필: 참조 이미지의 느낌만 반영하되 나이 강조
+        prompt = `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. The model MUST look like a ${ageInfo.category === 'infant' ? 'baby under 1 year old' : ageInfo.category === 'toddler' ? 'toddler aged 2-3 years' : ageInfo.category === 'preschool' ? 'young child aged 4-6 years' : 'child aged 7-12 years'}.
+
+Fashion photography of a ${modelDescription} with a similar look and feel to the reference photo provided.
+
+${bodyProportionHint}
 
 Style concept: ${style}
 
 Wearing these items:
 ${products}
 
-IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo. Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
         // 성인 프로필: 얼굴 합성
         prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.

@@ -3848,6 +3848,8 @@ const StyleGenerator = () => {
               weight: selectedGenerationProfile.weight,
               body_type: selectedGenerationProfile.body_type,
               gender: selectedGenerationProfile.gender,
+              age_group: selectedGenerationProfile.age_group,
+              style_preferences: selectedGenerationProfile.style_preferences,
             }
           : userProfile;
         
@@ -4052,6 +4054,8 @@ const StyleGenerator = () => {
             weight: selectedGenerationProfile.weight,
             body_type: selectedGenerationProfile.body_type,
             gender: selectedGenerationProfile.gender,
+            age_group: selectedGenerationProfile.age_group,
+            style_preferences: selectedGenerationProfile.style_preferences,
           }
         : userProfile;
       
