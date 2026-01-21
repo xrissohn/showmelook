@@ -77,6 +77,23 @@ serve(async (req) => {
 
     console.log('[deeplink] Converting product URL:', product_url, 'force_api:', force_api);
 
+    // 쿠팡 제휴 링크인지 확인 (이미 유효한 딥링크)
+    if (product_url.includes('link.coupang.com') || product_url.includes('coupa.ng')) {
+      console.log('[deeplink] Already a Coupang affiliate link, returning as-is');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          merchant_id: 'coupang',
+          merchant_name: 'coupang',
+          original_url: product_url,
+          affiliate_url: product_url,
+          mobile_supported: true,
+          source: 'coupang_direct'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const affiliateId = Deno.env.get('LINKPRICE_AFFILIATE_ID');
     if (!affiliateId) {
       console.error('[deeplink] LINKPRICE_AFFILIATE_ID not configured');
