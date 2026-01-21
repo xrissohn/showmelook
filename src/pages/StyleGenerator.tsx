@@ -2444,10 +2444,13 @@ const StyleGenerator = () => {
 
   const { 
     isPremium, 
-    remainingCount, 
+    remainingCount,
+    bonusCredits,
+    totalRemaining,
     canGenerate, 
     isLoading: limitLoading, 
     updateAfterGeneration,
+    consumeBonusCredit,
     refetch: refetchLimit 
   } = useGenerationLimit(user?.id);
 
@@ -3691,6 +3694,15 @@ const StyleGenerator = () => {
       return;
     }
 
+    // 보너스 크레딧 사용 여부 확인 (기본 횟수가 0이고 보너스가 있을 때)
+    const willUseBonus = remainingCount === 0 && bonusCredits > 0;
+    if (willUseBonus) {
+      toast({
+        title: '✨ 보너스 크레딧 사용',
+        description: `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
+      });
+    }
+
     // 프롬프트 필수
     if (!customStylePrompt.trim()) {
       toast({
@@ -3887,9 +3899,18 @@ const StyleGenerator = () => {
           resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
 
-        // Update local limit state
+        // Update local limit state - 보너스 크레딧 사용 여부 추적
+        const usedBonus = remainingCount === 0 && bonusCredits > 0;
         if (typeof genData.remainingCount === 'number') {
-          updateAfterGeneration(genData.isPremium, genData.remainingCount);
+          updateAfterGeneration(genData.isPremium, genData.remainingCount, usedBonus);
+        } else {
+          // Edge function이 remainingCount를 반환하지 않는 경우 로컬에서 업데이트
+          updateAfterGeneration(isPremium, remainingCount, usedBonus);
+        }
+        
+        // 보너스 크레딧 사용 시 서버에서도 소비 처리
+        if (usedBonus) {
+          consumeBonusCredit();
         }
 
         // Show appropriate toast
@@ -3960,6 +3981,15 @@ const StyleGenerator = () => {
         variant: 'destructive',
       });
       return;
+    }
+
+    // 보너스 크레딧 사용 여부 확인 (기본 횟수가 0이고 보너스가 있을 때)
+    const willUseBonus = remainingCount === 0 && bonusCredits > 0;
+    if (willUseBonus) {
+      toast({
+        title: '✨ 보너스 크레딧 사용',
+        description: `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
+      });
     }
 
     // 트렌드 상품 또는 일반 상품 사용
@@ -4063,9 +4093,17 @@ const StyleGenerator = () => {
           resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
 
-        // Update local limit state
+        // Update local limit state - 보너스 크레딧 사용 여부 추적
+        const usedBonus = remainingCount === 0 && bonusCredits > 0;
         if (typeof data.remainingCount === 'number') {
-          updateAfterGeneration(data.isPremium, data.remainingCount);
+          updateAfterGeneration(data.isPremium, data.remainingCount, usedBonus);
+        } else {
+          updateAfterGeneration(isPremium, remainingCount, usedBonus);
+        }
+        
+        // 보너스 크레딧 사용 시 서버에서도 소비 처리
+        if (usedBonus) {
+          consumeBonusCredit();
         }
 
         // Show appropriate toast
@@ -4852,20 +4890,28 @@ const StyleGenerator = () => {
                           '로딩 중...'
                         ) : isPremium ? (
                           '무제한 스타일 생성'
+                        ) : bonusCredits > 0 ? (
+                          `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회`
                         ) : (
-                          `${remainingCount}회 남음 (일일 5회)`
+                          `${remainingCount}회 남음 (일일 ${subscription?.dailyLimit || 5}회)`
                         )}
                       </p>
                     </div>
                   </div>
-                  {!isPremium && remainingCount <= 2 && remainingCount > 0 && (
+                  {!isPremium && totalRemaining <= 2 && totalRemaining > 0 && (
                     <span className="px-3 py-1 bg-orange-500/20 text-orange-400 text-xs font-medium rounded-full font-korean">
                       곧 소진
                     </span>
                   )}
-                  {!isPremium && remainingCount === 0 && (
+                  {!isPremium && totalRemaining === 0 && (
                     <span className="px-3 py-1 bg-destructive/20 text-destructive text-xs font-medium rounded-full font-korean">
                       소진됨
+                    </span>
+                  )}
+                  {!isPremium && bonusCredits > 0 && totalRemaining > 2 && (
+                    <span className="px-3 py-1 bg-amber-500/20 text-amber-500 text-xs font-medium rounded-full font-korean flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      보너스
                     </span>
                   )}
                 </div>
@@ -5629,7 +5675,9 @@ const StyleGenerator = () => {
           {/* 남은 횟수 표시 */}
           {!isPremium && (
             <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
-              오늘 {remainingCount}회 남음
+              {bonusCredits > 0 
+                ? `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회` 
+                : `오늘 ${remainingCount}회 남음`}
             </p>
           )}
         </div>
