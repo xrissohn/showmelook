@@ -2540,7 +2540,7 @@ const StyleGenerator = () => {
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [lastRecommendationId, setLastRecommendationId] = useState<string | null>(null);
   
-  // 로딩 화면 광고 상품 (무료 회원 전용)
+  // 로딩 화면 추천 상품 (모든 회원에게 표시)
   const [loadingAdsProducts, setLoadingAdsProducts] = useState<CachedProduct[]>([]);
   
   // 티커 애니메이션 상태 (부드러운 스크롤)
@@ -2856,14 +2856,15 @@ const StyleGenerator = () => {
     fetchLikedProducts();
   }, [user]);
 
-  // 로딩 화면 광고 상품 로드 (무료 회원용)
+  // 로딩 화면 추천 상품 로드 (모든 회원에게 표시)
   useEffect(() => {
     const loadAdsProducts = async () => {
-      // 무료 회원이고 생성 중일 때만 상품 로드
-      if (subscription.plan !== 'free' || !isGenerating) return;
+      // 생성 중일 때만 상품 로드
+      if (!isGenerating) return;
       if (loadingAdsProducts.length > 0) return; // 이미 로드됨
 
       try {
+        // 다양한 상품을 위해 더 많이 가져와서 랜덤 셔플
         const { data, error } = await supabase
           .from('products_cache')
           .select('id, name, brand, price, image_url, product_url, category, style_tags, merchant_id')
@@ -2871,23 +2872,22 @@ const StyleGenerator = () => {
           .eq('is_in_stock', true)
           .not('image_url', 'is', null)
           .not('image_url', 'like', '%ads-partners%')
-          .order('updated_at', { ascending: false })
-          .limit(20);
+          .limit(100); // 더 많이 가져와서 다양성 확보
 
         if (error) throw error;
 
         if (data && data.length > 0) {
-          // 랜덤 셔플
+          // 완전 랜덤 셔플 후 10개 선택 (다양한 머천트/카테고리 혼합)
           const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, 10);
           setLoadingAdsProducts(shuffled as CachedProduct[]);
         }
       } catch (error) {
-        console.error('Error loading ads products:', error);
+        console.error('Error loading recommended products:', error);
       }
     };
 
     loadAdsProducts();
-  }, [subscription.plan, isGenerating, loadingAdsProducts.length]);
+  }, [isGenerating, loadingAdsProducts.length]);
 
   // 광고 상품 클릭 핸들러
   const handleAdsProductClick = async (product: CachedProduct) => {
@@ -5008,8 +5008,8 @@ const StyleGenerator = () => {
                         </p>
                       </div>
                       
-                      {/* 무료 회원 전용 추천 상품 슬라이드 */}
-                      {subscription.plan === 'free' && loadingAdsProducts.length > 0 && (
+                      {/* 모든 회원에게 추천 상품 슬라이드 표시 */}
+                      {loadingAdsProducts.length > 0 && (
                         <LoadingProductAds
                           products={loadingAdsProducts}
                           onProductClick={handleAdsProductClick}
@@ -5027,8 +5027,8 @@ const StyleGenerator = () => {
                         />
                       </div>
                       
-                      {/* 패션 아이콘 애니메이션 - 프로 이상만 표시 */}
-                      {subscription.plan !== 'free' && (
+                      {/* 패션 아이콘 애니메이션 - 추천 상품이 없을 때만 표시 */}
+                      {loadingAdsProducts.length === 0 && (
                         <div className="flex gap-4 mt-6 sm:mt-8 z-10">
                           {['👗', '👔', '👟', '👜', '🧥'].map((emoji, i) => (
                             <span
