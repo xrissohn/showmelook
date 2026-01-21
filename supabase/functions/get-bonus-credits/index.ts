@@ -27,7 +27,8 @@ serve(async (req) => {
       );
     }
 
-    // 활성화된 보너스 크레딧 조회 (만료되지 않고, 잔여량이 있는 것)
+    // 활성화된 보너스 크레딧 조회 (추천인/피추천인 모두 포함)
+    // referrer_user_id: 본인이 받은 보너스 (추천인으로서 또는 피추천인 웰컴 보너스)
     const { data: rewards, error } = await supabase
       .from('referral_rewards')
       .select('*')
