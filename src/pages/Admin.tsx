@@ -433,13 +433,44 @@ const Admin = () => {
 
     setIsDeletingProducts(true);
     try {
-      const { error } = await supabase.from('products_cache').delete().in('id', selectedProductIds);
-      if (error) throw error;
+      console.log('[Admin] Deleting products:', selectedProductIds);
       
-      toast({ title: "삭제 완료", description: `${selectedProductIds.length}개 상품이 삭제되었습니다.` });
+      // 각 상품을 개별적으로 삭제하여 정확한 결과 확인
+      let deletedCount = 0;
+      const errors: string[] = [];
+      
+      for (const productId of selectedProductIds) {
+        const { error, count } = await supabase
+          .from('products_cache')
+          .delete()
+          .eq('id', productId)
+          .select();
+        
+        if (error) {
+          console.error(`[Admin] Failed to delete product ${productId}:`, error);
+          errors.push(`${productId}: ${error.message}`);
+        } else {
+          console.log(`[Admin] Deleted product ${productId}`);
+          deletedCount++;
+        }
+      }
+      
+      if (errors.length > 0) {
+        console.error('[Admin] Delete errors:', errors);
+        toast({ 
+          title: "일부 삭제 실패", 
+          description: `${deletedCount}개 삭제됨, ${errors.length}개 실패. 콘솔에서 상세 확인하세요.`, 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "삭제 완료", description: `${deletedCount}개 상품이 삭제되었습니다.` });
+      }
+      
       setSelectedProductIds([]);
       loadCachedProducts(productFilter, showAllProducts);
+      loadProductStats();
     } catch (error: unknown) {
+      console.error('[Admin] Delete error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({ title: "삭제 실패", description: errorMessage, variant: "destructive" });
     } finally {
