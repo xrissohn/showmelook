@@ -99,7 +99,7 @@ const ProductSlide = ({
 export const LoadingProductAds = ({ products, onProductClick }: LoadingProductAdsProps) => {
   const [emblaRef] = useEmblaCarousel(
     { loop: true, align: 'center' },
-    [Autoplay({ delay: 3000, stopOnInteraction: false })]
+    [Autoplay({ delay: 4000, stopOnInteraction: false })]
   );
 
   if (!products || products.length === 0) {
