@@ -48,12 +48,26 @@ export const useReferral = (userId: string | undefined) => {
     }
 
     try {
-      // 1. 내 추천 코드 조회
-      const { data: codeData } = await supabase
-        .from('referral_codes')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      // 1. 내 추천 코드 조회 또는 생성 (Edge Function 호출)
+      let codeData = null;
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-referral-code`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        const result = await response.json();
+        if (result.success) {
+          codeData = {
+            code: result.code,
+            used_count: result.used_count,
+            max_uses: result.max_uses,
+            is_active: result.is_active,
+          };
+        }
+      } catch (e) {
+        console.error('Failed to fetch/generate referral code:', e);
+      }
 
       // 2. 보너스 크레딧 조회 (Edge Function 호출)
       let bonusData = { total: 0, details: [] };
@@ -78,12 +92,7 @@ export const useReferral = (userId: string | undefined) => {
         .eq('referral_code', codeData?.code || '');
 
       setState({
-        referralCode: codeData ? {
-          code: codeData.code,
-          used_count: codeData.used_count,
-          max_uses: codeData.max_uses,
-          is_active: codeData.is_active,
-        } : null,
+        referralCode: codeData,
         bonusCredits: bonusData,
         referralCount: referralCount || 0,
         isLoading: false,

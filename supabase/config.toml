@@ -99,3 +99,6 @@ verify_jwt = false
 
 [functions.consume-bonus-credit]
 verify_jwt = false
+
+[functions.generate-referral-code]
+verify_jwt = false
