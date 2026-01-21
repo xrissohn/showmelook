@@ -98,6 +98,30 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
 
     // If face composite is enabled, include the avatar image
     if (useFaceComposite && userAvatarUrl) {
+      let avatarDataUrl = userAvatarUrl;
+      
+      // If it's a Supabase storage URL, fetch and convert to base64
+      // (avatars bucket is private, so Gemini can't access it directly)
+      if (userAvatarUrl.includes('supabase.co/storage')) {
+        try {
+          console.log('[generate-style] Fetching avatar from storage...');
+          const avatarResponse = await fetch(userAvatarUrl);
+          if (avatarResponse.ok) {
+            const avatarBuffer = await avatarResponse.arrayBuffer();
+            const base64Avatar = btoa(
+              new Uint8Array(avatarBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+            const contentType = avatarResponse.headers.get('content-type') || 'image/png';
+            avatarDataUrl = `data:${contentType};base64,${base64Avatar}`;
+            console.log('[generate-style] Avatar converted to base64, length:', avatarDataUrl.length);
+          } else {
+            console.error('[generate-style] Failed to fetch avatar:', avatarResponse.status);
+          }
+        } catch (fetchError) {
+          console.error('[generate-style] Error fetching avatar:', fetchError);
+        }
+      }
+      
       messages[0] = {
         role: 'user',
         content: [
@@ -108,7 +132,7 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
           {
             type: 'image_url',
             image_url: {
-              url: userAvatarUrl
+              url: avatarDataUrl
             }
           }
         ]
