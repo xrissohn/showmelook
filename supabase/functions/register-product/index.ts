@@ -43,6 +43,8 @@ interface RegistrationResult {
   dna_generated: boolean;
   error?: string;
   step_failed?: 'upsert' | 'image' | 'dna';
+  pending?: boolean;  // 수동 처리 대기열에 추가됨
+  product_url?: string;
 }
 
 // ============= DNA Generation Functions =============
@@ -530,6 +532,7 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
 
   if (insertError || !insertedProduct) {
     console.error(`[Register] Insert failed:`, insertError);
+    
     // Check if it's a unique constraint violation (duplicate)
     if (insertError?.code === '23505') {
       return {
@@ -540,6 +543,28 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
         step_failed: 'upsert',
       };
     }
+    
+    // FK constraint violation - merchant_id doesn't exist
+    if (insertError?.code === '23503') {
+      console.log(`[Register] FK violation, moving to pending_products...`);
+      
+      await supabase.from('pending_products').insert({
+        source: product.merchant_id || 'unknown',
+        error_type: 'invalid_merchant',
+        error_message: `머천트 ID가 유효하지 않습니다: ${product.merchant_id}`,
+        raw_data: product,
+      });
+      
+      return {
+        success: false,
+        image_stored: false,
+        dna_generated: false,
+        error: `머천트 ID '${product.merchant_id}'가 유효하지 않습니다 → 수동 처리 대기열 추가`,
+        step_failed: 'upsert',
+        pending: true,
+      };
+    }
+    
     return {
       success: false,
       image_stored: false,
@@ -586,10 +611,12 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
       return {
         success: false,
         product_id: productId,
+        product_url: product.product_url,
         image_stored: false,
         dna_generated: false,
         error: `이미지 저장 실패 → 수동 처리 대기열에 추가됨`,
         step_failed: 'image',
+        pending: true,
       };
     }
   } else if (singleImageUrl) {
@@ -610,10 +637,12 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
     return {
       success: false,
       product_id: productId,
+      product_url: product.product_url,
       image_stored: false,
       dna_generated: false,
       error: `이미지 없음 → 수동 처리 대기열에 추가됨`,
       step_failed: 'image',
+      pending: true,
     };
   }
 
