@@ -46,53 +46,47 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
 
 // Brand colors for random selection
 const SPARKLE_COLORS = ['text-coral', 'text-magenta', 'text-purple', 'text-sky', 'text-primary'];
-
-// Generate stable random values for a sparkle
-const getSparkleStyle = (delay: number, baseSize: number = 24) => {
-  const duration = 0.3 + Math.random() * 0.5; // 0.3s ~ 0.8s
-  const animDelay = delay + Math.random() * 0.8;
-  const size = baseSize + Math.random() * 12;
-  const color = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
-  
-  return {
-    color,
-    style: {
-      width: size,
-      height: size,
-      animation: `twinkle ${duration}s ease-in-out ${animDelay}s infinite`
-    }
-  };
-};
+const SPARKLE_SIZES = ['w-5 h-5', 'w-6 h-6', 'w-7 h-7', 'w-8 h-8', 'w-9 h-9', 'w-10 h-10'];
 
 // Sparkle star component with random timing, size, and color
 const SparklesStar = ({ className, delay }: { className: string; delay: number }) => {
-  const [sparkle] = useState(() => getSparkleStyle(delay, 20));
+  const [config] = useState(() => ({
+    color: SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
+    size: SPARKLE_SIZES[Math.floor(Math.random() * SPARKLE_SIZES.length)],
+    delay: delay + Math.random() * 1.5,
+    duration: 0.4 + Math.random() * 0.6
+  }));
   
   return (
     <div className={`absolute ${className} pointer-events-none`}>
-      <Sparkles className={sparkle.color} style={sparkle.style} />
+      <Sparkles 
+        className={`${config.color} ${config.size} animate-twinkle`}
+        style={{ 
+          animationDelay: `${config.delay}s`,
+          animationDuration: `${config.duration}s`
+        }} 
+      />
     </div>
   );
 };
 
 // Inline sparkle for decorative elements (always animated with random timing)
-const InlineSparkle = ({ className, size = 16, delay = 0 }: { className?: string; size?: number; delay?: number }) => {
-  const [sparkle] = useState(() => {
-    const duration = 0.3 + Math.random() * 0.4;
-    const animDelay = delay + Math.random() * 0.5;
-    const color = className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
-    
-    return {
-      color,
-      style: {
-        width: size,
-        height: size,
-        animation: `twinkle ${duration}s ease-in-out ${animDelay}s infinite`
-      }
-    };
-  });
+const InlineSparkle = ({ className, size = 'w-4 h-4', delay = 0 }: { className?: string; size?: string; delay?: number }) => {
+  const [config] = useState(() => ({
+    color: className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
+    delay: delay + Math.random() * 1,
+    duration: 0.4 + Math.random() * 0.5
+  }));
   
-  return <Sparkles className={sparkle.color} style={sparkle.style} />;
+  return (
+    <Sparkles 
+      className={`${config.color} ${size} animate-twinkle`}
+      style={{ 
+        animationDelay: `${config.delay}s`,
+        animationDuration: `${config.duration}s`
+      }} 
+    />
+  );
 };
 
 // Floating orb component
@@ -274,8 +268,8 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
       <div className="container mx-auto max-w-3xl text-center relative z-10 px-4 sm:px-6">
         {/* Logo with sparkles */}
         <div className="relative inline-block mb-4 sm:mb-6">
-          <span className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4"><InlineSparkle size={20} delay={0} /></span>
-          <span className="absolute -top-2 right-0"><InlineSparkle size={16} delay={0.2} /></span>
+          <span className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4"><InlineSparkle size="w-5 h-5" delay={0} /></span>
+          <span className="absolute -top-2 right-0"><InlineSparkle size="w-4 h-4" delay={0.2} /></span>
           <img 
             src={showmelookLogo} 
             alt="쇼미룩 로고" 
@@ -283,14 +277,14 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
             height={64}
             className="w-12 h-12 sm:w-16 sm:h-16 mx-auto object-contain animate-float" 
           />
-          <span className="absolute -bottom-1 -right-2 sm:-right-3"><InlineSparkle size={20} delay={0.4} /></span>
-          <span className="absolute bottom-1 -left-3 sm:bottom-2 sm:-left-5"><InlineSparkle size={16} delay={0.6} /></span>
+          <span className="absolute -bottom-1 -right-2 sm:-right-3"><InlineSparkle size="w-5 h-5" delay={0.4} /></span>
+          <span className="absolute bottom-1 -left-3 sm:bottom-2 sm:-left-5"><InlineSparkle size="w-4 h-4" delay={0.6} /></span>
         </div>
         
         <h2 className="font-korean text-2xl sm:text-3xl md:text-5xl text-white mb-3 sm:mb-6 relative leading-tight">
-          <span className="absolute -left-6 sm:-left-8 top-0 hidden sm:block"><InlineSparkle size={24} delay={0.1} /></span>
+          <span className="absolute -left-6 sm:-left-8 top-0 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.1} /></span>
           지금 바로 시작하세요
-          <span className="absolute -right-6 sm:-right-8 bottom-0 hidden sm:block"><InlineSparkle size={24} delay={0.3} /></span>
+          <span className="absolute -right-6 sm:-right-8 bottom-0 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.3} /></span>
         </h2>
         <p className="text-base sm:text-lg md:text-xl font-korean text-white/70 mb-6 sm:mb-10 px-2">
           당신만의 스타일을 발견할 준비가 되셨나요?
@@ -300,7 +294,7 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
             무료로 시작하기
             <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
           </span>
-          <span className="absolute top-1 right-2"><InlineSparkle className="text-white/50" size={16} delay={0.5} /></span>
+          <span className="absolute top-1 right-2"><InlineSparkle className="text-white/50" size="w-4 h-4" delay={0.5} /></span>
         </Button>
         
         <p className="mt-4 sm:mt-6 text-xs sm:text-sm font-korean text-white/50 flex items-center justify-center gap-1 sm:gap-2 px-4">
@@ -367,10 +361,10 @@ const Landing = () => {
           <div className="text-center max-w-3xl mx-auto">
             {/* Animated Hero Logo with Sparkles */}
             <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-4 sm:mb-8 animate-fade-in relative">
-              <span className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4"><InlineSparkle size={24} delay={0} /></span>
-              <span className="absolute -top-2 left-6 sm:-top-4 sm:left-8 hidden sm:block"><InlineSparkle size={16} delay={0.15} /></span>
-              <span className="absolute top-0 right-2 sm:right-4 hidden sm:block"><InlineSparkle size={20} delay={0.3} /></span>
-              <span className="absolute -bottom-1 left-8 sm:-bottom-2 sm:left-12 hidden sm:block"><InlineSparkle size={16} delay={0.45} /></span>
+              <span className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4"><InlineSparkle size="w-6 h-6" delay={0} /></span>
+              <span className="absolute -top-2 left-6 sm:-top-4 sm:left-8 hidden sm:block"><InlineSparkle size="w-4 h-4" delay={0.15} /></span>
+              <span className="absolute top-0 right-2 sm:right-4 hidden sm:block"><InlineSparkle size="w-5 h-5" delay={0.3} /></span>
+              <span className="absolute -bottom-1 left-8 sm:-bottom-2 sm:left-12 hidden sm:block"><InlineSparkle size="w-4 h-4" delay={0.45} /></span>
               <img 
                 src={showmelookLogo} 
                 alt="쇼미룩 로고" 
@@ -389,14 +383,14 @@ const Landing = () => {
                 fetchPriority="high"
                 className="h-[80px] sm:h-[110px] md:h-[140px] object-contain -ml-2 sm:-ml-3 md:-ml-4 drop-shadow-lg" 
               />
-              <span className="absolute -top-1 right-0"><InlineSparkle size={20} delay={0.6} /></span>
-              <span className="absolute bottom-2 -right-3 sm:bottom-4 sm:-right-6 hidden sm:block"><InlineSparkle size={24} delay={0.75} /></span>
+              <span className="absolute -top-1 right-0"><InlineSparkle size="w-5 h-5" delay={0.6} /></span>
+              <span className="absolute bottom-2 -right-3 sm:bottom-4 sm:-right-6 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.75} /></span>
             </div>
             
             <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-white/80 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-4 sm:mb-8 animate-fade-in border border-primary/20 shadow-sm">
               <Star className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
               <span className="text-xs sm:text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
-              <InlineSparkle className="text-primary" size={16} delay={0.2} />
+              <InlineSparkle className="text-primary" size="w-4 h-4" delay={0.2} />
             </div>
             
             <h1 className="font-korean text-2xl sm:text-4xl md:text-5xl lg:text-7xl text-foreground leading-tight mb-3 sm:mb-6 animate-fade-in-up">
@@ -421,7 +415,7 @@ const Landing = () => {
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="hero-outline" size="lg" onClick={() => navigate('/style')} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3 group">
-                <InlineSparkle className="text-primary" size={20} delay={0.1} />
+                <InlineSparkle className="text-primary" size="w-5 h-5" delay={0.1} />
                 <span className="ml-1">AI 스타일 추천</span>
               </Button>
             </div>
