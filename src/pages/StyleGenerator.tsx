@@ -3959,12 +3959,55 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Error generating style:', error);
       
-      const errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      // 에러 코드에 따른 사용자 친화적 메시지
+      const errorCode = error?.errorCode || error?.code || '';
+      const statusCode = error?.status || error?.statusCode || '';
+      
+      let errorTitle = '생성 실패';
+      let errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      let showRetryButton = false;
+      
+      // Rate Limit (429) 에러
+      if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
+        errorTitle = '⏳ 서버가 바쁩니다';
+        errorMessage = '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
+        showRetryButton = true;
+      }
+      // Payment Required (402) 에러  
+      else if (statusCode === 402 || errorCode === '402' || errorMessage?.includes('Payment required') || errorMessage?.includes('402')) {
+        errorTitle = '💳 크레딧 부족';
+        errorMessage = '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
+      }
+      // 이미지 생성 실패
+      else if (errorCode === 'NO_IMAGE' || errorMessage?.includes('No image')) {
+        errorTitle = '🖼️ 이미지 생성 실패';
+        errorMessage = 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
+        showRetryButton = true;
+      }
+      // 네트워크 에러
+      else if (errorMessage?.includes('Network') || errorMessage?.includes('fetch')) {
+        errorTitle = '📶 네트워크 오류';
+        errorMessage = '인터넷 연결을 확인하고 다시 시도해주세요.';
+        showRetryButton = true;
+      }
+      
       toast({
-        title: '생성 실패',
+        title: errorTitle,
         description: errorMessage,
         variant: 'destructive',
+        duration: showRetryButton ? 10000 : 5000,
       });
+      
+      // Rate Limit 시 30초 후 재시도 가능 알림
+      if (showRetryButton && (statusCode === 429 || errorCode === '429')) {
+        setTimeout(() => {
+          toast({
+            title: '🔄 재시도 가능',
+            description: '이제 다시 생성해보세요!',
+            duration: 5000,
+          });
+        }, 30000);
+      }
     } finally {
       setIsGenerating(false);
       setIsCustomSearching(false);
@@ -4155,12 +4198,55 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Error generating style:', error);
       
-      const errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      // 에러 코드에 따른 사용자 친화적 메시지
+      const errorCode = error?.errorCode || error?.code || '';
+      const statusCode = error?.status || error?.statusCode || '';
+      
+      let errorTitle = '생성 실패';
+      let errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      let showRetryButton = false;
+      
+      // Rate Limit (429) 에러
+      if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
+        errorTitle = '⏳ 서버가 바쁩니다';
+        errorMessage = '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
+        showRetryButton = true;
+      }
+      // Payment Required (402) 에러  
+      else if (statusCode === 402 || errorCode === '402' || errorMessage?.includes('Payment required') || errorMessage?.includes('402')) {
+        errorTitle = '💳 크레딧 부족';
+        errorMessage = '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
+      }
+      // 이미지 생성 실패
+      else if (errorCode === 'NO_IMAGE' || errorMessage?.includes('No image')) {
+        errorTitle = '🖼️ 이미지 생성 실패';
+        errorMessage = 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
+        showRetryButton = true;
+      }
+      // 네트워크 에러
+      else if (errorMessage?.includes('Network') || errorMessage?.includes('fetch')) {
+        errorTitle = '📶 네트워크 오류';
+        errorMessage = '인터넷 연결을 확인하고 다시 시도해주세요.';
+        showRetryButton = true;
+      }
+      
       toast({
-        title: '생성 실패',
+        title: errorTitle,
         description: errorMessage,
         variant: 'destructive',
+        duration: showRetryButton ? 10000 : 5000,
       });
+      
+      // Rate Limit 시 30초 후 재시도 가능 알림
+      if (showRetryButton && (statusCode === 429 || errorCode === '429')) {
+        setTimeout(() => {
+          toast({
+            title: '🔄 재시도 가능',
+            description: '이제 다시 생성해보세요!',
+            duration: 5000,
+          });
+        }, 30000);
+      }
     } finally {
       setIsGenerating(false);
     }

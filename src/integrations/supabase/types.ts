@@ -127,6 +127,42 @@ export type Database = {
         }
         Relationships: []
       }
+      error_logs: {
+        Row: {
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          function_name: string
+          id: string
+          request_payload: Json | null
+          response_payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          function_name: string
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          function_name?: string
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       family_profiles: {
         Row: {
           age_group: string | null
@@ -899,6 +935,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }
       has_role: {
         Args: {
