@@ -1028,7 +1028,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      referral_codes_public: {
+        Row: {
+          code: string | null
+          created_at: string | null
+          id: string | null
+          is_active: boolean | null
+          max_uses: number | null
+          used_count: number | null
+        }
+        Insert: {
+          code?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          max_uses?: number | null
+          used_count?: number | null
+        }
+        Update: {
+          code?: string | null
+          created_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          max_uses?: number | null
+          used_count?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       cleanup_old_error_logs: { Args: never; Returns: undefined }
