@@ -144,11 +144,15 @@ const Admin = () => {
   // Products list state
   const [cachedProducts, setCachedProducts] = useState<CachedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
-  const [productStats, setProductStats] = useState<{ total: number; byMerchant: Record<string, number> }>({ total: 0, byMerchant: {} });
+  const [productStats, setProductStats] = useState<{ total: number; byMerchant: Record<string, number>; byCategory: Record<string, number> }>({ total: 0, byMerchant: {}, byCategory: {} });
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isDeletingProducts, setIsDeletingProducts] = useState(false);
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [productFilter, setProductFilter] = useState<'all' | 'active' | 'inactive'>('active');
+  const [merchantFilter, setMerchantFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [availableMerchants, setAvailableMerchants] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
   // Style-recommend (AI) test state
   const [aiUserRequest, setAiUserRequest] = useState("");
@@ -793,6 +797,7 @@ const Admin = () => {
         .eq('is_active', true);
 
       const byMerchant: Record<string, number> = {};
+      const merchantList: string[] = [];
       
       if (merchants && merchants.length > 0) {
         // 각 머천트별 개수를 병렬로 조회
@@ -807,19 +812,47 @@ const Admin = () => {
 
         const results = await Promise.all(countPromises);
         results.forEach(r => {
+          merchantList.push(r.merchantId);
           if (r.count > 0) {
             byMerchant[r.merchantId] = r.count;
           }
         });
       }
 
-      setProductStats({ total: total || 0, byMerchant });
+      // 카테고리 목록 조회 (최근 1000개 기준)
+      const { data: categoryData } = await supabase
+        .from('products_cache')
+        .select('category')
+        .eq('is_active', true)
+        .limit(1000);
+
+      const byCategory: Record<string, number> = {};
+      const categoryList: string[] = [];
+      if (categoryData) {
+        categoryData.forEach(item => {
+          if (item.category) {
+            byCategory[item.category] = (byCategory[item.category] || 0) + 1;
+            if (!categoryList.includes(item.category)) {
+              categoryList.push(item.category);
+            }
+          }
+        });
+      }
+
+      setAvailableMerchants(merchantList.sort());
+      setAvailableCategories(categoryList.sort());
+      setProductStats({ total: total || 0, byMerchant, byCategory });
     } catch (error) {
       console.error('Error loading product stats:', error);
     }
   };
 
-  const loadCachedProducts = async (filter: 'all' | 'active' | 'inactive' = 'active', loadAll: boolean = false) => {
+  const loadCachedProducts = async (
+    filter: 'all' | 'active' | 'inactive' = 'active', 
+    loadAll: boolean = false,
+    merchant: string = 'all',
+    category: string = 'all'
+  ) => {
     setProductsLoading(true);
     setSelectedProductIds([]);
     try {
@@ -828,6 +861,9 @@ const Admin = () => {
       
       if (filter === 'active') query = query.eq('is_active', true);
       else if (filter === 'inactive') query = query.eq('is_active', false);
+      
+      if (merchant !== 'all') query = query.eq('merchant_id', merchant);
+      if (category !== 'all') query = query.eq('category', category);
       
       query = query.order('collected_at', { ascending: false });
       if (!loadAll) query = query.limit(100);
@@ -897,7 +933,7 @@ const Admin = () => {
       }
       
       setSelectedProductIds([]);
-      loadCachedProducts(productFilter, showAllProducts);
+      loadCachedProducts(productFilter, showAllProducts, merchantFilter, categoryFilter);
       loadProductStats();
     } catch (error: unknown) {
       console.error('[Admin] Delete error:', error);
@@ -924,7 +960,7 @@ const Admin = () => {
       
       toast({ title: "비활성화 완료", description: `${selectedProductIds.length}개 상품이 비활성화되었습니다.` });
       setSelectedProductIds([]);
-      loadCachedProducts(productFilter, showAllProducts);
+      loadCachedProducts(productFilter, showAllProducts, merchantFilter, categoryFilter);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({ title: "비활성화 실패", description: errorMessage, variant: "destructive" });
@@ -1897,12 +1933,12 @@ const Admin = () => {
               <CardContent className="space-y-4">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium">필터:</label>
+                    <label className="text-sm font-medium">상태:</label>
                     <Select value={productFilter} onValueChange={(v) => {
                       setProductFilter(v as 'all' | 'active' | 'inactive');
-                      loadCachedProducts(v as 'all' | 'active' | 'inactive', showAllProducts);
+                      loadCachedProducts(v as 'all' | 'active' | 'inactive', showAllProducts, merchantFilter, categoryFilter);
                     }}>
-                      <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="w-[100px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="active">활성화</SelectItem>
                         <SelectItem value="inactive">비활성화</SelectItem>
@@ -1911,16 +1947,52 @@ const Admin = () => {
                     </Select>
                   </div>
 
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">머천트:</label>
+                    <Select value={merchantFilter} onValueChange={(v) => {
+                      setMerchantFilter(v);
+                      loadCachedProducts(productFilter, showAllProducts, v, categoryFilter);
+                    }}>
+                      <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체 ({productStats.total})</SelectItem>
+                        {availableMerchants.map(m => (
+                          <SelectItem key={m} value={m}>
+                            {m} ({productStats.byMerchant[m] || 0})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium">카테고리:</label>
+                    <Select value={categoryFilter} onValueChange={(v) => {
+                      setCategoryFilter(v);
+                      loadCachedProducts(productFilter, showAllProducts, merchantFilter, v);
+                    }}>
+                      <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">전체</SelectItem>
+                        {availableCategories.map(c => (
+                          <SelectItem key={c} value={c}>
+                            {c} ({productStats.byCategory[c] || 0})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <label className="flex items-center gap-2 text-sm">
                     <Checkbox checked={showAllProducts} onCheckedChange={(checked) => {
                       setShowAllProducts(!!checked);
-                      loadCachedProducts(productFilter, !!checked);
+                      loadCachedProducts(productFilter, !!checked, merchantFilter, categoryFilter);
                     }} />
-                    전체 상품 로드
+                    전체 로드
                   </label>
 
-                  <Button onClick={() => loadCachedProducts(productFilter, showAllProducts)} disabled={productsLoading} variant="outline">
-                    {productsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  <Button onClick={() => loadCachedProducts(productFilter, showAllProducts, merchantFilter, categoryFilter)} disabled={productsLoading} variant="outline" size="sm">
+                    {productsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
                     새로고침
                   </Button>
                 </div>
