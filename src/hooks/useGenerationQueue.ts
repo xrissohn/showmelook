@@ -20,31 +20,34 @@ interface UseGenerationQueueResult {
   progress: number;
   submitJob: (payload: any) => Promise<string | null>;
   cancelJob: (jobId: string) => Promise<void>;
+  refreshJob: () => Promise<void>;
 }
 
 export const useGenerationQueue = (userId: string | undefined): UseGenerationQueueResult => {
   const [currentJob, setCurrentJob] = useState<GenerationJob | null>(null);
   const { toast } = useToast();
 
+  // Fetch current active job
+  const fetchActiveJob = useCallback(async () => {
+    if (!userId) return;
+    
+    const { data } = await supabase
+      .from('generation_jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .in('status', ['queued', 'processing', 'generating_style', 'generating_image'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (data) {
+      setCurrentJob(data as GenerationJob);
+    }
+  }, [userId]);
+
   // Subscribe to realtime updates for user's jobs
   useEffect(() => {
     if (!userId) return;
-
-    // Fetch current active job
-    const fetchActiveJob = async () => {
-      const { data } = await supabase
-        .from('generation_jobs')
-        .select('*')
-        .eq('user_id', userId)
-        .in('status', ['queued', 'processing', 'generating_style', 'generating_image'])
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data) {
-        setCurrentJob(data as GenerationJob);
-      }
-    };
 
     fetchActiveJob();
 
@@ -72,8 +75,8 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
                 description: '새로운 룩이 준비되었습니다.',
               });
               
-              // Clear after showing
-              setTimeout(() => setCurrentJob(null), 3000);
+              // Keep job for result extraction, clear after longer delay
+              setTimeout(() => setCurrentJob(null), 5000);
             } else if (job.status === 'failed') {
               toast({
                 title: '생성 실패',
@@ -91,7 +94,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, toast]);
+  }, [userId, toast, fetchActiveJob]);
 
   const submitJob = useCallback(async (payload: any): Promise<string | null> => {
     if (!userId) return null;
@@ -114,6 +117,20 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
         return null;
       }
 
+      // Fetch user subscription for priority
+      const { data: subscription } = await supabase
+        .from('user_subscriptions')
+        .select('plan')
+        .eq('user_id', userId)
+        .single();
+
+      // Dynamic priority based on subscription plan
+      // Lower number = higher priority
+      // Premium: 1, Pro: 3, Free: 5
+      const priority = subscription?.plan === 'premium' ? 1 
+                     : subscription?.plan === 'pro' ? 3 
+                     : 5;
+
       // Create new job
       const { data: job, error } = await supabase
         .from('generation_jobs')
@@ -121,7 +138,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
           user_id: userId,
           status: 'queued',
           progress: 0,
-          priority: 5, // TODO: Premium users get lower (higher priority) number
+          priority,
           request_payload: payload,
         })
         .select('id')
@@ -129,9 +146,13 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
 
       if (error) throw error;
 
+      const planLabel = subscription?.plan === 'premium' ? '프리미엄 우선 처리' 
+                      : subscription?.plan === 'pro' ? '프로 우선 처리'
+                      : '일반 처리';
+
       toast({
         title: '🎨 스타일 생성 시작',
-        description: '잠시만 기다려주세요...',
+        description: `${planLabel} - 잠시만 기다려주세요...`,
       });
 
       return job?.id || null;
@@ -168,6 +189,10 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
     }
   }, [toast]);
 
+  const refreshJob = useCallback(async () => {
+    await fetchActiveJob();
+  }, [fetchActiveJob]);
+
   return {
     currentJob,
     isQueued: currentJob?.status === 'queued',
@@ -175,5 +200,6 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
     progress: currentJob?.progress || 0,
     submitJob,
     cancelJob,
+    refreshJob,
   };
 };

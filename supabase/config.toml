@@ -48,6 +48,9 @@ verify_jwt = false
 [functions.brightdata-webhook]
 verify_jwt = false
 
+[functions.process-generation-queue]
+verify_jwt = false
+
 
 [functions.dna-batch]
 verify_jwt = false
