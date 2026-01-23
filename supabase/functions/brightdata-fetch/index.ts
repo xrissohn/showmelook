@@ -178,28 +178,40 @@ serve(async (req) => {
       console.log(`Fetching snapshots for dataset: ${dataset_id}`);
       
       // API v3: dataset_id는 쿼리 파라미터로 전달
-      const response = await fetch(
-        `https://api.brightdata.com/datasets/v3/snapshots?dataset_id=${encodeURIComponent(dataset_id)}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
+      const url = `https://api.brightdata.com/datasets/v3/snapshots?dataset_id=${encodeURIComponent(dataset_id)}`;
+      console.log('Request URL:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const responseText = await response.text();
+      console.log('Response status:', response.status);
+      console.log('Response body:', responseText.slice(0, 500));
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Bright Data API error:', response.status, errorText);
-        throw new Error(`Bright Data API error: ${response.status} - ${errorText}`);
+        console.error('Bright Data API error:', response.status, responseText);
+        throw new Error(`Bright Data API error: ${response.status} - ${responseText}`);
       }
 
-      const snapshots = await response.json();
+      let snapshots;
+      try {
+        snapshots = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Failed to parse response:', e);
+        throw new Error('Invalid JSON response from Bright Data');
+      }
+      
       console.log(`Found ${Array.isArray(snapshots) ? snapshots.length : 0} snapshots`);
+      console.log('Snapshots:', JSON.stringify(snapshots).slice(0, 500));
 
       return new Response(JSON.stringify({ 
         success: true, 
-        snapshots: Array.isArray(snapshots) ? snapshots : [snapshots]
+        snapshots: Array.isArray(snapshots) ? snapshots : [snapshots],
+        raw_response: responseText.slice(0, 1000) // 디버깅용
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
