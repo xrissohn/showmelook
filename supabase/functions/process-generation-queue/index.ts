@@ -10,27 +10,27 @@ const corsHeaders = {
 
 // ===== Token Bucket Configuration =====
 const TOKEN_BUCKET = {
-  maxTokens: 30,           // 버킷 최대 용량 (버스트 허용량)
-  refillRate: 10,          // 초당 토큰 리필 수 (= 600 RPM 목표)
+  maxTokens: 45,           // 버킷 최대 용량 (버스트 허용량) - 증가
+  refillRate: 15,          // 초당 토큰 리필 수 (= 900 RPM 목표) - 50% 증가
   tokensPerRequest: 1,     // 요청당 소비 토큰
   minTokensToProcess: 1,   // 최소 처리 가능 토큰 수
 };
 
 // ===== Adaptive Backoff Configuration =====
 const BACKOFF_CONFIG = {
-  initialBackoffMs: 5000,  // 첫 429 시 백오프 5초
-  maxBackoffMs: 60000,     // 최대 백오프 1분
-  backoffMultiplier: 2,    // 백오프 증가 배수
-  recoveryThreshold: 5,    // 연속 성공 N회 후 백오프 감소
+  initialBackoffMs: 3000,  // 첫 429 시 백오프 3초 - 단축
+  maxBackoffMs: 45000,     // 최대 백오프 45초 - 단축
+  backoffMultiplier: 1.5,  // 백오프 증가 배수 - 완화
+  recoveryThreshold: 3,    // 연속 성공 N회 후 백오프 감소 - 빠른 회복
 };
 
 // ===== Queue Processing Configuration =====
 const QUEUE_CONFIG = {
-  batchSize: 9,            // 배치당 최대 작업 수 (3워커 x 3작업)
-  chainDelayMs: 2000,      // 연쇄 호출 간 딜레이 (2초)
-  maxChainDepth: 30,       // 최대 연쇄 호출 횟수
-  parallelWorkers: 3,      // 동시 처리 워커 수
-  staggerDelayMs: 2000,    // 워커 간 시차 시작 (2초)
+  batchSize: 15,           // 배치당 최대 작업 수 (5워커 x 3작업) - 증가
+  chainDelayMs: 1500,      // 연쇄 호출 간 딜레이 (1.5초) - 단축
+  maxChainDepth: 50,       // 최대 연쇄 호출 횟수 - 증가
+  parallelWorkers: 5,      // 동시 처리 워커 수 - 67% 증가
+  staggerDelayMs: 1500,    // 워커 간 시차 시작 (1.5초) - 단축
 };
 
 // Priority Aging 설정
