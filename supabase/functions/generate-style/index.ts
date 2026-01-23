@@ -431,7 +431,8 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     const imageData = generatedImage.replace(/^data:image\/\w+;base64,/, '');
     const imageBytes = Uint8Array.from(atob(imageData), c => c.charCodeAt(0));
     
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+    // Use user folder structure for proper RLS enforcement
+    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
     
     const { error: uploadError } = await supabase.storage
       .from('generated-looks')
@@ -468,7 +469,7 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('generated-looks')
-      .getPublicUrl(fileName);
+      .getPublicUrl(fileName); // fileName now includes userId folder prefix
 
     const finalImageUrl = urlData?.publicUrl || generatedImage;
     const totalTime = Date.now() - startTime;
