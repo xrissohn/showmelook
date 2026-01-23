@@ -1,4 +1,4 @@
-// process-generation-queue - 배치 병렬 처리 (Phase 1 스케일링)
+// process-generation-queue - 배치 병렬 처리 + 연쇄 호출 (Phase 2 스케일링)
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -9,6 +9,8 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 5; // 동시 처리할 최대 작업 수
+const CHAIN_DELAY_MS = 2000; // 연쇄 호출 간 딜레이 (2초)
+const MAX_CHAIN_DEPTH = 30; // 최대 연쇄 호출 횟수 (무한 루프 방지)
 
 // Error logging helper
 async function logError(
@@ -262,6 +264,7 @@ serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
     if (!LOVABLE_API_KEY) {
@@ -269,6 +272,17 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Parse chain depth from request body
+    let chainDepth = 0;
+    try {
+      const body = await req.json();
+      chainDepth = body.chainDepth || 0;
+    } catch {
+      // No body or invalid JSON, start fresh
+    }
+
+    console.log(`[process-queue] Chain depth: ${chainDepth}/${MAX_CHAIN_DEPTH}`);
 
     // Get up to BATCH_SIZE pending jobs (priority order) for parallel processing
     const { data: jobs, error: fetchError } = await supabase
@@ -283,7 +297,7 @@ serve(async (req) => {
 
     if (!jobs || jobs.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No pending jobs' }),
+        JSON.stringify({ message: 'No pending jobs', chainDepth }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -320,12 +334,45 @@ serve(async (req) => {
     const elapsed = Date.now() - startTime;
     console.log(`[process-queue] Batch completed: ${summary.succeeded}/${summary.total} succeeded in ${elapsed}ms`);
 
+    // Check if there are more pending jobs and chain if under limit
+    const { count: remainingCount } = await supabase
+      .from('generation_jobs')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'queued');
+
+    let chainTriggered = false;
+    if (remainingCount && remainingCount > 0 && chainDepth < MAX_CHAIN_DEPTH) {
+      // Trigger next batch after delay (non-blocking)
+      console.log(`[process-queue] ${remainingCount} jobs remaining, triggering chain call (depth ${chainDepth + 1})`);
+      
+      // Use setTimeout-like delay via fetch with AbortController
+      setTimeout(async () => {
+        try {
+          await fetch(`${SUPABASE_URL}/functions/v1/process-generation-queue`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ chainDepth: chainDepth + 1 }),
+          });
+        } catch (err) {
+          console.error('[process-queue] Chain call failed:', err);
+        }
+      }, CHAIN_DELAY_MS);
+      
+      chainTriggered = true;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         batchSize: jobs.length,
         ...summary,
         elapsed,
+        chainDepth,
+        remainingJobs: remainingCount || 0,
+        chainTriggered,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
