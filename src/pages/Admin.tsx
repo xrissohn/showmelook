@@ -206,6 +206,7 @@ const Admin = () => {
     success: number;
     failed: number;
     skipped?: number;
+    pending?: number;  // 수동 처리 대기열로 이동한 수
     errors: string[];
   } | null>(null);
 
@@ -544,14 +545,17 @@ const Admin = () => {
       if (urlLower.includes('sivillage')) return 'sivillage';
       if (urlLower.includes('29cm')) return '29cm';
       if (urlLower.includes('musinsa')) return 'musinsa';
-      if (urlLower.includes('stories')) return 'stories';
+      if (urlLower.includes('stories') || urlLower.includes('otherstories')) return 'stories';
       if (urlLower.includes('posty')) return 'posty';
       if (urlLower.includes('lfmall')) return 'lfmall';
       if (urlLower.includes('arket')) return 'arket';
-      if (urlLower.includes('jestina')) return 'jestina';
-      if (urlLower.includes('benetton')) return 'benetton';
+      if (urlLower.includes('jestina') || urlLower.includes('j.estina')) return 'jestina';
+      if (urlLower.includes('benetton')) return 'benetton1';  // DB에 benetton1로 등록됨
+      if (urlLower.includes('hfashion') || urlLower.includes('thehyundai')) return 'hfashion';
       if (urlLower.includes('coupang')) return 'coupang';
-      if (urlLower.includes('thehyundai')) return 'thehyundai';
+      if (urlLower.includes('paulsmith')) return 'paulsmith';
+      if (urlLower.includes('stockx')) return 'stockx';
+      if (urlLower.includes('wconcept')) return 'wconcept';
       return 'unknown';
     };
 
@@ -651,6 +655,7 @@ const Admin = () => {
     let success = 0;
     let failed = 0;
     let skipped = 0;
+    let pending = 0;  // 수동 처리 대기열로 이동한 수
     const errors: string[] = [];
 
     for (let i = 0; i < excelProducts.length; i += BATCH_SIZE) {
@@ -676,9 +681,12 @@ const Admin = () => {
               success++;
             } else if (r.error?.includes('이미 등록된 제품')) {
               skipped++;
+            } else if (r.pending || r.error?.includes('수동 처리 대기열')) {
+              pending++;
+              // pending은 에러 목록에 추가하지 않음 (정상 흐름)
             } else {
               failed++;
-              errors.push(`${r.product_url?.slice(0, 50)}...: ${r.error}`);
+              errors.push(`${r.product_url?.slice(0, 50) || r.error?.slice(0, 50)}...: ${r.error}`);
             }
           }
         }
@@ -693,8 +701,8 @@ const Admin = () => {
     setExcelUploadProgress(prev => ({ ...prev!, current: excelProducts.length }));
     
     // 결과 저장
-    const resultWithSkipped = { success, failed, skipped, errors: errors.slice(0, 10) };
-    setExcelUploadResult(resultWithSkipped as typeof excelUploadResult);
+    const resultWithAll = { success, failed, skipped, pending, errors: errors.slice(0, 10) };
+    setExcelUploadResult(resultWithAll);
     setIsExcelUploading(false);
     
     // 1초 후 진행 상황 리셋
@@ -704,6 +712,7 @@ const Admin = () => {
     const parts = [];
     if (success > 0) parts.push(`${success}개 성공`);
     if (skipped > 0) parts.push(`${skipped}개 중복 스킵`);
+    if (pending > 0) parts.push(`${pending}개 대기열`);
     if (failed > 0) parts.push(`${failed}개 실패`);
     
     const elapsedSec = Math.round((Date.now() - startTime) / 1000);
@@ -716,10 +725,12 @@ const Admin = () => {
       });
     }
     
-    if (success > 0) {
+    // 성공 또는 대기열 추가된 경우 통계 리로드
+    if (success > 0 || pending > 0) {
       loadProductStats();
       loadDnaStats();
       loadPendingCount();
+      loadPendingProducts();
     }
   };
 
@@ -1400,32 +1411,43 @@ const Admin = () => {
                 {excelUploadResult && (
                   <div className={`p-4 rounded-lg border ${
                     excelUploadResult.failed === 0 
-                      ? (excelUploadResult.skipped && excelUploadResult.skipped > 0 
-                          ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
-                          : 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800')
+                      ? (excelUploadResult.pending && excelUploadResult.pending > 0
+                          ? 'bg-orange-50 border-orange-200 dark:bg-orange-950 dark:border-orange-800'
+                          : excelUploadResult.skipped && excelUploadResult.skipped > 0 
+                            ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
+                            : 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800')
                       : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
-                      {excelUploadResult.failed === 0 && excelUploadResult.success > 0 ? (
+                      {excelUploadResult.failed === 0 && excelUploadResult.success > 0 && !excelUploadResult.pending ? (
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      ) : excelUploadResult.pending && excelUploadResult.pending > 0 ? (
+                        <Clock className="w-5 h-5 text-orange-600" />
                       ) : excelUploadResult.skipped && excelUploadResult.skipped > 0 ? (
                         <Package className="w-5 h-5 text-blue-600" />
                       ) : (
                         <AlertTriangle className="w-5 h-5 text-yellow-600" />
                       )}
                       <span className="font-medium">
-                        등록 완료: {excelUploadResult.success}개 성공
+                        등록 결과: {excelUploadResult.success}개 성공
                         {excelUploadResult.skipped && excelUploadResult.skipped > 0 && `, ${excelUploadResult.skipped}개 중복 스킵`}
+                        {excelUploadResult.pending && excelUploadResult.pending > 0 && `, ${excelUploadResult.pending}개 대기열`}
                         {excelUploadResult.failed > 0 && `, ${excelUploadResult.failed}개 실패`}
                       </span>
                     </div>
-                    {excelUploadResult.skipped && excelUploadResult.skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && (
+                    {excelUploadResult.pending && excelUploadResult.pending > 0 && (
+                      <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
+                        🔸 이미지 누락/실패 상품은 "등록 대기 제품" 탭에서 수동 처리해주세요.
+                      </p>
+                    )}
+                    {excelUploadResult.skipped && excelUploadResult.skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && !excelUploadResult.pending && (
                       <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                         ℹ️ 모든 제품이 이미 등록되어 있습니다.
                       </p>
                     )}
                     {excelUploadResult.errors.length > 0 && (
                       <div className="text-sm text-muted-foreground space-y-1 mt-2">
+                        <p className="text-xs font-medium text-destructive mb-1">오류 상세:</p>
                         {excelUploadResult.errors.map((err, idx) => (
                           <p key={idx} className="text-xs">❌ {err}</p>
                         ))}
