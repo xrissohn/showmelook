@@ -17,6 +17,15 @@
     <meta name="language" content="Korean" />
     <meta name="revisit-after" content="7 days" />
     
+    <!-- Early Preconnect for critical third-party origins -->
+    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- Preload critical font to break chain -->
+    <link rel="preload" href="https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff" as="font" type="font/woff" crossorigin />
+    
     <!-- Canonical URL - 커스텀 도메인 사용 -->
     <link rel="canonical" href="https://showmelook.com/" />
     
@@ -87,18 +96,18 @@
     }
     </script>
     
-    <!-- Preconnect for performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link rel="preconnect" href="https://mggedvvzpwxlgrhatrau.supabase.co" />
-    
     <!-- DNS Prefetch -->
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
-    <link rel="dns-prefetch" href="https://fastly.jsdelivr.net" />
     <link rel="dns-prefetch" href="https://mggedvvzpwxlgrhatrau.supabase.co" />
+    
+    <!-- Load fonts asynchronously to improve FCP -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" /></noscript>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" /></noscript>
+    <meta property="og:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
+  <meta name="twitter:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
+  <meta property="og:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
+  <meta name="twitter:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
     
     <!-- Load fonts asynchronously to improve FCP -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
