@@ -1,11 +1,20 @@
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { X, Users, Clock } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.png';
+
+interface QueueStatus {
+  totalQueued: number;
+  totalProcessing: number;
+  userPosition: number | null;
+  estimatedWaitMinutes: number | null;
+  recentThroughput: number;
+}
 
 interface GenerationProgressProps {
   isVisible: boolean;
   progress: number;
   status: string;
+  queueStatus?: QueueStatus | null;
   onCancel: () => void;
 }
 
@@ -21,7 +30,8 @@ const statusMessages: Record<string, { label: string; emoji: string }> = {
 export const GenerationProgress = ({ 
   isVisible, 
   progress, 
-  status, 
+  status,
+  queueStatus,
   onCancel 
 }: GenerationProgressProps) => {
   if (!isVisible) return null;
@@ -29,6 +39,12 @@ export const GenerationProgress = ({
   const statusInfo = statusMessages[status] || { label: '처리 중...', emoji: '⏳' };
   const circumference = 2 * Math.PI * 42;
   const strokeDashoffset = circumference * (1 - progress / 100);
+
+  // Queue position info
+  const isQueued = status === 'queued';
+  const position = queueStatus?.userPosition;
+  const waitMinutes = queueStatus?.estimatedWaitMinutes;
+  const aheadCount = position && position > 1 ? position - 1 : 0;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -95,11 +111,52 @@ export const GenerationProgress = ({
           </p>
         </div>
 
+        {/* 대기 상태 정보 (Phase 3) */}
+        {isQueued && queueStatus && (
+          <div className="mt-4 space-y-2">
+            {/* 앞에 대기 중인 인원 */}
+            {aheadCount > 0 && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span className="font-korean">
+                  앞에 <span className="text-foreground font-semibold">{aheadCount}명</span> 대기 중
+                </span>
+              </div>
+            )}
+            
+            {/* 예상 대기 시간 */}
+            {waitMinutes !== null && waitMinutes > 0 && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span className="font-korean">
+                  약 <span className="text-foreground font-semibold">{waitMinutes}분</span> 후 처리 예정
+                </span>
+              </div>
+            )}
+
+            {/* 처리 중인 경우 (position === 0) */}
+            {position === 0 && (
+              <div className="flex items-center justify-center gap-2 text-sm text-primary">
+                <span className="font-korean font-semibold">🚀 곧 처리가 시작됩니다!</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 안내 메시지 */}
         <div className="mt-6 p-3 bg-secondary/50 rounded-xl">
           <p className="text-xs text-muted-foreground text-center font-korean">
-            AI가 당신만을 위한 스타일을 만들고 있어요.<br />
-            잠시만 기다려주세요 ✨
+            {isQueued && aheadCount > 0 ? (
+              <>
+                많은 사용자가 이용 중입니다.<br />
+                잠시만 기다려주세요 🙏
+              </>
+            ) : (
+              <>
+                AI가 당신만을 위한 스타일을 만들고 있어요.<br />
+                잠시만 기다려주세요 ✨
+              </>
+            )}
           </p>
         </div>
 

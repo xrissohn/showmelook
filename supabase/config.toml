@@ -108,3 +108,6 @@ verify_jwt = false
 
 [functions.cleanup-expired-profiles]
 verify_jwt = false
+
+[functions.queue-status]
+verify_jwt = false

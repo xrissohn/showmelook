@@ -13,19 +13,56 @@ interface GenerationJob {
   created_at: string;
 }
 
+interface QueueStatus {
+  totalQueued: number;
+  totalProcessing: number;
+  userPosition: number | null;
+  estimatedWaitMinutes: number | null;
+  recentThroughput: number;
+}
+
 interface UseGenerationQueueResult {
   currentJob: GenerationJob | null;
   isQueued: boolean;
   isProcessing: boolean;
   progress: number;
+  queueStatus: QueueStatus | null;
   submitJob: (payload: any) => Promise<string | null>;
   cancelJob: (jobId: string) => Promise<void>;
   refreshJob: () => Promise<void>;
+  refreshQueueStatus: () => Promise<void>;
 }
 
 export const useGenerationQueue = (userId: string | undefined): UseGenerationQueueResult => {
   const [currentJob, setCurrentJob] = useState<GenerationJob | null>(null);
+  const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const { toast } = useToast();
+
+  // Fetch queue status from edge function
+  const fetchQueueStatus = useCallback(async () => {
+    if (!userId || !currentJob) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('queue-status', {
+        body: { 
+          userId,
+          jobId: currentJob.id,
+        },
+      });
+
+      if (!error && data?.success) {
+        setQueueStatus({
+          totalQueued: data.totalQueued,
+          totalProcessing: data.totalProcessing,
+          userPosition: data.userPosition,
+          estimatedWaitMinutes: data.estimatedWaitMinutes,
+          recentThroughput: data.recentThroughput,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to fetch queue status:', error);
+    }
+  }, [userId, currentJob]);
 
   // Fetch current active job
   const fetchActiveJob = useCallback(async () => {
@@ -76,7 +113,10 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
               });
               
               // Keep job for result extraction, clear after longer delay
-              setTimeout(() => setCurrentJob(null), 5000);
+              setTimeout(() => {
+                setCurrentJob(null);
+                setQueueStatus(null);
+              }, 5000);
             } else if (job.status === 'failed') {
               toast({
                 title: '생성 실패',
@@ -84,7 +124,10 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
                 variant: 'destructive',
               });
               
-              setTimeout(() => setCurrentJob(null), 3000);
+              setTimeout(() => {
+                setCurrentJob(null);
+                setQueueStatus(null);
+              }, 3000);
             }
           }
         }
@@ -95,6 +138,21 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
       supabase.removeChannel(channel);
     };
   }, [userId, toast, fetchActiveJob]);
+
+  // Poll queue status while job is queued
+  useEffect(() => {
+    if (!currentJob || currentJob.status !== 'queued') {
+      return;
+    }
+
+    // Initial fetch
+    fetchQueueStatus();
+
+    // Poll every 10 seconds while queued
+    const interval = setInterval(fetchQueueStatus, 10000);
+
+    return () => clearInterval(interval);
+  }, [currentJob?.id, currentJob?.status, fetchQueueStatus]);
 
   const submitJob = useCallback(async (payload: any): Promise<string | null> => {
     if (!userId) return null;
@@ -179,6 +237,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
         .eq('id', jobId);
 
       setCurrentJob(null);
+      setQueueStatus(null);
       
       toast({
         title: '작업 취소됨',
@@ -193,13 +252,19 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
     await fetchActiveJob();
   }, [fetchActiveJob]);
 
+  const refreshQueueStatus = useCallback(async () => {
+    await fetchQueueStatus();
+  }, [fetchQueueStatus]);
+
   return {
     currentJob,
     isQueued: currentJob?.status === 'queued',
     isProcessing: ['processing', 'generating_style', 'generating_image'].includes(currentJob?.status || ''),
     progress: currentJob?.progress || 0,
+    queueStatus,
     submitJob,
     cancelJob,
     refreshJob,
+    refreshQueueStatus,
   };
 };

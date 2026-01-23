@@ -1,4 +1,4 @@
-// process-generation-queue - 배치 병렬 처리 + 연쇄 호출 (Phase 2 스케일링)
+// process-generation-queue - Phase 3: Smart Rate Limiter + Priority Aging + 연쇄 호출
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -8,9 +8,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ===== Phase 3 Configuration =====
 const BATCH_SIZE = 5; // 동시 처리할 최대 작업 수
 const CHAIN_DELAY_MS = 2000; // 연쇄 호출 간 딜레이 (2초)
-const MAX_CHAIN_DEPTH = 30; // 최대 연쇄 호출 횟수 (무한 루프 방지)
+const MAX_CHAIN_DEPTH = 30; // 최대 연쇄 호출 횟수
+
+// Rate Limiter (Token Bucket) 설정
+const TARGET_RPM = 10; // Gemini API 목표 분당 요청 수
+const MIN_INTERVAL_MS = (60 * 1000) / TARGET_RPM; // 6초 간격
+const BACKOFF_MULTIPLIER = 2; // 429 에러 시 백오프 배수
+const MAX_BACKOFF_MS = 30000; // 최대 백오프 30초
+const RECOVERY_THRESHOLD = 3; // 연속 성공 N회 후 백오프 감소
+
+// Priority Aging 설정
+const AGING_INTERVALS = {
+  5: 10 * 60 * 1000, // Free(5): 10분 후 → 4
+  4: 8 * 60 * 1000,  // Free aged(4): 8분 후 → 3
+  3: 5 * 60 * 1000,  // Pro(3): 5분 후 → 2
+  2: 5 * 60 * 1000,  // Pro aged(2): 5분 후 → 1
+};
 
 // Error logging helper
 async function logError(
@@ -66,13 +82,43 @@ async function updateJobStatus(
   console.log(`[process-queue] Job ${jobId}: ${status} (${progress}%)`);
 }
 
-// Process a single job
+// Priority Aging: 대기 시간이 긴 Job의 우선순위 상승
+async function applyPriorityAging(supabase: any): Promise<number> {
+  const now = Date.now();
+  let upgradedCount = 0;
+
+  for (const [priorityStr, ageThresholdMs] of Object.entries(AGING_INTERVALS)) {
+    const priority = parseInt(priorityStr);
+    const newPriority = Math.max(1, priority - 1);
+    
+    if (priority <= 1) continue; // 이미 최고 우선순위
+    
+    const cutoffTime = new Date(now - ageThresholdMs).toISOString();
+    
+    const { data: agedJobs, error } = await supabase
+      .from('generation_jobs')
+      .update({ priority: newPriority })
+      .eq('status', 'queued')
+      .eq('priority', priority)
+      .lt('created_at', cutoffTime)
+      .select('id');
+    
+    if (!error && agedJobs?.length > 0) {
+      upgradedCount += agedJobs.length;
+      console.log(`[process-queue] Priority Aging: ${agedJobs.length} jobs upgraded from ${priority} to ${newPriority}`);
+    }
+  }
+  
+  return upgradedCount;
+}
+
+// Process a single job with rate limit awareness
 async function processJob(
   supabase: any,
   job: any,
   SUPABASE_URL: string,
   SUPABASE_SERVICE_ROLE_KEY: string
-): Promise<{ success: boolean; jobId: string; lookId?: string; imageUrl?: string; error?: string }> {
+): Promise<{ success: boolean; jobId: string; lookId?: string; imageUrl?: string; error?: string; rateLimited?: boolean }> {
   const startTime = Date.now();
   
   const payload = job.request_payload as {
@@ -109,6 +155,17 @@ async function processJob(
         forceRefresh: false,
       }),
     });
+
+    // Check for rate limit
+    if (recResponse.status === 429) {
+      console.warn(`[process-queue] Job ${job.id}: Rate limited at style-recommend`);
+      // Re-queue for retry
+      await updateJobStatus(supabase, job.id, 'queued', 0, {
+        started_at: null,
+        error_message: 'Rate limited, will retry',
+      });
+      return { success: false, jobId: job.id, error: 'Rate limited', rateLimited: true };
+    }
 
     if (!recResponse.ok) {
       const errorText = await recResponse.text();
@@ -160,6 +217,16 @@ async function processJob(
         productIds: productsWithDetails.map((p: any) => p.id),
       }),
     });
+
+    // Check for rate limit
+    if (genResponse.status === 429) {
+      console.warn(`[process-queue] Job ${job.id}: Rate limited at generate-style`);
+      await updateJobStatus(supabase, job.id, 'queued', 0, {
+        started_at: null,
+        error_message: 'Rate limited at image generation, will retry',
+      });
+      return { success: false, jobId: job.id, error: 'Rate limited', rateLimited: true };
+    }
 
     await updateJobStatus(supabase, job.id, 'generating_image', 70);
 
@@ -273,79 +340,119 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Parse chain depth from request body
+    // Parse request body for chain depth and backoff state
     let chainDepth = 0;
+    let currentBackoffMs = MIN_INTERVAL_MS;
+    let consecutiveSuccesses = 0;
+    
     try {
       const body = await req.json();
       chainDepth = body.chainDepth || 0;
+      currentBackoffMs = body.currentBackoffMs || MIN_INTERVAL_MS;
+      consecutiveSuccesses = body.consecutiveSuccesses || 0;
     } catch {
       // No body or invalid JSON, start fresh
     }
 
-    console.log(`[process-queue] Chain depth: ${chainDepth}/${MAX_CHAIN_DEPTH}`);
+    console.log(`[process-queue] Chain: ${chainDepth}/${MAX_CHAIN_DEPTH}, Backoff: ${currentBackoffMs}ms, Consecutive OK: ${consecutiveSuccesses}`);
 
-    // Get up to BATCH_SIZE pending jobs (priority order) for parallel processing
+    // Step 1: Apply Priority Aging
+    const agedCount = await applyPriorityAging(supabase);
+    if (agedCount > 0) {
+      console.log(`[process-queue] Priority Aging applied to ${agedCount} jobs`);
+    }
+
+    // Step 2: Get jobs (priority order, respecting rate limit via batch size adjustment)
+    // Adaptive batch size based on backoff state
+    const effectiveBatchSize = currentBackoffMs > MIN_INTERVAL_MS 
+      ? Math.max(1, Math.floor(BATCH_SIZE / 2)) // 백오프 중이면 배치 크기 축소
+      : BATCH_SIZE;
+
     const { data: jobs, error: fetchError } = await supabase
       .from('generation_jobs')
       .select('*')
       .eq('status', 'queued')
       .order('priority', { ascending: true })
       .order('created_at', { ascending: true })
-      .limit(BATCH_SIZE);
+      .limit(effectiveBatchSize);
 
     if (fetchError) throw fetchError;
 
     if (!jobs || jobs.length === 0) {
       return new Response(
-        JSON.stringify({ message: 'No pending jobs', chainDepth }),
+        JSON.stringify({ 
+          message: 'No pending jobs', 
+          chainDepth,
+          priorityAgingApplied: agedCount,
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[process-queue] Processing ${jobs.length} jobs in parallel batch`);
+    console.log(`[process-queue] Processing ${jobs.length} jobs (effective batch: ${effectiveBatchSize})`);
 
-    // Process all jobs in parallel using Promise.allSettled
-    const results = await Promise.allSettled(
-      jobs.map(job => processJob(supabase, job, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY))
-    );
+    // Step 3: Process jobs with rate limiting awareness
+    // 순차 처리로 변경하여 rate limit 제어 (병렬은 429 폭주 위험)
+    const results: any[] = [];
+    let rateLimitHit = false;
+    let successCount = 0;
+    let failCount = 0;
 
-    // Aggregate results
-    const summary = {
-      total: jobs.length,
-      succeeded: 0,
-      failed: 0,
-      results: [] as any[],
-    };
+    for (const job of jobs) {
+      if (rateLimitHit) {
+        // Rate limit 발생 시 나머지 job은 스킵 (큐에 남김)
+        console.log(`[process-queue] Skipping job ${job.id} due to rate limit`);
+        break;
+      }
 
-    for (const result of results) {
-      if (result.status === 'fulfilled') {
-        summary.results.push(result.value);
-        if (result.value.success) {
-          summary.succeeded++;
-        } else {
-          summary.failed++;
-        }
+      const result = await processJob(supabase, job, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      results.push(result);
+
+      if (result.rateLimited) {
+        rateLimitHit = true;
+        consecutiveSuccesses = 0;
+      } else if (result.success) {
+        successCount++;
+        consecutiveSuccesses++;
       } else {
-        summary.failed++;
-        summary.results.push({ success: false, error: result.reason?.message || 'Unknown error' });
+        failCount++;
+        consecutiveSuccesses = 0;
+      }
+
+      // Rate limit prevention: 작업 간 간격
+      if (jobs.indexOf(job) < jobs.length - 1 && !rateLimitHit) {
+        await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS));
       }
     }
 
-    const elapsed = Date.now() - startTime;
-    console.log(`[process-queue] Batch completed: ${summary.succeeded}/${summary.total} succeeded in ${elapsed}ms`);
+    // Step 4: Adjust backoff based on results
+    let nextBackoffMs = currentBackoffMs;
+    
+    if (rateLimitHit) {
+      // 429 발생: 백오프 증가
+      nextBackoffMs = Math.min(currentBackoffMs * BACKOFF_MULTIPLIER, MAX_BACKOFF_MS);
+      console.log(`[process-queue] Rate limited! Increasing backoff to ${nextBackoffMs}ms`);
+    } else if (consecutiveSuccesses >= RECOVERY_THRESHOLD && currentBackoffMs > MIN_INTERVAL_MS) {
+      // 연속 성공: 백오프 감소
+      nextBackoffMs = Math.max(currentBackoffMs / BACKOFF_MULTIPLIER, MIN_INTERVAL_MS);
+      console.log(`[process-queue] Recovering! Decreasing backoff to ${nextBackoffMs}ms`);
+    }
 
-    // Check if there are more pending jobs and chain if under limit
+    const elapsed = Date.now() - startTime;
+    console.log(`[process-queue] Batch: ${successCount} succeeded, ${failCount} failed, ${rateLimitHit ? 'RATE LIMITED' : 'OK'} in ${elapsed}ms`);
+
+    // Step 5: Check for remaining jobs and chain
     const { count: remainingCount } = await supabase
       .from('generation_jobs')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'queued');
 
     let chainTriggered = false;
+    const chainDelayMs = rateLimitHit ? nextBackoffMs : CHAIN_DELAY_MS;
+
     if (remainingCount && remainingCount > 0 && chainDepth < MAX_CHAIN_DEPTH) {
-      // Trigger next batch after delay (non-blocking)
-      console.log(`[process-queue] ${remainingCount} jobs remaining, triggering chain call (depth ${chainDepth + 1})`);
+      console.log(`[process-queue] ${remainingCount} jobs remaining, chain in ${chainDelayMs}ms (depth ${chainDepth + 1})`);
       
-      // Use setTimeout-like delay via fetch with AbortController
       setTimeout(async () => {
         try {
           await fetch(`${SUPABASE_URL}/functions/v1/process-generation-queue`, {
@@ -354,12 +461,16 @@ serve(async (req) => {
               'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ chainDepth: chainDepth + 1 }),
+            body: JSON.stringify({ 
+              chainDepth: chainDepth + 1,
+              currentBackoffMs: nextBackoffMs,
+              consecutiveSuccesses: rateLimitHit ? 0 : consecutiveSuccesses,
+            }),
           });
         } catch (err) {
           console.error('[process-queue] Chain call failed:', err);
         }
-      }, CHAIN_DELAY_MS);
+      }, chainDelayMs);
       
       chainTriggered = true;
     }
@@ -367,12 +478,16 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        batchSize: jobs.length,
-        ...summary,
+        processed: results.length,
+        succeeded: successCount,
+        failed: failCount,
+        rateLimited: rateLimitHit,
         elapsed,
         chainDepth,
         remainingJobs: remainingCount || 0,
         chainTriggered,
+        nextBackoffMs,
+        priorityAgingApplied: agedCount,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
