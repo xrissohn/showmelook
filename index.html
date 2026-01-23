@@ -17,13 +17,14 @@
     <!-- Preload critical font to break chain -->
     <link rel="preload" href="https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff" as="font" type="font/woff" crossorigin />
     
+    <!-- Preload critical CSS to reduce render-blocking -->
+    <link rel="preload" href="/src/index.css" as="style" />
+    
     <!-- Preload LCP image - Korean logo (critical for LCP) -->
     <link rel="preload" href="/showmelook-korean-logo.png" as="image" type="image/png" fetchpriority="high" />
     
-    <!-- Preload LCP carousel images - optimized small versions (~50KB each) -->
-    <link rel="preload" href="/carousel/minimalist-male-sm.webp" as="image" type="image/webp" />
-    <link rel="preload" href="/carousel/street-female-sm.webp" as="image" type="image/webp" />
-    <link rel="preload" href="/carousel/classic-male-sm.webp" as="image" type="image/webp" />
+    <!-- Preload initial carousel images only (reduces load) -->
+    <link rel="preload" href="/carousel/minimalist-male-sm.webp" as="image" type="image/webp" fetchpriority="high" />
     
     <!-- Google Search Console Verification -->
     <meta name="google-site-verification" content="FuAHJzuY6PJOhwoO-x46j-ZuWQCQ4qJLvBdm7EkOHP8" />
