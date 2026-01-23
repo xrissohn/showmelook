@@ -157,6 +157,44 @@ function generateCacheKey(gender: string, style: string, occasion: string, budge
   return `style_${Math.abs(hash).toString(36)}`;
 }
 
+// 🚫 스타일 추천에서 제외할 카테고리/키워드
+const EXCLUDED_PRODUCT_KEYWORDS = [
+  // 뷰티/스킨케어
+  '화장품', '스킨케어', '크림', '세럼', '토너', '로션', '마스크팩', '선크림', '클렌저', 
+  '마데카', '비타민', '에센스', '앰플', '스킨', '모이스처', '뷰티', 'beauty', 'skincare',
+  'cream', 'serum', 'lotion', 'mask', 'sunscreen', 'cleanser',
+  // 헬스/건강
+  '건강식품', '영양제', '비타민', '프로틴', '다이어트', '건강', 'health', 'supplement',
+  // 가전/전자
+  '가전', '전자', '충전기', '케이블', '이어폰', '헤드폰', '스피커', 'electronics',
+  // 식품
+  '식품', '음식', '간식', '음료', '커피', 'food', 'drink', 'snack',
+  // 생활용품
+  '세제', '청소', '주방', '욕실', '인테리어', '가구', 'cleaning', 'kitchen', 'furniture',
+];
+
+// 상품이 스타일 추천에 적합한지 체크
+function isStyleRelevantProduct(product: CachedProduct): boolean {
+  const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.brand || ''}`.toLowerCase();
+  
+  // 제외 키워드 체크
+  if (EXCLUDED_PRODUCT_KEYWORDS.some(kw => combined.includes(kw.toLowerCase()))) {
+    return false;
+  }
+  
+  // 카테고리가 뷰티/라이프인 경우 제외 (단, 향수/선글라스는 허용)
+  const category = (product.category || '').toLowerCase();
+  if (['뷰티', 'beauty', '라이프', 'life'].some(c => category.includes(c))) {
+    // 패션 액세서리로 간주되는 것들은 허용
+    if (['향수', 'perfume', '선글라스', 'sunglasses', '시계', 'watch'].some(kw => combined.includes(kw))) {
+      return true;
+    }
+    return false;
+  }
+  
+  return true;
+}
+
 // Map item_slot to priority category
 function itemSlotToPriorityCategory(itemSlot: string | undefined): string {
   if (!itemSlot) return 'unknown';
@@ -177,11 +215,22 @@ function itemSlotToPriorityCategory(itemSlot: string | undefined): string {
 function mapToPriorityCategory(category: string, subCategory?: string | null, productName?: string | null): string {
   const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
-  // 1. 아우터
+  // 🚫 가방은 절대 아우터로 분류하지 않음 (먼저 체크)
+  if (['가방', 'bag', 'bags', '백', '토트', 'tote', '숄더', 'shoulder', '크로스백', 'crossbody', '클러치', 'clutch', '백팩', 'backpack', '파우치', 'pouch'].some(v => combined.includes(v))) {
+    return '기타';
+  }
+  
+  // 1. 아우터 (가방 키워드가 없는 경우에만)
   if (['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'jackets', 'coats', '패딩', 'padding', 'puffer', 'blazer', '블레이저', '야상', '트렌치', 'trench'].some(v => combined.includes(v))) {
-    if (!['니트', 'knit', '스웨터', 'sweater', '티셔츠', 't-shirt', '맨투맨'].some(v => combined.includes(v))) {
-      return '아우터';
+    // 니트/스웨터/티셔츠는 상의
+    if (['니트', 'knit', '스웨터', 'sweater', '티셔츠', 't-shirt', '맨투맨'].some(v => combined.includes(v))) {
+      return '상의';
     }
+    // 가방 관련 키워드가 있으면 기타 (패딩 토트백 등)
+    if (['가방', 'bag', '토트', 'tote', '백팩', 'backpack'].some(v => combined.includes(v))) {
+      return '기타';
+    }
+    return '아우터';
   }
   
   // 2. 상의
@@ -914,6 +963,11 @@ serve(async (req) => {
       };
     });
     console.log(`[style-recommend] Raw products fetched: ${allProducts.length}`);
+    
+    // ============= 🚫 스타일 무관 상품 필터링 (뷰티, 건강식품 등) =============
+    const beforeStyleFilter = allProducts.length;
+    allProducts = allProducts.filter(p => isStyleRelevantProduct(p));
+    console.log(`[style-recommend] After style-relevant filter: ${beforeStyleFilter} → ${allProducts.length}`);
     
     // ============= DNA 2.0 1차 필터링: 타겟 =============
     allProducts = filterByTarget(allProducts, isKids, gender);
