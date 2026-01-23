@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon
+  Clock, Play, CheckCircle, XOctagon, BarChart3
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
+import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import * as XLSX from 'xlsx';
 
 interface DeeplinkResult {
@@ -927,6 +928,10 @@ const Admin = () => {
               {(jobStats.queued + jobStats.processing) > 0 && (
                 <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">{jobStats.queued + jobStats.processing}</Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="w-4 h-4 mr-1" />
+              처리량 분석
             </TabsTrigger>
             <TabsTrigger value="tools">
               <Zap className="w-4 h-4 mr-1" />
@@ -2000,6 +2005,24 @@ const Admin = () => {
                     <p className="text-sm">새로고침 버튼을 눌러 작업 목록을 확인하세요.</p>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Throughput Analytics Tab */}
+          <TabsContent value="analytics" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5" />
+                  처리량 분석 대시보드
+                </CardTitle>
+                <CardDescription>
+                  생성 작업의 처리 시간, 성공률, 시간별 처리량을 분석합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ThroughputAnalytics />
               </CardContent>
             </Card>
           </TabsContent>
