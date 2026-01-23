@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge, CloudDownload
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -23,6 +23,7 @@ import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
 import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
+import { BrightDataFetchPanel } from "@/components/admin/BrightDataFetchPanel";
 import * as XLSX from 'xlsx';
 
 interface DeeplinkResult {
@@ -1042,6 +1043,10 @@ const Admin = () => {
             <TabsTrigger value="loadtest">
               <Zap className="w-4 h-4 mr-1" />
               부하 테스트
+            </TabsTrigger>
+            <TabsTrigger value="brightdata">
+              <CloudDownload className="w-4 h-4 mr-1" />
+              Bright Data
             </TabsTrigger>
             <TabsTrigger value="tools">
               <Zap className="w-4 h-4 mr-1" />
@@ -2269,6 +2274,11 @@ const Admin = () => {
           {/* Load Test Tab */}
           <TabsContent value="loadtest" className="space-y-4">
             <LoadTestPanel />
+          </TabsContent>
+
+          {/* Bright Data Tab */}
+          <TabsContent value="brightdata" className="space-y-4">
+            <BrightDataFetchPanel />
           </TabsContent>
         </Tabs>
       </div>
