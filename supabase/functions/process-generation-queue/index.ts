@@ -1,4 +1,4 @@
-// process-generation-queue - Phase 3: Smart Rate Limiter + Priority Aging + 연쇄 호출
+// process-generation-queue - Phase 4: Token Bucket Rate Limiter + Priority Aging + 연쇄 호출
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -8,21 +8,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ===== Phase 3 Configuration =====
-const BATCH_SIZE = 9; // 배치당 최대 작업 수 (3워커 x 3작업)
-const CHAIN_DELAY_MS = 2000; // 연쇄 호출 간 딜레이 (2초)
-const MAX_CHAIN_DEPTH = 30; // 최대 연쇄 호출 횟수
+// ===== Token Bucket Configuration =====
+const TOKEN_BUCKET = {
+  maxTokens: 30,           // 버킷 최대 용량 (버스트 허용량)
+  refillRate: 10,          // 초당 토큰 리필 수 (= 600 RPM 목표)
+  tokensPerRequest: 1,     // 요청당 소비 토큰
+  minTokensToProcess: 1,   // 최소 처리 가능 토큰 수
+};
 
-// Parallel Processing 설정
-const PARALLEL_WORKERS = 3; // 동시 처리 워커 수
-const STAGGER_DELAY_MS = 2000; // 워커 간 시차 시작 (2초)
+// ===== Adaptive Backoff Configuration =====
+const BACKOFF_CONFIG = {
+  initialBackoffMs: 5000,  // 첫 429 시 백오프 5초
+  maxBackoffMs: 60000,     // 최대 백오프 1분
+  backoffMultiplier: 2,    // 백오프 증가 배수
+  recoveryThreshold: 5,    // 연속 성공 N회 후 백오프 감소
+};
 
-// Rate Limiter (Token Bucket) 설정
-const TARGET_RPM = 30; // 병렬 처리로 목표 분당 요청 수 증가
-const MIN_INTERVAL_MS = (60 * 1000) / TARGET_RPM; // 2초 간격
-const BACKOFF_MULTIPLIER = 2; // 429 에러 시 백오프 배수
-const MAX_BACKOFF_MS = 30000; // 최대 백오프 30초
-const RECOVERY_THRESHOLD = 3; // 연속 성공 N회 후 백오프 감소
+// ===== Queue Processing Configuration =====
+const QUEUE_CONFIG = {
+  batchSize: 9,            // 배치당 최대 작업 수 (3워커 x 3작업)
+  chainDelayMs: 2000,      // 연쇄 호출 간 딜레이 (2초)
+  maxChainDepth: 30,       // 최대 연쇄 호출 횟수
+  parallelWorkers: 3,      // 동시 처리 워커 수
+  staggerDelayMs: 2000,    // 워커 간 시차 시작 (2초)
+};
 
 // Priority Aging 설정
 const AGING_INTERVALS = {
@@ -31,6 +40,173 @@ const AGING_INTERVALS = {
   3: 5 * 60 * 1000,  // Pro(3): 5분 후 → 2
   2: 5 * 60 * 1000,  // Pro aged(2): 5분 후 → 1
 };
+
+// ===== Token Bucket Functions =====
+
+interface TokenBucketState {
+  tokens: number;
+  max_tokens: number;
+  refill_rate: number;
+  last_refill_at: string;
+  backoff_until: string | null;
+  consecutive_failures: number;
+  consecutive_successes: number;
+  total_requests_today: number;
+  total_rate_limits_today: number;
+  last_reset_date: string;
+}
+
+async function getTokenBucketState(supabase: any): Promise<TokenBucketState | null> {
+  const { data, error } = await supabase
+    .from('rate_limit_state')
+    .select('*')
+    .eq('id', 'global')
+    .single();
+  
+  if (error) {
+    console.error('[TokenBucket] Failed to get state:', error);
+    return null;
+  }
+  return data;
+}
+
+async function refillAndConsumeTokens(
+  supabase: any, 
+  requestedTokens: number
+): Promise<{ 
+  granted: boolean; 
+  tokensAvailable: number; 
+  waitMs: number;
+  isInBackoff: boolean;
+  state: TokenBucketState | null;
+}> {
+  const now = Date.now();
+  const today = new Date().toISOString().split('T')[0];
+  
+  const state = await getTokenBucketState(supabase);
+  
+  if (!state) {
+    // 상태가 없으면 기본값으로 진행
+    return { granted: true, tokensAvailable: TOKEN_BUCKET.maxTokens, waitMs: 0, isInBackoff: false, state: null };
+  }
+  
+  // 날짜가 바뀌면 일일 카운터 리셋
+  if (state.last_reset_date !== today) {
+    await supabase
+      .from('rate_limit_state')
+      .update({
+        total_requests_today: 0,
+        total_rate_limits_today: 0,
+        last_reset_date: today,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', 'global');
+    state.total_requests_today = 0;
+    state.total_rate_limits_today = 0;
+  }
+  
+  // 백오프 확인
+  if (state.backoff_until) {
+    const backoffUntilMs = new Date(state.backoff_until).getTime();
+    if (backoffUntilMs > now) {
+      const waitMs = backoffUntilMs - now;
+      console.log(`[TokenBucket] In backoff until ${state.backoff_until}, wait ${waitMs}ms`);
+      return { granted: false, tokensAvailable: state.tokens, waitMs, isInBackoff: true, state };
+    }
+  }
+  
+  // 시간 경과에 따른 토큰 리필
+  const lastRefillMs = new Date(state.last_refill_at).getTime();
+  const elapsedMs = now - lastRefillMs;
+  const tokensToAdd = (elapsedMs / 1000) * state.refill_rate;
+  const newTokens = Math.min(state.tokens + tokensToAdd, state.max_tokens);
+  
+  // 토큰 소비 가능 여부 확인
+  if (newTokens >= requestedTokens) {
+    // 토큰 소비 및 상태 업데이트
+    await supabase
+      .from('rate_limit_state')
+      .update({
+        tokens: newTokens - requestedTokens,
+        last_refill_at: new Date(now).toISOString(),
+        total_requests_today: state.total_requests_today + 1,
+        updated_at: new Date(now).toISOString(),
+      })
+      .eq('id', 'global');
+    
+    console.log(`[TokenBucket] Consumed ${requestedTokens} token(s), ${(newTokens - requestedTokens).toFixed(2)} remaining`);
+    return { 
+      granted: true, 
+      tokensAvailable: newTokens - requestedTokens, 
+      waitMs: 0, 
+      isInBackoff: false,
+      state: { ...state, tokens: newTokens - requestedTokens }
+    };
+  }
+  
+  // 토큰 부족 시 대기 시간 계산
+  const tokensNeeded = requestedTokens - newTokens;
+  const waitMs = (tokensNeeded / state.refill_rate) * 1000;
+  
+  console.log(`[TokenBucket] Need ${tokensNeeded.toFixed(2)} more tokens, wait ${waitMs.toFixed(0)}ms`);
+  return { granted: false, tokensAvailable: newTokens, waitMs, isInBackoff: false, state };
+}
+
+async function handleRateLimitError(supabase: any): Promise<number> {
+  const state = await getTokenBucketState(supabase);
+  
+  if (!state) {
+    return BACKOFF_CONFIG.initialBackoffMs;
+  }
+  
+  const failures = state.consecutive_failures + 1;
+  const backoffMs = Math.min(
+    BACKOFF_CONFIG.initialBackoffMs * Math.pow(BACKOFF_CONFIG.backoffMultiplier, failures - 1),
+    BACKOFF_CONFIG.maxBackoffMs
+  );
+  
+  const backoffUntil = new Date(Date.now() + backoffMs);
+  
+  await supabase
+    .from('rate_limit_state')
+    .update({
+      tokens: 0,  // 버킷 비우기
+      consecutive_failures: failures,
+      consecutive_successes: 0,
+      backoff_until: backoffUntil.toISOString(),
+      total_rate_limits_today: state.total_rate_limits_today + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', 'global');
+  
+  console.log(`[TokenBucket] Rate limited! Backoff for ${backoffMs}ms (failure #${failures})`);
+  return backoffMs;
+}
+
+async function handleSuccess(supabase: any): Promise<void> {
+  const state = await getTokenBucketState(supabase);
+  
+  if (!state) return;
+  
+  const newSuccesses = state.consecutive_successes + 1;
+  
+  const updateData: Record<string, any> = {
+    consecutive_successes: newSuccesses,
+    updated_at: new Date().toISOString(),
+  };
+  
+  // 연속 성공 시 백오프 상태 해제 및 실패 카운터 감소
+  if (newSuccesses >= BACKOFF_CONFIG.recoveryThreshold) {
+    updateData.consecutive_failures = Math.max(0, state.consecutive_failures - 1);
+    updateData.backoff_until = null;
+    console.log(`[TokenBucket] Recovery! Failures reduced to ${updateData.consecutive_failures}`);
+  }
+  
+  await supabase
+    .from('rate_limit_state')
+    .update(updateData)
+    .eq('id', 'global');
+}
 
 // Error logging helper
 async function logError(
@@ -325,76 +501,170 @@ async function processJob(
   }
 }
 
-// Parallel Worker Processing
+// Token Bucket aware parallel worker processing
+async function processJobsWithTokenBucket(
+  supabase: any,
+  jobs: any[],
+  SUPABASE_URL: string,
+  SUPABASE_SERVICE_ROLE_KEY: string
+): Promise<{ 
+  results: any[]; 
+  rateLimitHit: boolean; 
+  successCount: number; 
+  failCount: number; 
+  tokensRemaining: number;
+}> {
+  const results: any[] = [];
+  let rateLimitHit = false;
+  let successCount = 0;
+  let failCount = 0;
+  let tokensRemaining = TOKEN_BUCKET.maxTokens;
+  
+  for (const job of jobs) {
+    // Token Bucket에서 토큰 요청
+    const { granted, tokensAvailable, waitMs, isInBackoff, state } = 
+      await refillAndConsumeTokens(supabase, TOKEN_BUCKET.tokensPerRequest);
+    
+    tokensRemaining = tokensAvailable;
+    
+    if (!granted) {
+      if (isInBackoff) {
+        console.log(`[TokenBucket] In backoff, stopping processing`);
+        rateLimitHit = true;
+        break;
+      }
+      
+      // 토큰 리필 대기
+      if (waitMs > 0 && waitMs < 10000) { // 10초 이하만 대기
+        console.log(`[TokenBucket] Waiting ${waitMs}ms for token refill`);
+        await new Promise(r => setTimeout(r, waitMs));
+        
+        // 다시 토큰 요청
+        const retry = await refillAndConsumeTokens(supabase, TOKEN_BUCKET.tokensPerRequest);
+        if (!retry.granted) {
+          console.log(`[TokenBucket] Still no tokens after wait, stopping`);
+          break;
+        }
+        tokensRemaining = retry.tokensAvailable;
+      } else {
+        console.log(`[TokenBucket] Wait time too long (${waitMs}ms), stopping`);
+        break;
+      }
+    }
+    
+    // Job 처리
+    const result = await processJob(supabase, job, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    results.push(result);
+    
+    if (result.rateLimited) {
+      await handleRateLimitError(supabase);
+      rateLimitHit = true;
+      break;
+    } else if (result.success) {
+      await handleSuccess(supabase);
+      successCount++;
+    } else {
+      failCount++;
+    }
+  }
+  
+  return { results, rateLimitHit, successCount, failCount, tokensRemaining };
+}
+
+// Parallel Worker Processing with Token Bucket
 async function processJobsInParallel(
   supabase: any,
   jobs: any[],
   SUPABASE_URL: string,
   SUPABASE_SERVICE_ROLE_KEY: string,
-  minIntervalMs: number,
   numWorkers: number
-): Promise<{ results: any[]; rateLimitHit: boolean; successCount: number; failCount: number; consecutiveSuccesses: number }> {
-  const results: any[] = [];
-  let rateLimitHit = false;
-  let successCount = 0;
-  let failCount = 0;
-  let consecutiveSuccesses = 0;
+): Promise<{ 
+  results: any[]; 
+  rateLimitHit: boolean; 
+  successCount: number; 
+  failCount: number; 
+  tokensRemaining: number;
+}> {
+  // 단일 워커 모드일 때는 Token Bucket 순차 처리
+  if (numWorkers <= 1) {
+    return processJobsWithTokenBucket(supabase, jobs, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  }
   
-  // Jobs를 워커 수만큼 그룹으로 분배
+  // 병렬 모드: Jobs를 워커 수만큼 그룹으로 분배
   const workerGroups: any[][] = Array.from({ length: numWorkers }, () => []);
   jobs.forEach((job, idx) => {
     workerGroups[idx % numWorkers].push(job);
   });
   
-  console.log(`[process-queue] Parallel: ${numWorkers} workers, jobs per worker: ${workerGroups.map(g => g.length).join(',')}`);
+  console.log(`[process-queue] Parallel: ${numWorkers} workers, jobs: ${workerGroups.map(g => g.length).join(',')}`);
+  
+  let globalRateLimitHit = false;
+  let globalSuccessCount = 0;
+  let globalFailCount = 0;
+  let globalTokensRemaining = TOKEN_BUCKET.maxTokens;
   
   // 시차를 두고 워커 시작 (Staggered Start)
   const workerPromises = workerGroups.map(async (group, workerIdx) => {
     if (group.length === 0) return [];
     
-    // 워커 간 시차 시작 (첫 번째 워커는 즉시 시작)
+    // 워커 간 시차 시작
     if (workerIdx > 0) {
-      await new Promise(resolve => setTimeout(resolve, workerIdx * STAGGER_DELAY_MS));
+      await new Promise(resolve => setTimeout(resolve, workerIdx * QUEUE_CONFIG.staggerDelayMs));
     }
     
-    console.log(`[process-queue] Worker ${workerIdx + 1} started with ${group.length} jobs`);
+    // Rate limit 발생 시 다른 워커 중지
+    if (globalRateLimitHit) {
+      console.log(`[Worker ${workerIdx + 1}] Skipping due to rate limit`);
+      return [];
+    }
+    
+    console.log(`[Worker ${workerIdx + 1}] Started with ${group.length} jobs`);
     
     const workerResults: any[] = [];
     for (const job of group) {
-      if (rateLimitHit) {
-        console.log(`[process-queue] Worker ${workerIdx + 1} stopping due to rate limit`);
-        break;
+      if (globalRateLimitHit) break;
+      
+      // Token 요청
+      const { granted, tokensAvailable, waitMs, isInBackoff } = 
+        await refillAndConsumeTokens(supabase, TOKEN_BUCKET.tokensPerRequest);
+      
+      globalTokensRemaining = tokensAvailable;
+      
+      if (!granted) {
+        if (isInBackoff || waitMs > 5000) {
+          globalRateLimitHit = true;
+          break;
+        }
+        await new Promise(r => setTimeout(r, waitMs));
       }
       
       const result = await processJob(supabase, job, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       workerResults.push(result);
       
       if (result.rateLimited) {
-        rateLimitHit = true;
-        consecutiveSuccesses = 0;
+        await handleRateLimitError(supabase);
+        globalRateLimitHit = true;
       } else if (result.success) {
-        successCount++;
-        consecutiveSuccesses++;
+        await handleSuccess(supabase);
+        globalSuccessCount++;
       } else {
-        failCount++;
-        consecutiveSuccesses = 0;
-      }
-      
-      // 각 워커 내에서도 최소 간격 유지 (다음 작업이 있을 때만)
-      if (group.indexOf(job) < group.length - 1 && !rateLimitHit) {
-        await new Promise(resolve => setTimeout(resolve, minIntervalMs));
+        globalFailCount++;
       }
     }
     
-    console.log(`[process-queue] Worker ${workerIdx + 1} finished: ${workerResults.filter(r => r.success).length} success, ${workerResults.filter(r => !r.success && !r.rateLimited).length} fail`);
+    console.log(`[Worker ${workerIdx + 1}] Finished: ${workerResults.filter(r => r.success).length} success`);
     return workerResults;
   });
   
-  // 모든 워커 완료 대기
   const allResults = await Promise.all(workerPromises);
-  results.push(...allResults.flat());
   
-  return { results, rateLimitHit, successCount, failCount, consecutiveSuccesses };
+  return { 
+    results: allResults.flat(), 
+    rateLimitHit: globalRateLimitHit, 
+    successCount: globalSuccessCount, 
+    failCount: globalFailCount,
+    tokensRemaining: globalTokensRemaining,
+  };
 }
 
 serve(async (req) => {
@@ -416,21 +686,39 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Parse request body for chain depth and backoff state
+    // Parse request body for chain depth
     let chainDepth = 0;
-    let currentBackoffMs = MIN_INTERVAL_MS;
-    let consecutiveSuccesses = 0;
     
     try {
       const body = await req.json();
       chainDepth = body.chainDepth || 0;
-      currentBackoffMs = body.currentBackoffMs || MIN_INTERVAL_MS;
-      consecutiveSuccesses = body.consecutiveSuccesses || 0;
     } catch {
       // No body or invalid JSON, start fresh
     }
 
-    console.log(`[process-queue] Chain: ${chainDepth}/${MAX_CHAIN_DEPTH}, Backoff: ${currentBackoffMs}ms, Consecutive OK: ${consecutiveSuccesses}`);
+    // Step 0: Check Token Bucket state
+    const bucketState = await getTokenBucketState(supabase);
+    
+    if (bucketState?.backoff_until) {
+      const backoffUntilMs = new Date(bucketState.backoff_until).getTime();
+      if (backoffUntilMs > Date.now()) {
+        const waitMs = backoffUntilMs - Date.now();
+        console.log(`[process-queue] In backoff, returning early. Wait ${waitMs}ms`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'In backoff period',
+            backoffUntil: bucketState.backoff_until,
+            waitMs,
+            chainDepth,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    console.log(`[process-queue] Chain: ${chainDepth}/${QUEUE_CONFIG.maxChainDepth}, Tokens: ${bucketState?.tokens?.toFixed(2) || 'N/A'}`);
 
     // Step 1: Apply Priority Aging
     const agedCount = await applyPriorityAging(supabase);
@@ -438,16 +726,17 @@ serve(async (req) => {
       console.log(`[process-queue] Priority Aging applied to ${agedCount} jobs`);
     }
 
-    // Step 2: Get jobs (priority order, respecting rate limit via batch size adjustment)
-    // Adaptive workers and batch size based on backoff state
-    const effectiveWorkers = currentBackoffMs > MIN_INTERVAL_MS 
-      ? 1  // 백오프 중이면 순차 처리로 전환
-      : PARALLEL_WORKERS;
+    // Step 2: Determine effective workers based on token availability
+    const availableTokens = bucketState?.tokens || TOKEN_BUCKET.maxTokens;
+    const isLowTokens = availableTokens < 10;
+    const hasRecentFailures = (bucketState?.consecutive_failures || 0) > 0;
     
-    const effectiveBatchSize = effectiveWorkers * 3; // 워커당 3개씩
+    const effectiveWorkers = (isLowTokens || hasRecentFailures) ? 1 : QUEUE_CONFIG.parallelWorkers;
+    const effectiveBatchSize = effectiveWorkers * 3;
 
-    console.log(`[process-queue] Effective workers: ${effectiveWorkers}, batch size: ${effectiveBatchSize}`);
+    console.log(`[process-queue] Tokens: ${availableTokens.toFixed(2)}, Workers: ${effectiveWorkers}, Batch: ${effectiveBatchSize}`);
 
+    // Step 3: Get jobs
     const { data: jobs, error: fetchError } = await supabase
       .from('generation_jobs')
       .select('*')
@@ -464,43 +753,27 @@ serve(async (req) => {
           message: 'No pending jobs', 
           chainDepth,
           priorityAgingApplied: agedCount,
+          tokensAvailable: availableTokens,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[process-queue] Processing ${jobs.length} jobs with ${effectiveWorkers} parallel workers`);
+    console.log(`[process-queue] Processing ${jobs.length} jobs with ${effectiveWorkers} worker(s)`);
 
-    // Step 3: Process jobs with parallel workers
-    const { results, rateLimitHit, successCount, failCount, consecutiveSuccesses: newConsecutiveSuccesses } = 
+    // Step 4: Process jobs with Token Bucket
+    const { results, rateLimitHit, successCount, failCount, tokensRemaining } = 
       await processJobsInParallel(
         supabase,
         jobs,
         SUPABASE_URL,
         SUPABASE_SERVICE_ROLE_KEY,
-        MIN_INTERVAL_MS,
         effectiveWorkers
       );
-    
-    // Update consecutive successes from parallel result
-    consecutiveSuccesses = rateLimitHit ? 0 : newConsecutiveSuccesses;
-
-    // Step 4: Adjust backoff based on results
-    let nextBackoffMs = currentBackoffMs;
-    
-    if (rateLimitHit) {
-      // 429 발생: 백오프 증가
-      nextBackoffMs = Math.min(currentBackoffMs * BACKOFF_MULTIPLIER, MAX_BACKOFF_MS);
-      console.log(`[process-queue] Rate limited! Increasing backoff to ${nextBackoffMs}ms`);
-    } else if (consecutiveSuccesses >= RECOVERY_THRESHOLD && currentBackoffMs > MIN_INTERVAL_MS) {
-      // 연속 성공: 백오프 감소
-      nextBackoffMs = Math.max(currentBackoffMs / BACKOFF_MULTIPLIER, MIN_INTERVAL_MS);
-      console.log(`[process-queue] Recovering! Decreasing backoff to ${nextBackoffMs}ms`);
-    }
 
     const elapsed = Date.now() - startTime;
     const throughputPerMin = successCount > 0 ? Math.round((successCount / elapsed) * 60000) : 0;
-    console.log(`[process-queue] Batch: ${successCount} succeeded, ${failCount} failed, ${rateLimitHit ? 'RATE LIMITED' : 'OK'} in ${elapsed}ms (~${throughputPerMin} jobs/min)`);
+    console.log(`[process-queue] Batch: ${successCount} OK, ${failCount} fail, ${rateLimitHit ? 'RATE LIMITED' : 'OK'} in ${elapsed}ms (~${throughputPerMin}/min)`);
 
     // Step 5: Check for remaining jobs and chain
     const { count: remainingCount } = await supabase
@@ -509,10 +782,18 @@ serve(async (req) => {
       .eq('status', 'queued');
 
     let chainTriggered = false;
-    const chainDelayMs = rateLimitHit ? nextBackoffMs : CHAIN_DELAY_MS;
+    
+    // 백오프 상태 다시 확인
+    const updatedState = await getTokenBucketState(supabase);
+    const nextBackoffUntil = updatedState?.backoff_until;
+    const chainDelayMs = rateLimitHit 
+      ? (nextBackoffUntil ? new Date(nextBackoffUntil).getTime() - Date.now() : 5000)
+      : QUEUE_CONFIG.chainDelayMs;
 
-    if (remainingCount && remainingCount > 0 && chainDepth < MAX_CHAIN_DEPTH) {
-      console.log(`[process-queue] ${remainingCount} jobs remaining, chain in ${chainDelayMs}ms (depth ${chainDepth + 1})`);
+    if (remainingCount && remainingCount > 0 && chainDepth < QUEUE_CONFIG.maxChainDepth) {
+      const safeChainDelay = Math.min(Math.max(chainDelayMs, QUEUE_CONFIG.chainDelayMs), 60000);
+      
+      console.log(`[process-queue] ${remainingCount} jobs remaining, chain in ${safeChainDelay}ms (depth ${chainDepth + 1})`);
       
       setTimeout(async () => {
         try {
@@ -524,14 +805,12 @@ serve(async (req) => {
             },
             body: JSON.stringify({ 
               chainDepth: chainDepth + 1,
-              currentBackoffMs: nextBackoffMs,
-              consecutiveSuccesses: rateLimitHit ? 0 : consecutiveSuccesses,
             }),
           });
         } catch (err) {
           console.error('[process-queue] Chain call failed:', err);
         }
-      }, chainDelayMs);
+      }, safeChainDelay);
       
       chainTriggered = true;
     }
@@ -547,8 +826,16 @@ serve(async (req) => {
         chainDepth,
         remainingJobs: remainingCount || 0,
         chainTriggered,
-        nextBackoffMs,
+        tokensRemaining: tokensRemaining.toFixed(2),
         priorityAgingApplied: agedCount,
+        tokenBucket: {
+          tokens: updatedState?.tokens,
+          consecutiveFailures: updatedState?.consecutive_failures,
+          consecutiveSuccesses: updatedState?.consecutive_successes,
+          backoffUntil: updatedState?.backoff_until,
+          totalRequestsToday: updatedState?.total_requests_today,
+          totalRateLimitsToday: updatedState?.total_rate_limits_today,
+        },
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -679,6 +679,51 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_state: {
+        Row: {
+          backoff_until: string | null
+          consecutive_failures: number
+          consecutive_successes: number
+          id: string
+          last_refill_at: string
+          last_reset_date: string
+          max_tokens: number
+          refill_rate: number
+          tokens: number
+          total_rate_limits_today: number
+          total_requests_today: number
+          updated_at: string
+        }
+        Insert: {
+          backoff_until?: string | null
+          consecutive_failures?: number
+          consecutive_successes?: number
+          id?: string
+          last_refill_at?: string
+          last_reset_date?: string
+          max_tokens?: number
+          refill_rate?: number
+          tokens?: number
+          total_rate_limits_today?: number
+          total_requests_today?: number
+          updated_at?: string
+        }
+        Update: {
+          backoff_until?: string | null
+          consecutive_failures?: number
+          consecutive_successes?: number
+          id?: string
+          last_refill_at?: string
+          last_reset_date?: string
+          max_tokens?: number
+          refill_rate?: number
+          tokens?: number
+          total_rate_limits_today?: number
+          total_requests_today?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       recommendation_history: {
         Row: {
           budget: number
