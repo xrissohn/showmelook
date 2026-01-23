@@ -68,11 +68,16 @@ const StyleCarousel = () => {
   const scrollPositionRef = useRef(0);
   const isDraggingRef = useRef(false);
 
-  // Gender states for flip animation
+  // Card rotation states - each card tracks its own rotation (0 or 180)
+  const [cardRotations, setCardRotations] = useState<number[]>(
+    Array(styles.length * 3).fill(0)
+  );
+  // Track which image to show (true = male, false = female)
   const [cardGenders, setCardGenders] = useState<boolean[]>(
     Array(styles.length * 3).fill(true).map((_, i) => i % 2 === 0)
   );
-  const [flippingCards, setFlippingCards] = useState<boolean[]>(
+  // Track if a card is currently animating (to prevent double-flips)
+  const [isAnimating, setIsAnimating] = useState<boolean[]>(
     Array(styles.length * 3).fill(false)
   );
 
@@ -130,20 +135,29 @@ const StyleCarousel = () => {
     };
   }, [animate]);
 
-  // Random gender flip effect - very slow and smooth
+  // Random gender flip effect - toggle rotation, no snap back
   useEffect(() => {
     const flipInterval = setInterval(() => {
       const cardIndex = Math.floor(Math.random() * duplicatedStyles.length);
       
-      // Start the flip
-      setFlippingCards(prev => {
+      // Skip if this card is currently animating
+      if (isAnimating[cardIndex]) return;
+      
+      // Mark as animating
+      setIsAnimating(prev => {
         const newState = [...prev];
         newState[cardIndex] = true;
         return newState;
       });
+      
+      // Toggle rotation: 0 -> 180 or 180 -> 0
+      setCardRotations(prev => {
+        const newState = [...prev];
+        newState[cardIndex] = prev[cardIndex] === 0 ? 180 : 0;
+        return newState;
+      });
 
-      // Change gender exactly at 90 degrees (halfway through 3s = 1.5s)
-      // This is when the card is edge-on and the change is invisible
+      // Change gender at 90 degrees (1.5s into 3s animation)
       setTimeout(() => {
         setCardGenders(prev => {
           const newState = [...prev];
@@ -152,18 +166,18 @@ const StyleCarousel = () => {
         });
       }, 1500);
 
-      // End flip animation after full 180-degree rotation (3 seconds)
+      // Mark animation as complete after 3 seconds
       setTimeout(() => {
-        setFlippingCards(prev => {
+        setIsAnimating(prev => {
           const newState = [...prev];
           newState[cardIndex] = false;
           return newState;
         });
       }, 3000);
-    }, 6000); // Flip every 6 seconds for a calm experience
+    }, 5000); // Flip a random card every 5 seconds
 
     return () => clearInterval(flipInterval);
-  }, [duplicatedStyles.length]);
+  }, [duplicatedStyles.length, isAnimating]);
 
   // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -216,7 +230,7 @@ const StyleCarousel = () => {
       >
         {duplicatedStyles.map((style, i) => {
           const isMale = cardGenders[i];
-          const isFlipping = flippingCards[i];
+          const rotation = cardRotations[i];
           const currentImage = isMale ? style.maleImage : style.femaleImage;
           // First 5 images (middle set, initially visible) should load eagerly
           const isInitiallyVisible = i >= styles.length && i < styles.length * 2;
@@ -235,7 +249,7 @@ const StyleCarousel = () => {
                   className="w-full h-full relative"
                   style={{
                     transformStyle: 'preserve-3d',
-                    transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    transform: `rotateY(${rotation}deg)`,
                     transition: 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)',
                   }}
                 >
