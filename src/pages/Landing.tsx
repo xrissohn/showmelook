@@ -187,27 +187,30 @@ const useMouseParticles = () => {
   const colors = ['bg-coral', 'bg-magenta', 'bg-purple', 'bg-sky', 'bg-primary'];
 
   const addParticle = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    // Throttle to max 60fps (16ms) to reduce reflow frequency
+    // Throttle to 100ms to significantly reduce reflow frequency
     const now = performance.now();
-    if (now - lastCallTime.current < 50) return;
+    if (now - lastCallTime.current < 100) return;
     lastCallTime.current = now;
 
-    // Cache bounding rect to avoid repeated reflow - use offsetX/Y when available
+    // Use offsetX/Y directly to avoid getBoundingClientRect() forced reflow
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     
-    const newParticles: MouseParticle[] = [];
-    for (let i = 0; i < 3; i++) {
-      newParticles.push({
-        id: idCounter.current++,
-        x: x + (Math.random() - 0.5) * 40,
-        y: y + (Math.random() - 0.5) * 40,
-        size: Math.random() * 8 + 4,
-        color: colors[Math.floor(Math.random() * colors.length)],
-      });
-    }
-    
-    setParticles(prev => [...prev, ...newParticles]);
+    // Use requestAnimationFrame to batch DOM reads/writes
+    requestAnimationFrame(() => {
+      const newParticles: MouseParticle[] = [];
+      for (let i = 0; i < 2; i++) {
+        newParticles.push({
+          id: idCounter.current++,
+          x: x + (Math.random() - 0.5) * 40,
+          y: y + (Math.random() - 0.5) * 40,
+          size: Math.random() * 8 + 4,
+          color: colors[Math.floor(Math.random() * colors.length)],
+        });
+      }
+      
+      setParticles(prev => [...prev, ...newParticles]);
+    });
   }, []);
 
   const removeParticle = useCallback((id: number) => {
@@ -655,8 +658,20 @@ const Landing = () => {
               className="flex items-center justify-center gap-0 mb-4 sm:mb-6 hover:opacity-80 transition-opacity group relative"
             >
               <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-4 sm:h-4 text-coral opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
-              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 sm:w-10 sm:h-10 object-contain group-hover:animate-float" />
-              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[50px] sm:h-[60px] md:h-[70px] object-contain -ml-1.5 sm:-ml-2" />
+              <img 
+                src={showmelookLogo} 
+                alt="쇼미룩 로고" 
+                width={40}
+                height={40}
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain group-hover:animate-float" 
+              />
+              <img 
+                src={showmelookKoreanLogo} 
+                alt="쇼미룩" 
+                width={70}
+                height={70}
+                className="h-[50px] sm:h-[60px] md:h-[70px] object-contain -ml-1.5 sm:-ml-2" 
+              />
               <Sparkles className="absolute -bottom-0.5 -right-2 sm:-bottom-1 sm:-right-4 w-3 h-3 sm:w-4 sm:h-4 text-sky opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" style={{ animationDelay: '0.3s' }} />
             </button>
             
