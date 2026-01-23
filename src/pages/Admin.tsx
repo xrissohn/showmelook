@@ -194,11 +194,18 @@ const Admin = () => {
 
   // Excel upload state
   const [excelProducts, setExcelProducts] = useState<ExcelProduct[]>([]);
-  const [excelFileName, setExcelFileName] = useState<string | null>(null);
+  const [excelFileNames, setExcelFileNames] = useState<string[]>([]);
   const [isExcelUploading, setIsExcelUploading] = useState(false);
+  const [excelUploadProgress, setExcelUploadProgress] = useState<{
+    current: number;
+    total: number;
+    currentFile?: string;
+    startTime?: number;
+  } | null>(null);
   const [excelUploadResult, setExcelUploadResult] = useState<{
     success: number;
     failed: number;
+    skipped?: number;
     errors: string[];
   } | null>(null);
 
@@ -484,131 +491,151 @@ const Admin = () => {
   };
 
   const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    setExcelFileName(file.name);
     setExcelUploadResult(null);
+    setExcelProducts([]);
+    
+    const fileNames: string[] = [];
+    const allProducts: ExcelProduct[] = [];
+    let filesProcessed = 0;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
-
-        // 첫 행의 컬럼명 확인 (디버깅용)
-        if (jsonData.length > 0) {
-          const columns = Object.keys(jsonData[0]);
-          console.log('[Excel] 발견된 컬럼:', columns);
-          console.log('[Excel] 첫 번째 행 데이터:', jsonData[0]);
-        }
-
-        // 유연한 컬럼 매핑 (대소문자 무시, 공백 제거)
-        const findValue = (row: Record<string, unknown>, keys: string[]): unknown => {
-          for (const key of Object.keys(row)) {
-            const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
-            for (const searchKey of keys) {
-              const normalizedSearch = searchKey.toLowerCase().replace(/[\s_-]/g, '');
-              if (normalizedKey === normalizedSearch || normalizedKey.includes(normalizedSearch)) {
-                return row[key];
-              }
-            }
+    // 유연한 컬럼 매핑 (대소문자 무시, 공백 제거)
+    const findValue = (row: Record<string, unknown>, keys: string[]): unknown => {
+      for (const key of Object.keys(row)) {
+        const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
+        for (const searchKey of keys) {
+          const normalizedSearch = searchKey.toLowerCase().replace(/[\s_-]/g, '');
+          if (normalizedKey === normalizedSearch || normalizedKey.includes(normalizedSearch)) {
+            return row[key];
           }
-          return undefined;
-        };
-
-        // 가격 파싱 (콤마, 원화 기호 제거)
-        const parsePrice = (value: unknown): number => {
-          if (typeof value === 'number') return value;
-          if (typeof value === 'string') {
-            const cleaned = value.replace(/[^\d.]/g, '');
-            return parseFloat(cleaned) || 0;
-          }
-          return 0;
-        };
-
-        // URL에서 merchant_id 추론
-        const inferMerchantId = (url: string): string => {
-          const urlLower = url.toLowerCase();
-          if (urlLower.includes('wconcept')) return 'wconcept';
-          if (urlLower.includes('hfashionmall') || urlLower.includes('hfashion')) return 'hfashionmall';
-          if (urlLower.includes('paulsmith')) return 'paulsmith';
-          if (urlLower.includes('ssfshop')) return 'ssfshop';
-          if (urlLower.includes('sivillage')) return 'sivillage';
-          if (urlLower.includes('29cm')) return '29cm';
-          if (urlLower.includes('musinsa')) return 'musinsa';
-          if (urlLower.includes('stories')) return 'stories';
-          if (urlLower.includes('posty')) return 'posty';
-          if (urlLower.includes('lfmall')) return 'lfmall';
-          if (urlLower.includes('arket')) return 'arket';
-          if (urlLower.includes('jestina')) return 'jestina';
-          if (urlLower.includes('benetton')) return 'benetton';
-          if (urlLower.includes('coupang')) return 'coupang';
-          return 'unknown';
-        };
-
-        // 컬럼 매핑
-        const products: ExcelProduct[] = jsonData.map((row) => {
-          const productUrl = String(findValue(row, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || '');
-          const merchantIdRaw = findValue(row, ['merchant_id', '머천트', 'merchant', '판매처', '쇼핑몰']);
-          const merchantId = merchantIdRaw ? String(merchantIdRaw) : inferMerchantId(productUrl);
-          
-          return {
-            merchant_id: merchantId,
-            product_url: productUrl,
-            name: String(findValue(row, ['name', '상품명', 'title', '제품명', 'productname', '이름']) || ''),
-            price: parsePrice(findValue(row, ['price', '가격', '판매가', 'saleprice', '현재가'])),
-            image_url: findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img']) ? 
-              String(findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img'])) : undefined,
-            original_price: findValue(row, ['original_price', '원가', '정가', 'originalprice']) ? 
-              parsePrice(findValue(row, ['original_price', '원가', '정가', 'originalprice'])) : undefined,
-            category: findValue(row, ['category', '카테고리', '분류']) ? 
-              String(findValue(row, ['category', '카테고리', '분류'])) : undefined,
-            brand: findValue(row, ['brand', '브랜드']) ? 
-              String(findValue(row, ['brand', '브랜드'])) : undefined,
-            gender: findValue(row, ['gender', '성별', 'target']) ? 
-              String(findValue(row, ['gender', '성별', 'target'])) : undefined,
-            color: findValue(row, ['color', '색상', '컬러']) ? 
-              String(findValue(row, ['color', '색상', '컬러'])) : undefined,
-          };
-        }).filter(p => p.product_url && p.name && p.price > 0);
-
-        // 필터링 전후 로그
-        console.log('[Excel] 전체 행 수:', jsonData.length);
-        console.log('[Excel] 유효한 제품 수:', products.length);
-        
-        if (products.length === 0 && jsonData.length > 0) {
-          // 왜 필터링되었는지 분석
-          const firstRow = jsonData[0];
-          const testProduct = {
-            product_url: String(findValue(firstRow, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || ''),
-            name: String(findValue(firstRow, ['name', '상품명', 'title', '제품명', 'productname', '이름']) || ''),
-            price: parsePrice(findValue(firstRow, ['price', '가격', '판매가', 'saleprice', '현재가'])),
-          };
-          console.log('[Excel] 첫 행 파싱 결과:', testProduct);
-          
-          const missingFields: string[] = [];
-          if (!testProduct.product_url) missingFields.push('URL');
-          if (!testProduct.name) missingFields.push('상품명');
-          if (testProduct.price <= 0) missingFields.push('가격');
-          
-          toast({ 
-            title: "제품 발견 실패", 
-            description: `필수 컬럼 누락: ${missingFields.join(', ')}. 컬럼명을 확인해주세요.`,
-            variant: "destructive" 
-          });
-        } else {
-          setExcelProducts(products);
-          toast({ title: "파일 파싱 완료", description: `${products.length}개 제품 발견 (총 ${jsonData.length}행)` });
         }
-      } catch (error) {
-        console.error('[Excel] 파싱 오류:', error);
-        toast({ title: "파일 파싱 실패", description: "올바른 엑셀 파일인지 확인해주세요.", variant: "destructive" });
       }
+      return undefined;
     };
-    reader.readAsArrayBuffer(file);
+
+    // 가격 파싱 (콤마, 원화 기호 제거, JSON 형식 지원)
+    const parsePrice = (value: unknown): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        // JSON 형식 가격 처리 ({"value":65000,"currency":"KRW"})
+        if (value.trim().startsWith('{')) {
+          try {
+            const parsed = JSON.parse(value);
+            if (parsed.value) return Number(parsed.value);
+          } catch {
+            // JSON 파싱 실패시 일반 파싱 진행
+          }
+        }
+        const cleaned = value.replace(/[^\d.]/g, '');
+        return parseFloat(cleaned) || 0;
+      }
+      return 0;
+    };
+
+    // URL에서 merchant_id 추론
+    const inferMerchantId = (url: string): string => {
+      const urlLower = url.toLowerCase();
+      if (urlLower.includes('wconcept')) return 'wconcept';
+      if (urlLower.includes('hfashionmall') || urlLower.includes('hfashion')) return 'hfashionmall';
+      if (urlLower.includes('paulsmith')) return 'paulsmith';
+      if (urlLower.includes('ssfshop')) return 'ssfshop';
+      if (urlLower.includes('sivillage')) return 'sivillage';
+      if (urlLower.includes('29cm')) return '29cm';
+      if (urlLower.includes('musinsa')) return 'musinsa';
+      if (urlLower.includes('stories')) return 'stories';
+      if (urlLower.includes('posty')) return 'posty';
+      if (urlLower.includes('lfmall')) return 'lfmall';
+      if (urlLower.includes('arket')) return 'arket';
+      if (urlLower.includes('jestina')) return 'jestina';
+      if (urlLower.includes('benetton')) return 'benetton';
+      if (urlLower.includes('coupang')) return 'coupang';
+      if (urlLower.includes('thehyundai')) return 'thehyundai';
+      return 'unknown';
+    };
+
+    // 각 파일 처리
+    Array.from(files).forEach((file) => {
+      fileNames.push(file.name);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
+
+          // 첫 행의 컬럼명 확인 (디버깅용)
+          if (jsonData.length > 0) {
+            const columns = Object.keys(jsonData[0]);
+            console.log(`[Excel] ${file.name} 발견된 컬럼:`, columns);
+          }
+
+          // 컬럼 매핑
+          const products: ExcelProduct[] = jsonData.map((row) => {
+            const productUrl = String(findValue(row, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || '');
+            const merchantIdRaw = findValue(row, ['merchant_id', '머천트', 'merchant', '판매처', '쇼핑몰']);
+            const merchantId = merchantIdRaw ? String(merchantIdRaw) : inferMerchantId(productUrl);
+            
+            // 이미지 URL 처리 (image_urls 배열 형식도 지원)
+            let imageUrl = findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img', 'image_urls', 'imageurls']);
+            if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('[')) {
+              // JSON 배열 형식인 경우 그대로 전달 (서버에서 처리)
+              imageUrl = imageUrl;
+            }
+            
+            return {
+              merchant_id: merchantId,
+              product_url: productUrl,
+              name: String(findValue(row, ['name', '상품명', 'title', '제품명', 'productname', '이름', 'product_name']) || ''),
+              price: parsePrice(findValue(row, ['price', '가격', '판매가', 'saleprice', '현재가', 'final_price', 'finalprice'])),
+              image_url: imageUrl ? String(imageUrl) : undefined,
+              original_price: findValue(row, ['original_price', '원가', '정가', 'originalprice']) ? 
+                parsePrice(findValue(row, ['original_price', '원가', '정가', 'originalprice'])) : undefined,
+              category: findValue(row, ['category', '카테고리', '분류']) ? 
+                String(findValue(row, ['category', '카테고리', '분류'])) : undefined,
+              brand: findValue(row, ['brand', '브랜드']) ? 
+                String(findValue(row, ['brand', '브랜드'])) : undefined,
+              gender: findValue(row, ['gender', '성별', 'target']) ? 
+                String(findValue(row, ['gender', '성별', 'target'])) : undefined,
+              color: findValue(row, ['color', '색상', '컬러', 'colors_available']) ? 
+                String(findValue(row, ['color', '색상', '컬러', 'colors_available'])) : undefined,
+            };
+          }).filter(p => p.product_url && p.name && p.price > 0);
+
+          console.log(`[Excel] ${file.name}: ${jsonData.length}행 중 ${products.length}개 유효`);
+          allProducts.push(...products);
+          
+        } catch (error) {
+          console.error(`[Excel] ${file.name} 파싱 오류:`, error);
+          toast({ title: "파일 파싱 실패", description: `${file.name}: 올바른 엑셀 파일인지 확인해주세요.`, variant: "destructive" });
+        }
+        
+        filesProcessed++;
+        
+        // 모든 파일 처리 완료
+        if (filesProcessed === files.length) {
+          setExcelFileNames(fileNames);
+          setExcelProducts(allProducts);
+          
+          if (allProducts.length > 0) {
+            toast({ 
+              title: "파일 파싱 완료", 
+              description: `${files.length}개 파일에서 ${allProducts.length}개 제품 발견` 
+            });
+          } else {
+            toast({ 
+              title: "제품 발견 실패", 
+              description: "유효한 제품이 없습니다. 컬럼명을 확인해주세요.",
+              variant: "destructive" 
+            });
+          }
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
   }, [toast]);
 
   const registerExcelProducts = async () => {
@@ -616,15 +643,25 @@ const Admin = () => {
 
     setIsExcelUploading(true);
     setExcelUploadResult(null);
+    
+    const startTime = Date.now();
+    setExcelUploadProgress({ current: 0, total: excelProducts.length, startTime });
 
     const BATCH_SIZE = 10;
     let success = 0;
     let failed = 0;
-    let skipped = 0;  // 중복 스킵 카운트
+    let skipped = 0;
     const errors: string[] = [];
 
     for (let i = 0; i < excelProducts.length; i += BATCH_SIZE) {
       const batch = excelProducts.slice(i, i + BATCH_SIZE);
+      
+      // 진행 상황 업데이트
+      setExcelUploadProgress(prev => ({ 
+        ...prev!, 
+        current: i,
+        currentFile: `배치 ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(excelProducts.length / BATCH_SIZE)}`
+      }));
       
       try {
         const { data, error } = await supabase.functions.invoke('register-product', {
@@ -638,7 +675,6 @@ const Admin = () => {
             if (r.success) {
               success++;
             } else if (r.error?.includes('이미 등록된 제품')) {
-              // 중복 스킵은 별도 카운트
               skipped++;
             } else {
               failed++;
@@ -653,10 +689,16 @@ const Admin = () => {
       }
     }
 
-    // 결과에 스킵 정보 포함
+    // 최종 진행 상황
+    setExcelUploadProgress(prev => ({ ...prev!, current: excelProducts.length }));
+    
+    // 결과 저장
     const resultWithSkipped = { success, failed, skipped, errors: errors.slice(0, 10) };
     setExcelUploadResult(resultWithSkipped as typeof excelUploadResult);
     setIsExcelUploading(false);
+    
+    // 1초 후 진행 상황 리셋
+    setTimeout(() => setExcelUploadProgress(null), 1000);
     
     // 결과 토스트 메시지 개선
     const parts = [];
@@ -664,10 +706,12 @@ const Admin = () => {
     if (skipped > 0) parts.push(`${skipped}개 중복 스킵`);
     if (failed > 0) parts.push(`${failed}개 실패`);
     
+    const elapsedSec = Math.round((Date.now() - startTime) / 1000);
+    
     if (parts.length > 0) {
       toast({ 
         title: success > 0 ? "등록 완료" : (skipped > 0 ? "중복 제품" : "등록 실패"), 
-        description: parts.join(', '),
+        description: `${parts.join(', ')} (${elapsedSec}초 소요)`,
         variant: success > 0 ? "default" : (skipped > 0 ? "default" : "destructive")
       });
     }
@@ -1196,32 +1240,46 @@ const Admin = () => {
                   </div>
                 </div>
 
-                {/* File upload */}
-                <div className="flex items-center gap-4">
-                  <Input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleExcelUpload}
-                    className="max-w-xs"
-                  />
-                  {excelFileName && (
-                    <span className="text-sm text-muted-foreground">
-                      📁 {excelFileName} ({excelProducts.length}개 제품)
-                    </span>
+                {/* File upload - multiple files */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-4">
+                    <Input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      multiple
+                      onChange={handleExcelUpload}
+                      className="max-w-md"
+                    />
+                  </div>
+                  {excelFileNames.length > 0 && (
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      <p className="font-medium">📁 {excelFileNames.length}개 파일 선택됨 (총 {excelProducts.length}개 제품)</p>
+                      <div className="flex flex-wrap gap-2">
+                        {excelFileNames.map((name, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">{name}</Badge>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
 
                 {/* Preview */}
                 {excelProducts.length > 0 && (
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-medium flex items-center gap-2">
-                        <Eye className="w-4 h-4" />
-                        미리보기 (상위 5개)
-                      </h4>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <h4 className="font-medium flex items-center gap-2">
+                          <Eye className="w-4 h-4" />
+                          미리보기 (상위 5개)
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ⏱️ 예상 등록 시간: 약 {Math.ceil(excelProducts.length * 1.5 / 60)}분 ({excelProducts.length}개 × 1.5초)
+                        </p>
+                      </div>
                       <Button 
                         onClick={registerExcelProducts} 
                         disabled={isExcelUploading}
+                        size="lg"
                       >
                         {isExcelUploading ? (
                           <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1231,6 +1289,35 @@ const Admin = () => {
                         {excelProducts.length}개 제품 등록
                       </Button>
                     </div>
+                    
+                    {/* Progress bar during upload */}
+                    {isExcelUploading && excelUploadProgress && (
+                      <div className="p-4 bg-muted rounded-lg space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            {excelUploadProgress.currentFile || '등록 중...'}
+                          </span>
+                          <span className="font-mono">
+                            {excelUploadProgress.current}/{excelUploadProgress.total}
+                          </span>
+                        </div>
+                        <Progress value={(excelUploadProgress.current / excelUploadProgress.total) * 100} />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>
+                            {Math.round((excelUploadProgress.current / excelUploadProgress.total) * 100)}% 완료
+                          </span>
+                          {excelUploadProgress.startTime && excelUploadProgress.current > 0 && (
+                            <span>
+                              남은 시간: 약 {Math.ceil(
+                                ((Date.now() - excelUploadProgress.startTime) / excelUploadProgress.current) 
+                                * (excelUploadProgress.total - excelUploadProgress.current) / 1000
+                              )}초
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     
                     <div className="border rounded-lg overflow-hidden">
                       <div className="overflow-x-auto">
