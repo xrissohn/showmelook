@@ -922,32 +922,49 @@ const Admin = () => {
 
   const loadDnaStats = async () => {
     try {
-      const { data: products } = await supabase
+      // 전체 개수는 count 쿼리로 (1000개 제한 우회)
+      const { count: totalCount } = await supabase
         .from('products_cache')
-        .select('id, dna_meta, category')
+        .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
 
-      if (!products) return;
+      const { count: withDnaCount } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .not('dna_meta', 'is', null);
 
-      const total = products.length;
-      const withDna = products.filter(p => p.dna_meta).length;
+      const total = totalCount || 0;
+      const withDna = withDnaCount || 0;
       const withoutDna = total - withDna;
+
+      // DNA 메타 분석은 최신 1000개만 샘플링
+      const { data: products } = await supabase
+        .from('products_cache')
+        .select('dna_meta')
+        .eq('is_active', true)
+        .not('dna_meta', 'is', null)
+        .order('collected_at', { ascending: false })
+        .limit(1000);
 
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
       const byConcept: Record<string, number> = {};
-      products.forEach(p => {
-        if (p.dna_meta) {
-          const meta = p.dna_meta as { target?: string; item_slot?: string; concepts?: string[] };
-          if (meta.target) byTarget[meta.target] = (byTarget[meta.target] || 0) + 1;
-          if (meta.item_slot) bySlot[meta.item_slot] = (bySlot[meta.item_slot] || 0) + 1;
-          if (meta.concepts) {
-            meta.concepts.forEach(c => {
-              byConcept[c] = (byConcept[c] || 0) + 1;
-            });
+      
+      if (products) {
+        products.forEach(p => {
+          if (p.dna_meta) {
+            const meta = p.dna_meta as { target?: string; item_slot?: string; concepts?: string[] };
+            if (meta.target) byTarget[meta.target] = (byTarget[meta.target] || 0) + 1;
+            if (meta.item_slot) bySlot[meta.item_slot] = (bySlot[meta.item_slot] || 0) + 1;
+            if (meta.concepts) {
+              meta.concepts.forEach(c => {
+                byConcept[c] = (byConcept[c] || 0) + 1;
+              });
+            }
           }
-        }
-      });
+        });
+      }
 
       setDnaStats({ total, withDna, withoutDna, byTarget, bySlot, byConcept });
     } catch (error) {
