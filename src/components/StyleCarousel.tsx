@@ -249,8 +249,11 @@ const StyleCarousel = () => {
           const isMale = cardGenders[i];
           const rotation = cardRotations[i];
           const currentImage = isMale ? style.maleImage : style.femaleImage;
-          // First 5 images (middle set, initially visible) should load eagerly
+          const backImage = isMale ? style.femaleImage : style.maleImage;
+          // Middle set (initially visible) should load eagerly - expand to first 3 of middle set for LCP
           const isInitiallyVisible = i >= styles.length && i < styles.length * 2;
+          // First 3 visible cards are highest priority (LCP candidates)
+          const isLcpCandidate = i >= styles.length && i < styles.length + 3;
 
           return (
             <div
@@ -282,14 +285,14 @@ const StyleCarousel = () => {
                       width={228}
                       height={285}
                       loading={isInitiallyVisible ? "eager" : "lazy"}
-                      fetchPriority={isInitiallyVisible ? "high" : "auto"}
-                      decoding={isInitiallyVisible ? "sync" : "async"}
+                      fetchPriority={isLcpCandidate ? "high" : isInitiallyVisible ? "low" : "auto"}
+                      decoding={isLcpCandidate ? "sync" : "async"}
                       draggable={false}
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-20 group-hover:opacity-10 transition-opacity duration-300`} />
                   </div>
 
-                  {/* Back face */}
+                  {/* Back face - also preload for initially visible cards */}
                   <div
                     className="absolute inset-0"
                     style={{ 
@@ -298,12 +301,12 @@ const StyleCarousel = () => {
                     }}
                   >
                     <img
-                      src={isMale ? style.femaleImage : style.maleImage}
+                      src={backImage}
                       alt={`${style.title} 모델`}
                       className="w-full h-full object-cover"
                       width={228}
                       height={285}
-                      loading="lazy"
+                      loading={isInitiallyVisible ? "eager" : "lazy"}
                       decoding="async"
                       draggable={false}
                     />
