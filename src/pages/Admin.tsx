@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
+import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
+import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
 import * as XLSX from 'xlsx';
 
 interface DeeplinkResult {
@@ -932,6 +934,14 @@ const Admin = () => {
             <TabsTrigger value="analytics">
               <BarChart3 className="w-4 h-4 mr-1" />
               처리량 분석
+            </TabsTrigger>
+            <TabsTrigger value="ratelimit">
+              <Gauge className="w-4 h-4 mr-1" />
+              Rate Limiter
+            </TabsTrigger>
+            <TabsTrigger value="loadtest">
+              <Zap className="w-4 h-4 mr-1" />
+              부하 테스트
             </TabsTrigger>
             <TabsTrigger value="tools">
               <Zap className="w-4 h-4 mr-1" />
@@ -2025,6 +2035,16 @@ const Admin = () => {
                 <ThroughputAnalytics />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Token Bucket Rate Limiter Tab */}
+          <TabsContent value="ratelimit" className="space-y-4">
+            <TokenBucketMonitor />
+          </TabsContent>
+
+          {/* Load Test Tab */}
+          <TabsContent value="loadtest" className="space-y-4">
+            <LoadTestPanel />
           </TabsContent>
         </Tabs>
       </div>
