@@ -1197,77 +1197,79 @@ const Admin = () => {
 
         {/* Test Tabs */}
         <Tabs defaultValue="register" className="space-y-4">
-          <TabsList className="flex w-full overflow-x-auto">
-            <TabsTrigger value="register">
-              <Upload className="w-4 h-4 mr-1" />
-              제품 등록
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="relative">
-              <AlertTriangle className="w-4 h-4 mr-1" />
-              등록 대기
-              {pendingCount > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingCount}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="dna">
-              <Dna className="w-4 h-4 mr-1" />
-              DNA 관리
-            </TabsTrigger>
-            <TabsTrigger value="recommend">
-              <ShoppingBag className="w-4 h-4 mr-1" />
-              AI 추천
-            </TabsTrigger>
-            <TabsTrigger value="deeplink">
-              <Link2 className="w-4 h-4 mr-1" />
-              딥링크
-            </TabsTrigger>
-            <TabsTrigger value="images">
-              <ImageOff className="w-4 h-4 mr-1" />
-              이미지 관리
-            </TabsTrigger>
-            <TabsTrigger value="products">
-              <Package className="w-4 h-4 mr-1" />
-              상품 관리
-            </TabsTrigger>
-            <TabsTrigger value="users">
-              <Users className="w-4 h-4 mr-1" />
-              사용자 관리
-            </TabsTrigger>
-            <TabsTrigger value="errors" className="relative">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              에러 로그
-              {errorLogStats.total > 0 && (
-                <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogStats.total}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="jobs" className="relative">
-              <Activity className="w-4 h-4 mr-1" />
-              생성 큐
-              {(jobStats.queued + jobStats.processing) > 0 && (
-                <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">{jobStats.queued + jobStats.processing}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="analytics">
-              <BarChart3 className="w-4 h-4 mr-1" />
-              처리량 분석
-            </TabsTrigger>
-            <TabsTrigger value="ratelimit">
-              <Gauge className="w-4 h-4 mr-1" />
-              Rate Limiter
-            </TabsTrigger>
-            <TabsTrigger value="loadtest">
-              <Zap className="w-4 h-4 mr-1" />
-              부하 테스트
-            </TabsTrigger>
-            <TabsTrigger value="brightdata">
-              <CloudDownload className="w-4 h-4 mr-1" />
-              Bright Data
-            </TabsTrigger>
-            <TabsTrigger value="tools">
-              <Zap className="w-4 h-4 mr-1" />
-              관리도구
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 -mx-2 px-2">
+            <TabsList className="inline-flex h-auto min-w-max gap-1 p-1">
+              <TabsTrigger value="register" className="flex-shrink-0 whitespace-nowrap">
+                <Upload className="w-4 h-4 mr-1" />
+                제품 등록
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="relative flex-shrink-0 whitespace-nowrap">
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                등록 대기
+                {pendingCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingCount}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="dna" className="flex-shrink-0 whitespace-nowrap">
+                <Dna className="w-4 h-4 mr-1" />
+                DNA 관리
+              </TabsTrigger>
+              <TabsTrigger value="recommend" className="flex-shrink-0 whitespace-nowrap">
+                <ShoppingBag className="w-4 h-4 mr-1" />
+                AI 추천
+              </TabsTrigger>
+              <TabsTrigger value="deeplink" className="flex-shrink-0 whitespace-nowrap">
+                <Link2 className="w-4 h-4 mr-1" />
+                딥링크
+              </TabsTrigger>
+              <TabsTrigger value="images" className="flex-shrink-0 whitespace-nowrap">
+                <ImageOff className="w-4 h-4 mr-1" />
+                이미지 관리
+              </TabsTrigger>
+              <TabsTrigger value="products" className="flex-shrink-0 whitespace-nowrap">
+                <Package className="w-4 h-4 mr-1" />
+                상품 관리
+              </TabsTrigger>
+              <TabsTrigger value="users" className="flex-shrink-0 whitespace-nowrap">
+                <Users className="w-4 h-4 mr-1" />
+                사용자 관리
+              </TabsTrigger>
+              <TabsTrigger value="errors" className="relative flex-shrink-0 whitespace-nowrap">
+                <AlertCircle className="w-4 h-4 mr-1" />
+                에러 로그
+                {errorLogStats.total > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogStats.total}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="jobs" className="relative flex-shrink-0 whitespace-nowrap">
+                <Activity className="w-4 h-4 mr-1" />
+                생성 큐
+                {(jobStats.queued + jobStats.processing) > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">{jobStats.queued + jobStats.processing}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="analytics" className="flex-shrink-0 whitespace-nowrap">
+                <BarChart3 className="w-4 h-4 mr-1" />
+                처리량 분석
+              </TabsTrigger>
+              <TabsTrigger value="ratelimit" className="flex-shrink-0 whitespace-nowrap">
+                <Gauge className="w-4 h-4 mr-1" />
+                Rate Limiter
+              </TabsTrigger>
+              <TabsTrigger value="loadtest" className="flex-shrink-0 whitespace-nowrap">
+                <Zap className="w-4 h-4 mr-1" />
+                부하 테스트
+              </TabsTrigger>
+              <TabsTrigger value="brightdata" className="flex-shrink-0 whitespace-nowrap">
+                <CloudDownload className="w-4 h-4 mr-1" />
+                Bright Data
+              </TabsTrigger>
+              <TabsTrigger value="tools" className="flex-shrink-0 whitespace-nowrap">
+                <Zap className="w-4 h-4 mr-1" />
+                관리도구
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Product Registration Tab */}
           <TabsContent value="register" className="space-y-4">
