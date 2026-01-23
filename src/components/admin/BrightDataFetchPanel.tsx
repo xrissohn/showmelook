@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { 
   Database, RefreshCw, Download, CheckCircle2, XCircle, 
-  Loader2, FileJson, Calendar, Package
+  Loader2, FileJson, Calendar, Package, AlertCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,8 @@ export const BrightDataFetchPanel = () => {
   const [datasetId, setDatasetId] = useState("j_mkbofq0p7l9tvl80j");
   const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
   const [isLoadingSnapshots, setIsLoadingSnapshots] = useState(false);
+  const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
+  const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
   const [fetchLimit, setFetchLimit] = useState("100");
   const [isFetching, setIsFetching] = useState(false);
@@ -49,6 +51,8 @@ export const BrightDataFetchPanel = () => {
     setIsLoadingSnapshots(true);
     setSnapshots([]);
     setFetchResult(null);
+    setSnapshotsLoaded(false);
+    setRawResponse(null);
 
     try {
       const { data, error } = await supabase.functions.invoke('brightdata-fetch', {
@@ -60,11 +64,15 @@ export const BrightDataFetchPanel = () => {
 
       if (error) throw error;
       
-      if (data.success && data.snapshots) {
-        setSnapshots(data.snapshots);
+      if (data.success) {
+        setSnapshots(data.snapshots || []);
+        setSnapshotsLoaded(true);
+        if (data.raw_response) {
+          setRawResponse(data.raw_response);
+        }
         toast({ 
           title: "스냅샷 목록 로드 완료", 
-          description: `${data.snapshots.length}개의 스냅샷을 찾았습니다.` 
+          description: `${data.snapshots?.length || 0}개의 스냅샷을 찾았습니다.` 
         });
       } else {
         throw new Error(data.error || 'Failed to load snapshots');
@@ -191,6 +199,46 @@ export const BrightDataFetchPanel = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* 스냅샷 없음 안내 */}
+      {snapshotsLoaded && snapshots.length === 0 && (
+        <Card className="border-orange-500/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-orange-600">
+              <AlertCircle className="w-5 h-5" />
+              스냅샷을 찾을 수 없습니다
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>가능한 원인:</p>
+              <ul className="list-disc list-inside space-y-1 ml-4">
+                <li>Dataset ID가 올바른지 확인해주세요</li>
+                <li>Bright Data에서 데이터 수집이 완료되었는지 확인해주세요</li>
+                <li>API 키 권한이 해당 데이터셋에 접근 가능한지 확인해주세요</li>
+              </ul>
+            </div>
+            
+            {rawResponse && (
+              <div className="mt-4">
+                <p className="text-xs font-medium mb-2">API 응답 (디버깅용):</p>
+                <pre className="text-xs bg-muted p-3 rounded-lg overflow-x-auto">
+                  {rawResponse}
+                </pre>
+              </div>
+            )}
+            
+            <div className="pt-4 border-t">
+              <p className="text-sm font-medium mb-2">Bright Data 대시보드에서 확인할 사항:</p>
+              <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1 ml-4">
+                <li>My Datasets → 해당 데이터셋 선택</li>
+                <li>Runs 탭에서 수집 완료된 스냅샷 확인</li>
+                <li>Delivery 설정에서 웹훅 URL 확인</li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* 스냅샷 목록 */}
       {snapshots.length > 0 && (
