@@ -296,7 +296,7 @@ function cleanConcept(concept: string): string {
   return concept.toLowerCase().trim();
 }
 
-// 한글/영문 컨셉 정규화 매핑
+// 한글/영문 컨셉 정규화 매핑 (v5.1 - 확장)
 const CONCEPT_SYNONYMS: Record<string, string[]> = {
   '캐주얼': ['casual', '캐쥬얼', '데일리', 'daily'],
   '미니멀': ['minimal', 'minimalist', '심플', 'simple', '베이직', 'basic'],
@@ -310,6 +310,15 @@ const CONCEPT_SYNONYMS: Record<string, string[]> = {
   '포멀': ['formal', '정장', '오피스', 'office', 'business'],
   '보헤미안': ['bohemian', 'boho', '히피'],
   '귀여운': ['cute', '큐트', '러블리'],
+  // 🆕 v5.1 추가 컨셉들
+  '밀리터리': ['military', '밀리터리', '카무플라주', 'camo', '카키', 'khaki', '아미', 'army', '유틸리티', 'utility', '워크웨어', 'workwear'],
+  '고프코어': ['gorpcore', '고프코어', '아웃도어', 'outdoor', '하이킹', 'hiking', '테크웨어', 'techwear'],
+  '올드머니': ['old money', '올드머니', '프레피', 'preppy', '아이비', 'ivy'],
+  '시티보이': ['city boy', '시티보이', '어반', 'urban'],
+  '아메카지': ['amekaji', '아메카지', '워크웨어', 'americana'],
+  '댄디': ['dandy', '댄디', '젠틀', 'gentlemanly'],
+  '그런지': ['grunge', '그런지', '얼터너티브'],
+  '노멀코어': ['normcore', '노멀코어'],
 };
 
 // 컨셉 정규화
@@ -362,7 +371,7 @@ function formalityMatch(product1: CachedProduct, product2: CachedProduct): boole
   return Math.abs(f1 - f2) <= 2; // 2단계 이내면 호환
 }
 
-// 요청에서 컨셉 키워드 추출
+// 요청에서 컨셉 키워드 추출 (v5.1 - 확장)
 function extractConcepts(request: string): string[] {
   const conceptKeywords: Record<string, string[]> = {
     '캐주얼': ['캐주얼', '편한', '데일리', '일상'],
@@ -377,6 +386,14 @@ function extractConcepts(request: string): string[] {
     '빈티지': ['빈티지', '레트로', '복고'],
     '오피스': ['오피스', '출근', '비즈니스', '정장'],
     '포멀': ['포멀', '정장', '격식', '드레스코드'],
+    // 🆕 v5.1 추가 컨셉들
+    '밀리터리': ['밀리터리', '군복', '카키', '아미', '카무플라주', '유틸리티', '워크웨어', '필드'],
+    '고프코어': ['고프코어', '아웃도어', '등산', '하이킹', '테크웨어', '기능성'],
+    '올드머니': ['올드머니', '프레피', '아이비', '클래식한', '상류층'],
+    '시티보이': ['시티보이', '도시', '어반'],
+    '아메카지': ['아메카지', '아메리칸', '워크웨어'],
+    '댄디': ['댄디', '젠틀맨', '신사'],
+    '그런지': ['그런지', '얼터너티브', '락'],
   };
   
   const found: string[] = [];
@@ -930,13 +947,24 @@ serve(async (req) => {
     
     console.log(`[style-recommend] After season filter (${requestedSeason}): ${allProducts.length}`);
     
-    // ============= 🔥 GPT 조건 기반 추가 필터링 =============
-    if (searchConditions) {
-      const beforeCount = allProducts.length;
-      
-      allProducts = allProducts.filter(product => {
+    // ============= 🔥 GPT 조건 기반 추가 필터링 (v5.1: Fallback 포함) =============
+    // 🆕 컨셉이 DB에 없을 때 사용할 fallback 매핑
+    const CONCEPT_FALLBACK: Record<string, string[]> = {
+      '밀리터리': ['캐주얼', '스트릿', '세미캐주얼'],
+      '고프코어': ['스포티', '캐주얼', '미니멀'],
+      '올드머니': ['클래식', '포멀', '모던'],
+      '시티보이': ['캐주얼', '모던', '미니멀'],
+      '아메카지': ['캐주얼', '빈티지', '스트릿'],
+      '댄디': ['클래식', '포멀', '모던'],
+      '그런지': ['스트릿', '빈티지', '캐주얼'],
+      '노멀코어': ['미니멀', '캐주얼', '베이직'],
+      '보헤미안': ['페미닌', '빈티지', '캐주얼'],
+    };
+    
+    const filterProductsByConditions = (products: CachedProduct[], conceptsToMatch: string[]): CachedProduct[] => {
+      return products.filter(product => {
         const meta = product.dna_meta;
-        if (!meta) return false; // DNA 없는 상품 제외
+        if (!meta) return false;
         
         // 1. Formality 범위 체크
         if (meta.formality < searchConditions!.formalityMin || meta.formality > searchConditions!.formalityMax) {
@@ -944,29 +972,65 @@ serve(async (req) => {
         }
         
         // 2. 컨셉 매칭 (하나라도 일치하면 OK)
-        if (searchConditions!.concepts.length > 0) {
+        if (conceptsToMatch.length > 0) {
           const productConcepts = meta.concepts?.map(c => normalizeConcept(c)) || [];
-          const requestConcepts = searchConditions!.concepts.map(c => normalizeConcept(c));
+          const requestConcepts = conceptsToMatch.map(c => normalizeConcept(c));
           const hasMatchingConcept = productConcepts.some(pc => 
             requestConcepts.some(rc => pc.includes(rc) || rc.includes(pc))
           );
           if (!hasMatchingConcept && productConcepts.length > 0) {
-            // 완전 불일치는 제외 (컨셉이 있는 경우에만)
             return false;
-          }
-        }
-        
-        // 3. 색상 계열 매칭 (선택사항)
-        if (searchConditions!.colorFamilies?.length > 0 && meta.color_family) {
-          if (!searchConditions!.colorFamilies.includes(meta.color_family)) {
-            // 색상 불일치 시 점수 감점만 하고 완전 제외는 안함
-            // return false; 
           }
         }
         
         return true;
       });
+    };
+    
+    if (searchConditions) {
+      const beforeCount = allProducts.length;
+      let filteredProducts = filterProductsByConditions(allProducts, searchConditions.concepts);
       
+      // 🆕 결과가 너무 적으면 fallback 컨셉으로 재시도
+      if (filteredProducts.length < 10 && searchConditions.concepts.length > 0) {
+        console.log(`[style-recommend] Only ${filteredProducts.length} products, trying fallback concepts...`);
+        
+        // fallback 컨셉 수집
+        let fallbackConcepts: string[] = [];
+        for (const concept of searchConditions.concepts) {
+          const fallbacks = CONCEPT_FALLBACK[concept] || [];
+          fallbackConcepts.push(...fallbacks);
+        }
+        fallbackConcepts = [...new Set(fallbackConcepts)]; // 중복 제거
+        
+        if (fallbackConcepts.length > 0) {
+          console.log(`[style-recommend] Fallback concepts: ${fallbackConcepts.join(', ')}`);
+          const fallbackFiltered = filterProductsByConditions(allProducts, fallbackConcepts);
+          
+          // 원본 결과 + fallback 결과 병합 (원본 우선)
+          const existingIds = new Set(filteredProducts.map(p => p.id));
+          for (const p of fallbackFiltered) {
+            if (!existingIds.has(p.id)) {
+              filteredProducts.push(p);
+            }
+          }
+          console.log(`[style-recommend] After fallback merge: ${filteredProducts.length} products`);
+        }
+      }
+      
+      // 🆕 그래도 적으면 formality만으로 필터링 (컨셉 무시)
+      if (filteredProducts.length < 10) {
+        console.log(`[style-recommend] Still too few (${filteredProducts.length}), using formality-only filter...`);
+        filteredProducts = allProducts.filter(p => {
+          const meta = p.dna_meta;
+          if (!meta) return false;
+          return meta.formality >= searchConditions!.formalityMin && 
+                 meta.formality <= searchConditions!.formalityMax;
+        });
+        console.log(`[style-recommend] Formality-only filter: ${filteredProducts.length} products`);
+      }
+      
+      allProducts = filteredProducts;
       console.log(`[style-recommend] After GPT conditions filter: ${beforeCount} → ${allProducts.length}`);
       console.log(`[style-recommend] GPT filter criteria: concepts=${searchConditions.concepts.join(',')}, formality=${searchConditions.formalityMin}-${searchConditions.formalityMax}`);
     }
