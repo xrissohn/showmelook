@@ -760,13 +760,38 @@ const Admin = () => {
 
   const loadProductStats = async () => {
     try {
-      const { count: total } = await supabase.from('products_cache').select('*', { count: 'exact', head: true });
-      const { data: products } = await supabase.from('products_cache').select('merchant_id');
+      // 전체 개수
+      const { count: total } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // 머천트 목록 조회 (distinct)
+      const { data: merchants } = await supabase
+        .from('merchants')
+        .select('id')
+        .eq('is_active', true);
 
       const byMerchant: Record<string, number> = {};
-      products?.forEach(p => {
-        byMerchant[p.merchant_id || 'unknown'] = (byMerchant[p.merchant_id || 'unknown'] || 0) + 1;
-      });
+      
+      if (merchants && merchants.length > 0) {
+        // 각 머천트별 개수를 병렬로 조회
+        const countPromises = merchants.map(async (m) => {
+          const { count } = await supabase
+            .from('products_cache')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_active', true)
+            .eq('merchant_id', m.id);
+          return { merchantId: m.id, count: count || 0 };
+        });
+
+        const results = await Promise.all(countPromises);
+        results.forEach(r => {
+          if (r.count > 0) {
+            byMerchant[r.merchantId] = r.count;
+          }
+        });
+      }
 
       setProductStats({ total: total || 0, byMerchant });
     } catch (error) {
