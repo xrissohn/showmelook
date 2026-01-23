@@ -5134,7 +5134,7 @@ const StyleGenerator = () => {
             >
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
-                  {isGenerating ? (
+                  {(isGenerating || isCustomSearching) ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden">
                       {/* 배경 파티클 효과 */}
                       <div className="absolute inset-0 overflow-hidden">
@@ -5197,11 +5197,11 @@ const StyleGenerator = () => {
                         </div>
                       </div>
                       
-                      {/* 로딩 텍스트 with typing effect */}
+                      {/* 로딩 텍스트 - 상품 추천 중일 때는 다른 문구 */}
                       <div className="mt-8 sm:mt-10 text-center px-4 z-10">
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-lg sm:text-xl font-semibold text-foreground font-korean">
-                            AI가 스타일을 만들고 있어요
+                            {isCustomSearching ? 'AI가 스타일을 분석중' : 'AI가 스타일을 만들고 있어요'}
                           </span>
                           <span className="flex gap-0.5">
                             {[0, 1, 2].map((i) => (
@@ -5217,7 +5217,7 @@ const StyleGenerator = () => {
                           </span>
                         </div>
                         <p className="text-sm sm:text-base text-muted-foreground mt-3 font-korean">
-                          완벽한 룩을 찾는 중이에요 ✨
+                          {isCustomSearching ? '딱 맞는 상품을 찾고 있어요 🔍' : '완벽한 룩을 찾는 중이에요 ✨'}
                         </p>
                       </div>
                       
