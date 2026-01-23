@@ -416,19 +416,19 @@ const Admin = () => {
 
   const loadPendingCount = async () => {
     try {
-      // 이미지 누락 카운트
+      // 이미지 관련 에러 카운트 (missing_image, image_download_failed)
       const { count: imageCount } = await supabase
         .from('pending_products')
         .select('*', { count: 'exact', head: true })
         .is('resolved_at', null)
-        .eq('error_type', 'missing_image');
+        .in('error_type', ['missing_image', 'image_download_failed']);
       
-      // 기타 에러 카운트 (머천트 오류 등)
+      // 기타 에러 카운트 (머천트 오류 등, 이미지 관련 제외)
       const { count: otherCount } = await supabase
         .from('pending_products')
         .select('*', { count: 'exact', head: true })
         .is('resolved_at', null)
-        .neq('error_type', 'missing_image');
+        .not('error_type', 'in', '("missing_image","image_download_failed")');
       
       setPendingImageCount(imageCount || 0);
       setPendingOtherCount(otherCount || 0);

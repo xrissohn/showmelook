@@ -52,11 +52,12 @@ const PendingProductsManager = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Load pending products
+      // Load pending products (머천트 오류만, 이미지 관련 에러 제외)
       const { data: pending, error: pendingError } = await supabase
         .from('pending_products')
         .select('*')
         .is('resolved_at', null)
+        .not('error_type', 'in', '("missing_image","image_download_failed")')
         .order('created_at', { ascending: false });
 
       if (pendingError) throw pendingError;
