@@ -498,23 +498,113 @@ const Admin = () => {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
 
-        // 컬럼 매핑
-        const products: ExcelProduct[] = jsonData.map((row) => ({
-          merchant_id: String(row['merchant_id'] || row['머천트'] || row['Merchant'] || 'unknown'),
-          product_url: String(row['product_url'] || row['URL'] || row['url'] || row['상품URL'] || ''),
-          name: String(row['name'] || row['상품명'] || row['Name'] || row['title'] || ''),
-          price: Number(row['price'] || row['가격'] || row['Price'] || 0),
-          image_url: row['image_url'] || row['이미지'] || row['Image'] ? String(row['image_url'] || row['이미지'] || row['Image']) : undefined,
-          original_price: row['original_price'] || row['원가'] ? Number(row['original_price'] || row['원가']) : undefined,
-          category: row['category'] || row['카테고리'] ? String(row['category'] || row['카테고리']) : undefined,
-          brand: row['brand'] || row['브랜드'] ? String(row['brand'] || row['브랜드']) : undefined,
-          gender: row['gender'] || row['성별'] ? String(row['gender'] || row['성별']) : undefined,
-          color: row['color'] || row['색상'] ? String(row['color'] || row['색상']) : undefined,
-        })).filter(p => p.product_url && p.name && p.price > 0);
+        // 첫 행의 컬럼명 확인 (디버깅용)
+        if (jsonData.length > 0) {
+          const columns = Object.keys(jsonData[0]);
+          console.log('[Excel] 발견된 컬럼:', columns);
+          console.log('[Excel] 첫 번째 행 데이터:', jsonData[0]);
+        }
 
-        setExcelProducts(products);
-        toast({ title: "파일 파싱 완료", description: `${products.length}개 제품 발견` });
+        // 유연한 컬럼 매핑 (대소문자 무시, 공백 제거)
+        const findValue = (row: Record<string, unknown>, keys: string[]): unknown => {
+          for (const key of Object.keys(row)) {
+            const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
+            for (const searchKey of keys) {
+              const normalizedSearch = searchKey.toLowerCase().replace(/[\s_-]/g, '');
+              if (normalizedKey === normalizedSearch || normalizedKey.includes(normalizedSearch)) {
+                return row[key];
+              }
+            }
+          }
+          return undefined;
+        };
+
+        // 가격 파싱 (콤마, 원화 기호 제거)
+        const parsePrice = (value: unknown): number => {
+          if (typeof value === 'number') return value;
+          if (typeof value === 'string') {
+            const cleaned = value.replace(/[^\d.]/g, '');
+            return parseFloat(cleaned) || 0;
+          }
+          return 0;
+        };
+
+        // URL에서 merchant_id 추론
+        const inferMerchantId = (url: string): string => {
+          const urlLower = url.toLowerCase();
+          if (urlLower.includes('wconcept')) return 'wconcept';
+          if (urlLower.includes('hfashionmall') || urlLower.includes('hfashion')) return 'hfashionmall';
+          if (urlLower.includes('paulsmith')) return 'paulsmith';
+          if (urlLower.includes('ssfshop')) return 'ssfshop';
+          if (urlLower.includes('sivillage')) return 'sivillage';
+          if (urlLower.includes('29cm')) return '29cm';
+          if (urlLower.includes('musinsa')) return 'musinsa';
+          if (urlLower.includes('stories')) return 'stories';
+          if (urlLower.includes('posty')) return 'posty';
+          if (urlLower.includes('lfmall')) return 'lfmall';
+          if (urlLower.includes('arket')) return 'arket';
+          if (urlLower.includes('jestina')) return 'jestina';
+          if (urlLower.includes('benetton')) return 'benetton';
+          if (urlLower.includes('coupang')) return 'coupang';
+          return 'unknown';
+        };
+
+        // 컬럼 매핑
+        const products: ExcelProduct[] = jsonData.map((row) => {
+          const productUrl = String(findValue(row, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || '');
+          const merchantIdRaw = findValue(row, ['merchant_id', '머천트', 'merchant', '판매처', '쇼핑몰']);
+          const merchantId = merchantIdRaw ? String(merchantIdRaw) : inferMerchantId(productUrl);
+          
+          return {
+            merchant_id: merchantId,
+            product_url: productUrl,
+            name: String(findValue(row, ['name', '상품명', 'title', '제품명', 'productname', '이름']) || ''),
+            price: parsePrice(findValue(row, ['price', '가격', '판매가', 'saleprice', '현재가'])),
+            image_url: findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img']) ? 
+              String(findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img'])) : undefined,
+            original_price: findValue(row, ['original_price', '원가', '정가', 'originalprice']) ? 
+              parsePrice(findValue(row, ['original_price', '원가', '정가', 'originalprice'])) : undefined,
+            category: findValue(row, ['category', '카테고리', '분류']) ? 
+              String(findValue(row, ['category', '카테고리', '분류'])) : undefined,
+            brand: findValue(row, ['brand', '브랜드']) ? 
+              String(findValue(row, ['brand', '브랜드'])) : undefined,
+            gender: findValue(row, ['gender', '성별', 'target']) ? 
+              String(findValue(row, ['gender', '성별', 'target'])) : undefined,
+            color: findValue(row, ['color', '색상', '컬러']) ? 
+              String(findValue(row, ['color', '색상', '컬러'])) : undefined,
+          };
+        }).filter(p => p.product_url && p.name && p.price > 0);
+
+        // 필터링 전후 로그
+        console.log('[Excel] 전체 행 수:', jsonData.length);
+        console.log('[Excel] 유효한 제품 수:', products.length);
+        
+        if (products.length === 0 && jsonData.length > 0) {
+          // 왜 필터링되었는지 분석
+          const firstRow = jsonData[0];
+          const testProduct = {
+            product_url: String(findValue(firstRow, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || ''),
+            name: String(findValue(firstRow, ['name', '상품명', 'title', '제품명', 'productname', '이름']) || ''),
+            price: parsePrice(findValue(firstRow, ['price', '가격', '판매가', 'saleprice', '현재가'])),
+          };
+          console.log('[Excel] 첫 행 파싱 결과:', testProduct);
+          
+          const missingFields: string[] = [];
+          if (!testProduct.product_url) missingFields.push('URL');
+          if (!testProduct.name) missingFields.push('상품명');
+          if (testProduct.price <= 0) missingFields.push('가격');
+          
+          toast({ 
+            title: "제품 발견 실패", 
+            description: `필수 컬럼 누락: ${missingFields.join(', ')}. 컬럼명을 확인해주세요.`,
+            variant: "destructive" 
+          });
+        } else {
+          setExcelProducts(products);
+          toast({ title: "파일 파싱 완료", description: `${products.length}개 제품 발견 (총 ${jsonData.length}행)` });
+        }
       } catch (error) {
+        console.error('[Excel] 파싱 오류:', error);
         toast({ title: "파일 파싱 실패", description: "올바른 엑셀 파일인지 확인해주세요.", variant: "destructive" });
       }
     };
