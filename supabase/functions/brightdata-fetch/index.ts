@@ -177,8 +177,9 @@ serve(async (req) => {
     if (action === 'list_snapshots') {
       console.log(`Fetching snapshots for dataset: ${dataset_id}`);
       
+      // API v3: dataset_id는 쿼리 파라미터로 전달
       const response = await fetch(
-        `https://api.brightdata.com/datasets/v3/snapshots/${dataset_id}`,
+        `https://api.brightdata.com/datasets/v3/snapshots?dataset_id=${encodeURIComponent(dataset_id)}`,
         {
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -210,11 +211,11 @@ serve(async (req) => {
         throw new Error('snapshot_id is required');
       }
 
-      console.log(`Fetching snapshot data: ${dataset_id}/${snapshot_id}`);
+      console.log(`Fetching snapshot data: ${snapshot_id}`);
 
-      // 스냅샷 데이터 다운로드 (NDJSON 형식)
+      // API v3: snapshot_id로 직접 다운로드 (단수형 snapshot)
       const response = await fetch(
-        `https://api.brightdata.com/datasets/v3/snapshots/${dataset_id}/${snapshot_id}?format=ndjson`,
+        `https://api.brightdata.com/datasets/v3/snapshot/${encodeURIComponent(snapshot_id)}?format=ndjson`,
         {
           headers: {
             'Authorization': `Bearer ${apiKey}`,
