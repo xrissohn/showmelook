@@ -119,7 +119,7 @@ export default {
           },
           "50%": {
             opacity: "1",
-            transform: "scale(1.6)"
+            transform: "scale(1)"
           }
         },
         "float": {
@@ -201,7 +201,7 @@ export default {
       },
       animation: {
         "sparkle": "sparkle 1s ease-in-out infinite",
-        "twinkle": "twinkle 0.6s ease-in-out infinite",
+        "twinkle": "twinkle var(--twinkle-duration, 1.2s) ease-in-out var(--twinkle-delay, 0s) infinite",
         "float": "float 4s ease-in-out infinite",
         "particle-rise": "particle-rise 5s ease-in-out infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
