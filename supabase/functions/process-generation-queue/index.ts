@@ -9,13 +9,17 @@ const corsHeaders = {
 };
 
 // ===== Phase 3 Configuration =====
-const BATCH_SIZE = 5; // 동시 처리할 최대 작업 수
+const BATCH_SIZE = 9; // 배치당 최대 작업 수 (3워커 x 3작업)
 const CHAIN_DELAY_MS = 2000; // 연쇄 호출 간 딜레이 (2초)
 const MAX_CHAIN_DEPTH = 30; // 최대 연쇄 호출 횟수
 
+// Parallel Processing 설정
+const PARALLEL_WORKERS = 3; // 동시 처리 워커 수
+const STAGGER_DELAY_MS = 2000; // 워커 간 시차 시작 (2초)
+
 // Rate Limiter (Token Bucket) 설정
-const TARGET_RPM = 10; // Gemini API 목표 분당 요청 수
-const MIN_INTERVAL_MS = (60 * 1000) / TARGET_RPM; // 6초 간격
+const TARGET_RPM = 30; // 병렬 처리로 목표 분당 요청 수 증가
+const MIN_INTERVAL_MS = (60 * 1000) / TARGET_RPM; // 2초 간격
 const BACKOFF_MULTIPLIER = 2; // 429 에러 시 백오프 배수
 const MAX_BACKOFF_MS = 30000; // 최대 백오프 30초
 const RECOVERY_THRESHOLD = 3; // 연속 성공 N회 후 백오프 감소
@@ -321,6 +325,78 @@ async function processJob(
   }
 }
 
+// Parallel Worker Processing
+async function processJobsInParallel(
+  supabase: any,
+  jobs: any[],
+  SUPABASE_URL: string,
+  SUPABASE_SERVICE_ROLE_KEY: string,
+  minIntervalMs: number,
+  numWorkers: number
+): Promise<{ results: any[]; rateLimitHit: boolean; successCount: number; failCount: number; consecutiveSuccesses: number }> {
+  const results: any[] = [];
+  let rateLimitHit = false;
+  let successCount = 0;
+  let failCount = 0;
+  let consecutiveSuccesses = 0;
+  
+  // Jobs를 워커 수만큼 그룹으로 분배
+  const workerGroups: any[][] = Array.from({ length: numWorkers }, () => []);
+  jobs.forEach((job, idx) => {
+    workerGroups[idx % numWorkers].push(job);
+  });
+  
+  console.log(`[process-queue] Parallel: ${numWorkers} workers, jobs per worker: ${workerGroups.map(g => g.length).join(',')}`);
+  
+  // 시차를 두고 워커 시작 (Staggered Start)
+  const workerPromises = workerGroups.map(async (group, workerIdx) => {
+    if (group.length === 0) return [];
+    
+    // 워커 간 시차 시작 (첫 번째 워커는 즉시 시작)
+    if (workerIdx > 0) {
+      await new Promise(resolve => setTimeout(resolve, workerIdx * STAGGER_DELAY_MS));
+    }
+    
+    console.log(`[process-queue] Worker ${workerIdx + 1} started with ${group.length} jobs`);
+    
+    const workerResults: any[] = [];
+    for (const job of group) {
+      if (rateLimitHit) {
+        console.log(`[process-queue] Worker ${workerIdx + 1} stopping due to rate limit`);
+        break;
+      }
+      
+      const result = await processJob(supabase, job, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      workerResults.push(result);
+      
+      if (result.rateLimited) {
+        rateLimitHit = true;
+        consecutiveSuccesses = 0;
+      } else if (result.success) {
+        successCount++;
+        consecutiveSuccesses++;
+      } else {
+        failCount++;
+        consecutiveSuccesses = 0;
+      }
+      
+      // 각 워커 내에서도 최소 간격 유지 (다음 작업이 있을 때만)
+      if (group.indexOf(job) < group.length - 1 && !rateLimitHit) {
+        await new Promise(resolve => setTimeout(resolve, minIntervalMs));
+      }
+    }
+    
+    console.log(`[process-queue] Worker ${workerIdx + 1} finished: ${workerResults.filter(r => r.success).length} success, ${workerResults.filter(r => !r.success && !r.rateLimited).length} fail`);
+    return workerResults;
+  });
+  
+  // 모든 워커 완료 대기
+  const allResults = await Promise.all(workerPromises);
+  results.push(...allResults.flat());
+  
+  return { results, rateLimitHit, successCount, failCount, consecutiveSuccesses };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -363,10 +439,14 @@ serve(async (req) => {
     }
 
     // Step 2: Get jobs (priority order, respecting rate limit via batch size adjustment)
-    // Adaptive batch size based on backoff state
-    const effectiveBatchSize = currentBackoffMs > MIN_INTERVAL_MS 
-      ? Math.max(1, Math.floor(BATCH_SIZE / 2)) // 백오프 중이면 배치 크기 축소
-      : BATCH_SIZE;
+    // Adaptive workers and batch size based on backoff state
+    const effectiveWorkers = currentBackoffMs > MIN_INTERVAL_MS 
+      ? 1  // 백오프 중이면 순차 처리로 전환
+      : PARALLEL_WORKERS;
+    
+    const effectiveBatchSize = effectiveWorkers * 3; // 워커당 3개씩
+
+    console.log(`[process-queue] Effective workers: ${effectiveWorkers}, batch size: ${effectiveBatchSize}`);
 
     const { data: jobs, error: fetchError } = await supabase
       .from('generation_jobs')
@@ -389,41 +469,21 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[process-queue] Processing ${jobs.length} jobs (effective batch: ${effectiveBatchSize})`);
+    console.log(`[process-queue] Processing ${jobs.length} jobs with ${effectiveWorkers} parallel workers`);
 
-    // Step 3: Process jobs with rate limiting awareness
-    // 순차 처리로 변경하여 rate limit 제어 (병렬은 429 폭주 위험)
-    const results: any[] = [];
-    let rateLimitHit = false;
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const job of jobs) {
-      if (rateLimitHit) {
-        // Rate limit 발생 시 나머지 job은 스킵 (큐에 남김)
-        console.log(`[process-queue] Skipping job ${job.id} due to rate limit`);
-        break;
-      }
-
-      const result = await processJob(supabase, job, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      results.push(result);
-
-      if (result.rateLimited) {
-        rateLimitHit = true;
-        consecutiveSuccesses = 0;
-      } else if (result.success) {
-        successCount++;
-        consecutiveSuccesses++;
-      } else {
-        failCount++;
-        consecutiveSuccesses = 0;
-      }
-
-      // Rate limit prevention: 작업 간 간격
-      if (jobs.indexOf(job) < jobs.length - 1 && !rateLimitHit) {
-        await new Promise(resolve => setTimeout(resolve, MIN_INTERVAL_MS));
-      }
-    }
+    // Step 3: Process jobs with parallel workers
+    const { results, rateLimitHit, successCount, failCount, consecutiveSuccesses: newConsecutiveSuccesses } = 
+      await processJobsInParallel(
+        supabase,
+        jobs,
+        SUPABASE_URL,
+        SUPABASE_SERVICE_ROLE_KEY,
+        MIN_INTERVAL_MS,
+        effectiveWorkers
+      );
+    
+    // Update consecutive successes from parallel result
+    consecutiveSuccesses = rateLimitHit ? 0 : newConsecutiveSuccesses;
 
     // Step 4: Adjust backoff based on results
     let nextBackoffMs = currentBackoffMs;
@@ -439,7 +499,8 @@ serve(async (req) => {
     }
 
     const elapsed = Date.now() - startTime;
-    console.log(`[process-queue] Batch: ${successCount} succeeded, ${failCount} failed, ${rateLimitHit ? 'RATE LIMITED' : 'OK'} in ${elapsed}ms`);
+    const throughputPerMin = successCount > 0 ? Math.round((successCount / elapsed) * 60000) : 0;
+    console.log(`[process-queue] Batch: ${successCount} succeeded, ${failCount} failed, ${rateLimitHit ? 'RATE LIMITED' : 'OK'} in ${elapsed}ms (~${throughputPerMin} jobs/min)`);
 
     // Step 5: Check for remaining jobs and chain
     const { count: remainingCount } = await supabase
