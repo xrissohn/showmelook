@@ -44,6 +44,7 @@ interface RegistrationResult {
   error?: string;
   step_failed?: 'upsert' | 'image' | 'dna';
   pending?: boolean;  // 수동 처리 대기열에 추가됨
+  duplicate?: boolean;  // 이미 등록된 제품
   product_url?: string;
 }
 
@@ -745,6 +746,25 @@ serve(async (req) => {
           image_stored: false,
           dna_generated: false,
           error: '필수 필드 누락: name, price, merchant_id, product_url 필요',
+        });
+        failCount++;
+        continue;
+      }
+
+      // 중복 제품 체크 (pending으로 이동하기 전에 미리 확인)
+      const { data: existingProduct } = await supabase
+        .from('products_cache')
+        .select('id')
+        .eq('product_url', product.product_url)
+        .maybeSingle();
+
+      if (existingProduct) {
+        results.push({
+          success: false,
+          duplicate: true,
+          image_stored: false,
+          dna_generated: false,
+          error: '이미 등록된 제품입니다 (URL 중복)',
         });
         failCount++;
         continue;
