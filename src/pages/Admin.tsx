@@ -620,6 +620,7 @@ const Admin = () => {
     const BATCH_SIZE = 10;
     let success = 0;
     let failed = 0;
+    let skipped = 0;  // 중복 스킵 카운트
     const errors: string[] = [];
 
     for (let i = 0; i < excelProducts.length; i += BATCH_SIZE) {
@@ -636,6 +637,9 @@ const Admin = () => {
           for (const r of data.results) {
             if (r.success) {
               success++;
+            } else if (r.error?.includes('이미 등록된 제품')) {
+              // 중복 스킵은 별도 카운트
+              skipped++;
             } else {
               failed++;
               errors.push(`${r.product_url?.slice(0, 50)}...: ${r.error}`);
@@ -649,11 +653,26 @@ const Admin = () => {
       }
     }
 
-    setExcelUploadResult({ success, failed, errors: errors.slice(0, 10) });
+    // 결과에 스킵 정보 포함
+    const resultWithSkipped = { success, failed, skipped, errors: errors.slice(0, 10) };
+    setExcelUploadResult(resultWithSkipped as typeof excelUploadResult);
     setIsExcelUploading(false);
     
+    // 결과 토스트 메시지 개선
+    const parts = [];
+    if (success > 0) parts.push(`${success}개 성공`);
+    if (skipped > 0) parts.push(`${skipped}개 중복 스킵`);
+    if (failed > 0) parts.push(`${failed}개 실패`);
+    
+    if (parts.length > 0) {
+      toast({ 
+        title: success > 0 ? "등록 완료" : (skipped > 0 ? "중복 제품" : "등록 실패"), 
+        description: parts.join(', '),
+        variant: success > 0 ? "default" : (skipped > 0 ? "default" : "destructive")
+      });
+    }
+    
     if (success > 0) {
-      toast({ title: "등록 완료", description: `${success}개 성공, ${failed}개 실패` });
       loadProductStats();
       loadDnaStats();
       loadPendingCount();
@@ -1252,19 +1271,30 @@ const Admin = () => {
                 {excelUploadResult && (
                   <div className={`p-4 rounded-lg border ${
                     excelUploadResult.failed === 0 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                      ? ((excelUploadResult as any).skipped > 0 
+                          ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
+                          : 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800')
                       : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
                   }`}>
                     <div className="flex items-center gap-2 mb-2">
-                      {excelUploadResult.failed === 0 ? (
+                      {excelUploadResult.failed === 0 && excelUploadResult.success > 0 ? (
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      ) : (excelUploadResult as any).skipped > 0 ? (
+                        <Package className="w-5 h-5 text-blue-600" />
                       ) : (
                         <AlertTriangle className="w-5 h-5 text-yellow-600" />
                       )}
                       <span className="font-medium">
-                        등록 완료: {excelUploadResult.success}개 성공, {excelUploadResult.failed}개 실패
+                        등록 완료: {excelUploadResult.success}개 성공
+                        {(excelUploadResult as any).skipped > 0 && `, ${(excelUploadResult as any).skipped}개 중복 스킵`}
+                        {excelUploadResult.failed > 0 && `, ${excelUploadResult.failed}개 실패`}
                       </span>
                     </div>
+                    {(excelUploadResult as any).skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && (
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                        ℹ️ 모든 제품이 이미 등록되어 있습니다.
+                      </p>
+                    )}
                     {excelUploadResult.errors.length > 0 && (
                       <div className="text-sm text-muted-foreground space-y-1 mt-2">
                         {excelUploadResult.errors.map((err, idx) => (
