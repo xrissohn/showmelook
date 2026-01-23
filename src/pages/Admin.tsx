@@ -584,11 +584,19 @@ const Admin = () => {
             const merchantIdRaw = findValue(row, ['merchant_id', '머천트', 'merchant', '판매처', '쇼핑몰']);
             const merchantId = merchantIdRaw ? String(merchantIdRaw) : inferMerchantId(productUrl);
             
-            // 이미지 URL 처리 (image_urls 배열 형식도 지원)
-            let imageUrl = findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img', 'image_urls', 'imageurls']);
+            // 이미지 URL 처리 (image_urls 배열 형식도 지원, input 컬럼도 확인)
+            let imageUrl = findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img', 'image_urls', 'imageurls', 'input', 'images']);
             if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('[')) {
               // JSON 배열 형식인 경우 그대로 전달 (서버에서 처리)
               imageUrl = imageUrl;
+            } else if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('{')) {
+              // JSON 객체 형식인 경우 url 추출 시도
+              try {
+                const parsed = JSON.parse(imageUrl);
+                if (parsed.url) imageUrl = parsed.url;
+              } catch {
+                // 파싱 실패시 그대로 사용
+              }
             }
             
             return {
