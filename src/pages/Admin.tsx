@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
+import PendingProductsManager from "@/components/admin/PendingProductsManager";
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
@@ -1461,69 +1462,7 @@ const Admin = () => {
 
           {/* Pending Products Tab */}
           <TabsContent value="pending" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600" />
-                  등록 대기 제품
-                </CardTitle>
-                <CardDescription>
-                  이미지 저장 또는 DNA 생성에 실패한 제품들입니다. 재시도하거나 수동으로 보완할 수 있습니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <Button onClick={loadPendingProducts} disabled={pendingLoading} variant="outline">
-                    {pendingLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                    새로고침
-                  </Button>
-                  <span className="text-sm text-muted-foreground">
-                    {pendingProducts.length}개 대기 중
-                  </span>
-                </div>
-
-                {pendingProducts.length > 0 ? (
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                    {pendingProducts.map((pending) => {
-                      const rawData = pending.raw_data as { name?: string; product_url?: string; image_url?: string };
-                      return (
-                        <div key={pending.id} className="p-3 border rounded-lg bg-card flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline">{pending.source}</Badge>
-                              <Badge variant={pending.error_type === 'image_failed' ? 'secondary' : 'destructive'}>
-                                {pending.error_type}
-                              </Badge>
-                              {pending.retry_count > 0 && (
-                                <Badge variant="outline" className="text-xs">재시도 {pending.retry_count}회</Badge>
-                              )}
-                            </div>
-                            <p className="font-medium text-sm truncate">{rawData?.name || 'Unknown'}</p>
-                            <p className="text-xs text-muted-foreground truncate">{rawData?.product_url}</p>
-                            {pending.error_message && (
-                              <p className="text-xs text-destructive mt-1 truncate">{pending.error_message}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button size="sm" variant="outline" onClick={() => retryPendingProduct(pending)}>
-                              <RotateCw className="w-4 h-4 mr-1" />
-                              재시도
-                            </Button>
-                            <Button size="sm" variant="ghost" onClick={() => deletePendingProduct(pending.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {pendingLoading ? '로딩 중...' : '등록 대기 중인 제품이 없습니다.'}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PendingProductsManager />
           </TabsContent>
 
           {/* DNA Management Tab */}
