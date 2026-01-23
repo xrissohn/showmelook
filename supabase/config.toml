@@ -4,7 +4,7 @@ project_id = "mggedvvzpwxlgrhatrau"
 verify_jwt = false
 
 [functions.generate-style]
-verify_jwt = true
+verify_jwt = false
 
 [functions.cleanup-cache]
 verify_jwt = false
