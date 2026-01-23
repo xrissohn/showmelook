@@ -206,6 +206,16 @@ const Admin = () => {
     failed: number;
   }>({ queued: 0, processing: 0, completed: 0, failed: 0 });
 
+  // Queue monitoring state (Phase 3)
+  const [queueMonitor, setQueueMonitor] = useState<{
+    totalQueued: number;
+    totalProcessing: number;
+    queueByPriority: Record<number, number>;
+    recentThroughput: number;
+    estimatedWaitByTier: Record<string, number>;
+  } | null>(null);
+  const [isMonitorLoading, setIsMonitorLoading] = useState(false);
+
   useEffect(() => {
     loadDnaStats();
     loadProductStats();
@@ -293,6 +303,30 @@ const Admin = () => {
       setJobStats(stats);
     } catch (error) {
       console.error('Error loading job stats:', error);
+    }
+  };
+
+  // Queue monitoring (Phase 3)
+  const loadQueueMonitor = async () => {
+    setIsMonitorLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('queue-status', {
+        body: {},
+      });
+
+      if (!error && data?.success) {
+        setQueueMonitor({
+          totalQueued: data.totalQueued,
+          totalProcessing: data.totalProcessing,
+          queueByPriority: data.queueByPriority || {},
+          recentThroughput: data.recentThroughput,
+          estimatedWaitByTier: data.estimatedWaitByTier || {},
+        });
+      }
+    } catch (error) {
+      console.error('Error loading queue monitor:', error);
+    } finally {
+      setIsMonitorLoading(false);
     }
   };
 
@@ -1669,14 +1703,149 @@ const Admin = () => {
 
           {/* Generation Jobs Tab */}
           <TabsContent value="jobs" className="space-y-4">
-            <Card>
+            {/* Phase 3: Real-time Queue Monitor */}
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Activity className="w-5 h-5 text-primary" />
-                  생성 작업 큐
+                  실시간 큐 모니터링
+                  {isMonitorLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                 </CardTitle>
                 <CardDescription>
-                  비동기 스타일 생성 작업을 모니터링합니다. (Realtime 지원)
+                  Phase 3 엔터프라이즈 스케일링: Rate Limiter + Priority Aging
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Load Monitor Button */}
+                <div className="flex gap-2">
+                  <Button onClick={loadQueueMonitor} disabled={isMonitorLoading} variant="outline">
+                    {isMonitorLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    모니터링 데이터 로드
+                  </Button>
+                </div>
+
+                {queueMonitor && (
+                  <>
+                    {/* Main Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-4 border rounded-lg text-center bg-card">
+                        <Clock className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-3xl font-bold">{queueMonitor.totalQueued}</p>
+                        <p className="text-sm text-muted-foreground">전체 대기</p>
+                      </div>
+                      <div className="p-4 border rounded-lg text-center bg-card">
+                        <Play className="w-6 h-6 mx-auto mb-2 text-primary" />
+                        <p className="text-3xl font-bold text-primary">{queueMonitor.totalProcessing}</p>
+                        <p className="text-sm text-muted-foreground">처리 중</p>
+                      </div>
+                      <div className="p-4 border rounded-lg text-center bg-card">
+                        <Zap className="w-6 h-6 mx-auto mb-2 text-accent-foreground" />
+                        <p className="text-3xl font-bold">{queueMonitor.recentThroughput.toFixed(1)}</p>
+                        <p className="text-sm text-muted-foreground">분당 처리량</p>
+                      </div>
+                      <div className="p-4 border rounded-lg text-center bg-card">
+                        <Database className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-3xl font-bold">
+                          {Object.keys(queueMonitor.queueByPriority).length}
+                        </p>
+                        <p className="text-sm text-muted-foreground">우선순위 레벨</p>
+                      </div>
+                    </div>
+
+                    {/* Priority Distribution */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="p-4 border rounded-lg bg-card">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Users className="w-4 h-4" />
+                          우선순위별 대기 분포
+                        </h4>
+                        <div className="space-y-2">
+                          {Object.entries(queueMonitor.queueByPriority)
+                            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+                            .map(([priority, count]) => {
+                              const tierLabel = priority === '1' ? 'Premium' : priority === '2' || priority === '3' ? 'Pro' : 'Free';
+                              const tierColor = priority === '1' ? 'bg-yellow-500' : priority === '2' || priority === '3' ? 'bg-blue-500' : 'bg-muted-foreground';
+                              const total = queueMonitor.totalQueued || 1;
+                              const percentage = (count / total) * 100;
+                              
+                              return (
+                                <div key={priority} className="flex items-center gap-2">
+                                  <div className="w-24 text-sm">
+                                    <Badge variant="outline" className="text-xs">
+                                      P{priority} ({tierLabel})
+                                    </Badge>
+                                  </div>
+                                  <div className="flex-1 h-4 bg-secondary rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full ${tierColor} transition-all`}
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="w-16 text-right text-sm font-medium">{count}개</span>
+                                </div>
+                              );
+                            })}
+                          {Object.keys(queueMonitor.queueByPriority).length === 0 && (
+                            <p className="text-sm text-muted-foreground text-center py-2">대기 중인 작업 없음</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Estimated Wait Times */}
+                      <div className="p-4 border rounded-lg bg-card">
+                        <h4 className="font-semibold mb-3 flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          티어별 예상 대기 시간
+                        </h4>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between p-2 rounded-md bg-yellow-500/10">
+                            <span className="flex items-center gap-2">
+                              <Badge className="bg-yellow-500 text-white">Premium</Badge>
+                            </span>
+                            <span className="font-bold">
+                              {queueMonitor.estimatedWaitByTier.premium || 0}분
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between p-2 rounded-md bg-blue-500/10">
+                            <span className="flex items-center gap-2">
+                              <Badge className="bg-blue-500 text-white">Pro</Badge>
+                            </span>
+                            <span className="font-bold">
+                              {queueMonitor.estimatedWaitByTier.pro || 0}분
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between p-2 rounded-md bg-muted">
+                            <span className="flex items-center gap-2">
+                              <Badge variant="secondary">Free</Badge>
+                            </span>
+                            <span className="font-bold">
+                              {queueMonitor.estimatedWaitByTier.free || 0}분
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {!queueMonitor && !isMonitorLoading && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Activity className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                    <p>"모니터링 데이터 로드" 버튼을 눌러주세요</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Existing Job Stats Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="w-5 h-5" />
+                  24시간 작업 통계
+                </CardTitle>
+                <CardDescription>
+                  최근 24시간 동안의 작업 상태별 집계
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1688,8 +1857,8 @@ const Admin = () => {
                     <p className="text-sm text-muted-foreground">대기중</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
-                    <Play className="w-6 h-6 mx-auto mb-2 text-blue-500" />
-                    <p className="text-2xl font-bold text-blue-500">{jobStats.processing}</p>
+                    <Play className="w-6 h-6 mx-auto mb-2 text-primary" />
+                    <p className="text-2xl font-bold text-primary">{jobStats.processing}</p>
                     <p className="text-sm text-muted-foreground">처리중</p>
                   </div>
                   <div className="p-4 border rounded-lg text-center">
