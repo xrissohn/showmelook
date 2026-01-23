@@ -1,4 +1,4 @@
-// style-recommend v2.2 - with error logging and retry logic
+// style-recommend v3.0 - DNA 기반 다양성 강화 + 중복 방지 + 컨셉 매칭 개선
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -272,14 +272,72 @@ function filterByTarget(products: CachedProduct[], isKids: boolean, gender: stri
 }
 
 // 2차 필터: 컨셉 매칭 점수 계산
+// 정제된 컨셉 추출 (카테고리 경로 제거)
+function cleanConcept(concept: string): string {
+  // "여성 > 의류 가방 신발..." 같은 카테고리 경로 제거
+  if (concept.includes('>')) return '';
+  // 너무 긴 컨셉은 유효하지 않음
+  if (concept.length > 15) return '';
+  return concept.toLowerCase().trim();
+}
+
+// 한글/영문 컨셉 정규화 매핑
+const CONCEPT_SYNONYMS: Record<string, string[]> = {
+  '캐주얼': ['casual', '캐쥬얼', '데일리', 'daily'],
+  '미니멀': ['minimal', 'minimalist', '심플', 'simple', '베이직', 'basic'],
+  '모던': ['modern', '세련', 'chic', '시크'],
+  '클래식': ['classic', '클라식', '정통'],
+  '스트릿': ['street', 'streetwear', '힙합', 'hiphop', '그런지'],
+  '페미닌': ['feminine', '여성스러운', '러블리', 'lovely', '로맨틱', 'romantic'],
+  '스포티': ['sporty', 'athletic', '애슬레저', 'athleisure', '활동적'],
+  '빈티지': ['vintage', 'retro', '레트로', '복고'],
+  '럭셔리': ['luxury', 'luxe', '고급', 'premium'],
+  '포멀': ['formal', '정장', '오피스', 'office', 'business'],
+  '보헤미안': ['bohemian', 'boho', '히피'],
+  '귀여운': ['cute', '큐트', '러블리'],
+};
+
+// 컨셉 정규화
+function normalizeConcept(concept: string): string {
+  const cleaned = cleanConcept(concept);
+  if (!cleaned) return '';
+  
+  for (const [normalized, synonyms] of Object.entries(CONCEPT_SYNONYMS)) {
+    if (synonyms.some(s => cleaned.includes(s)) || cleaned.includes(normalized)) {
+      return normalized;
+    }
+  }
+  return cleaned;
+}
+
 function calculateConceptScore(product: CachedProduct, requestedConcepts: string[]): number {
   const meta = product.dna_meta;
-  if (!meta || !meta.concepts || requestedConcepts.length === 0) return 0.5; // 중립 점수
+  if (!meta || !meta.concepts || requestedConcepts.length === 0) return 0.3; // 낮은 기본 점수
   
-  const overlap = meta.concepts.filter(c => 
-    requestedConcepts.some(rc => c.includes(rc) || rc.includes(c))
-  );
-  return overlap.length / Math.max(requestedConcepts.length, 1);
+  // 정제된 컨셉 목록
+  const productConcepts = meta.concepts
+    .map(c => normalizeConcept(c))
+    .filter(c => c.length > 0);
+  
+  if (productConcepts.length === 0) return 0.3;
+  
+  const normalizedRequests = requestedConcepts.map(c => normalizeConcept(c)).filter(c => c);
+  
+  // 정확한 매칭 + 부분 매칭 점수
+  let exactMatches = 0;
+  let partialMatches = 0;
+  
+  for (const reqConcept of normalizedRequests) {
+    if (productConcepts.includes(reqConcept)) {
+      exactMatches++;
+    } else if (productConcepts.some(pc => pc.includes(reqConcept) || reqConcept.includes(pc))) {
+      partialMatches++;
+    }
+  }
+  
+  // 점수 = 정확 매칭 * 1.0 + 부분 매칭 * 0.5
+  const score = (exactMatches * 1.0 + partialMatches * 0.5) / Math.max(normalizedRequests.length, 1);
+  return Math.min(score, 1.0);
 }
 
 // 3차 필터: formality 유사도 (같은 격식 수준끼리 매칭)
@@ -610,11 +668,38 @@ serve(async (req) => {
     
     console.log(`[style-recommend] After season filter (${requestedSeason}): ${allProducts.length}`);
     
-    // ============= DNA 2.0 2차 필터링: 컨셉/occasion/boost 점수 =============
-    // 점수 기반 정렬 (boost_score 반영)
+    // ============= 최근 추천된 상품 ID 가져오기 (24시간 내) =============
+    let recentlyUsedProductIds: Set<string> = new Set();
+    try {
+      const { data: recentRecs } = await supabase
+        .from('recommendation_history')
+        .select('items')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .limit(50);
+      
+      if (recentRecs) {
+        for (const rec of recentRecs) {
+          const items = rec.items as any[];
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              if (item?.product_id) {
+                recentlyUsedProductIds.add(item.product_id);
+              }
+            }
+          }
+        }
+      }
+      console.log(`[style-recommend] Recently used products (24h): ${recentlyUsedProductIds.size}`);
+    } catch (e) {
+      console.log('[style-recommend] Could not fetch recent products, continuing...');
+    }
+    
+    // ============= DNA 2.0 2차 필터링: 컨셉/occasion/boost 점수 + 중복 패널티 =============
+    // 점수 기반 정렬 (boost_score 반영 + 최근 사용 패널티)
     const scoredProducts = allProducts.map(p => {
       const boostScore = (p.dna_meta as any)?.boost_score || 0;
       const isPatternSuggested = patternBasedIds.includes(p.id);
+      const wasRecentlyUsed = recentlyUsedProductIds.has(p.id);
       
       return {
         product: p,
@@ -623,32 +708,48 @@ serve(async (req) => {
         hasDNA: !!p.dna_meta,
         boostScore,
         isPatternSuggested,
+        wasRecentlyUsed,
         totalScore: 0, // 아래에서 계산
       };
     });
     
-    // 종합 점수 계산
+    // 종합 점수 계산 (컨셉 점수 가중치 증가, 최근 사용 패널티 적용)
     for (const scored of scoredProducts) {
       scored.totalScore = 
-        (scored.hasDNA ? 0.3 : 0) +
-        (scored.conceptScore * 0.25) +
-        (scored.occasionScore * 0.2) +
-        (scored.boostScore * 0.15) +
-        (scored.isPatternSuggested ? 0.1 : 0);
+        (scored.hasDNA ? 0.25 : 0) +
+        (scored.conceptScore * 0.35) +      // 0.25 → 0.35 증가
+        (scored.occasionScore * 0.20) +
+        (scored.boostScore * 0.10) +         // 0.15 → 0.10 감소
+        (scored.isPatternSuggested ? 0.10 : 0) +
+        (scored.wasRecentlyUsed ? -0.25 : 0); // 최근 사용 페널티
     }
     
-    // 점수 기반 정렬 (총점 > DNA 있음 > 컨셉 점수)
-    scoredProducts.sort((a, b) => {
-      if (a.totalScore !== b.totalScore) return b.totalScore - a.totalScore;
-      if (a.hasDNA !== b.hasDNA) return a.hasDNA ? -1 : 1;
-      return b.conceptScore - a.conceptScore;
-    });
+    // 같은 점수권 내 랜덤 셔플 (점수를 0.05 단위로 그룹화)
+    const scoreGrouped = new Map<number, typeof scoredProducts>();
+    for (const scored of scoredProducts) {
+      const bucket = Math.floor(scored.totalScore * 20) / 20; // 0.05 단위
+      if (!scoreGrouped.has(bucket)) scoreGrouped.set(bucket, []);
+      scoreGrouped.get(bucket)!.push(scored);
+    }
     
-    const topScoredProducts = scoredProducts.slice(0, 200);
+    // 각 그룹 내 셔플
+    const shuffledScored: typeof scoredProducts = [];
+    const buckets = Array.from(scoreGrouped.keys()).sort((a, b) => b - a);
+    for (const bucket of buckets) {
+      const group = scoreGrouped.get(bucket)!;
+      // Fisher-Yates shuffle
+      for (let i = group.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [group[i], group[j]] = [group[j], group[i]];
+      }
+      shuffledScored.push(...group);
+    }
+    
+    const topScoredProducts = shuffledScored.slice(0, 200);
     console.log(`[style-recommend] Top scored products: ${topScoredProducts.length}`);
     if (topScoredProducts.length > 0) {
       const topProduct = topScoredProducts[0];
-      console.log(`[style-recommend] Best match: ${topProduct.product.name} (concept: ${topProduct.conceptScore.toFixed(2)}, occasion: ${topProduct.occasionScore.toFixed(2)})`);
+      console.log(`[style-recommend] Best match: ${topProduct.product.name} (concept: ${topProduct.conceptScore.toFixed(2)}, occasion: ${topProduct.occasionScore.toFixed(2)}, recentlyUsed: ${topProduct.wasRecentlyUsed})`);
     }
     
     // 브랜드 다양성 적용
@@ -661,7 +762,7 @@ serve(async (req) => {
       return shuffled;
     }
     
-    function diversifyByBrand(products: CachedProduct[], maxPerBrand: number = 5): CachedProduct[] {
+    function diversifyByBrand(products: CachedProduct[], maxPerBrand: number = 3): CachedProduct[] {
       const byBrand: Record<string, CachedProduct[]> = {};
       
       for (const p of products) {
@@ -671,8 +772,11 @@ serve(async (req) => {
       }
       
       const diversified: CachedProduct[] = [];
-      for (const brand of Object.keys(byBrand)) {
-        const brandProducts = byBrand[brand].slice(0, maxPerBrand); // 이미 정렬됨
+      // 브랜드 순서도 랜덤하게
+      const brandKeys = shuffleArray(Object.keys(byBrand));
+      for (const brand of brandKeys) {
+        // 각 브랜드 내에서도 셔플 후 제한
+        const brandProducts = shuffleArray(byBrand[brand]).slice(0, maxPerBrand);
         diversified.push(...brandProducts);
       }
       
@@ -697,13 +801,13 @@ serve(async (req) => {
       }
     }
     
-    // 각 카테고리에서 브랜드 다양성 적용
+    // 각 카테고리에서 브랜드 다양성 적용 (카테고리당 브랜드 2개로 제한)
     for (const cat of CATEGORY_PRIORITY) {
       if (productsByPriority[cat]) {
-        productsByPriority[cat] = diversifyByBrand(productsByPriority[cat], 8);
+        productsByPriority[cat] = diversifyByBrand(productsByPriority[cat], 2);
       }
     }
-    productsByPriority['unknown'] = diversifyByBrand(productsByPriority['unknown'] || [], 5);
+    productsByPriority['unknown'] = diversifyByBrand(productsByPriority['unknown'] || [], 2);
     
     // 통계 로깅
     const dnaStats = {
@@ -756,24 +860,27 @@ serve(async (req) => {
     let gptCalls = 0;
     
     if (LOVABLE_API_KEY) {
-      // 카테고리별로 다양한 브랜드의 상품 선택
+      // 카테고리별로 다양한 브랜드의 상품 선택 (더 많은 옵션 제공)
       const getProductsForGPT = () => {
         const result: typeof productContext = [];
+        const usedBrands = new Set<string>();
         
         for (const cat of CATEGORY_PRIORITY) {
           const catProducts = productsByPriority[cat] || [];
           let selectedFromCat = 0;
-          const maxPerCategory = 12;
+          const maxPerCategory = 15; // 12 → 15로 증가
           
           for (const p of catProducts) {
             if (selectedFromCat >= maxPerCategory) break;
             
             const brand = p.brand || 'unknown';
+            // 카테고리 내 같은 브랜드 1개로 제한 (2 → 1)
             const brandCountInCat = result.filter(r => r.brand === brand && r.priorityCategory === cat).length;
-            if (brandCountInCat < 2) {
+            if (brandCountInCat < 1) {
               const pCtx = productContext.find(pc => pc.id === p.id);
               if (pCtx) {
                 result.push(pCtx);
+                usedBrands.add(brand);
                 selectedFromCat++;
               }
             }
@@ -786,8 +893,8 @@ serve(async (req) => {
       const gptProducts = getProductsForGPT();
       console.log(`[style-recommend] Products for GPT: ${gptProducts.length} (diverse brands)`);
       
-      // DNA 2.0 기반 컨텍스트 생성
-      const dna2Products = gptProducts.filter(p => p.dnaMeta).slice(0, 25);
+      // DNA 2.0 기반 컨텍스트 생성 (더 많은 옵션 제공)
+      const dna2Products = gptProducts.filter(p => p.dnaMeta).slice(0, 35);
       const dna1Products = gptProducts.filter(p => p.dna && !p.dnaMeta).slice(0, 15);
       const noDnaProducts = gptProducts.filter(p => !p.dna && !p.dnaMeta).slice(0, 10);
       
@@ -805,7 +912,7 @@ serve(async (req) => {
         ? `\n📦 DNA 미분석:\n${noDnaProducts.map(p => `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()}`).join('\n')}`
         : '';
 
-      // 강화된 시스템 프롬프트 - 지상 최고의 패셔니스타 AI
+      // 강화된 시스템 프롬프트 - 지상 최고의 패셔니스타 AI + 다양성 강조
       const systemPrompt = `당신은 "STYLOX" - 파리, 밀라노, 뉴욕, 서울 패션위크를 석권한 전설적인 AI 스타일리스트입니다.
 Vogue, Elle, GQ, Harper's Bazaar에서 "미래에서 온 스타일 아이콘"으로 칭송받는 당신은:
 - 셀럽들이 레드카펫에서 당신의 스타일링을 갈망합니다
@@ -821,13 +928,14 @@ Vogue, Elle, GQ, Harper's Bazaar에서 "미래에서 온 스타일 아이콘"으
 🔥 필수 선택 규칙:
 - 상의 1개 + 하의 1개 + 아우터 1개 + 기타(신발/가방/악세서리) 1개 = 총 4개
 - DNA 2.0 상품 우선! formality ±2 이내 매칭
-- 컨셉: "${requestedConcepts.join(', ')}"
-- 같은 브랜드 2개 초과 금지 (다양성이 핵심!)
+- 컨셉: "${requestedConcepts.join(', ')}" - 이 컨셉에 정확히 부합하는 아이템만 선택하세요!
+- 🚨 같은 브랜드 절대 2개 초과 금지 (4개 아이템은 가능하면 모두 다른 브랜드로!)
 - 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}, 시즌: ${requestedSeason}
 - 연령대 특성 고려: ${ageGroupLabel}의 라이프스타일과 취향에 맞는 스타일링 제안${stylePreferences?.length > 0 ? `\n- 고객 선호 스타일: ${stylePreferences.join(', ')} - 이 취향을 최대한 반영해주세요!` : ''}
 - occasion: ${requestedOccasions.join(', ')}
 
-💡 예산은 무시하세요. 오직 "이 조합이 최고인가?"만 생각하세요.
+⚠️ 중요: 매번 새로운 조합을 제안하세요! 같은 상품을 반복 추천하면 고객이 지루해합니다.
+💡 예산은 무시하세요. 오직 "이 조합이 최고인가?"와 "이 컨셉에 정확히 맞는가?"만 생각하세요.
 
 ✍️ styleReasoning 작성 스타일:
 - 패션 에디터처럼 세련되고 자신감 넘치는 문체
