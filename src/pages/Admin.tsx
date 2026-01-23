@@ -2038,12 +2038,12 @@ const Admin = () => {
                     {cachedProducts.map((product) => (
                       <div 
                         key={product.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border bg-card cursor-pointer transition-colors ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border bg-card cursor-pointer transition-colors overflow-hidden ${
                           selectedProductIds.includes(product.id) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
                         } ${!product.is_active ? 'opacity-60' : ''}`}
                         onClick={() => toggleProductSelection(product.id)}
                       >
-                        <Checkbox checked={selectedProductIds.includes(product.id)} onCheckedChange={() => toggleProductSelection(product.id)} onClick={(e) => e.stopPropagation()} />
+                        <Checkbox checked={selectedProductIds.includes(product.id)} onCheckedChange={() => toggleProductSelection(product.id)} onClick={(e) => e.stopPropagation()} className="flex-shrink-0" />
                         <div className="w-14 h-14 flex-shrink-0 rounded overflow-hidden bg-muted">
                           {product.image_url ? (
                             <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
@@ -2051,16 +2051,16 @@ const Admin = () => {
                             <div className="w-full h-full flex items-center justify-center text-muted-foreground"><Package className="w-5 h-5" /></div>
                           )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1 mb-0.5 flex-wrap">
-                            <Badge variant="outline" className="text-xs">{product.merchant_id}</Badge>
-                            <Badge variant="secondary" className="text-xs">{product.category}</Badge>
-                            {!product.is_active && <Badge variant="outline" className="text-xs border-orange-500 text-orange-500">비활성</Badge>}
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <div className="flex items-center gap-1 mb-0.5">
+                            <Badge variant="outline" className="text-xs flex-shrink-0">{product.merchant_id}</Badge>
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">{product.category}</Badge>
+                            {!product.is_active && <Badge variant="outline" className="text-xs border-orange-500 text-orange-500 flex-shrink-0">비활성</Badge>}
                           </div>
-                          <p className="font-medium text-sm truncate">{product.name}</p>
+                          <p className="font-medium text-sm truncate max-w-full">{product.name}</p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>{product.brand}</span>
-                            <span className="font-bold text-foreground">₩{product.price.toLocaleString()}</span>
+                            <span className="truncate max-w-[80px]">{product.brand}</span>
+                            <span className="font-bold text-foreground flex-shrink-0">₩{product.price.toLocaleString()}</span>
                           </div>
                         </div>
                         <Button 
