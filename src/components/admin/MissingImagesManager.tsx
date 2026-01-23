@@ -122,10 +122,11 @@ const MissingImagesManager = () => {
   const loadPendingProducts = async () => {
     setPendingLoading(true);
     try {
+      // 이미지 관련 에러만 (missing_image, image_download_failed)
       const { data, error } = await supabase
         .from('pending_products')
         .select('*')
-        .eq('error_type', 'missing_image')
+        .in('error_type', ['missing_image', 'image_download_failed'])
         .is('resolved_at', null)
         .order('created_at', { ascending: false });
 
