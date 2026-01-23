@@ -44,12 +44,27 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
   </div>
 );
 
-// Sparkle star component
-const SparklesStar = ({ className, delay }: { className: string; delay: number }) => (
-  <div className={`absolute ${className} pointer-events-none`} style={{ animationDelay: `${delay}s` }}>
-    <Sparkles className="w-8 h-8 text-primary animate-twinkle" style={{ animationDelay: `${delay}s` }} />
-  </div>
-);
+// Sparkle star component with random timing
+const SparklesStar = ({ className, delay }: { className: string; delay: number }) => {
+  // Random duration between 0.4s and 0.8s for varied twinkling
+  const randomDuration = 0.4 + Math.random() * 0.4;
+  const randomDelay = delay + Math.random() * 0.5;
+  
+  return (
+    <div className={`absolute ${className} pointer-events-none`}>
+      <Sparkles 
+        className="w-8 h-8 text-primary" 
+        style={{ 
+          animationName: 'twinkle',
+          animationDuration: `${randomDuration}s`,
+          animationTimingFunction: 'ease-in-out',
+          animationIterationCount: 'infinite',
+          animationDelay: `${randomDelay}s`
+        }} 
+      />
+    </div>
+  );
+};
 
 // Floating orb component
 const FloatingOrb = ({ className, gradient, delay }: { className: string; gradient: string; delay: number }) => (
