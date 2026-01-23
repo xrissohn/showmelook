@@ -1358,7 +1358,7 @@ const Admin = () => {
                 {excelUploadResult && (
                   <div className={`p-4 rounded-lg border ${
                     excelUploadResult.failed === 0 
-                      ? ((excelUploadResult as any).skipped > 0 
+                      ? (excelUploadResult.skipped && excelUploadResult.skipped > 0 
                           ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
                           : 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800')
                       : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950 dark:border-yellow-800'
@@ -1366,18 +1366,18 @@ const Admin = () => {
                     <div className="flex items-center gap-2 mb-2">
                       {excelUploadResult.failed === 0 && excelUploadResult.success > 0 ? (
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
-                      ) : (excelUploadResult as any).skipped > 0 ? (
+                      ) : excelUploadResult.skipped && excelUploadResult.skipped > 0 ? (
                         <Package className="w-5 h-5 text-blue-600" />
                       ) : (
                         <AlertTriangle className="w-5 h-5 text-yellow-600" />
                       )}
                       <span className="font-medium">
                         등록 완료: {excelUploadResult.success}개 성공
-                        {(excelUploadResult as any).skipped > 0 && `, ${(excelUploadResult as any).skipped}개 중복 스킵`}
+                        {excelUploadResult.skipped && excelUploadResult.skipped > 0 && `, ${excelUploadResult.skipped}개 중복 스킵`}
                         {excelUploadResult.failed > 0 && `, ${excelUploadResult.failed}개 실패`}
                       </span>
                     </div>
-                    {(excelUploadResult as any).skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && (
+                    {excelUploadResult.skipped && excelUploadResult.skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && (
                       <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                         ℹ️ 모든 제품이 이미 등록되어 있습니다.
                       </p>
