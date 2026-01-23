@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
-import PendingProductsManager from "@/components/admin/PendingProductsManager";
+
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
@@ -1240,13 +1240,6 @@ const Admin = () => {
                 <Upload className="w-4 h-4 mr-1" />
                 제품 등록
               </TabsTrigger>
-              <TabsTrigger value="pending" className="relative flex-shrink-0 whitespace-nowrap">
-                <AlertTriangle className="w-4 h-4 mr-1" />
-                등록 대기
-                {pendingCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingCount}</Badge>
-                )}
-              </TabsTrigger>
               <TabsTrigger value="dna" className="flex-shrink-0 whitespace-nowrap">
                 <Dna className="w-4 h-4 mr-1" />
                 DNA 관리
@@ -1259,9 +1252,12 @@ const Admin = () => {
                 <Link2 className="w-4 h-4 mr-1" />
                 딥링크
               </TabsTrigger>
-              <TabsTrigger value="images" className="flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="images" className="relative flex-shrink-0 whitespace-nowrap">
                 <ImageOff className="w-4 h-4 mr-1" />
                 이미지 관리
+                {pendingCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingCount}</Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="products" className="flex-shrink-0 whitespace-nowrap">
                 <Package className="w-4 h-4 mr-1" />
@@ -1503,10 +1499,6 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Pending Products Tab */}
-          <TabsContent value="pending" className="space-y-4">
-            <PendingProductsManager />
-          </TabsContent>
 
           {/* DNA Management Tab */}
           <TabsContent value="dna" className="space-y-4">
