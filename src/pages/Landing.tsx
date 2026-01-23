@@ -44,17 +44,23 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
   </div>
 );
 
-// Sparkle star component with random timing
+// Brand colors for random selection
+const SPARKLE_COLORS = ['text-coral', 'text-magenta', 'text-purple', 'text-sky', 'text-primary'];
+
+// Sparkle star component with random timing, size, and color
 const SparklesStar = ({ className, delay }: { className: string; delay: number }) => {
-  // Random duration between 0.4s and 0.8s for varied twinkling
-  const randomDuration = 0.4 + Math.random() * 0.4;
-  const randomDelay = delay + Math.random() * 0.5;
+  const randomDuration = 0.3 + Math.random() * 0.5; // 0.3s ~ 0.8s
+  const randomDelay = delay + Math.random() * 0.8;
+  const randomSize = 20 + Math.random() * 16; // 20px ~ 36px
+  const randomColor = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
   
   return (
     <div className={`absolute ${className} pointer-events-none`}>
       <Sparkles 
-        className="w-8 h-8 text-primary" 
+        className={randomColor}
         style={{ 
+          width: randomSize,
+          height: randomSize,
           animationName: 'twinkle',
           animationDuration: `${randomDuration}s`,
           animationTimingFunction: 'ease-in-out',
@@ -63,6 +69,27 @@ const SparklesStar = ({ className, delay }: { className: string; delay: number }
         }} 
       />
     </div>
+  );
+};
+
+// Inline sparkle for decorative elements (always animated with random timing)
+const InlineSparkle = ({ className, size = 16, delay = 0 }: { className?: string; size?: number; delay?: number }) => {
+  const randomDuration = 0.3 + Math.random() * 0.4;
+  const randomColor = className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+  
+  return (
+    <Sparkles 
+      className={randomColor}
+      style={{ 
+        width: size,
+        height: size,
+        animationName: 'twinkle',
+        animationDuration: `${randomDuration}s`,
+        animationTimingFunction: 'ease-in-out',
+        animationIterationCount: 'infinite',
+        animationDelay: `${delay + Math.random() * 0.5}s`
+      }} 
+    />
   );
 };
 
@@ -245,8 +272,8 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
       <div className="container mx-auto max-w-3xl text-center relative z-10 px-4 sm:px-6">
         {/* Logo with sparkles */}
         <div className="relative inline-block mb-4 sm:mb-6">
-          <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-5 sm:h-5 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
-          <Sparkles className="absolute -top-2 right-0 w-3 h-3 sm:w-4 sm:h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.4s' }} />
+          <span className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4"><InlineSparkle size={20} delay={0} /></span>
+          <span className="absolute -top-2 right-0"><InlineSparkle size={16} delay={0.2} /></span>
           <img 
             src={showmelookLogo} 
             alt="쇼미룩 로고" 
@@ -254,14 +281,14 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
             height={64}
             className="w-12 h-12 sm:w-16 sm:h-16 mx-auto object-contain animate-float" 
           />
-          <Sparkles className="absolute -bottom-1 -right-2 sm:-right-3 w-3 h-3 sm:w-5 sm:h-5 text-sky animate-sparkle" style={{ animationDelay: '0.8s' }} />
-          <Sparkles className="absolute bottom-1 -left-3 sm:bottom-2 sm:-left-5 w-3 h-3 sm:w-4 sm:h-4 text-purple animate-sparkle" style={{ animationDelay: '1.2s' }} />
+          <span className="absolute -bottom-1 -right-2 sm:-right-3"><InlineSparkle size={20} delay={0.4} /></span>
+          <span className="absolute bottom-1 -left-3 sm:bottom-2 sm:-left-5"><InlineSparkle size={16} delay={0.6} /></span>
         </div>
         
         <h2 className="font-korean text-2xl sm:text-3xl md:text-5xl text-white mb-3 sm:mb-6 relative leading-tight">
-          <Sparkles className="absolute -left-6 sm:-left-8 top-0 w-4 h-4 sm:w-6 sm:h-6 text-coral/70 animate-twinkle hidden sm:block" />
+          <span className="absolute -left-6 sm:-left-8 top-0 hidden sm:block"><InlineSparkle size={24} delay={0.1} /></span>
           지금 바로 시작하세요
-          <Sparkles className="absolute -right-6 sm:-right-8 bottom-0 w-4 h-4 sm:w-6 sm:h-6 text-sky/70 animate-twinkle hidden sm:block" style={{ animationDelay: '0.5s' }} />
+          <span className="absolute -right-6 sm:-right-8 bottom-0 hidden sm:block"><InlineSparkle size={24} delay={0.3} /></span>
         </h2>
         <p className="text-base sm:text-lg md:text-xl font-korean text-white/70 mb-6 sm:mb-10 px-2">
           당신만의 스타일을 발견할 준비가 되셨나요?
@@ -271,14 +298,14 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
             무료로 시작하기
             <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
           </span>
-          <Sparkles className="absolute top-1 right-2 w-3 h-3 sm:w-4 sm:h-4 text-white/50 animate-sparkle" />
+          <span className="absolute top-1 right-2"><InlineSparkle className="text-white/50" size={16} delay={0.5} /></span>
         </Button>
         
         <p className="mt-4 sm:mt-6 text-xs sm:text-sm font-korean text-white/50 flex items-center justify-center gap-1 sm:gap-2 px-4">
-          <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" />
+          <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
           <span className="hidden sm:inline">마우스를 움직여 파티클 효과를 경험하세요</span>
           <span className="sm:hidden">터치하여 파티클 효과를 경험하세요</span>
-          <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDelay: '0.5s' }} />
+          <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDuration: '0.4s', animationDelay: '0.2s' }} />
         </p>
       </div>
     </section>
@@ -338,10 +365,10 @@ const Landing = () => {
           <div className="text-center max-w-3xl mx-auto">
             {/* Animated Hero Logo with Sparkles */}
             <div className="flex items-center justify-center gap-0.5 sm:gap-1 mb-4 sm:mb-8 animate-fade-in relative">
-              <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-4 h-4 sm:w-6 sm:h-6 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
-              <Sparkles className="absolute -top-2 left-6 sm:-top-4 sm:left-8 w-3 h-3 sm:w-4 sm:h-4 text-magenta animate-sparkle hidden sm:block" style={{ animationDelay: '0.3s' }} />
-              <Sparkles className="absolute top-0 right-2 sm:right-4 w-3 h-3 sm:w-5 sm:h-5 text-purple animate-sparkle hidden sm:block" style={{ animationDelay: '0.6s' }} />
-              <Sparkles className="absolute -bottom-1 left-8 sm:-bottom-2 sm:left-12 w-3 h-3 sm:w-4 sm:h-4 text-sky animate-sparkle hidden sm:block" style={{ animationDelay: '0.9s' }} />
+              <span className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4"><InlineSparkle size={24} delay={0} /></span>
+              <span className="absolute -top-2 left-6 sm:-top-4 sm:left-8 hidden sm:block"><InlineSparkle size={16} delay={0.15} /></span>
+              <span className="absolute top-0 right-2 sm:right-4 hidden sm:block"><InlineSparkle size={20} delay={0.3} /></span>
+              <span className="absolute -bottom-1 left-8 sm:-bottom-2 sm:left-12 hidden sm:block"><InlineSparkle size={16} delay={0.45} /></span>
               <img 
                 src={showmelookLogo} 
                 alt="쇼미룩 로고" 
@@ -360,14 +387,14 @@ const Landing = () => {
                 fetchPriority="high"
                 className="h-[80px] sm:h-[110px] md:h-[140px] object-contain -ml-2 sm:-ml-3 md:-ml-4 drop-shadow-lg" 
               />
-              <Sparkles className="absolute -top-1 right-0 w-3 h-3 sm:w-5 sm:h-5 text-coral animate-sparkle" style={{ animationDelay: '1.2s' }} />
-              <Sparkles className="absolute bottom-2 -right-3 sm:bottom-4 sm:-right-6 w-4 h-4 sm:w-6 sm:h-6 text-magenta animate-sparkle hidden sm:block" style={{ animationDelay: '1.5s' }} />
+              <span className="absolute -top-1 right-0"><InlineSparkle size={20} delay={0.6} /></span>
+              <span className="absolute bottom-2 -right-3 sm:bottom-4 sm:-right-6 hidden sm:block"><InlineSparkle size={24} delay={0.75} /></span>
             </div>
             
             <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-white/80 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-4 sm:mb-8 animate-fade-in border border-primary/20 shadow-sm">
-              <Star className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-twinkle flex-shrink-0" />
+              <Star className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
               <span className="text-xs sm:text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
-              <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-sparkle flex-shrink-0" />
+              <InlineSparkle className="text-primary" size={16} delay={0.2} />
             </div>
             
             <h1 className="font-korean text-2xl sm:text-4xl md:text-5xl lg:text-7xl text-foreground leading-tight mb-3 sm:mb-6 animate-fade-in-up">
@@ -392,8 +419,8 @@ const Landing = () => {
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="hero-outline" size="lg" onClick={() => navigate('/style')} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3 group">
-                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 mr-1 group-hover:animate-twinkle" />
-                AI 스타일 추천
+                <InlineSparkle className="text-primary" size={20} delay={0.1} />
+                <span className="ml-1">AI 스타일 추천</span>
               </Button>
             </div>
           </div>
