@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge, CloudDownload
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +24,7 @@ import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
 import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
-import { BrightDataFetchPanel } from "@/components/admin/BrightDataFetchPanel";
+
 import * as XLSX from 'xlsx';
 
 interface DeeplinkResult {
@@ -1260,10 +1260,6 @@ const Admin = () => {
                 <Zap className="w-4 h-4 mr-1" />
                 부하 테스트
               </TabsTrigger>
-              <TabsTrigger value="brightdata" className="flex-shrink-0 whitespace-nowrap">
-                <CloudDownload className="w-4 h-4 mr-1" />
-                Bright Data
-              </TabsTrigger>
               <TabsTrigger value="tools" className="flex-shrink-0 whitespace-nowrap">
                 <Zap className="w-4 h-4 mr-1" />
                 관리도구
@@ -2496,10 +2492,6 @@ const Admin = () => {
             <LoadTestPanel />
           </TabsContent>
 
-          {/* Bright Data Tab */}
-          <TabsContent value="brightdata" className="space-y-4">
-            <BrightDataFetchPanel />
-          </TabsContent>
         </Tabs>
       </div>
     </div>
