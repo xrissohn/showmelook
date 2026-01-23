@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useFeedback } from '@/hooks/useFeedback';
+import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle } from 'lucide-react';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,6 +32,7 @@ import { LimitReachedBanner } from '@/components/subscription/LimitReachedBanner
 import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSelector';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { LoadingProductAds } from '@/components/style/LoadingProductAds';
+import { GenerationProgress } from '@/components/style/GenerationProgress';
 interface StyleTrend {
   id: string;
   name: string;
@@ -2454,6 +2456,16 @@ const StyleGenerator = () => {
     refetch: refetchLimit 
   } = useGenerationLimit(user?.id);
 
+  // 비동기 큐 시스템 훅
+  const {
+    currentJob,
+    isQueued,
+    isProcessing,
+    progress: queueProgress,
+    submitJob,
+    cancelJob,
+  } = useGenerationQueue(user?.id);
+
   // 프리로드된 데이터 사용 (로그인 시 백그라운드에서 미리 로드됨)
   const { 
     profile: preloadedProfile, 
@@ -3194,6 +3206,62 @@ const StyleGenerator = () => {
       setMyLooks(preloadedLooks as GeneratedLook[]);
     }
   }, [preloadedLooks]);
+
+  // 비동기 큐 작업 완료 시 결과 처리
+  useEffect(() => {
+    if (currentJob?.status === 'completed' && currentJob.result_payload) {
+      const { imageUrl, look, lookId } = currentJob.result_payload;
+      
+      // 생성된 이미지 표시
+      if (imageUrl) {
+        setGeneratedImage(imageUrl);
+      }
+      if (lookId) {
+        setGeneratedLookId(lookId);
+      }
+      
+      // 추천 결과 반영
+      if (look?.items) {
+        const transformedItems: CachedProduct[] = look.items.map((item: any) => ({
+          id: item.product?.id || item.id,
+          name: item.product?.name || item.name,
+          brand: item.product?.brand || item.brand,
+          price: item.product?.price || item.price,
+          image_url: item.product?.image_url || item.image_url,
+          product_url: item.product?.product_url || item.product_url,
+          category: item.category,
+          style_tags: item.product?.style_tags || item.style_tags,
+          affiliate_url: item.affiliateUrl,
+          isAutoSelected: item.isAutoSelected,
+        }));
+        
+        setCustomResult({
+          items: transformedItems,
+          styleConcept: look.styleConcept || look.name || '스타일 추천',
+          styleReasoning: look.styleReasoning || look.stylingTips || '',
+          totalPrice: look.totalPrice || 0,
+          autoSelectedTotal: look.autoSelectedTotal || 0,
+          autoSelectedCount: look.autoSelectedCount || 0,
+          budget: look.budget || customBudget[0],
+        });
+        setSelectedTrendProducts(transformedItems);
+      }
+      
+      setIsGenerating(false);
+      setIsCustomSearching(false);
+      refetchLimit();
+      
+      // 결과 영역으로 스크롤
+      setTimeout(() => {
+        resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+    
+    if (currentJob?.status === 'failed') {
+      setIsGenerating(false);
+      setIsCustomSearching(false);
+    }
+  }, [currentJob, customBudget, refetchLimit]);
 
   useEffect(() => {
     fetchData();
@@ -4302,6 +4370,13 @@ const StyleGenerator = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* 비동기 큐 진행률 UI */}
+      <GenerationProgress 
+        isVisible={isQueued || isProcessing}
+        progress={queueProgress}
+        status={currentJob?.status || 'queued'}
+        onCancel={() => currentJob && cancelJob(currentJob.id)}
+      />
       {/* Header - using shared MainNavigation */}
       <MainNavigation 
         rightContent={
