@@ -1,7 +1,19 @@
-// style-recommend v4.0 - 피드백 기반 학습 + 스타일별 가중치 + 캐시 최적화
+// style-recommend v5.0 - 2-Stage RAG: GPT가 DB 검색 조건 생성 → 정밀 검색 → 최종 선택
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// RAG Stage 1: 검색 조건 인터페이스
+interface SearchConditions {
+  concepts: string[];
+  occasions: string[];
+  formalityMin: number;
+  formalityMax: number;
+  colorFamilies: string[];
+  excludeCategories: string[];
+  seasonFit: string[];
+  reasoning: string; // GPT가 왜 이 조건을 선택했는지 설명
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -604,8 +616,100 @@ serve(async (req) => {
       .select('*')
       .eq('is_active', true);
 
-    // Step 2: Fetch products with dna_meta + 피드백 점수
-    console.log(`[style-recommend] Fetching products with DNA 2.0 + feedback scores...`);
+    const currentMonth = new Date().getMonth() + 1;
+    const currentSeason = currentMonth >= 3 && currentMonth <= 5 ? '봄' 
+      : currentMonth >= 6 && currentMonth <= 8 ? '여름'
+      : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
+    const requestedSeason = detectSeason(userRequest) || currentSeason;
+    const seasonMap: Record<string, string> = { '봄': 'spring', '여름': 'summer', '가을': 'fall', '겨울': 'winter' };
+    const seasonEn = seasonMap[requestedSeason] || 'spring';
+
+    // ============= 🔥 Stage 1: GPT가 DB 검색 조건 생성 =============
+    console.log(`[style-recommend] 🔥 Stage 1: GPT analyzing user request to generate search conditions...`);
+    
+    let searchConditions: SearchConditions | null = null;
+    
+    if (LOVABLE_API_KEY) {
+      const stage1SystemPrompt = `당신은 패션 데이터베이스 검색 전문가입니다. 사용자의 스타일 요청을 분석하여 정확한 검색 조건을 생성하세요.
+
+데이터베이스에는 다음 필드가 있습니다:
+- dna_meta.concepts: 스타일 컨셉 배열 (예: ["캐주얼", "미니멀", "클래식", "스트릿", "포멀", "스포티"])
+- dna_meta.occasions: 적합한 상황 배열 (예: ["데일리", "출근", "데이트", "여행", "운동", "미팅"])
+- dna_meta.formality: 격식 수준 0-10 (0=매우 캐주얼, 10=매우 격식)
+- dna_meta.color_family: 색상 계열 ("neutral", "warm", "cool", "bold", "pastel")
+- dna_meta.season_fit: 계절 적합성 배열 (["spring", "summer", "fall", "winter"])
+- category: 상품 카테고리 (상의, 하의, 아우터, 신발, 가방, 액세서리)
+
+사용자 요청을 분석하여 최적의 검색 조건을 JSON으로 반환하세요.
+reasoning 필드에 왜 이 조건을 선택했는지 간단히 설명하세요.`;
+
+      const stage1UserPrompt = `사용자 요청: "${userRequest}"
+대상: ${isKids ? '키즈' : gender} ${ageGroupLabel}
+현재 시즌: ${requestedSeason}
+
+위 요청에 맞는 검색 조건을 생성하세요:
+{
+  "concepts": ["요청에 맞는 컨셉 1-3개"],
+  "occasions": ["적합한 상황 1-2개"],
+  "formalityMin": 0-10,
+  "formalityMax": 0-10,
+  "colorFamilies": ["적합한 색상 계열"],
+  "excludeCategories": ["제외할 카테고리"],
+  "seasonFit": ["${seasonEn}"],
+  "reasoning": "이 조건을 선택한 이유"
+}`;
+
+      try {
+        const stage1Response = await fetchWithRetry(
+          'https://ai.gateway.lovable.dev/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-3-flash-preview',
+              messages: [
+                { role: 'system', content: stage1SystemPrompt },
+                { role: 'user', content: stage1UserPrompt }
+              ],
+            }),
+          },
+          2
+        );
+
+        if (stage1Response.ok) {
+          const stage1Data = await stage1Response.json();
+          const content = stage1Data.choices?.[0]?.message?.content || '';
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            searchConditions = JSON.parse(jsonMatch[0]) as SearchConditions;
+            console.log(`[style-recommend] Stage 1 complete - GPT search conditions:`, JSON.stringify(searchConditions));
+          }
+        }
+      } catch (e) {
+        console.error('[style-recommend] Stage 1 GPT error:', e);
+      }
+    }
+
+    // Fallback: 기본 검색 조건
+    if (!searchConditions) {
+      searchConditions = {
+        concepts: requestedConcepts,
+        occasions: requestedOccasions,
+        formalityMin: 0,
+        formalityMax: 10,
+        colorFamilies: [],
+        excludeCategories: [],
+        seasonFit: [seasonEn],
+        reasoning: 'Fallback to user-provided concepts',
+      };
+      console.log(`[style-recommend] Using fallback search conditions`);
+    }
+
+    // ============= 🔥 Stage 2: GPT 조건 기반 DB 쿼리 =============
+    console.log(`[style-recommend] 🔥 Stage 2: Querying DB with GPT-generated conditions...`);
     
     const productsByPriority: Record<string, CachedProduct[]> = {
       '상의': [],
@@ -614,22 +718,26 @@ serve(async (req) => {
       '기타': [],
       'unknown': []
     };
-    
-    const currentMonth = new Date().getMonth() + 1;
-    const currentSeason = currentMonth >= 3 && currentMonth <= 5 ? '봄' 
-      : currentMonth >= 6 && currentMonth <= 8 ? '여름'
-      : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
-    const requestedSeason = detectSeason(userRequest) || currentSeason;
-    
-    // 최적화: 상품 + 피드백 점수 조인
-    const { data: allProductsRaw, error: productError } = await supabase
+
+    // GPT가 생성한 조건으로 상품 쿼리
+    let query = supabase
       .from('products_cache')
       .select('*, dna_text, dna_meta, dna_generated_at')
       .eq('is_active', true)
       .eq('is_in_stock', true)
       .not('image_url', 'is', null)
+      .not('dna_meta', 'is', null); // DNA가 있는 상품만
+
+    // 제외 카테고리 적용
+    if (searchConditions.excludeCategories?.length > 0) {
+      for (const cat of searchConditions.excludeCategories) {
+        query = query.neq('category', cat);
+      }
+    }
+
+    const { data: allProductsRaw, error: productError } = await query
       .order('dna_generated_at', { ascending: false, nullsFirst: false })
-      .limit(300);
+      .limit(500); // 더 많은 상품에서 필터링
     
     if (productError) {
       console.error('[style-recommend] Product fetch error:', productError);
@@ -694,6 +802,47 @@ serve(async (req) => {
     });
     
     console.log(`[style-recommend] After season filter (${requestedSeason}): ${allProducts.length}`);
+    
+    // ============= 🔥 GPT 조건 기반 추가 필터링 =============
+    if (searchConditions) {
+      const beforeCount = allProducts.length;
+      
+      allProducts = allProducts.filter(product => {
+        const meta = product.dna_meta;
+        if (!meta) return false; // DNA 없는 상품 제외
+        
+        // 1. Formality 범위 체크
+        if (meta.formality < searchConditions!.formalityMin || meta.formality > searchConditions!.formalityMax) {
+          return false;
+        }
+        
+        // 2. 컨셉 매칭 (하나라도 일치하면 OK)
+        if (searchConditions!.concepts.length > 0) {
+          const productConcepts = meta.concepts?.map(c => normalizeConcept(c)) || [];
+          const requestConcepts = searchConditions!.concepts.map(c => normalizeConcept(c));
+          const hasMatchingConcept = productConcepts.some(pc => 
+            requestConcepts.some(rc => pc.includes(rc) || rc.includes(pc))
+          );
+          if (!hasMatchingConcept && productConcepts.length > 0) {
+            // 완전 불일치는 제외 (컨셉이 있는 경우에만)
+            return false;
+          }
+        }
+        
+        // 3. 색상 계열 매칭 (선택사항)
+        if (searchConditions!.colorFamilies?.length > 0 && meta.color_family) {
+          if (!searchConditions!.colorFamilies.includes(meta.color_family)) {
+            // 색상 불일치 시 점수 감점만 하고 완전 제외는 안함
+            // return false; 
+          }
+        }
+        
+        return true;
+      });
+      
+      console.log(`[style-recommend] After GPT conditions filter: ${beforeCount} → ${allProducts.length}`);
+      console.log(`[style-recommend] GPT filter criteria: concepts=${searchConditions.concepts.join(',')}, formality=${searchConditions.formalityMin}-${searchConditions.formalityMax}`);
+    }
     
     // ============= 최근 추천된 상품 ID 가져오기 (24시간 내) =============
     let recentlyUsedProductIds: Set<string> = new Set();
@@ -909,32 +1058,31 @@ serve(async (req) => {
     const productsWithDNA = productContext.filter(p => p.dna || p.dnaMeta);
     console.log(`[style-recommend] Products for GPT: ${productContext.length} (${productsWithDNA.length} with DNA 2.0)`);
 
-    // Step 4: RAG with GPT-5 (DNA 2.0 활용)
+    // ============= 🔥 Stage 3: GPT 최종 선택 (필터링된 상품만 제공) =============
+    console.log(`[style-recommend] 🔥 Stage 3: GPT final selection from filtered products...`);
+    
     let ragResponse: RAGStyleResponse | null = null;
     let gptCalls = 0;
     
     if (LOVABLE_API_KEY) {
-      // 카테고리별로 다양한 브랜드의 상품 선택 (더 많은 옵션 제공)
+      // 카테고리별로 다양한 브랜드의 상품 선택
       const getProductsForGPT = () => {
         const result: typeof productContext = [];
-        const usedBrands = new Set<string>();
         
         for (const cat of CATEGORY_PRIORITY) {
           const catProducts = productsByPriority[cat] || [];
           let selectedFromCat = 0;
-          const maxPerCategory = 15; // 12 → 15로 증가
+          const maxPerCategory = 12;
           
           for (const p of catProducts) {
             if (selectedFromCat >= maxPerCategory) break;
             
             const brand = p.brand || 'unknown';
-            // 카테고리 내 같은 브랜드 1개로 제한 (2 → 1)
             const brandCountInCat = result.filter(r => r.brand === brand && r.priorityCategory === cat).length;
-            if (brandCountInCat < 1) {
+            if (brandCountInCat < 2) {
               const pCtx = productContext.find(pc => pc.id === p.id);
               if (pCtx) {
                 result.push(pCtx);
-                usedBrands.add(brand);
                 selectedFromCat++;
               }
             }
@@ -945,80 +1093,58 @@ serve(async (req) => {
       };
       
       const gptProducts = getProductsForGPT();
-      console.log(`[style-recommend] Products for GPT: ${gptProducts.length} (diverse brands)`);
+      console.log(`[style-recommend] Stage 3: ${gptProducts.length} filtered products for final selection`);
       
-      // DNA 2.0 기반 컨텍스트 생성 (더 많은 옵션 제공)
-      const dna2Products = gptProducts.filter(p => p.dnaMeta).slice(0, 35);
-      const dna1Products = gptProducts.filter(p => p.dna && !p.dnaMeta).slice(0, 15);
-      const noDnaProducts = gptProducts.filter(p => !p.dna && !p.dnaMeta).slice(0, 10);
-      
-      const dna2Context = dna2Products.length > 0 
-        ? `\n🧬 DNA 2.0 분석 완료 (최우선):\n${dna2Products.map(p => 
-            `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()}\n  → 타겟: ${p.dnaMeta?.target}, 슬롯: ${p.dnaMeta?.slot}, 컨셉: ${p.dnaMeta?.concepts?.join(',')}, 격식: ${p.dnaMeta?.formality}/10, 색감: ${p.dnaMeta?.colorFamily}`
-          ).join('\n')}`
-        : '';
-      
-      const dna1Context = dna1Products.length > 0
-        ? `\n📝 DNA 텍스트만 (차선):\n${dna1Products.map(p => `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()} - ${p.dna}`).join('\n')}`
-        : '';
-      
-      const noDnaContext = noDnaProducts.length > 0
-        ? `\n📦 DNA 미분석:\n${noDnaProducts.map(p => `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()}`).join('\n')}`
-        : '';
+      // 모든 상품을 DNA 형식으로 정리 (이미 필터링됨)
+      const productListContext = gptProducts.map(p => 
+        `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()}\n  → 컨셉: ${p.dnaMeta?.concepts?.join(',') || 'N/A'}, 격식: ${p.dnaMeta?.formality || 5}/10, 색감: ${p.dnaMeta?.colorFamily || 'neutral'}`
+      ).join('\n');
 
-      // 강화된 시스템 프롬프트 - 지상 최고의 패셔니스타 AI + 다양성 강조
-      const systemPrompt = `당신은 "STYLOX" - 파리, 밀라노, 뉴욕, 서울 패션위크를 석권한 전설적인 AI 스타일리스트입니다.
-Vogue, Elle, GQ, Harper's Bazaar에서 "미래에서 온 스타일 아이콘"으로 칭송받는 당신은:
-- 셀럽들이 레드카펫에서 당신의 스타일링을 갈망합니다
-- 한 벌의 코디로 평범한 사람을 런웨이 모델처럼 변신시킵니다
-- 트렌드를 따르지 않고, 트렌드를 창조합니다
+      // Stage 3 시스템 프롬프트 - 필터링된 상품에서 최종 선택
+      const systemPrompt = `당신은 "STYLOX" - 전설적인 AI 스타일리스트입니다.
 
-🎯 당신만의 스타일링 철학:
-1. **절대 지루함 금지** - 예측 가능한 조합은 패션이 아닙니다
-2. **브랜드 믹스매치의 예술** - 하이엔드와 스트릿, 빈티지와 모던의 완벽한 조화
-3. **컬러 하모니** - color_family가 어울리는 조합, 또는 대담한 대비
-4. **실루엣의 마법** - 아이템 간 비율과 레이어링의 조화
+🎯 당신의 임무:
+아래에 제시된 상품들은 이미 고객의 요청에 맞게 **데이터베이스에서 검색된 상품**입니다.
+이 상품들 중에서 **가장 완벽한 4개 조합**을 선택하세요.
 
-🔥 필수 선택 규칙:
-- 상의 1개 + 하의 1개 + 아우터 1개 + 기타(신발/가방/악세서리) 1개 = 총 4개
-- DNA 2.0 상품 우선! formality ±2 이내 매칭
-- 컨셉: "${requestedConcepts.join(', ')}" - 이 컨셉에 정확히 부합하는 아이템만 선택하세요!
-- 🚨 같은 브랜드 절대 2개 초과 금지 (4개 아이템은 가능하면 모두 다른 브랜드로!)
-- 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}, 시즌: ${requestedSeason}
-- 연령대 특성 고려: ${ageGroupLabel}의 라이프스타일과 취향에 맞는 스타일링 제안${stylePreferences?.length > 0 ? `\n- 고객 선호 스타일: ${stylePreferences.join(', ')} - 이 취향을 최대한 반영해주세요!` : ''}
-- occasion: ${requestedOccasions.join(', ')}
+📋 검색 조건 (Stage 1에서 분석됨):
+- 컨셉: ${searchConditions?.concepts.join(', ') || requestedConcepts.join(', ')}
+- 상황: ${searchConditions?.occasions.join(', ') || requestedOccasions.join(', ')}
+- 격식 범위: ${searchConditions?.formalityMin || 0} ~ ${searchConditions?.formalityMax || 10}
+- 시즌: ${requestedSeason}
+- 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}
+${stylePreferences?.length > 0 ? `- 고객 선호 스타일: ${stylePreferences.join(', ')}` : ''}
 
-⚠️ 중요: 매번 새로운 조합을 제안하세요! 같은 상품을 반복 추천하면 고객이 지루해합니다.
-💡 예산은 무시하세요. 오직 "이 조합이 최고인가?"와 "이 컨셉에 정확히 맞는가?"만 생각하세요.
+🔥 선택 규칙:
+1. **상의 1개 + 하의 1개 + 아우터 1개 + 기타(신발/가방/악세서리) 1개 = 총 4개**
+2. formality 수치가 비슷한 아이템끼리 매칭 (±2 이내)
+3. 색감(colorFamily)이 조화로운 조합
+4. 🚨 같은 브랜드 2개 이상 금지!
+5. 아래 목록에 있는 상품 ID만 선택 가능
 
-✍️ styleReasoning 작성 스타일:
-- 패션 에디터처럼 세련되고 자신감 넘치는 문체
-- "~입니다"보다 "~거든요", "~죠", "~예요"처럼 친근하지만 전문가다운 톤
-- 구체적인 아이템명과 브랜드를 언급하며 왜 이 조합인지 설득력 있게
-- 첫 문장에서 핵심 스타일 포인트로 훅을 걸고, 이어서 디테일 설명
-- 마지막에 "이 룩의 킬링 포인트"를 한 문장으로 정리
-- 예시: "이 룩의 핵심은 '절제된 럭셔리'예요. 오버사이즈 코트의 구조적인 숄더가 상체 비율을 잡아주고, 슬림한 팬츠가 레그라인을 길어 보이게 하거든요. 킬링 포인트? 뉴트럴 톤 속 악센트 슈즈가 시선을 사로잡죠."`;
+✍️ styleReasoning 작성 규칙:
+- 선택한 상품의 **정확한 브랜드명과 상품명**을 언급
+- "이 룩의 핵심은 ~" 으로 시작
+- 각 아이템이 왜 어울리는지 구체적으로 설명
+- 마지막에 "킬링 포인트?"로 핵심 마무리`;
 
-      const userPrompt = `🌟 고객의 스타일 비전: "${userRequest}"
-${dna2Context}
-${dna1Context}
-${noDnaContext}
+      const userPrompt = `🌟 고객 요청: "${userRequest}"
 
-✨ STYLOX님, 당신의 시그니처 스타일링을 보여주세요!
-- 이 고객을 패션위크 프론트로우에 앉혀도 손색없는 룩으로 완성해주세요
-- 각 아이템이 왜 완벽한 조화를 이루는지 설명해주세요
-- 당신만의 스타일링 포인트를 공유해주세요
+📦 검색된 상품 목록 (이 중에서만 선택하세요):
+${productListContext}
+
+위 상품들 중 4개를 선택하여 완벽한 룩을 완성하세요.
 
 JSON 응답:
 {
-  "lookName": "감각적이고 임팩트 있는 코디명 (예: '뉴욕 미드나잇 시크', '서울 스트릿의 정석')",
-  "styleConcept": "한 줄로 표현하는 스타일 에센스 - 짧고 강렬하게",
-  "styleReasoning": "3-4문장. 첫 문장: 이 룩의 핵심 포인트로 훅. 중간: 각 아이템이 어떻게 조화를 이루는지 구체적으로. 마지막: 킬링 포인트 한 줄 (예: '킬링 포인트는 ~')",
+  "lookName": "감각적인 코디명",
+  "styleConcept": "한 줄 스타일 에센스",
+  "styleReasoning": "선택한 상품의 브랜드명/상품명을 정확히 언급하며 3-4문장으로 설명",
   "selectedProductIds": ["상의id", "하의id", "아우터id", "기타id"]
 }`;
 
       try {
-        console.log('[style-recommend] Using GPT-5 with DNA 2.0 context and retry...');
+        console.log('[style-recommend] Stage 3: Calling GPT for final selection...');
         const gptStartTime = Date.now();
         
         const gptResponse = await fetchWithRetry(
@@ -1037,12 +1163,12 @@ JSON 응답:
               ],
             }),
           },
-          3 // Max retries
+          3
         );
 
         gptCalls++;
         const elapsed = Date.now() - gptStartTime;
-        console.log(`[style-recommend] GPT-5 response in ${elapsed}ms`);
+        console.log(`[style-recommend] Stage 3: GPT response in ${elapsed}ms`);
 
         if (gptResponse.ok) {
           const gptData = await gptResponse.json();
@@ -1051,14 +1177,14 @@ JSON 응답:
           const jsonMatch = content.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
             ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
-            console.log(`[style-recommend] GPT-5 selected ${ragResponse.selectedProductIds.length} products in ${elapsed}ms`);
-            console.log(`[style-recommend] styleReasoning from GPT: ${ragResponse.styleReasoning?.slice(0, 200)}...`);
+            console.log(`[style-recommend] Stage 3: GPT selected ${ragResponse.selectedProductIds.length} products`);
+            console.log(`[style-recommend] Selected IDs: ${ragResponse.selectedProductIds.join(', ')}`);
+            console.log(`[style-recommend] styleReasoning: ${ragResponse.styleReasoning?.slice(0, 200)}...`);
           }
         } else {
           const errorText = await gptResponse.text();
-          console.error('[style-recommend] GPT-5 error:', gptResponse.status, errorText);
+          console.error('[style-recommend] Stage 3 GPT error:', gptResponse.status, errorText);
           
-          // Log the error
           await logError(
             supabase,
             'style-recommend',
@@ -1070,7 +1196,7 @@ JSON 응답:
           );
         }
       } catch (e) {
-        console.error('[style-recommend] GPT-5 parsing error:', e);
+        console.error('[style-recommend] Stage 3 GPT parsing error:', e);
       }
     }
 
