@@ -153,14 +153,16 @@ const PendingProductsManager = () => {
           merchant_id: newMerchantId
         };
 
-        // Call register-product edge function
+        // Call register-product edge function (expects products array)
         const { data, error } = await supabase.functions.invoke('register-product', {
-          body: { product: updatedProduct }
+          body: { products: [updatedProduct] }
         });
 
         if (error) throw error;
 
-        if (data?.success) {
+        // Check if first result in array succeeded
+        const result = data?.results?.[0];
+        if (result?.success) {
           // Mark as resolved
           await supabase
             .from('pending_products')
@@ -173,7 +175,7 @@ const PendingProductsManager = () => {
           success++;
         } else {
           failed++;
-          errors.push(`${pending.raw_data.name}: ${data?.error || '등록 실패'}`);
+          errors.push(`${pending.raw_data.name}: ${result?.error || data?.error || '등록 실패'}`);
         }
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
