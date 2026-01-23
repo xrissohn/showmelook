@@ -44,6 +44,7 @@ interface CachedProduct {
   brand: string | null;
   price: number;
   image_url: string | null;
+  product_url: string;
   category: string;
   style_tags: string[] | null;
   is_in_stock: boolean;
@@ -857,7 +858,7 @@ const Admin = () => {
     setSelectedProductIds([]);
     try {
       let query = supabase.from('products_cache')
-        .select('id, merchant_id, name, brand, price, image_url, category, style_tags, is_in_stock, is_active, collected_at');
+        .select('id, merchant_id, name, brand, price, image_url, product_url, category, style_tags, is_in_stock, is_active, collected_at');
       
       if (filter === 'active') query = query.eq('is_active', true);
       else if (filter === 'inactive') query = query.eq('is_active', false);
@@ -2045,6 +2046,17 @@ const Admin = () => {
                             <span className="font-bold text-foreground">₩{product.price.toLocaleString()}</span>
                           </div>
                         </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-shrink-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(product.product_url, '_blank');
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
                       </div>
                     ))}
                   </div>
