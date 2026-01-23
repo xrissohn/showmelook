@@ -180,38 +180,41 @@ const InteractiveParticle = ({ particle, onComplete }: { particle: MouseParticle
   );
 };
 
-// Hook for interactive mouse particles with throttling to prevent forced reflow
+// Hook for interactive mouse particles with heavy throttling to prevent forced reflow
 const useMouseParticles = () => {
   const [particles, setParticles] = useState<MouseParticle[]>([]);
   const idCounter = useRef(0);
   const lastCallTime = useRef(0);
-  const cachedRect = useRef<DOMRect | null>(null);
+  const pendingFrame = useRef<number | null>(null);
   const colors = ['bg-coral', 'bg-magenta', 'bg-purple', 'bg-sky', 'bg-primary'];
 
   const addParticle = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    // Throttle to 100ms to significantly reduce reflow frequency
+    // Heavy throttle to 200ms to minimize reflow impact
     const now = performance.now();
-    if (now - lastCallTime.current < 100) return;
+    if (now - lastCallTime.current < 200) return;
     lastCallTime.current = now;
+
+    // Cancel any pending animation frame to avoid stacking
+    if (pendingFrame.current) {
+      cancelAnimationFrame(pendingFrame.current);
+    }
 
     // Use offsetX/Y directly to avoid getBoundingClientRect() forced reflow
     const x = e.nativeEvent.offsetX;
     const y = e.nativeEvent.offsetY;
     
-    // Use requestAnimationFrame to batch DOM reads/writes
-    requestAnimationFrame(() => {
-      const newParticles: MouseParticle[] = [];
-      for (let i = 0; i < 2; i++) {
-        newParticles.push({
-          id: idCounter.current++,
-          x: x + (Math.random() - 0.5) * 40,
-          y: y + (Math.random() - 0.5) * 40,
-          size: Math.random() * 8 + 4,
-          color: colors[Math.floor(Math.random() * colors.length)],
-        });
-      }
+    // Defer state update to next frame to avoid reflow during event
+    pendingFrame.current = requestAnimationFrame(() => {
+      pendingFrame.current = null;
+      const newParticle: MouseParticle = {
+        id: idCounter.current++,
+        x: x + (Math.random() - 0.5) * 40,
+        y: y + (Math.random() - 0.5) * 40,
+        size: Math.random() * 8 + 4,
+        color: colors[Math.floor(Math.random() * colors.length)],
+      };
       
-      setParticles(prev => [...prev, ...newParticles]);
+      setParticles(prev => [...prev, newParticle]);
     });
   }, []);
 
@@ -222,14 +225,20 @@ const useMouseParticles = () => {
   return { particles, addParticle, removeParticle };
 };
 
-// CTA Section with interactive particles
+// CTA Section with interactive particles (desktop only for performance)
 const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
   const { particles, addParticle, removeParticle } = useMouseParticles();
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    // Check for mobile once on mount to disable heavy mouse effects
+    setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+  }, []);
   
   return (
     <section 
       className="py-24 px-6 bg-gradient-dark relative overflow-hidden cursor-pointer"
-      onMouseMove={addParticle}
+      onMouseMove={isMobile ? undefined : addParticle}
     >
       {/* Background effects */}
       <div className="absolute inset-0 bg-gradient-brand opacity-20" />
