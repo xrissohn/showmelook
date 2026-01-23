@@ -325,12 +325,48 @@ const StyleCarousel = () => {
                 </p>
               </div>
 
-              {/* Hover sparkles */}
-              <Sparkles className="absolute top-2 right-2 sm:top-4 sm:right-4 w-3 h-3 sm:w-5 sm:h-5 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
-              <Sparkles
-                className="absolute bottom-10 left-2 sm:bottom-16 sm:left-4 w-2 h-2 sm:w-4 sm:h-4 text-magenta opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity hidden sm:block"
-                style={{ animationDelay: '0.3s' }}
-              />
+              {/* Hover sparkles - randomized colors, sizes, and timing */}
+              {(() => {
+                const sparkleColors = ['text-coral', 'text-magenta', 'text-purple', 'text-sky', 'text-primary', 'text-yellow-400', 'text-pink-400'];
+                const sparkleSizes = ['w-2 h-2 sm:w-3 sm:h-3', 'w-3 h-3 sm:w-4 sm:h-4', 'w-3 h-3 sm:w-5 sm:h-5', 'w-4 h-4 sm:w-6 sm:h-6'];
+                const color1 = sparkleColors[i % sparkleColors.length];
+                const color2 = sparkleColors[(i + 3) % sparkleColors.length];
+                const color3 = sparkleColors[(i + 5) % sparkleColors.length];
+                const size1 = sparkleSizes[i % sparkleSizes.length];
+                const size2 = sparkleSizes[(i + 2) % sparkleSizes.length];
+                const size3 = sparkleSizes[(i + 1) % sparkleSizes.length];
+                const delay1 = (i * 0.4) % 3;
+                const delay2 = ((i * 0.7) + 0.5) % 3;
+                const delay3 = ((i * 0.3) + 1.2) % 3;
+                const duration1 = 1.5 + (i % 3) * 0.5;
+                const duration2 = 1.2 + ((i + 1) % 4) * 0.4;
+                const duration3 = 1.8 + ((i + 2) % 3) * 0.3;
+                return (
+                  <>
+                    <Sparkles 
+                      className={`absolute top-2 right-2 sm:top-4 sm:right-4 ${size1} ${color1} opacity-0 group-hover:opacity-100 animate-twinkle transition-opacity`}
+                      style={{ 
+                        '--twinkle-delay': `${delay1}s`,
+                        '--twinkle-duration': `${duration1}s`
+                      } as React.CSSProperties}
+                    />
+                    <Sparkles
+                      className={`absolute top-3 right-4 sm:top-6 sm:right-8 ${size2} ${color2} opacity-0 group-hover:opacity-100 animate-twinkle transition-opacity`}
+                      style={{ 
+                        '--twinkle-delay': `${delay2}s`,
+                        '--twinkle-duration': `${duration2}s`
+                      } as React.CSSProperties}
+                    />
+                    <Sparkles
+                      className={`absolute bottom-10 left-2 sm:bottom-16 sm:left-4 ${size3} ${color3} opacity-0 group-hover:opacity-100 animate-twinkle transition-opacity hidden sm:block`}
+                      style={{ 
+                        '--twinkle-delay': `${delay3}s`,
+                        '--twinkle-duration': `${duration3}s`
+                      } as React.CSSProperties}
+                    />
+                  </>
+                );
+              })()}
             </div>
           );
         })}
