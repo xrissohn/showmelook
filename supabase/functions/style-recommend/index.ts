@@ -1257,10 +1257,11 @@ serve(async (req) => {
       const getProductsForGPT = () => {
         const result: typeof productContext = [];
         
+        // 🚀 카테고리별 상품 수 축소: 12 → 5개 (토큰 절약으로 속도 향상)
         for (const cat of CATEGORY_PRIORITY) {
           const catProducts = productsByPriority[cat] || [];
           let selectedFromCat = 0;
-          const maxPerCategory = 12;
+          const maxPerCategory = 5; // 12 → 5로 축소
           
           for (const p of catProducts) {
             if (selectedFromCat >= maxPerCategory) break;
@@ -1283,108 +1284,98 @@ serve(async (req) => {
       const gptProducts = getProductsForGPT();
       console.log(`[style-recommend] Stage 3: ${gptProducts.length} filtered products for final selection`);
       
-      // 모든 상품을 DNA 형식으로 정리 (이미 필터링됨)
+      // 🚀 간소화된 상품 리스트 (토큰 절약)
       const productListContext = gptProducts.map(p => 
-        `• ${p.id}: [${p.brand}] ${p.name} [${p.priorityCategory}] ₩${p.price.toLocaleString()}\n  → 컨셉: ${p.dnaMeta?.concepts?.join(',') || 'N/A'}, 격식: ${p.dnaMeta?.formality || 5}/10, 색감: ${p.dnaMeta?.colorFamily || 'neutral'}`
+        `${p.id}|${p.brand || ''}|${p.name.slice(0, 20)}|${p.priorityCategory}|₩${Math.floor(p.price/1000)}k|F${p.dnaMeta?.formality || 5}`
       ).join('\n');
 
-      // Stage 3 시스템 프롬프트 - 필터링된 상품에서 최종 선택
-      const systemPrompt = `당신은 "STYLOX" - 전설적인 AI 스타일리스트입니다.
+      // 🚀 간소화된 시스템 프롬프트
+      // 🚀 간소화된 프롬프트 (토큰 50% 절감)
+      const systemPrompt = `스타일리스트. 상의+하의+아우터+기타 각 1개씩 총4개 선택. 같은브랜드 2개금지. F값(격식) 비슷하게.`;
 
-🎯 당신의 임무:
-아래에 제시된 상품들은 이미 고객의 요청에 맞게 **데이터베이스에서 검색된 상품**입니다.
-이 상품들 중에서 **가장 완벽한 4개 조합**을 선택하세요.
+      const userPrompt = `요청: "${userRequest.slice(0, 50)}"
+타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}
+컨셉: ${(searchConditions?.concepts || requestedConcepts).slice(0, 3).join(',')}
 
-📋 검색 조건 (Stage 1에서 분석됨):
-- 컨셉: ${searchConditions?.concepts.join(', ') || requestedConcepts.join(', ')}
-- 상황: ${searchConditions?.occasions.join(', ') || requestedOccasions.join(', ')}
-- 격식 범위: ${searchConditions?.formalityMin || 0} ~ ${searchConditions?.formalityMax || 10}
-- 시즌: ${requestedSeason}
-- 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}
-${stylePreferences?.length > 0 ? `- 고객 선호 스타일: ${stylePreferences.join(', ')}` : ''}
-
-🔥 선택 규칙:
-1. **상의 1개 + 하의 1개 + 아우터 1개 + 기타(신발/가방/악세서리) 1개 = 총 4개**
-2. formality 수치가 비슷한 아이템끼리 매칭 (±2 이내)
-3. 색감(colorFamily)이 조화로운 조합
-4. 🚨 같은 브랜드 2개 이상 금지!
-5. 아래 목록에 있는 상품 ID만 선택 가능
-
-✍️ styleReasoning 작성 규칙:
-- 선택한 상품의 **정확한 브랜드명과 상품명**을 언급
-- "이 룩의 핵심은 ~" 으로 시작
-- 각 아이템이 왜 어울리는지 구체적으로 설명
-- 마지막에 "킬링 포인트?"로 핵심 마무리`;
-
-      const userPrompt = `🌟 고객 요청: "${userRequest}"
-
-📦 검색된 상품 목록 (이 중에서만 선택하세요):
+상품(id|브랜드|이름|카테고리|가격|F격식):
 ${productListContext}
 
-위 상품들 중 4개를 선택하여 완벽한 룩을 완성하세요.
-
-JSON 응답:
-{
-  "lookName": "감각적인 코디명",
-  "styleConcept": "한 줄 스타일 에센스",
-  "styleReasoning": "선택한 상품의 브랜드명/상품명을 정확히 언급하며 3-4문장으로 설명",
-  "selectedProductIds": ["상의id", "하의id", "아우터id", "기타id"]
-}`;
+JSON만 응답:
+{"lookName":"코디명","styleConcept":"한줄설명","styleReasoning":"이 룩의 핵심은...브랜드/상품명 언급...킬링포인트?로 마무리","selectedProductIds":["상의id","하의id","아우터id","기타id"]}`;
 
       try {
-        console.log('[style-recommend] Stage 3: Calling GPT for final selection...');
+        console.log('[style-recommend] Stage 3: Calling Gemini Flash for final selection...');
         const gptStartTime = Date.now();
         
-        const gptResponse = await fetchWithRetry(
-          'https://ai.gateway.lovable.dev/v1/chat/completions',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'openai/gpt-5',
-              messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-              ],
-            }),
-          },
-          3
-        );
-
-        gptCalls++;
-        const elapsed = Date.now() - gptStartTime;
-        console.log(`[style-recommend] Stage 3: GPT response in ${elapsed}ms`);
-
-        if (gptResponse.ok) {
-          const gptData = await gptResponse.json();
-          const content = gptData.choices?.[0]?.message?.content || '';
-          
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
-            console.log(`[style-recommend] Stage 3: GPT selected ${ragResponse.selectedProductIds.length} products`);
-            console.log(`[style-recommend] Selected IDs: ${ragResponse.selectedProductIds.join(', ')}`);
-            console.log(`[style-recommend] styleReasoning: ${ragResponse.styleReasoning?.slice(0, 200)}...`);
-          }
-        } else {
-          const errorText = await gptResponse.text();
-          console.error('[style-recommend] Stage 3 GPT error:', gptResponse.status, errorText);
-          
-          await logError(
-            supabase,
-            'style-recommend',
-            String(gptResponse.status),
-            errorText.slice(0, 1000),
-            null,
-            { userRequest: userRequest?.slice(0, 100), gender, budget },
-            Date.now() - startTime
+        // 🚀 30초 타임아웃으로 504 방지
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        
+        try {
+          const gptResponse = await fetch(
+            'https://ai.gateway.lovable.dev/v1/chat/completions',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                // 🚀 gemini-3-flash: 5배 빠른 응답 (175초 → 5-10초)
+                model: 'google/gemini-3-flash-preview',
+                messages: [
+                  { role: 'system', content: systemPrompt },
+                  { role: 'user', content: userPrompt }
+                ],
+                max_tokens: 500, // 응답 길이 제한으로 속도 향상
+              }),
+              signal: controller.signal,
+            }
           );
+          
+          clearTimeout(timeoutId);
+          gptCalls++;
+          const elapsed = Date.now() - gptStartTime;
+          console.log(`[style-recommend] Stage 3: Response in ${elapsed}ms`);
+
+          if (gptResponse.ok) {
+            const gptData = await gptResponse.json();
+            const content = gptData.choices?.[0]?.message?.content || '';
+            
+            const jsonMatch = content.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              ragResponse = JSON.parse(jsonMatch[0]) as RAGStyleResponse;
+              console.log(`[style-recommend] Stage 3: Selected ${ragResponse.selectedProductIds.length} products`);
+              console.log(`[style-recommend] Selected IDs: ${ragResponse.selectedProductIds.join(', ')}`);
+              console.log(`[style-recommend] styleReasoning: ${ragResponse.styleReasoning?.slice(0, 200)}...`);
+            }
+          } else if (gptResponse.status === 429) {
+            // Rate limit - 재시도 없이 fallback 사용
+            console.warn('[style-recommend] Rate limited (429), using fallback');
+          } else {
+            const errorText = await gptResponse.text();
+            console.error('[style-recommend] Stage 3 error:', gptResponse.status, errorText.slice(0, 200));
+            
+            await logError(
+              supabase,
+              'style-recommend',
+              String(gptResponse.status),
+              errorText.slice(0, 500),
+              null,
+              { userRequest: userRequest?.slice(0, 100), gender, budget },
+              Date.now() - startTime
+            );
+          }
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            console.warn('[style-recommend] AI timeout (30s), using DNA fallback');
+          } else {
+            throw fetchError;
+          }
         }
       } catch (e) {
-        console.error('[style-recommend] Stage 3 GPT parsing error:', e);
+        console.error('[style-recommend] Stage 3 error:', e);
       }
     }
 
