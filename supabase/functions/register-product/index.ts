@@ -449,16 +449,63 @@ async function downloadAndStoreImage(
 }
 
 // ============= Main Registration Function =============
-async function registerProduct(supabase: any, product: ProductInput): Promise<RegistrationResult> {
+async function registerProduct(supabase: any, product: ProductInput, skipDuplicateCheck = false): Promise<RegistrationResult> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const storageBaseUrl = `${supabaseUrl}/storage/v1/object/public/product-images`;
   
-  // Step 1: Initial upsert with is_active = false (pending state)
-  console.log(`[Register] Step 1: Upserting product "${product.name}"...`);
+  // Step 0: Check for duplicates (by product_url or external_id)
+  if (!skipDuplicateCheck) {
+    console.log(`[Register] Step 0: Checking for duplicates...`);
+    
+    // Check by product_url first
+    const { data: existingByUrl } = await supabase
+      .from('products_cache')
+      .select('id, name, is_active')
+      .eq('product_url', product.product_url)
+      .maybeSingle();
+    
+    if (existingByUrl) {
+      console.log(`[Register] Duplicate found by product_url: ${existingByUrl.id}`);
+      return {
+        success: false,
+        product_id: existingByUrl.id,
+        image_stored: false,
+        dna_generated: false,
+        error: `이미 등록된 제품입니다 (URL 중복): ${existingByUrl.name}`,
+        step_failed: 'upsert',
+      };
+    }
+    
+    // Check by external_id if provided
+    if (product.external_id) {
+      const { data: existingByExtId } = await supabase
+        .from('products_cache')
+        .select('id, name, is_active')
+        .eq('external_id', product.external_id)
+        .maybeSingle();
+      
+      if (existingByExtId) {
+        console.log(`[Register] Duplicate found by external_id: ${existingByExtId.id}`);
+        return {
+          success: false,
+          product_id: existingByExtId.id,
+          image_stored: false,
+          dna_generated: false,
+          error: `이미 등록된 제품입니다 (ID 중복): ${existingByExtId.name}`,
+          step_failed: 'upsert',
+        };
+      }
+    }
+    
+    console.log(`[Register] No duplicates found, proceeding...`);
+  }
   
-  const { data: upsertedProduct, error: upsertError } = await supabase
+  // Step 1: Insert new product with is_active = false (pending state)
+  console.log(`[Register] Step 1: Inserting product "${product.name}"...`);
+  
+  const { data: insertedProduct, error: insertError } = await supabase
     .from('products_cache')
-    .upsert({
+    .insert({
       merchant_id: product.merchant_id,
       product_url: product.product_url,
       external_id: product.external_id,
@@ -477,24 +524,32 @@ async function registerProduct(supabase: any, product: ProductInput): Promise<Re
       is_active: false,  // Initially inactive until all steps complete
       updated_at: new Date().toISOString(),
       collected_at: new Date().toISOString(),
-    }, {
-      onConflict: 'product_url',
     })
     .select('id')
     .single();
 
-  if (upsertError || !upsertedProduct) {
-    console.error(`[Register] Upsert failed:`, upsertError);
+  if (insertError || !insertedProduct) {
+    console.error(`[Register] Insert failed:`, insertError);
+    // Check if it's a unique constraint violation (duplicate)
+    if (insertError?.code === '23505') {
+      return {
+        success: false,
+        image_stored: false,
+        dna_generated: false,
+        error: `이미 등록된 제품입니다 (제약조건 위반)`,
+        step_failed: 'upsert',
+      };
+    }
     return {
       success: false,
       image_stored: false,
       dna_generated: false,
-      error: `제품 등록 실패: ${upsertError?.message || 'Unknown error'}`,
+      error: `제품 등록 실패: ${insertError?.message || 'Unknown error'}`,
       step_failed: 'upsert',
     };
   }
 
-  const productId = upsertedProduct.id;
+  const productId = insertedProduct.id;
   console.log(`[Register] Product ID: ${productId}`);
 
   // Step 2: Download and store image (REQUIRED)
