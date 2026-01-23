@@ -190,14 +190,28 @@ function inferSeasonFit(name: string, category: string): string[] {
   return [...new Set(seasons)];
 }
 
-// 컨셉 추론 (스타일 태그 + 가격대 + 브랜드)
+// 정제된 컨셉인지 확인 (카테고리 경로 등 제외)
+function isValidConcept(concept: string): boolean {
+  if (!concept || concept.length > 15) return false;
+  if (concept.includes('>')) return false; // 카테고리 경로
+  if (concept.includes('/')) return false;
+  if (/^[가-힣]{1,6}$/.test(concept) || /^[a-z]{3,12}$/i.test(concept)) {
+    return true;
+  }
+  return false;
+}
+
+// 컨셉 추론 (스타일 태그 + 가격대 + 브랜드) - 정제된 컨셉만 사용
 function inferConcepts(product: Product, formality: number): string[] {
   const concepts: string[] = [];
   const nameLower = product.name.toLowerCase();
   
-  // 스타일 태그에서 추출
+  // 스타일 태그에서 추출 (유효한 컨셉만 필터링)
   if (product.style_tags && product.style_tags.length > 0) {
-    concepts.push(...product.style_tags.slice(0, 3));
+    const validTags = product.style_tags
+      .filter(tag => isValidConcept(tag))
+      .slice(0, 3);
+    concepts.push(...validTags);
   }
   
   // 이름에서 스타일 키워드 추출
@@ -208,8 +222,9 @@ function inferConcepts(product: Product, formality: number): string[] {
     '클래식': ['클래식', 'classic', '트래디셔널', 'traditional'],
     '스트릿': ['스트릿', 'street', '힙합', 'hiphop', '오버사이즈', 'oversize'],
     '스포티': ['스포티', 'sporty', '애슬레저', 'athleisure', '액티브', 'active'],
-    '로맨틱': ['로맨틱', 'romantic', '페미닌', 'feminine', '러블리', 'lovely'],
+    '페미닌': ['페미닌', 'feminine', '러블리', 'lovely', '로맨틱', 'romantic'],
     '빈티지': ['빈티지', 'vintage', '레트로', 'retro'],
+    '럭셔리': ['럭셔리', 'luxury', '프리미엄', 'premium', '하이엔드'],
   };
   
   for (const [style, keywords] of Object.entries(styleMap)) {
@@ -220,18 +235,31 @@ function inferConcepts(product: Product, formality: number): string[] {
     }
   }
   
-  // 포멀리티 기반 기본 컨셉 추가
+  // 브랜드 기반 스타일 추론
+  const brandLower = (product.brand || '').toLowerCase();
+  if (['nike', 'adidas', 'puma', '나이키', '아디다스', '푸마', 'new balance'].some(b => brandLower.includes(b))) {
+    if (!concepts.includes('스포티')) concepts.push('스포티');
+  }
+  if (['gucci', 'prada', 'louis vuitton', 'chanel', 'dior', '구찌', '프라다'].some(b => brandLower.includes(b))) {
+    if (!concepts.includes('럭셔리')) concepts.push('럭셔리');
+  }
+  if (['uniqlo', '유니클로', 'zara', '자라', 'h&m'].some(b => brandLower.includes(b))) {
+    if (!concepts.includes('베이직')) concepts.push('베이직');
+  }
+  
+  // 포멀리티 기반 기본 컨셉 추가 (컨셉이 없을 때만)
   if (concepts.length === 0) {
     if (formality >= 7) {
-      concepts.push('포멀', '비즈니스');
+      concepts.push('포멀', '클래식');
     } else if (formality >= 5) {
-      concepts.push('세미캐주얼', '스마트');
+      concepts.push('모던', '미니멀');
     } else {
       concepts.push('캐주얼', '데일리');
     }
   }
   
-  return concepts.slice(0, 5);
+  // 중복 제거 후 반환
+  return [...new Set(concepts)].slice(0, 5);
 }
 
 // occasion 추론
