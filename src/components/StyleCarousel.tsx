@@ -148,19 +148,19 @@ const StyleCarousel = () => {
       return newState;
     });
 
-    // Change gender at 90 degrees (1.5s into 3s animation)
+    // Change gender at 90 degrees (2.5s into 5s animation)
     setTimeout(() => {
       setCardGenders(prev => {
         const newState = [...prev];
         newState[cardIndex] = !newState[cardIndex];
         return newState;
       });
-    }, 1500);
+    }, 2500);
 
-    // Mark animation as complete after 3 seconds
+    // Mark animation as complete after 5 seconds
     setTimeout(() => {
       isAnimatingRef.current[cardIndex] = false;
-    }, 3000);
+    }, 5000);
   }, []);
 
   // Random gender flip effect - each card flips independently with random timing
@@ -267,7 +267,7 @@ const StyleCarousel = () => {
                   style={{
                     transformStyle: 'preserve-3d',
                     transform: `rotateY(${rotation}deg)`,
-                    transition: 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)',
+                    transition: 'transform 5s cubic-bezier(0.25, 0.1, 0.25, 1)',
                   }}
                 >
                   {/* Front face */}
