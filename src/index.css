@@ -454,9 +454,15 @@ img {
     transition-duration: 0.01ms !important;
   }
   
+  /* Exception: Keep decorative background animations running slowly */
   .animate-float,
   .animate-sparkle,
   .animate-twinkle,
+  .animate-particle-rise {
+    animation-duration: 10s !important;
+    animation-iteration-count: infinite !important;
+  }
+  
   .animate-pulse-brand,
   .animate-gradient-shift {
     animation: none !important;
