@@ -225,7 +225,13 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         <div className="relative inline-block mb-4 sm:mb-6">
           <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-5 sm:h-5 text-coral animate-sparkle" style={{ animationDelay: '0s' }} />
           <Sparkles className="absolute -top-2 right-0 w-3 h-3 sm:w-4 sm:h-4 text-magenta animate-sparkle" style={{ animationDelay: '0.4s' }} />
-          <img src={showmelookLogo} alt="쇼미룩 로고" className="w-12 h-12 sm:w-16 sm:h-16 mx-auto object-contain animate-float" />
+          <img 
+            src={showmelookLogo} 
+            alt="쇼미룩 로고" 
+            width={64}
+            height={64}
+            className="w-12 h-12 sm:w-16 sm:h-16 mx-auto object-contain animate-float" 
+          />
           <Sparkles className="absolute -bottom-1 -right-2 sm:-right-3 w-3 h-3 sm:w-5 sm:h-5 text-sky animate-sparkle" style={{ animationDelay: '0.8s' }} />
           <Sparkles className="absolute bottom-1 -left-3 sm:bottom-2 sm:-left-5 w-3 h-3 sm:w-4 sm:h-4 text-purple animate-sparkle" style={{ animationDelay: '1.2s' }} />
         </div>
@@ -317,11 +323,19 @@ const Landing = () => {
               <img 
                 src={showmelookLogo} 
                 alt="쇼미룩 로고" 
+                width={80}
+                height={80}
+                loading="eager"
+                fetchPriority="high"
                 className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain animate-float drop-shadow-lg" 
               />
               <img 
                 src={showmelookKoreanLogo} 
                 alt="쇼미룩" 
+                width={140}
+                height={140}
+                loading="eager"
+                fetchPriority="high"
                 className="h-[80px] sm:h-[110px] md:h-[140px] object-contain -ml-2 sm:-ml-3 md:-ml-4 drop-shadow-lg" 
               />
               <Sparkles className="absolute -top-1 right-0 w-3 h-3 sm:w-5 sm:h-5 text-coral animate-sparkle" style={{ animationDelay: '1.2s' }} />

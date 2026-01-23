@@ -95,6 +95,8 @@ export const GenerationProgress = ({
             <img 
               src={showmelookLogo} 
               alt="ShowMeLook" 
+              width={56}
+              height={56}
               className="w-14 h-14 object-contain animate-pulse"
             />
           </div>
