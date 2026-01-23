@@ -53,8 +53,8 @@ const SparklesStar = ({ className, delay }: { className: string; delay: number }
   const [config] = useState(() => ({
     color: SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
     size: SPARKLE_SIZES[Math.floor(Math.random() * SPARKLE_SIZES.length)],
-    delay: delay + Math.random() * 1.5,
-    duration: 0.4 + Math.random() * 0.6
+    delay: Math.random() * 5, // 0~5초 사이 랜덤 딜레이
+    duration: 0.8 + Math.random() * 1.5 // 0.8~2.3초 사이 랜덤 지속시간
   }));
   
   return (
@@ -74,8 +74,8 @@ const SparklesStar = ({ className, delay }: { className: string; delay: number }
 const InlineSparkle = ({ className, size = 'w-4 h-4', delay = 0 }: { className?: string; size?: string; delay?: number }) => {
   const [config] = useState(() => ({
     color: className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
-    delay: delay + Math.random() * 1,
-    duration: 0.4 + Math.random() * 0.5
+    delay: Math.random() * 4, // 0~4초 사이 랜덤 딜레이
+    duration: 0.6 + Math.random() * 1.2 // 0.6~1.8초 사이 랜덤 지속시간
   }));
   
   return (
