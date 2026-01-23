@@ -624,78 +624,187 @@ serve(async (req) => {
     const seasonMap: Record<string, string> = { '봄': 'spring', '여름': 'summer', '가을': 'fall', '겨울': 'winter' };
     const seasonEn = seasonMap[requestedSeason] || 'spring';
 
-    // ============= 🔥 Stage 1: 규칙 기반 검색 조건 생성 (GPT 없이 비용 절약) =============
-    console.log(`[style-recommend] 🔥 Stage 1: Rule-based search condition generation (no GPT cost)...`);
+    // ============= 🔥 Stage 1: 고도화된 규칙 기반 검색 조건 생성 =============
+    console.log(`[style-recommend] 🔥 Stage 1: Advanced rule-based search condition generation...`);
     
-    // 키워드 → 컨셉 매핑
-    const CONCEPT_KEYWORDS: Record<string, string[]> = {
-      '캐주얼': ['캐주얼', 'casual', '편한', '데일리', '일상', '평상복'],
-      '미니멀': ['미니멀', 'minimal', '심플', 'simple', '깔끔', '모던'],
-      '클래식': ['클래식', 'classic', '정장', '격식', '포멀', 'formal', '오피스', '회사'],
-      '스트릿': ['스트릿', 'street', '힙합', '오버사이즈', '후드', '스케이터'],
-      '스포티': ['스포티', 'sporty', '운동', '애슬레저', 'athleisure', '짐', '헬스'],
-      '로맨틱': ['로맨틱', 'romantic', '데이트', '여성스러운', '플로럴', '레이스'],
-      '프레피': ['프레피', 'preppy', '학교', '캠퍼스', '단정한'],
-      '럭셔리': ['럭셔리', 'luxury', '고급', '하이엔드', '명품'],
+    // ========== 확장된 키워드 → 컨셉 매핑 ==========
+    const CONCEPT_KEYWORDS: Record<string, { keywords: string[]; weight: number }> = {
+      '캐주얼': { 
+        keywords: ['캐주얼', 'casual', '편한', '데일리', '일상', '평상복', '편안한', '릴렉스', 'relaxed', '이지', 'easy', '느슨한', '루즈'],
+        weight: 1.0 
+      },
+      '미니멀': { 
+        keywords: ['미니멀', 'minimal', '심플', 'simple', '깔끔', '모던', 'modern', '베이직', 'basic', '단정', '절제', '무채색', '톤온톤', '모노톤'],
+        weight: 1.0 
+      },
+      '클래식': { 
+        keywords: ['클래식', 'classic', '정장', '격식', '포멀', 'formal', '오피스', '회사', '비즈니스', 'business', '전통적', '트래디셔널', '단정한'],
+        weight: 1.0 
+      },
+      '스트릿': { 
+        keywords: ['스트릿', 'street', '힙합', 'hiphop', '오버사이즈', 'oversize', '후드', 'hoodie', '스케이터', 'skater', '그래피티', '와이드', '레이어드'],
+        weight: 1.0 
+      },
+      '스포티': { 
+        keywords: ['스포티', 'sporty', '운동', 'sport', '애슬레저', 'athleisure', '짐', 'gym', '헬스', '트레이닝', '조깅', '러닝', '액티브', 'active'],
+        weight: 1.0 
+      },
+      '로맨틱': { 
+        keywords: ['로맨틱', 'romantic', '여성스러운', '플로럴', 'floral', '레이스', 'lace', '프릴', '러블리', 'lovely', '페미닌', 'feminine', '달콤한', '파스텔'],
+        weight: 1.0 
+      },
+      '프레피': { 
+        keywords: ['프레피', 'preppy', '학교', '캠퍼스', '대학생', '아이비', 'ivy', '체크', '카라', '폴로', '로퍼'],
+        weight: 1.0 
+      },
+      '럭셔리': { 
+        keywords: ['럭셔리', 'luxury', '고급', '하이엔드', '명품', '프리미엄', 'premium', '고급스러운', '세련된', '시크', 'chic', '엘레강스'],
+        weight: 1.0 
+      },
+      '보헤미안': { 
+        keywords: ['보헤미안', 'bohemian', '보호', 'boho', '히피', 'hippie', '에스닉', 'ethnic', '자유로운', '빈티지'],
+        weight: 1.0 
+      },
+      '레트로': { 
+        keywords: ['레트로', 'retro', '빈티지', 'vintage', '복고', '올드스쿨', '클래식', '70년대', '80년대', '90년대', 'y2k'],
+        weight: 1.0 
+      },
+      '아방가르드': { 
+        keywords: ['아방가르드', 'avant-garde', '실험적', '독특한', '유니크', 'unique', '해체주의', '비대칭', '오버사이즈'],
+        weight: 0.8 
+      },
+      '내추럴': { 
+        keywords: ['내추럴', 'natural', '자연스러운', '오가닉', 'organic', '에코', '린넨', '코튼', '베이지', '브라운'],
+        weight: 1.0 
+      },
+      '댄디': { 
+        keywords: ['댄디', 'dandy', '젠틀맨', 'gentleman', '수트', '재킷', '슬랙스', '남성미', '세련된'],
+        weight: 1.0 
+      },
+      '걸리시': { 
+        keywords: ['걸리시', 'girlish', '소녀감성', '귀여운', 'cute', '상큼한', '발랄한', '핑크', '리본'],
+        weight: 1.0 
+      },
+      '시티보이': { 
+        keywords: ['시티보이', 'city boy', '도시적', '어반', 'urban', '세련된', '모던', '그레이', '네이비'],
+        weight: 1.0 
+      },
+      '고프코어': { 
+        keywords: ['고프코어', 'gorpcore', '아웃도어', 'outdoor', '캠핑', '등산', '하이킹', '기능성', '테크웨어'],
+        weight: 1.0 
+      },
+      '올드머니': { 
+        keywords: ['올드머니', 'old money', '클래식', '우아한', '품격', '고급', '전통', '골프', '요트'],
+        weight: 1.0 
+      },
     };
     
-    // 키워드 → 상황 매핑
-    const OCCASION_KEYWORDS: Record<string, string[]> = {
-      '데일리': ['데일리', '일상', '평소', '매일'],
-      '출근': ['출근', '오피스', '회사', '비즈니스', '미팅'],
-      '데이트': ['데이트', '소개팅', '만남'],
-      '여행': ['여행', '휴가', '나들이', '외출'],
-      '운동': ['운동', '짐', '헬스', '조깅', '러닝'],
-      '파티': ['파티', '행사', '결혼식', '웨딩'],
+    // ========== 확장된 키워드 → 상황(TPO) 매핑 ==========
+    const OCCASION_KEYWORDS: Record<string, { keywords: string[]; formality: { min: number; max: number } }> = {
+      '데일리': { 
+        keywords: ['데일리', '일상', '평소', '매일', '평상시', '생활', '보통'],
+        formality: { min: 2, max: 5 }
+      },
+      '출근': { 
+        keywords: ['출근', '오피스', '회사', '비즈니스', '미팅', '업무', '직장', '사무실', '근무'],
+        formality: { min: 5, max: 8 }
+      },
+      '데이트': { 
+        keywords: ['데이트', '소개팅', '만남', '약속', '저녁', '커플', '애인', '남친', '여친'],
+        formality: { min: 4, max: 7 }
+      },
+      '여행': { 
+        keywords: ['여행', '휴가', '나들이', '외출', '관광', '투어', '트립', '바캉스'],
+        formality: { min: 2, max: 5 }
+      },
+      '운동': { 
+        keywords: ['운동', '짐', '헬스', '조깅', '러닝', '요가', '필라테스', '트레이닝', '스포츠'],
+        formality: { min: 0, max: 3 }
+      },
+      '파티': { 
+        keywords: ['파티', '행사', '결혼식', '웨딩', '하객', '돌잔치', '축하', '이벤트'],
+        formality: { min: 7, max: 10 }
+      },
+      '카페': { 
+        keywords: ['카페', '브런치', '티타임', '디저트', '애프터눈'],
+        formality: { min: 3, max: 6 }
+      },
+      '쇼핑': { 
+        keywords: ['쇼핑', '백화점', '아울렛', '마트', '시장'],
+        formality: { min: 2, max: 5 }
+      },
+      '면접': { 
+        keywords: ['면접', '인터뷰', '취업', '입사', '채용'],
+        formality: { min: 7, max: 10 }
+      },
+      '캠퍼스': { 
+        keywords: ['캠퍼스', '학교', '대학', '수업', '강의', '학생'],
+        formality: { min: 2, max: 5 }
+      },
+      '집콕': { 
+        keywords: ['집콕', '홈웨어', '집', '실내', '휴식', '편한'],
+        formality: { min: 0, max: 2 }
+      },
+      '아웃도어': { 
+        keywords: ['아웃도어', '캠핑', '등산', '하이킹', '피크닉', '바베큐'],
+        formality: { min: 1, max: 4 }
+      },
     };
     
-    // 키워드 → 격식도 매핑
-    const FORMALITY_KEYWORDS: { pattern: string[]; min: number; max: number }[] = [
-      { pattern: ['정장', '포멀', 'formal', '면접', '결혼식', '비즈니스'], min: 7, max: 10 },
-      { pattern: ['오피스', '출근', '회사', '세미포멀'], min: 5, max: 8 },
-      { pattern: ['스마트캐주얼', '데이트', '약속'], min: 4, max: 7 },
-      { pattern: ['캐주얼', '편한', '일상', '데일리'], min: 2, max: 5 },
-      { pattern: ['운동', '스포티', '애슬레저', '짐'], min: 0, max: 3 },
-    ];
+    // ========== 색상 키워드 매핑 (확장) ==========
+    const COLOR_KEYWORDS: Record<string, string[]> = {
+      'neutral': ['블랙', 'black', '화이트', 'white', '그레이', 'gray', 'grey', '베이지', '아이보리', 'ivory', '뉴트럴', '무채색', '모노톤', '차콜', 'charcoal'],
+      'warm': ['브라운', 'brown', '오렌지', 'orange', '카멜', 'camel', '테라코타', '머스타드', '코랄', 'coral', '살몬', '버건디'],
+      'cool': ['블루', 'blue', '네이비', 'navy', '민트', 'mint', '그린', 'green', '터콰이즈', '아쿠아', '스카이블루', '인디고'],
+      'bold': ['레드', 'red', '옐로우', 'yellow', '핑크', 'pink', '퍼플', 'purple', '비비드', '형광', '네온', '마젠타'],
+      'pastel': ['파스텔', 'pastel', '라벤더', 'lavender', '피치', 'peach', '연한', '라이트', 'light', '베이비핑크', '스카이'],
+    };
+    
+    // ========== 체형/핏 키워드 매핑 ==========
+    const FIT_KEYWORDS: Record<string, { silhouette: string; priority: string[] }> = {
+      '마른': { silhouette: 'slim', priority: ['레이어드', '오버사이즈'] },
+      '통통': { silhouette: 'relaxed', priority: ['A라인', '스트레이트'] },
+      '근육': { silhouette: 'fitted', priority: ['슬림핏', '스트레이트'] },
+      '키작은': { silhouette: 'cropped', priority: ['하이웨이스트', '숏'] },
+      '키큰': { silhouette: 'long', priority: ['롱', '맥시'] },
+    };
     
     const requestLower = userRequest.toLowerCase();
     
-    // 컨셉 추출
-    const detectedConcepts: string[] = [];
-    for (const [concept, keywords] of Object.entries(CONCEPT_KEYWORDS)) {
-      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
-        detectedConcepts.push(concept);
+    // ========== 컨셉 추출 (가중치 포함) ==========
+    const detectedConcepts: { concept: string; weight: number }[] = [];
+    for (const [concept, { keywords, weight }] of Object.entries(CONCEPT_KEYWORDS)) {
+      const matchCount = keywords.filter(kw => requestLower.includes(kw.toLowerCase())).length;
+      if (matchCount > 0) {
+        detectedConcepts.push({ concept, weight: weight * matchCount });
       }
     }
+    // 가중치 순으로 정렬
+    detectedConcepts.sort((a, b) => b.weight - a.weight);
+    const topConcepts = detectedConcepts.slice(0, 3).map(c => c.concept);
     
-    // 상황 추출
+    // ========== 상황 추출 + 격식도 자동 결정 ==========
     const detectedOccasions: string[] = [];
-    for (const [occasion, keywords] of Object.entries(OCCASION_KEYWORDS)) {
-      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
-        detectedOccasions.push(occasion);
-      }
-    }
-    
-    // 격식도 추출
     let formalityMin = 0;
     let formalityMax = 10;
-    for (const { pattern, min, max } of FORMALITY_KEYWORDS) {
-      if (pattern.some(kw => requestLower.includes(kw.toLowerCase()))) {
-        formalityMin = min;
-        formalityMax = max;
-        break;
+    let formalityDetected = false;
+    
+    for (const [occasion, { keywords, formality }] of Object.entries(OCCASION_KEYWORDS)) {
+      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
+        detectedOccasions.push(occasion);
+        if (!formalityDetected) {
+          formalityMin = formality.min;
+          formalityMax = formality.max;
+          formalityDetected = true;
+        } else {
+          // 여러 상황이 감지되면 범위 확장
+          formalityMin = Math.min(formalityMin, formality.min);
+          formalityMax = Math.max(formalityMax, formality.max);
+        }
       }
     }
     
-    // 색상 키워드 추출
-    const COLOR_KEYWORDS: Record<string, string[]> = {
-      'neutral': ['블랙', 'black', '화이트', 'white', '그레이', 'gray', '베이지', '뉴트럴'],
-      'warm': ['브라운', 'brown', '오렌지', '레드', '와인', '베이지'],
-      'cool': ['블루', 'blue', '네이비', 'navy', '민트', '그린'],
-      'bold': ['레드', 'red', '옐로우', '핑크', '퍼플', '비비드'],
-      'pastel': ['파스텔', '라벤더', '민트', '피치', '연한'],
-    };
-    
+    // ========== 색상 추출 ==========
     const detectedColors: string[] = [];
     for (const [color, keywords] of Object.entries(COLOR_KEYWORDS)) {
       if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
@@ -703,19 +812,28 @@ serve(async (req) => {
       }
     }
     
-    // 검색 조건 생성 (GPT 호출 없음!)
+    // ========== 체형 힌트 추출 ==========
+    let fitHint: string | null = null;
+    for (const [fit, data] of Object.entries(FIT_KEYWORDS)) {
+      if (requestLower.includes(fit)) {
+        fitHint = data.silhouette;
+        break;
+      }
+    }
+    
+    // ========== 검색 조건 생성 ==========
     const searchConditions: SearchConditions = {
-      concepts: detectedConcepts.length > 0 ? detectedConcepts : requestedConcepts,
+      concepts: topConcepts.length > 0 ? topConcepts : requestedConcepts,
       occasions: detectedOccasions.length > 0 ? detectedOccasions : requestedOccasions,
       formalityMin,
       formalityMax,
       colorFamilies: detectedColors,
       excludeCategories: [],
       seasonFit: [seasonEn],
-      reasoning: `Rule-based: concepts=${detectedConcepts.join(',')}, occasions=${detectedOccasions.join(',')}, formality=${formalityMin}-${formalityMax}`,
+      reasoning: `Advanced rules: concepts=${topConcepts.join(',')}, occasions=${detectedOccasions.join(',')}, formality=${formalityMin}-${formalityMax}, colors=${detectedColors.join(',')}, fit=${fitHint || 'auto'}`,
     };
     
-    console.log(`[style-recommend] Stage 1 complete (no GPT cost): ${JSON.stringify(searchConditions)}`);
+    console.log(`[style-recommend] Stage 1 complete: ${JSON.stringify(searchConditions)}`);
 
     // ============= 🔥 Stage 2: GPT 조건 기반 DB 쿼리 =============
     console.log(`[style-recommend] 🔥 Stage 2: Querying DB with GPT-generated conditions...`);
@@ -879,64 +997,126 @@ serve(async (req) => {
       console.log('[style-recommend] Could not fetch recent products, continuing...');
     }
     
-    // ============= DNA 2.0 + 피드백 기반 점수 계산 =============
-    // 점수 기반 정렬 (피드백 점수 + 스타일별 가중치 반영)
+    // ============= 고도화된 DNA 2.0 + 피드백 기반 점수 계산 =============
+    // 검색 조건에서 추출한 컨셉/상황으로 스코어링
+    const effectiveConcepts = searchConditions.concepts.length > 0 ? searchConditions.concepts : requestedConcepts;
+    const effectiveOccasions = searchConditions.occasions.length > 0 ? searchConditions.occasions : requestedOccasions;
+    
     const scoredProducts = allProducts.map(p => {
       const boostScore = (p.dna_meta as any)?.boost_score || 0;
       const isPatternSuggested = patternBasedIds.includes(p.id);
       const wasRecentlyUsed = recentlyUsedProductIds.has(p.id);
       
-      // 피드백 점수 (0.5 = 중립, >0.5 = 긍정, <0.5 = 부정)
+      // ========== 피드백 점수 (0.5 = 중립) ==========
       const feedbackScore = p.feedback_score || 0.5;
       
-      // 스타일별 가중치 계산 (현재 요청된 컨셉과 매칭)
+      // ========== 스타일별 가중치 (해당 컨셉에서 인기도) ==========
       let styleBonus = 0;
       const styleWeights = p.style_weights || {};
-      for (const concept of requestedConcepts) {
+      for (const concept of effectiveConcepts) {
         const normalizedConcept = normalizeConcept(concept);
         if (styleWeights[normalizedConcept]) {
-          // 스타일 가중치가 0.5 이상이면 보너스, 미만이면 페널티
-          styleBonus += (styleWeights[normalizedConcept] - 0.5) * 0.3;
+          // 해당 스타일에서 성과가 좋았던 상품 우대
+          styleBonus += (styleWeights[normalizedConcept] - 0.5) * 0.4;
         }
       }
       
+      // ========== 컨셉 매칭 점수 (Stage 1 조건 기반) ==========
+      const conceptScore = calculateConceptScore(p, effectiveConcepts);
+      
+      // ========== TPO 매칭 점수 ==========
+      const occasionScore = calculateOccasionScore(p, effectiveOccasions);
+      
+      // ========== 격식도 매칭 점수 (Stage 1에서 결정된 범위) ==========
+      let formalityScore = 0;
+      if (p.dna_meta?.formality !== undefined) {
+        const productFormality = p.dna_meta.formality;
+        if (productFormality >= searchConditions.formalityMin && productFormality <= searchConditions.formalityMax) {
+          // 범위 내: 중앙에 가까울수록 높은 점수
+          const center = (searchConditions.formalityMin + searchConditions.formalityMax) / 2;
+          const distance = Math.abs(productFormality - center);
+          const range = (searchConditions.formalityMax - searchConditions.formalityMin) / 2;
+          formalityScore = 1 - (distance / Math.max(range, 1));
+        } else {
+          // 범위 밖: 거리에 따라 페널티
+          const minDist = Math.min(
+            Math.abs(productFormality - searchConditions.formalityMin),
+            Math.abs(productFormality - searchConditions.formalityMax)
+          );
+          formalityScore = -minDist * 0.1;
+        }
+      }
+      
+      // ========== 색상 매칭 점수 ==========
+      let colorScore = 0;
+      if (searchConditions.colorFamilies.length > 0 && p.dna_meta?.color_family) {
+        if (searchConditions.colorFamilies.includes(p.dna_meta.color_family)) {
+          colorScore = 0.15;
+        } else if (
+          // 유사 색상 그룹 (neutral과 warm/cool은 어울림)
+          (searchConditions.colorFamilies.includes('neutral') && ['warm', 'cool'].includes(p.dna_meta.color_family)) ||
+          (['warm', 'cool'].includes(searchConditions.colorFamilies[0]) && p.dna_meta.color_family === 'neutral')
+        ) {
+          colorScore = 0.08;
+        }
+      }
+      
+      // ========== 구매 전환 이력 보너스 ==========
+      const purchaseBonus = (p.feedback_score && p.feedback_score > 0.6) ? 0.1 : 0;
+      
       return {
         product: p,
-        conceptScore: calculateConceptScore(p, requestedConcepts),
-        occasionScore: calculateOccasionScore(p, requestedOccasions),
+        conceptScore,
+        occasionScore,
+        formalityScore,
+        colorScore,
         hasDNA: !!p.dna_meta,
         boostScore,
         isPatternSuggested,
         wasRecentlyUsed,
         feedbackScore,
         styleBonus,
-        totalScore: 0, // 아래에서 계산
+        purchaseBonus,
+        totalScore: 0,
       };
     });
     
-    // 종합 점수 계산 (피드백 + 스타일 가중치 포함)
+    // ========== 종합 점수 계산 (가중치 조정) ==========
     for (const scored of scoredProducts) {
       scored.totalScore = 
-        (scored.hasDNA ? 0.20 : 0) +                    // DNA 유무
-        (scored.conceptScore * 0.25) +                  // 컨셉 매칭
-        (scored.occasionScore * 0.15) +                 // TPO 매칭
-        (scored.boostScore * 0.05) +                    // boost 점수
-        (scored.isPatternSuggested ? 0.10 : 0) +        // 패턴 추천
-        ((scored.feedbackScore - 0.5) * 0.20) +         // 피드백 점수 (-0.1 ~ +0.1)
-        (scored.styleBonus) +                            // 스타일별 가중치
-        (scored.wasRecentlyUsed ? -0.25 : 0);           // 최근 사용 페널티
+        (scored.hasDNA ? 0.15 : 0) +                      // DNA 유무
+        (scored.conceptScore * 0.25) +                    // 컨셉 매칭 (핵심)
+        (scored.occasionScore * 0.15) +                   // TPO 매칭
+        (scored.formalityScore * 0.12) +                  // 격식도 매칭 (신규)
+        (scored.colorScore) +                              // 색상 매칭 (신규)
+        (scored.boostScore * 0.03) +                      // boost 점수
+        (scored.isPatternSuggested ? 0.08 : 0) +          // 패턴 추천
+        ((scored.feedbackScore - 0.5) * 0.25) +           // 피드백 점수 (강화: 0.20→0.25)
+        (scored.styleBonus) +                              // 스타일별 가중치 (강화)
+        (scored.purchaseBonus) +                           // 구매 전환 보너스 (신규)
+        (scored.wasRecentlyUsed ? -0.30 : 0);             // 최근 사용 페널티 (강화: -0.25→-0.30)
     }
     
-    // 상위 피드백 상품 로깅
+    // ========== 상위 피드백 상품 로깅 ==========
     const topFeedback = scoredProducts
-      .filter(s => s.feedbackScore > 0.5)
+      .filter(s => s.feedbackScore > 0.55)
       .sort((a, b) => b.feedbackScore - a.feedbackScore)
       .slice(0, 5);
     if (topFeedback.length > 0) {
-      console.log(`[style-recommend] Top feedback products: ${topFeedback.map(s => `${s.product.name.slice(0, 20)}(${s.feedbackScore})`).join(', ')}`);
+      console.log(`[style-recommend] 🌟 Top feedback products: ${topFeedback.map(s => `${s.product.name.slice(0, 15)}(fb:${s.feedbackScore.toFixed(2)}, style:${s.styleBonus.toFixed(2)})`).join(', ')}`);
     }
     
-    // 같은 점수권 내 랜덤 셔플 (점수를 0.05 단위로 그룹화)
+    // ========== 스코어 분포 로깅 ==========
+    const scoreStats = {
+      avg: scoredProducts.reduce((sum, s) => sum + s.totalScore, 0) / scoredProducts.length,
+      max: Math.max(...scoredProducts.map(s => s.totalScore)),
+      min: Math.min(...scoredProducts.map(s => s.totalScore)),
+      withStyleBonus: scoredProducts.filter(s => s.styleBonus > 0).length,
+      withPurchaseBonus: scoredProducts.filter(s => s.purchaseBonus > 0).length,
+    };
+    console.log(`[style-recommend] Score stats: avg=${scoreStats.avg.toFixed(3)}, max=${scoreStats.max.toFixed(3)}, styleBonus=${scoreStats.withStyleBonus}, purchaseBonus=${scoreStats.withPurchaseBonus}`);
+    
+    // ========== 같은 점수권 내 랜덤 셔플 ==========
     const scoreGrouped = new Map<number, typeof scoredProducts>();
     for (const scored of scoredProducts) {
       const bucket = Math.floor(scored.totalScore * 20) / 20; // 0.05 단위
@@ -944,7 +1124,6 @@ serve(async (req) => {
       scoreGrouped.get(bucket)!.push(scored);
     }
     
-    // 각 그룹 내 셔플
     const shuffledScored: typeof scoredProducts = [];
     const buckets = Array.from(scoreGrouped.keys()).sort((a, b) => b - a);
     for (const bucket of buckets) {
@@ -961,10 +1140,10 @@ serve(async (req) => {
     console.log(`[style-recommend] Top scored products: ${topScoredProducts.length}`);
     if (topScoredProducts.length > 0) {
       const topProduct = topScoredProducts[0];
-      console.log(`[style-recommend] Best match: ${topProduct.product.name} (concept: ${topProduct.conceptScore.toFixed(2)}, occasion: ${topProduct.occasionScore.toFixed(2)}, recentlyUsed: ${topProduct.wasRecentlyUsed})`);
+      console.log(`[style-recommend] Best match: ${topProduct.product.name} (concept: ${topProduct.conceptScore.toFixed(2)}, formality: ${topProduct.formalityScore.toFixed(2)}, feedback: ${topProduct.feedbackScore.toFixed(2)}, total: ${topProduct.totalScore.toFixed(3)})`);
     }
     
-    // 브랜드 다양성 적용
+    // ========== 브랜드 다양성 ==========
     function shuffleArray<T>(array: T[]): T[] {
       const shuffled = [...array];
       for (let i = shuffled.length - 1; i > 0; i--) {
