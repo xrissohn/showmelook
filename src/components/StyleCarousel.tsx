@@ -214,6 +214,8 @@ const StyleCarousel = () => {
           const isMale = cardGenders[i];
           const isFlipping = flippingCards[i];
           const currentImage = isMale ? style.maleImage : style.femaleImage;
+          // First 5 images (middle set, initially visible) should load eagerly
+          const isInitiallyVisible = i >= styles.length && i < styles.length * 2;
 
           return (
             <div
@@ -243,8 +245,9 @@ const StyleCarousel = () => {
                       className="w-full h-full object-cover"
                       width={228}
                       height={285}
-                      loading="lazy"
-                      decoding="async"
+                      loading={isInitiallyVisible ? "eager" : "lazy"}
+                      fetchPriority={isInitiallyVisible ? "high" : "auto"}
+                      decoding={isInitiallyVisible ? "sync" : "async"}
                       draggable={false}
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-20 group-hover:opacity-10 transition-opacity duration-300`} />
