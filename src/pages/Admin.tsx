@@ -162,6 +162,7 @@ const Admin = () => {
     withoutDna: number;
     byTarget: Record<string, number>;
     bySlot: Record<string, number>;
+    byConcept: Record<string, number>;
   } | null>(null);
   const [isDnaLoading, setIsDnaLoading] = useState(false);
   const [dnaBatchResult, setDnaBatchResult] = useState<{
@@ -174,6 +175,16 @@ const Admin = () => {
     error?: string;
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
+
+  // Feedback stats state (v4.0)
+  const [feedbackStats, setFeedbackStats] = useState<{
+    totalProducts: number;
+    withFeedback: number;
+    topLiked: Array<{ id: string; name: string; score: number; likeCount: number }>;
+    topDisliked: Array<{ id: string; name: string; score: number; dislikeCount: number }>;
+    styleWeights: Record<string, { positive: number; negative: number }>;
+  } | null>(null);
+  const [isFeedbackLoading, setIsFeedbackLoading] = useState(false);
 
   // Pending products state
   const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>([]);
@@ -226,6 +237,7 @@ const Admin = () => {
     loadPendingCount();
     loadErrorLogStats();
     loadJobStats();
+    loadFeedbackStats();
   }, []);
 
   // Auto-refresh queue monitoring every 10 seconds
@@ -769,17 +781,105 @@ const Admin = () => {
 
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
+      const byConcept: Record<string, number> = {};
       products.forEach(p => {
         if (p.dna_meta) {
-          const meta = p.dna_meta as { target?: string; item_slot?: string };
+          const meta = p.dna_meta as { target?: string; item_slot?: string; concepts?: string[] };
           if (meta.target) byTarget[meta.target] = (byTarget[meta.target] || 0) + 1;
           if (meta.item_slot) bySlot[meta.item_slot] = (bySlot[meta.item_slot] || 0) + 1;
+          if (meta.concepts) {
+            meta.concepts.forEach(c => {
+              byConcept[c] = (byConcept[c] || 0) + 1;
+            });
+          }
         }
       });
 
-      setDnaStats({ total, withDna, withoutDna, byTarget, bySlot });
+      setDnaStats({ total, withDna, withoutDna, byTarget, bySlot, byConcept });
     } catch (error) {
       console.error('Error loading DNA stats:', error);
+    }
+  };
+
+  const loadFeedbackStats = async () => {
+    setIsFeedbackLoading(true);
+    try {
+      // Load product feedback scores
+      const { data: scores } = await supabase
+        .from('product_feedback_scores')
+        .select('*')
+        .order('overall_score', { ascending: false })
+        .limit(200);
+
+      // Load product names for top items
+      const topLiked: Array<{ id: string; name: string; score: number; likeCount: number }> = [];
+      const topDisliked: Array<{ id: string; name: string; score: number; dislikeCount: number }> = [];
+      const allStyleWeights: Record<string, { positive: number; negative: number }> = {};
+
+      if (scores && scores.length > 0) {
+        // Get product names
+        const productIds = scores.slice(0, 50).map(s => s.product_id);
+        const { data: products } = await supabase
+          .from('products_cache')
+          .select('id, name')
+          .in('id', productIds);
+
+        const productMap = new Map(products?.map(p => [p.id, p.name]) || []);
+
+        // Top liked (high score)
+        scores
+          .filter(s => s.like_count > 0)
+          .sort((a, b) => b.overall_score - a.overall_score)
+          .slice(0, 10)
+          .forEach(s => {
+            topLiked.push({
+              id: s.product_id,
+              name: productMap.get(s.product_id) || 'Unknown',
+              score: s.overall_score,
+              likeCount: s.like_count
+            });
+          });
+
+        // Top disliked (high dislike count)
+        scores
+          .filter(s => s.dislike_count > 0)
+          .sort((a, b) => b.dislike_count - a.dislike_count)
+          .slice(0, 10)
+          .forEach(s => {
+            topDisliked.push({
+              id: s.product_id,
+              name: productMap.get(s.product_id) || 'Unknown',
+              score: s.overall_score,
+              dislikeCount: s.dislike_count
+            });
+          });
+
+        // Aggregate style weights
+        scores.forEach(s => {
+          if (s.style_weights && typeof s.style_weights === 'object') {
+            const weights = s.style_weights as Record<string, { positive?: number; negative?: number }>;
+            Object.entries(weights).forEach(([style, data]) => {
+              if (!allStyleWeights[style]) {
+                allStyleWeights[style] = { positive: 0, negative: 0 };
+              }
+              allStyleWeights[style].positive += data?.positive || 0;
+              allStyleWeights[style].negative += data?.negative || 0;
+            });
+          }
+        });
+      }
+
+      setFeedbackStats({
+        totalProducts: scores?.length || 0,
+        withFeedback: scores?.filter(s => s.like_count > 0 || s.dislike_count > 0 || s.cart_count > 0).length || 0,
+        topLiked,
+        topDisliked,
+        styleWeights: allStyleWeights
+      });
+    } catch (error) {
+      console.error('Error loading feedback stats:', error);
+    } finally {
+      setIsFeedbackLoading(false);
     }
   };
 
@@ -1156,56 +1256,78 @@ const Admin = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Dna className="w-5 h-5" />
-                  DNA 2.0 관리
+                  DNA 4.0 + 피드백 학습 관리
                 </CardTitle>
                 <CardDescription>
-                  상품 DNA(스타일 태그/특징/코디팁)를 배치로 생성하고 관리합니다.
+                  상품 DNA와 유저 피드백 기반 학습 시스템을 관리합니다. (v4.0)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* DNA Coverage */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium">DNA 2.0 커버리지</h3>
-                    <Button variant="outline" size="sm" onClick={loadDnaStats}>
-                      <RefreshCw className="w-4 h-4 mr-1" />
-                      새로고침
-                    </Button>
+                    <h3 className="font-medium">🧬 DNA 커버리지</h3>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={loadDnaStats}>
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                        새로고침
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={loadFeedbackStats} disabled={isFeedbackLoading}>
+                        {isFeedbackLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <BarChart3 className="w-4 h-4 mr-1" />}
+                        피드백 통계
+                      </Button>
+                    </div>
                   </div>
                   
                   {dnaStats && (
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span>🧬 DNA 2.0 커버리지</span>
-                          <span className={dnaPercentage === 100 ? 'text-green-600 font-bold' : 'text-orange-600'}>
+                          <span>🧬 DNA 커버리지</span>
+                          <span className={dnaPercentage === 100 ? 'text-primary font-bold' : 'text-accent-foreground'}>
                             {dnaStats.withDna} / {dnaStats.total} ({dnaPercentage}%)
                           </span>
                         </div>
                         <Progress value={dnaPercentage} className="h-3" />
                       </div>
 
-                      {Object.keys(dnaStats.byTarget).length > 0 && (
-                        <div className="p-4 border rounded-lg space-y-2">
-                          <h4 className="text-sm font-medium">타겟 분포</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {Object.entries(dnaStats.byTarget)
-                              .sort((a, b) => b[1] - a[1])
-                              .map(([target, count]) => (
-                                <Badge key={target} variant="secondary">{target}: {count}</Badge>
-                              ))}
+                      <div className="grid md:grid-cols-2 gap-4">
+                        {Object.keys(dnaStats.byTarget).length > 0 && (
+                          <div className="p-4 border rounded-lg space-y-2">
+                            <h4 className="text-sm font-medium">👤 타겟 분포</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(dnaStats.byTarget)
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([target, count]) => (
+                                  <Badge key={target} variant="secondary">{target}: {count}</Badge>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {Object.keys(dnaStats.bySlot).length > 0 && (
+                        {Object.keys(dnaStats.bySlot).length > 0 && (
+                          <div className="p-4 border rounded-lg space-y-2">
+                            <h4 className="text-sm font-medium">👕 아이템 슬롯</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(dnaStats.bySlot)
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([slot, count]) => (
+                                  <Badge key={slot} variant="outline">{slot}: {count}</Badge>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {Object.keys(dnaStats.byConcept).length > 0 && (
                         <div className="p-4 border rounded-lg space-y-2">
-                          <h4 className="text-sm font-medium">아이템 슬롯 분포</h4>
+                          <h4 className="text-sm font-medium">🎨 스타일 컨셉 분포</h4>
                           <div className="flex flex-wrap gap-2">
-                            {Object.entries(dnaStats.bySlot)
+                            {Object.entries(dnaStats.byConcept)
                               .sort((a, b) => b[1] - a[1])
-                              .map(([slot, count]) => (
-                                <Badge key={slot} variant="outline">{slot}: {count}</Badge>
+                              .slice(0, 15)
+                              .map(([concept, count]) => (
+                                <Badge key={concept} className="bg-primary/10 text-primary border-primary/20">{concept}: {count}</Badge>
                               ))}
                           </div>
                         </div>
@@ -1214,15 +1336,89 @@ const Admin = () => {
                   )}
                 </div>
 
+                {/* Feedback Stats (v4.0) */}
+                {feedbackStats && (
+                  <div className="p-4 border-2 border-accent/30 rounded-lg space-y-4 bg-accent/5">
+                    <h3 className="font-medium flex items-center gap-2">
+                      <Activity className="w-4 h-4" />
+                      피드백 학습 현황 (v4.0)
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="p-3 bg-card rounded-lg text-center">
+                        <p className="text-2xl font-bold">{feedbackStats.totalProducts}</p>
+                        <p className="text-xs text-muted-foreground">피드백 스코어 수</p>
+                      </div>
+                      <div className="p-3 bg-card rounded-lg text-center">
+                        <p className="text-2xl font-bold text-primary">{feedbackStats.withFeedback}</p>
+                        <p className="text-xs text-muted-foreground">활성 피드백</p>
+                      </div>
+                      <div className="p-3 bg-card rounded-lg text-center">
+                        <p className="text-2xl font-bold text-accent-foreground">{feedbackStats.topLiked.length}</p>
+                        <p className="text-xs text-muted-foreground">인기 상품</p>
+                      </div>
+                      <div className="p-3 bg-card rounded-lg text-center">
+                        <p className="text-2xl font-bold">{Object.keys(feedbackStats.styleWeights).length}</p>
+                        <p className="text-xs text-muted-foreground">학습된 스타일</p>
+                      </div>
+                    </div>
+
+                    {/* Top Liked Products */}
+                    {feedbackStats.topLiked.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">👍 인기 상품 TOP 5</h4>
+                        <div className="space-y-1">
+                          {feedbackStats.topLiked.slice(0, 5).map((item, idx) => (
+                            <div key={item.id} className="flex items-center justify-between text-sm p-2 bg-card rounded">
+                              <span className="flex items-center gap-2">
+                                <span className="text-primary font-bold">{idx + 1}.</span>
+                                <span className="truncate max-w-[200px]">{item.name}</span>
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary">❤️ {item.likeCount}</Badge>
+                                <Badge variant="outline">점수: {item.score.toFixed(2)}</Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Style Weights */}
+                    {Object.keys(feedbackStats.styleWeights).length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium">🎯 스타일별 학습 가중치</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(feedbackStats.styleWeights)
+                            .sort((a, b) => (b[1].positive - b[1].negative) - (a[1].positive - a[1].negative))
+                            .slice(0, 10)
+                            .map(([style, data]) => (
+                              <Badge 
+                                key={style} 
+                                variant={data.positive > data.negative ? "default" : "secondary"}
+                                className="flex items-center gap-1"
+                              >
+                                {style}
+                                <span className="text-xs opacity-75">
+                                  (+{data.positive}/-{data.negative})
+                                </span>
+                              </Badge>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* DNA Batch Generation */}
                 <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
                   <div>
                     <h3 className="font-medium flex items-center gap-2">
                       <Dna className="w-4 h-4" />
-                      DNA 2.0 배치 생성
+                      DNA 배치 생성
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      규칙 기반으로 빠르게 DNA 메타 정보를 생성합니다.
+                      규칙 기반으로 DNA 메타 정보(target, concepts, occasions 등)를 자동 생성합니다.
                     </p>
                   </div>
 
@@ -1244,32 +1440,32 @@ const Admin = () => {
 
                     <Button onClick={runDnaBatch} disabled={isDnaLoading}>
                       {isDnaLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Dna className="w-4 h-4 mr-2" />}
-                      🧬 DNA 2.0 생성
+                      🧬 DNA 생성
                     </Button>
                   </div>
 
                   {dnaBatchResult && (
                     <div className={`p-4 rounded-lg border ${
                       dnaBatchResult.success 
-                        ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
-                        : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                        ? 'bg-accent/10 border-accent/30'
+                        : 'bg-destructive/10 border-destructive/30'
                     }`}>
                       {dnaBatchResult.success ? (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-green-600" />
-                            <span className="font-medium">DNA 2.0 생성 완료</span>
+                            <CheckCircle2 className="w-5 h-5 text-primary" />
+                            <span className="font-medium">DNA 생성 완료</span>
                           </div>
                           <div className="grid grid-cols-4 gap-4 text-sm">
                             <div><span className="text-muted-foreground">처리:</span> <span className="font-medium">{dnaBatchResult.processed}</span></div>
-                            <div><span className="text-muted-foreground">성공:</span> <span className="font-medium text-green-600">{dnaBatchResult.updated}</span></div>
-                            <div><span className="text-muted-foreground">에러:</span> <span className="font-medium text-red-600">{dnaBatchResult.errors || 0}</span></div>
+                            <div><span className="text-muted-foreground">성공:</span> <span className="font-medium text-primary">{dnaBatchResult.updated}</span></div>
+                            <div><span className="text-muted-foreground">에러:</span> <span className="font-medium text-destructive">{dnaBatchResult.errors || 0}</span></div>
                             <div><span className="text-muted-foreground">남음:</span> <span className="font-medium">{dnaBatchResult.remaining}</span></div>
                           </div>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <XCircle className="w-5 h-5 text-red-600" />
+                          <XCircle className="w-5 h-5 text-destructive" />
                           <span className="font-medium">오류: {dnaBatchResult.error}</span>
                         </div>
                       )}
@@ -1286,11 +1482,24 @@ const Admin = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ShoppingBag className="w-5 h-5" />
-                  AI 스타일 추천
+                  AI 스타일 추천 v4.0
                 </CardTitle>
-                <CardDescription>GPT-5가 스타일을 추론하고, DNA 2.0 기반으로 룩을 조합합니다.</CardDescription>
+                <CardDescription>
+                  GPT-5 스타일 추론 + DNA 기반 매칭 + 피드백 학습 시스템
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* v4.0 Features Info */}
+                <div className="p-3 bg-muted/50 rounded-lg border text-sm">
+                  <p className="font-medium mb-1">🚀 v4.0 피드백 학습 시스템</p>
+                  <ul className="text-muted-foreground space-y-0.5 text-xs">
+                    <li>• DNA 점수 (0.20) + 컨셉 매칭 (0.25) + TPO (0.15) + 패턴 (0.10)</li>
+                    <li>• 피드백 점수 (±0.10): 좋아요/구매 +, 싫어요 -</li>
+                    <li>• 스타일별 가중치 (±0.15): 각 스타일 컨셉에서의 인기도</li>
+                    <li>• 최근 사용 패널티 (-0.25): 다양성 확보</li>
+                  </ul>
+                </div>
+
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium mb-2 block">스타일 요청</label>
@@ -1315,7 +1524,7 @@ const Admin = () => {
                     <div className="flex items-end">
                       <label className="flex items-center gap-2 text-sm pb-2">
                         <input type="checkbox" checked={aiForceRefresh} onChange={(e) => setAiForceRefresh(e.target.checked)} className="rounded" />
-                        캐시 무시
+                        캐시 무시 (새로운 피드백 반영)
                       </label>
                     </div>
                   </div>
@@ -1323,19 +1532,19 @@ const Admin = () => {
 
                 <Button onClick={testStyleRecommend} disabled={isAiLoading} className="w-full">
                   {isAiLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <ShoppingBag className="w-4 h-4 mr-2" />}
-                  AI 추천 생성
+                  AI 추천 생성 (v4.0)
                 </Button>
 
                 {aiResult && (
                   <div className={`p-4 rounded-lg border ${
                     aiResult.success 
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800' 
-                      : 'bg-red-50 border-red-200 dark:bg-red-950 dark:border-red-800'
+                      ? 'bg-accent/10 border-accent/30' 
+                      : 'bg-destructive/10 border-destructive/30'
                   }`}>
                     {aiResult.success && aiResult.look ? (
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                          <div className="flex items-center gap-2 text-primary">
                             <CheckCircle2 className="w-5 h-5" />
                             <span className="font-medium">{aiResult.look.name}</span>
                             {aiResult.cacheHit && <Badge variant="secondary">캐시 히트</Badge>}
@@ -1343,8 +1552,22 @@ const Admin = () => {
                           <p className="text-lg font-bold">₩{aiResult.look.totalPrice.toLocaleString()}</p>
                         </div>
                         
+                        {/* Stats */}
+                        {aiResult.stats && (
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <Badge variant="outline">요청: {aiResult.stats.requestedItems}</Badge>
+                            <Badge variant="secondary">캐시: {aiResult.stats.foundInCache}</Badge>
+                            <Badge variant="outline">API: {aiResult.stats.foundViaSerpapi}</Badge>
+                            {aiResult.apiCalls && (
+                              <Badge variant="default">AI 호출: Gemini {aiResult.apiCalls.gemini}</Badge>
+                            )}
+                          </div>
+                        )}
+                        
                         {aiResult.look.stylingTips && (
-                          <p className="text-sm text-muted-foreground italic">💡 {aiResult.look.stylingTips}</p>
+                          <p className="text-sm text-muted-foreground italic bg-card p-3 rounded-lg">
+                            💡 {aiResult.look.stylingTips}
+                          </p>
                         )}
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1357,6 +1580,7 @@ const Admin = () => {
                                   <div className="w-full h-full flex items-center justify-center"><Package className="w-8 h-8 text-muted-foreground" /></div>
                                 )}
                                 <Badge className="absolute top-1 left-1 text-xs" variant="secondary">{item.category}</Badge>
+                                <Badge className="absolute top-1 right-1 text-xs" variant="outline">{item.source}</Badge>
                               </div>
                               <div className="p-2">
                                 <p className="text-xs font-medium line-clamp-2 mb-1">{item.product?.name}</p>
@@ -1373,7 +1597,7 @@ const Admin = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                      <div className="flex items-center gap-2 text-destructive">
                         <XCircle className="w-5 h-5" />
                         <span className="font-medium">추천 실패: {aiResult.error}</span>
                       </div>
