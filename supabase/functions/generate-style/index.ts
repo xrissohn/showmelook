@@ -1,3 +1,4 @@
+// generate-style v2.1 - with error logging and retry logic
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -6,10 +7,74 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Exponential backoff retry helper
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Rate limit (429) - wait and retry
+      if (response.status === 429 && attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.log(`[generate-style] Rate limited (429), waiting ${waitTime}ms before retry ${attempt + 1}...`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
+      
+      return response;
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      
+      if (attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`[generate-style] Network error, waiting ${waitTime}ms before retry ${attempt + 1}...`);
+        await new Promise(r => setTimeout(r, waitTime));
+      }
+    }
+  }
+  
+  throw lastError || new Error('All retries failed');
+}
+
+// Error logging helper
+async function logError(
+  supabase: any,
+  functionName: string,
+  errorCode: string,
+  errorMessage: string,
+  userId: string | null,
+  requestPayload: any,
+  executionTimeMs: number
+) {
+  try {
+    await supabase.from('error_logs').insert({
+      function_name: functionName,
+      error_code: errorCode,
+      error_message: errorMessage,
+      user_id: userId,
+      request_payload: requestPayload,
+      execution_time_ms: executionTimeMs,
+    });
+    console.log(`[generate-style] Error logged: ${errorCode} - ${errorMessage.slice(0, 100)}`);
+  } catch (logError) {
+    console.error('[generate-style] Failed to log error:', logError);
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const startTime = Date.now();
+  let userId: string | null = null;
+  let requestPayload: any = null;
 
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -30,6 +95,16 @@ serve(async (req) => {
       );
     }
 
+    // Extract user ID from token
+    try {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id || null;
+    } catch (e) {
+      console.log('[generate-style] Could not extract user from token');
+    }
+
+    requestPayload = await req.json();
     const {
       style,
       products,
@@ -40,7 +115,7 @@ serve(async (req) => {
       userAvatarUrl,
       styleTrendId,
       productIds
-    } = await req.json();
+    } = requestPayload;
 
     console.log('[generate-style] Starting generation');
     console.log('[generate-style] Style:', style);
@@ -50,7 +125,6 @@ serve(async (req) => {
     console.log('[generate-style] Avatar URL:', userAvatarUrl ? userAvatarUrl.substring(0, 80) + '...' : 'none');
 
     // Build the image generation prompt
-    // Handle both Korean and English gender values
     const genderValue = userProfile?.gender?.toLowerCase() || '';
     const isFemale = genderValue === 'female' || genderValue === '여성' || genderValue === '여';
     const gender = isFemale ? '여성' : '남성';
@@ -69,34 +143,27 @@ serve(async (req) => {
       
       const ag = ageGroup.toLowerCase();
       
-      // 0-12개월, 영아
       if (ag.includes('infant') || ag.includes('영아') || ag.includes('baby') || ag.includes('0-12') || ag.includes('개월')) {
         return { minAge: 0, maxAge: 1, category: 'infant' };
       }
-      // 1-3세, 유아
       if (ag.includes('toddler') || ag.includes('유아') || ag.includes('1-3') || ag.includes('2세') || ag.includes('3세')) {
         return { minAge: 1, maxAge: 3, category: 'toddler' };
       }
-      // 4-6세, 미취학 아동
       if (ag.includes('preschool') || ag.includes('4-6') || ag.includes('4세') || ag.includes('5세') || ag.includes('6세')) {
         return { minAge: 4, maxAge: 6, category: 'preschool' };
       }
-      // 7-12세, 초등학생
       if (ag.includes('child') || ag.includes('아동') || ag.includes('kids') || ag.includes('초등') || ag.includes('7-12') || ag.match(/[789]세|10세|11세|12세/)) {
         return { minAge: 7, maxAge: 12, category: 'child' };
       }
-      // 13-18세, 청소년
       if (ag.includes('teen') || ag.includes('청소년') || ag.includes('13-18') || ag.match(/1[345678]세/)) {
         return { minAge: 13, maxAge: 18, category: 'teen' };
       }
-      // 성인
       return { minAge: 20, maxAge: 40, category: 'adult' };
     };
 
     const ageInfo = parseAgeGroup(ageGroup);
     console.log('[generate-style] Parsed age info:', ageInfo);
 
-    // 연령대에 따른 모델 타입 결정 (더 상세하게)
     const getModelDescription = (ageInfo: { minAge: number; maxAge: number; category: string }, gender: string): string => {
       const genderKo = gender === '여성' ? '여자' : '남자';
       
@@ -122,7 +189,6 @@ serve(async (req) => {
                           ageInfo.category === 'preschool' ||
                           ageInfo.category === 'child';
 
-    // 연령에 맞는 체형 비율 설명 추가
     const getBodyProportionHint = (category: string): string => {
       switch (category) {
         case 'infant':
@@ -153,10 +219,9 @@ ${products}
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
-    // 얼굴 합성 프롬프트 추가 (아기/어린이 프로필용 특별 처리)
+    // 얼굴 합성 프롬프트 추가
     if (useFaceComposite && userAvatarUrl) {
       if (isChildProfile) {
-        // 아기/어린이 프로필: 참조 이미지의 느낌만 반영하되 나이 강조
         prompt = `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. The model MUST look like a ${ageInfo.category === 'infant' ? 'baby under 1 year old' : ageInfo.category === 'toddler' ? 'toddler aged 2-3 years' : ageInfo.category === 'preschool' ? 'young child aged 4-6 years' : 'child aged 7-12 years'}.
 
 Fashion photography of a ${modelDescription} with a similar look and feel to the reference photo provided.
@@ -170,7 +235,6 @@ ${products}
 
 IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
-        // 성인 프로필: 얼굴 합성
         prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.
 
 Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}.
@@ -201,8 +265,6 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     if (useFaceComposite && userAvatarUrl) {
       let avatarDataUrl = userAvatarUrl;
       
-      // If it's a Supabase storage URL, fetch and convert to base64
-      // (avatars bucket is private, so Gemini can't access it directly)
       if (userAvatarUrl.includes('supabase.co/storage')) {
         try {
           console.log('[generate-style] Fetching avatar from storage...');
@@ -240,40 +302,62 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
       };
     }
 
-    // Call Lovable AI Gateway with Nano Banana model
-    console.log('[generate-style] Calling Lovable AI Gateway...');
-    const startTime = Date.now();
+    // Call Lovable AI Gateway with retry logic
+    console.log('[generate-style] Calling Lovable AI Gateway with retry...');
+    const aiStartTime = Date.now();
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+    const response = await fetchWithRetry(
+      'https://ai.gateway.lovable.dev/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: messages,
+          modalities: ['image', 'text']
+        }),
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: messages,
-        modalities: ['image', 'text']
-      }),
-    });
+      3 // Max retries
+    );
 
-    const elapsed = Date.now() - startTime;
+    const elapsed = Date.now() - aiStartTime;
     console.log(`[generate-style] AI response in ${elapsed}ms, status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[generate-style] AI error:', errorText);
       
+      // Log the error
+      await logError(
+        supabase,
+        'generate-style',
+        String(response.status),
+        errorText.slice(0, 1000),
+        userId,
+        { style, useFaceComposite, hasAvatar: !!userAvatarUrl },
+        Date.now() - startTime
+      );
+      
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+          JSON.stringify({ 
+            error: 'Rate limit exceeded. Please try again later.',
+            errorCode: '429',
+            retryAfter: 30
+          }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Payment required. Please add credits to your workspace.' }),
+          JSON.stringify({ 
+            error: 'Payment required. Please add credits to your workspace.',
+            errorCode: '402'
+          }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -291,7 +375,6 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     if (!generatedImage && useFaceComposite && userAvatarUrl) {
       console.log('[generate-style] No image with face composite, retrying without...');
       
-      // 기본 프롬프트로 재시도
       const fallbackPrompt = `Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
 
 Style concept: ${style}
@@ -301,18 +384,22 @@ ${products}
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       
-      const fallbackResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          'Content-Type': 'application/json',
+      const fallbackResponse = await fetchWithRetry(
+        'https://ai.gateway.lovable.dev/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash-image-preview',
+            messages: [{ role: 'user', content: fallbackPrompt }],
+            modalities: ['image', 'text']
+          }),
         },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-image-preview',
-          messages: [{ role: 'user', content: fallbackPrompt }],
-          modalities: ['image', 'text']
-        }),
-      });
+        2 // Fewer retries for fallback
+      );
       
       if (fallbackResponse.ok) {
         const fallbackResult = await fallbackResponse.json();
@@ -323,6 +410,18 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     
     if (!generatedImage) {
       console.error('[generate-style] No image in response:', JSON.stringify(aiResult).slice(0, 500));
+      
+      // Log the error
+      await logError(
+        supabase,
+        'generate-style',
+        'NO_IMAGE',
+        'AI returned no image data',
+        userId,
+        { style, useFaceComposite, aiResponseSnippet: JSON.stringify(aiResult).slice(0, 500) },
+        Date.now() - startTime
+      );
+      
       throw new Error('No image generated from AI');
     }
 
@@ -343,7 +442,18 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
 
     if (uploadError) {
       console.error('[generate-style] Upload error:', uploadError);
-      // Fall back to returning base64 image
+      
+      // Log but don't fail - return base64 instead
+      await logError(
+        supabase,
+        'generate-style',
+        'UPLOAD_ERROR',
+        uploadError.message,
+        userId,
+        { fileName },
+        Date.now() - startTime
+      );
+      
       return new Response(
         JSON.stringify({
           success: true,
@@ -361,7 +471,9 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
       .getPublicUrl(fileName);
 
     const finalImageUrl = urlData?.publicUrl || generatedImage;
-    console.log('[generate-style] Final image URL:', finalImageUrl.slice(0, 100));
+    const totalTime = Date.now() - startTime;
+    console.log(`[generate-style] Final image URL: ${finalImageUrl.slice(0, 100)}`);
+    console.log(`[generate-style] Total execution time: ${totalTime}ms`);
 
     return new Response(
       JSON.stringify({
@@ -369,16 +481,38 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         imageUrl: finalImageUrl,
         storagePath: fileName,
         style: style,
-        productIds: productIds
+        productIds: productIds,
+        executionTime: totalTime
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('[generate-style] Error:', error);
+    
+    // Log the error
+    try {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      
+      await logError(
+        supabase,
+        'generate-style',
+        'EXCEPTION',
+        error instanceof Error ? error.message : String(error),
+        userId,
+        requestPayload ? { style: requestPayload.style } : null,
+        Date.now() - startTime
+      );
+    } catch (logErr) {
+      console.error('[generate-style] Failed to log error:', logErr);
+    }
+    
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'Generation failed',
+        errorCode: 'EXCEPTION',
         details: error instanceof Error ? error.stack : undefined
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

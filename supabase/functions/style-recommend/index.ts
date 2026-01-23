@@ -1,4 +1,4 @@
-// style-recommend v2.1 - fixed null target check
+// style-recommend v2.2 - with error logging and retry logic
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -8,6 +8,65 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Exponential backoff retry helper
+async function fetchWithRetry(
+  url: string, 
+  options: RequestInit, 
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // Rate limit (429) - wait and retry
+      if (response.status === 429 && attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+        console.log(`[style-recommend] Rate limited (429), waiting ${waitTime}ms before retry ${attempt + 1}...`);
+        await new Promise(r => setTimeout(r, waitTime));
+        continue;
+      }
+      
+      return response;
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      
+      if (attempt < maxRetries) {
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`[style-recommend] Network error, waiting ${waitTime}ms before retry ${attempt + 1}...`);
+        await new Promise(r => setTimeout(r, waitTime));
+      }
+    }
+  }
+  
+  throw lastError || new Error('All retries failed');
+}
+
+// Error logging helper
+async function logError(
+  supabase: any,
+  functionName: string,
+  errorCode: string,
+  errorMessage: string,
+  userId: string | null,
+  requestPayload: any,
+  executionTimeMs: number
+) {
+  try {
+    await supabase.from('error_logs').insert({
+      function_name: functionName,
+      error_code: errorCode,
+      error_message: errorMessage,
+      user_id: userId,
+      request_payload: requestPayload,
+      execution_time_ms: executionTimeMs,
+    });
+    console.log(`[style-recommend] Error logged: ${errorCode} - ${errorMessage.slice(0, 100)}`);
+  } catch (logErr) {
+    console.error('[style-recommend] Failed to log error:', logErr);
+  }
+}
 interface DNAMeta {
   target: 'adult_female' | 'adult_male' | 'kids_female' | 'kids_male' | 'kids_unisex' | 'unisex';
   item_slot: 'top' | 'bottom' | 'outer' | 'shoes' | 'bag' | 'accessory' | 'dress';
@@ -299,9 +358,12 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+  let requestPayload: any = null;
+
   try {
-    const startTime = Date.now();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences } = await req.json();
+    requestPayload = await req.json();
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences } = requestPayload;
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
@@ -794,26 +856,30 @@ JSON 응답:
 }`;
 
       try {
-        console.log('[style-recommend] Using GPT-5 with DNA 2.0 context...');
-        const startTime = Date.now();
+        console.log('[style-recommend] Using GPT-5 with DNA 2.0 context and retry...');
+        const gptStartTime = Date.now();
         
-        const gptResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
+        const gptResponse = await fetchWithRetry(
+          'https://ai.gateway.lovable.dev/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'openai/gpt-5',
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+              ],
+            }),
           },
-          body: JSON.stringify({
-            model: 'openai/gpt-5',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-          }),
-        });
+          3 // Max retries
+        );
 
         gptCalls++;
-        const elapsed = Date.now() - startTime;
+        const elapsed = Date.now() - gptStartTime;
         console.log(`[style-recommend] GPT-5 response in ${elapsed}ms`);
 
         if (gptResponse.ok) {
@@ -829,6 +895,17 @@ JSON 응답:
         } else {
           const errorText = await gptResponse.text();
           console.error('[style-recommend] GPT-5 error:', gptResponse.status, errorText);
+          
+          // Log the error
+          await logError(
+            supabase,
+            'style-recommend',
+            String(gptResponse.status),
+            errorText.slice(0, 1000),
+            null,
+            { userRequest: userRequest?.slice(0, 100), gender, budget },
+            Date.now() - startTime
+          );
         }
       } catch (e) {
         console.error('[style-recommend] GPT-5 parsing error:', e);
@@ -1098,8 +1175,29 @@ JSON 응답:
 
   } catch (error) {
     console.error('[style-recommend] Error:', error);
+    
+    // Log the error
+    try {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      
+      await logError(
+        supabase,
+        'style-recommend',
+        'EXCEPTION',
+        error instanceof Error ? error.message : String(error),
+        null,
+        requestPayload ? { userRequest: requestPayload.userRequest?.slice(0, 100), gender: requestPayload.gender } : null,
+        Date.now() - startTime
+      );
+    } catch (logErr) {
+      console.error('[style-recommend] Failed to log error:', logErr);
+    }
+    
     return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      errorCode: 'EXCEPTION'
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
