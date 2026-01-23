@@ -1,4 +1,4 @@
-// style-recommend v3.0 - DNA 기반 다양성 강화 + 중복 방지 + 컨셉 매칭 개선
+// style-recommend v4.0 - 피드백 기반 학습 + 스타일별 가중치 + 캐시 최적화
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -94,6 +94,9 @@ interface CachedProduct {
   dna_text: string | null;
   dna_meta: DNAMeta | null;
   dna_generated_at: string | null;
+  // 피드백 점수 (조인 시 추가됨)
+  feedback_score?: number;
+  style_weights?: Record<string, number>;
 }
 
 interface LookItem {
@@ -601,8 +604,8 @@ serve(async (req) => {
       .select('*')
       .eq('is_active', true);
 
-    // Step 2: Fetch products with dna_meta (최적화된 쿼리)
-    console.log(`[style-recommend] Fetching products with DNA 2.0 filtering...`);
+    // Step 2: Fetch products with dna_meta + 피드백 점수
+    console.log(`[style-recommend] Fetching products with DNA 2.0 + feedback scores...`);
     
     const productsByPriority: Record<string, CachedProduct[]> = {
       '상의': [],
@@ -618,14 +621,13 @@ serve(async (req) => {
       : currentMonth >= 9 && currentMonth <= 11 ? '가을' : '겨울';
     const requestedSeason = detectSeason(userRequest) || currentSeason;
     
-    // 최적화: 카테고리별로 분리 쿼리 + boost_score 반영
+    // 최적화: 상품 + 피드백 점수 조인
     const { data: allProductsRaw, error: productError } = await supabase
       .from('products_cache')
       .select('*, dna_text, dna_meta, dna_generated_at')
       .eq('is_active', true)
       .eq('is_in_stock', true)
       .not('image_url', 'is', null)
-      // 예산 제한 제거 - AI가 스타일에만 집중
       .order('dna_generated_at', { ascending: false, nullsFirst: false })
       .limit(300);
     
@@ -633,7 +635,32 @@ serve(async (req) => {
       console.error('[style-recommend] Product fetch error:', productError);
     }
     
-    let allProducts: CachedProduct[] = allProductsRaw || [];
+    // 피드백 점수 조회 (별도 쿼리)
+    const { data: feedbackScores } = await supabase
+      .from('product_feedback_scores')
+      .select('product_id, overall_score, style_weights');
+    
+    // 피드백 점수 맵 생성
+    const feedbackMap = new Map<string, { score: number; weights: Record<string, number> }>();
+    if (feedbackScores) {
+      for (const fs of feedbackScores) {
+        feedbackMap.set(fs.product_id, {
+          score: parseFloat(fs.overall_score) || 0.5,
+          weights: fs.style_weights || {}
+        });
+      }
+    }
+    console.log(`[style-recommend] Feedback scores loaded: ${feedbackMap.size} products`);
+    
+    // 상품에 피드백 점수 병합
+    let allProducts: CachedProduct[] = (allProductsRaw || []).map(p => {
+      const feedback = feedbackMap.get(p.id);
+      return {
+        ...p,
+        feedback_score: feedback?.score || 0.5,
+        style_weights: feedback?.weights || {}
+      };
+    });
     console.log(`[style-recommend] Raw products fetched: ${allProducts.length}`);
     
     // ============= DNA 2.0 1차 필터링: 타겟 =============
@@ -694,12 +721,26 @@ serve(async (req) => {
       console.log('[style-recommend] Could not fetch recent products, continuing...');
     }
     
-    // ============= DNA 2.0 2차 필터링: 컨셉/occasion/boost 점수 + 중복 패널티 =============
-    // 점수 기반 정렬 (boost_score 반영 + 최근 사용 패널티)
+    // ============= DNA 2.0 + 피드백 기반 점수 계산 =============
+    // 점수 기반 정렬 (피드백 점수 + 스타일별 가중치 반영)
     const scoredProducts = allProducts.map(p => {
       const boostScore = (p.dna_meta as any)?.boost_score || 0;
       const isPatternSuggested = patternBasedIds.includes(p.id);
       const wasRecentlyUsed = recentlyUsedProductIds.has(p.id);
+      
+      // 피드백 점수 (0.5 = 중립, >0.5 = 긍정, <0.5 = 부정)
+      const feedbackScore = p.feedback_score || 0.5;
+      
+      // 스타일별 가중치 계산 (현재 요청된 컨셉과 매칭)
+      let styleBonus = 0;
+      const styleWeights = p.style_weights || {};
+      for (const concept of requestedConcepts) {
+        const normalizedConcept = normalizeConcept(concept);
+        if (styleWeights[normalizedConcept]) {
+          // 스타일 가중치가 0.5 이상이면 보너스, 미만이면 페널티
+          styleBonus += (styleWeights[normalizedConcept] - 0.5) * 0.3;
+        }
+      }
       
       return {
         product: p,
@@ -709,19 +750,32 @@ serve(async (req) => {
         boostScore,
         isPatternSuggested,
         wasRecentlyUsed,
+        feedbackScore,
+        styleBonus,
         totalScore: 0, // 아래에서 계산
       };
     });
     
-    // 종합 점수 계산 (컨셉 점수 가중치 증가, 최근 사용 패널티 적용)
+    // 종합 점수 계산 (피드백 + 스타일 가중치 포함)
     for (const scored of scoredProducts) {
       scored.totalScore = 
-        (scored.hasDNA ? 0.25 : 0) +
-        (scored.conceptScore * 0.35) +      // 0.25 → 0.35 증가
-        (scored.occasionScore * 0.20) +
-        (scored.boostScore * 0.10) +         // 0.15 → 0.10 감소
-        (scored.isPatternSuggested ? 0.10 : 0) +
-        (scored.wasRecentlyUsed ? -0.25 : 0); // 최근 사용 페널티
+        (scored.hasDNA ? 0.20 : 0) +                    // DNA 유무
+        (scored.conceptScore * 0.25) +                  // 컨셉 매칭
+        (scored.occasionScore * 0.15) +                 // TPO 매칭
+        (scored.boostScore * 0.05) +                    // boost 점수
+        (scored.isPatternSuggested ? 0.10 : 0) +        // 패턴 추천
+        ((scored.feedbackScore - 0.5) * 0.20) +         // 피드백 점수 (-0.1 ~ +0.1)
+        (scored.styleBonus) +                            // 스타일별 가중치
+        (scored.wasRecentlyUsed ? -0.25 : 0);           // 최근 사용 페널티
+    }
+    
+    // 상위 피드백 상품 로깅
+    const topFeedback = scoredProducts
+      .filter(s => s.feedbackScore > 0.5)
+      .sort((a, b) => b.feedbackScore - a.feedbackScore)
+      .slice(0, 5);
+    if (topFeedback.length > 0) {
+      console.log(`[style-recommend] Top feedback products: ${topFeedback.map(s => `${s.product.name.slice(0, 20)}(${s.feedbackScore})`).join(', ')}`);
     }
     
     // 같은 점수권 내 랜덤 셔플 (점수를 0.05 단위로 그룹화)

@@ -473,6 +473,48 @@ export type Database = {
           },
         ]
       }
+      product_feedback_scores: {
+        Row: {
+          cart_count: number
+          click_count: number
+          created_at: string | null
+          dislike_count: number
+          id: string
+          like_count: number
+          overall_score: number
+          product_id: string
+          purchase_count: number
+          style_weights: Json
+          updated_at: string | null
+        }
+        Insert: {
+          cart_count?: number
+          click_count?: number
+          created_at?: string | null
+          dislike_count?: number
+          id?: string
+          like_count?: number
+          overall_score?: number
+          product_id: string
+          purchase_count?: number
+          style_weights?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          cart_count?: number
+          click_count?: number
+          created_at?: string | null
+          dislike_count?: number
+          id?: string
+          like_count?: number
+          overall_score?: number
+          product_id?: string
+          purchase_count?: number
+          style_weights?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           brand: string | null
@@ -772,6 +814,7 @@ export type Database = {
           last_products: Json | null
           pattern_key: string
           popular_combos: Json | null
+          style_feedback: Json | null
           success_rate: number | null
           updated_at: string | null
           use_count: number | null
@@ -784,6 +827,7 @@ export type Database = {
           last_products?: Json | null
           pattern_key: string
           popular_combos?: Json | null
+          style_feedback?: Json | null
           success_rate?: number | null
           updated_at?: string | null
           use_count?: number | null
@@ -796,6 +840,7 @@ export type Database = {
           last_products?: Json | null
           pattern_key?: string
           popular_combos?: Json | null
+          style_feedback?: Json | null
           success_rate?: number | null
           updated_at?: string | null
           use_count?: number | null

@@ -111,3 +111,6 @@ verify_jwt = false
 
 [functions.queue-status]
 verify_jwt = false
+
+[functions.record-feedback]
+verify_jwt = false
