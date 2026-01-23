@@ -37,6 +37,7 @@ export const BrightDataFetchPanel = () => {
   const [snapshotsLoaded, setSnapshotsLoaded] = useState(false);
   const [rawResponse, setRawResponse] = useState<string | null>(null);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string | null>(null);
+  const [manualSnapshotId, setManualSnapshotId] = useState("");
   const [fetchLimit, setFetchLimit] = useState("100");
   const [isFetching, setIsFetching] = useState(false);
   const [fetchResult, setFetchResult] = useState<FetchResult | null>(null);
@@ -164,6 +165,7 @@ export const BrightDataFetchPanel = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* 스냅샷 목록 조회 */}
           <div className="flex gap-4">
             <div className="flex-1">
               <label className="text-sm font-medium mb-1 block">Dataset ID</label>
@@ -187,6 +189,7 @@ export const BrightDataFetchPanel = () => {
               <Button 
                 onClick={loadSnapshots}
                 disabled={isLoadingSnapshots || !datasetId.trim()}
+                variant="outline"
               >
                 {isLoadingSnapshots ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -194,6 +197,44 @@ export const BrightDataFetchPanel = () => {
                   <RefreshCw className="w-4 h-4 mr-2" />
                 )}
                 스냅샷 조회
+              </Button>
+            </div>
+          </div>
+
+          {/* 구분선 */}
+          <div className="relative py-4">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center">
+              <span className="bg-background px-4 text-sm text-muted-foreground">또는 스냅샷 ID 직접 입력</span>
+            </div>
+          </div>
+
+          {/* 스냅샷 ID 직접 입력 */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className="text-sm font-medium mb-1 block">Snapshot ID (직접 입력)</label>
+              <Input
+                placeholder="예: s_m4x7enmven8djfqak"
+                value={manualSnapshotId}
+                onChange={(e) => setManualSnapshotId(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Bright Data 대시보드 → My Datasets → Runs 탭에서 스냅샷 ID 확인
+              </p>
+            </div>
+            <div className="flex items-end pb-5">
+              <Button 
+                onClick={() => fetchSnapshotData(manualSnapshotId.trim())}
+                disabled={isFetching || !manualSnapshotId.trim()}
+              >
+                {isFetching ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                데이터 가져오기
               </Button>
             </div>
           </div>
