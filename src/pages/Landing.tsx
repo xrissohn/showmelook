@@ -46,15 +46,17 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
 
 // Brand colors for random selection
 const SPARKLE_COLORS = ['text-coral', 'text-magenta', 'text-purple', 'text-sky', 'text-primary'];
-const SPARKLE_SIZES = ['w-5 h-5', 'w-6 h-6', 'w-7 h-7', 'w-8 h-8', 'w-9 h-9', 'w-10 h-10'];
+// Reduced max size (was w-10, now max w-5)
+const SPARKLE_SIZES = ['w-3 h-3', 'w-3.5 h-3.5', 'w-4 h-4', 'w-4 h-4', 'w-5 h-5'];
+
 
 // Sparkle star component with random timing, size, and color
 const SparklesStar = ({ className, delay }: { className: string; delay: number }) => {
   const [config] = useState(() => ({
     color: SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
     size: SPARKLE_SIZES[Math.floor(Math.random() * SPARKLE_SIZES.length)],
-    delay: Math.random() * 5, // 0~5초 사이 랜덤 딜레이
-    duration: 0.8 + Math.random() * 1.5 // 0.8~2.3초 사이 랜덤 지속시간
+    delay: Math.random() * 6, // 0~6초 사이 랜덤 딜레이
+    duration: 1.0 + Math.random() * 2.0 // 1.0~3.0초 사이 랜덤 지속시간
   }));
   
   return (
@@ -62,9 +64,9 @@ const SparklesStar = ({ className, delay }: { className: string; delay: number }
       <Sparkles 
         className={`${config.color} ${config.size} animate-twinkle`}
         style={{ 
-          animationDelay: `${config.delay}s`,
-          animationDuration: `${config.duration}s`
-        }} 
+          '--twinkle-delay': `${config.delay}s`,
+          '--twinkle-duration': `${config.duration}s`
+        } as React.CSSProperties} 
       />
     </div>
   );
@@ -74,17 +76,17 @@ const SparklesStar = ({ className, delay }: { className: string; delay: number }
 const InlineSparkle = ({ className, size = 'w-4 h-4', delay = 0 }: { className?: string; size?: string; delay?: number }) => {
   const [config] = useState(() => ({
     color: className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)],
-    delay: Math.random() * 4, // 0~4초 사이 랜덤 딜레이
-    duration: 0.6 + Math.random() * 1.2 // 0.6~1.8초 사이 랜덤 지속시간
+    delay: Math.random() * 5, // 0~5초 사이 랜덤 딜레이
+    duration: 0.8 + Math.random() * 1.5 // 0.8~2.3초 사이 랜덤 지속시간
   }));
   
   return (
     <Sparkles 
       className={`${config.color} ${size} animate-twinkle`}
       style={{ 
-        animationDelay: `${config.delay}s`,
-        animationDuration: `${config.duration}s`
-      }} 
+        '--twinkle-delay': `${config.delay}s`,
+        '--twinkle-duration': `${config.duration}s`
+      } as React.CSSProperties} 
     />
   );
 };
