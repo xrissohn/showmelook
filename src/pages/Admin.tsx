@@ -10,7 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { 
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
-  AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users
+  AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
+  Clock, Play, CheckCircle, XOctagon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -98,6 +99,32 @@ interface ExcelProduct {
   color?: string;
 }
 
+interface ErrorLog {
+  id: string;
+  function_name: string;
+  error_code: string | null;
+  error_message: string | null;
+  user_id: string | null;
+  request_payload: unknown;
+  execution_time_ms: number | null;
+  created_at: string;
+}
+
+interface GenerationJob {
+  id: string;
+  user_id: string;
+  status: string;
+  progress: number;
+  priority: number;
+  request_payload: unknown;
+  result_url: string | null;
+  error_message: string | null;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  retry_count: number;
+}
+
 const Admin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -160,11 +187,149 @@ const Admin = () => {
     errors: string[];
   } | null>(null);
 
+  // Error logs state
+  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
+  const [errorLogsLoading, setErrorLogsLoading] = useState(false);
+  const [errorLogStats, setErrorLogStats] = useState<{
+    total: number;
+    byFunction: Record<string, number>;
+    byCode: Record<string, number>;
+  }>({ total: 0, byFunction: {}, byCode: {} });
+
+  // Generation jobs state
+  const [generationJobs, setGenerationJobs] = useState<GenerationJob[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobStats, setJobStats] = useState<{
+    queued: number;
+    processing: number;
+    completed: number;
+    failed: number;
+  }>({ queued: 0, processing: 0, completed: 0, failed: 0 });
+
   useEffect(() => {
     loadDnaStats();
     loadProductStats();
     loadPendingCount();
+    loadErrorLogStats();
+    loadJobStats();
   }, []);
+
+  // Error logs functions
+  const loadErrorLogStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('error_logs')
+        .select('function_name, error_code')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      
+      if (error) throw error;
+      
+      const byFunction: Record<string, number> = {};
+      const byCode: Record<string, number> = {};
+      
+      data?.forEach(log => {
+        byFunction[log.function_name] = (byFunction[log.function_name] || 0) + 1;
+        const code = log.error_code || 'UNKNOWN';
+        byCode[code] = (byCode[code] || 0) + 1;
+      });
+      
+      setErrorLogStats({ total: data?.length || 0, byFunction, byCode });
+    } catch (error) {
+      console.error('Error loading error log stats:', error);
+    }
+  };
+
+  const loadErrorLogs = async () => {
+    setErrorLogsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('error_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      setErrorLogs(data || []);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "에러 로그 로드 실패", description: errorMessage, variant: "destructive" });
+    } finally {
+      setErrorLogsLoading(false);
+    }
+  };
+
+  const clearOldErrorLogs = async () => {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('error_logs').delete().lt('created_at', thirtyDaysAgo);
+      toast({ title: "정리 완료", description: "30일 이전 에러 로그가 삭제되었습니다." });
+      loadErrorLogStats();
+      loadErrorLogs();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "정리 실패", description: errorMessage, variant: "destructive" });
+    }
+  };
+
+  // Generation jobs functions
+  const loadJobStats = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('generation_jobs')
+        .select('status')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      
+      if (error) throw error;
+      
+      const stats = { queued: 0, processing: 0, completed: 0, failed: 0 };
+      data?.forEach(job => {
+        if (job.status === 'queued') stats.queued++;
+        else if (['processing', 'generating_style', 'generating_image'].includes(job.status)) stats.processing++;
+        else if (job.status === 'completed') stats.completed++;
+        else if (job.status === 'failed') stats.failed++;
+      });
+      
+      setJobStats(stats);
+    } catch (error) {
+      console.error('Error loading job stats:', error);
+    }
+  };
+
+  const loadGenerationJobs = async () => {
+    setJobsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('generation_jobs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      setGenerationJobs(data || []);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "작업 목록 로드 실패", description: errorMessage, variant: "destructive" });
+    } finally {
+      setJobsLoading(false);
+    }
+  };
+
+  const cancelJob = async (jobId: string) => {
+    try {
+      await supabase
+        .from('generation_jobs')
+        .update({ status: 'failed', error_message: 'Cancelled by admin' })
+        .eq('id', jobId);
+      
+      toast({ title: "작업 취소됨", description: "작업이 취소되었습니다." });
+      loadGenerationJobs();
+      loadJobStats();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "취소 실패", description: errorMessage, variant: "destructive" });
+    }
+  };
 
   const loadPendingCount = async () => {
     try {
@@ -697,6 +862,20 @@ const Admin = () => {
             <TabsTrigger value="users">
               <Users className="w-4 h-4 mr-1" />
               사용자 관리
+            </TabsTrigger>
+            <TabsTrigger value="errors" className="relative">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              에러 로그
+              {errorLogStats.total > 0 && (
+                <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogStats.total}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="jobs" className="relative">
+              <Activity className="w-4 h-4 mr-1" />
+              생성 큐
+              {(jobStats.queued + jobStats.processing) > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">{jobStats.queued + jobStats.processing}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="tools">
               <Zap className="w-4 h-4 mr-1" />
@@ -1380,6 +1559,241 @@ const Admin = () => {
           {/* User Management Tab */}
           <TabsContent value="users" className="space-y-4">
             <UserManagementPanel />
+          </TabsContent>
+
+          {/* Error Logs Tab */}
+          <TabsContent value="errors" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-destructive" />
+                  에러 로그 모니터링
+                </CardTitle>
+                <CardDescription>
+                  Edge Function 에러를 실시간으로 모니터링합니다.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Stats Overview */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 border rounded-lg text-center">
+                    <p className="text-2xl font-bold text-destructive">{errorLogStats.total}</p>
+                    <p className="text-sm text-muted-foreground">총 에러</p>
+                  </div>
+                  {Object.entries(errorLogStats.byFunction).slice(0, 3).map(([fn, count]) => (
+                    <div key={fn} className="p-4 border rounded-lg text-center">
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-sm text-muted-foreground truncate">{fn}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Error Code Distribution */}
+                {Object.keys(errorLogStats.byCode).length > 0 && (
+                  <div className="p-4 border rounded-lg space-y-2">
+                    <h3 className="font-medium">에러 코드별 분포</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(errorLogStats.byCode).sort((a, b) => b[1] - a[1]).map(([code, count]) => (
+                        <Badge 
+                          key={code} 
+                          variant={code === '429' ? 'secondary' : code === '402' ? 'outline' : 'destructive'}
+                        >
+                          {code}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button onClick={() => { loadErrorLogs(); loadErrorLogStats(); }} disabled={errorLogsLoading}>
+                    {errorLogsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    새로고침
+                  </Button>
+                  <Button variant="outline" onClick={clearOldErrorLogs}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    30일 이전 삭제
+                  </Button>
+                </div>
+
+                {/* Error Logs Table */}
+                {errorLogs.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="max-h-96 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted sticky top-0">
+                          <tr>
+                            <th className="p-2 text-left">시간</th>
+                            <th className="p-2 text-left">함수</th>
+                            <th className="p-2 text-left">코드</th>
+                            <th className="p-2 text-left">메시지</th>
+                            <th className="p-2 text-right">실행시간</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {errorLogs.map(log => (
+                            <tr key={log.id} className="border-t hover:bg-muted/50">
+                              <td className="p-2 whitespace-nowrap">
+                                {new Date(log.created_at).toLocaleString('ko-KR', { 
+                                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+                                })}
+                              </td>
+                              <td className="p-2">
+                                <Badge variant="outline">{log.function_name}</Badge>
+                              </td>
+                              <td className="p-2">
+                                <Badge 
+                                  variant={log.error_code === '429' ? 'secondary' : 
+                                           log.error_code === '402' ? 'outline' : 'destructive'}
+                                >
+                                  {log.error_code || 'N/A'}
+                                </Badge>
+                              </td>
+                              <td className="p-2 max-w-xs truncate text-muted-foreground">
+                                {log.error_message?.slice(0, 100) || '-'}
+                              </td>
+                              <td className="p-2 text-right text-muted-foreground">
+                                {log.execution_time_ms ? `${log.execution_time_ms}ms` : '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Generation Jobs Tab */}
+          <TabsContent value="jobs" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  생성 작업 큐
+                </CardTitle>
+                <CardDescription>
+                  비동기 스타일 생성 작업을 모니터링합니다. (Realtime 지원)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Stats Overview */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 border rounded-lg text-center">
+                    <Clock className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-2xl font-bold">{jobStats.queued}</p>
+                    <p className="text-sm text-muted-foreground">대기중</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <Play className="w-6 h-6 mx-auto mb-2 text-blue-500" />
+                    <p className="text-2xl font-bold text-blue-500">{jobStats.processing}</p>
+                    <p className="text-sm text-muted-foreground">처리중</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <CheckCircle className="w-6 h-6 mx-auto mb-2 text-green-500" />
+                    <p className="text-2xl font-bold text-green-500">{jobStats.completed}</p>
+                    <p className="text-sm text-muted-foreground">완료</p>
+                  </div>
+                  <div className="p-4 border rounded-lg text-center">
+                    <XOctagon className="w-6 h-6 mx-auto mb-2 text-destructive" />
+                    <p className="text-2xl font-bold text-destructive">{jobStats.failed}</p>
+                    <p className="text-sm text-muted-foreground">실패</p>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button onClick={() => { loadGenerationJobs(); loadJobStats(); }} disabled={jobsLoading}>
+                    {jobsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                    새로고침
+                  </Button>
+                </div>
+
+                {/* Jobs Table */}
+                {generationJobs.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="max-h-96 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted sticky top-0">
+                          <tr>
+                            <th className="p-2 text-left">시간</th>
+                            <th className="p-2 text-left">상태</th>
+                            <th className="p-2 text-left">진행률</th>
+                            <th className="p-2 text-left">우선순위</th>
+                            <th className="p-2 text-left">재시도</th>
+                            <th className="p-2 text-left">작업</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {generationJobs.map(job => (
+                            <tr key={job.id} className="border-t hover:bg-muted/50">
+                              <td className="p-2 whitespace-nowrap">
+                                {new Date(job.created_at).toLocaleString('ko-KR', { 
+                                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
+                                })}
+                              </td>
+                              <td className="p-2">
+                                <Badge 
+                                  variant={
+                                    job.status === 'completed' ? 'default' :
+                                    job.status === 'failed' ? 'destructive' :
+                                    ['processing', 'generating_style', 'generating_image'].includes(job.status) ? 'secondary' :
+                                    'outline'
+                                  }
+                                >
+                                  {job.status}
+                                </Badge>
+                              </td>
+                              <td className="p-2">
+                                <div className="flex items-center gap-2">
+                                  <Progress value={job.progress} className="w-16 h-2" />
+                                  <span className="text-xs text-muted-foreground">{job.progress}%</span>
+                                </div>
+                              </td>
+                              <td className="p-2 text-center">
+                                <Badge variant="outline">{job.priority}</Badge>
+                              </td>
+                              <td className="p-2 text-center">
+                                {job.retry_count > 0 && (
+                                  <Badge variant="secondary">{job.retry_count}회</Badge>
+                                )}
+                              </td>
+                              <td className="p-2">
+                                {['queued', 'processing', 'generating_style', 'generating_image'].includes(job.status) && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => cancelJob(job.id)}
+                                  >
+                                    <XCircle className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {job.error_message && (
+                                  <span className="text-xs text-destructive ml-2" title={job.error_message}>
+                                    {job.error_message.slice(0, 20)}...
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {generationJobs.length === 0 && !jobsLoading && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p>현재 대기 중인 작업이 없습니다.</p>
+                    <p className="text-sm">새로고침 버튼을 눌러 작업 목록을 확인하세요.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
