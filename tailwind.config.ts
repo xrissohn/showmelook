@@ -109,17 +109,17 @@ export default {
           },
           "50%": {
             opacity: "1",
-            transform: "scale(1) rotate(180deg)"
+            transform: "scale(1.3) rotate(180deg)"
           }
         },
         "twinkle": {
           "0%, 100%": {
-            opacity: "0.3",
-            transform: "scale(0.8)"
+            opacity: "0.2",
+            transform: "scale(0.5)"
           },
           "50%": {
             opacity: "1",
-            transform: "scale(1.2)"
+            transform: "scale(1.5)"
           }
         },
         "float": {
@@ -127,13 +127,13 @@ export default {
             transform: "translateY(0px) translateX(0px)"
           },
           "25%": {
-            transform: "translateY(-10px) translateX(5px)"
+            transform: "translateY(-25px) translateX(15px)"
           },
           "50%": {
-            transform: "translateY(-5px) translateX(-5px)"
+            transform: "translateY(-12px) translateX(-12px)"
           },
           "75%": {
-            transform: "translateY(-15px) translateX(3px)"
+            transform: "translateY(-35px) translateX(8px)"
           }
         },
         "particle-rise": {
@@ -142,14 +142,14 @@ export default {
             transform: "translateY(100%) scale(0)"
           },
           "10%": {
-            opacity: "1"
+            opacity: "0.9"
           },
           "90%": {
-            opacity: "1"
+            opacity: "0.9"
           },
           "100%": {
             opacity: "0",
-            transform: "translateY(-100vh) scale(1)"
+            transform: "translateY(-100vh) scale(1.3)"
           }
         },
         "accordion-down": {
@@ -200,10 +200,10 @@ export default {
         },
       },
       animation: {
-        "sparkle": "sparkle 2s ease-in-out infinite",
-        "twinkle": "twinkle 1.5s ease-in-out infinite",
-        "float": "float 6s ease-in-out infinite",
-        "particle-rise": "particle-rise 8s ease-in-out infinite",
+        "sparkle": "sparkle 1.5s ease-in-out infinite",
+        "twinkle": "twinkle 1s ease-in-out infinite",
+        "float": "float 4s ease-in-out infinite",
+        "particle-rise": "particle-rise 5s ease-in-out infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "fade-in": "fade-in 0.6s ease-out forwards",

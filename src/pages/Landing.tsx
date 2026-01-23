@@ -47,14 +47,14 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
 // Sparkle star component
 const SparklesStar = ({ className, delay }: { className: string; delay: number }) => (
   <div className={`absolute ${className} pointer-events-none`} style={{ animationDelay: `${delay}s` }}>
-    <Sparkles className="text-primary animate-twinkle" style={{ animationDelay: `${delay}s` }} />
+    <Sparkles className="w-8 h-8 text-primary animate-twinkle" style={{ animationDelay: `${delay}s` }} />
   </div>
 );
 
 // Floating orb component
 const FloatingOrb = ({ className, gradient, delay }: { className: string; gradient: string; delay: number }) => (
   <div 
-    className={`absolute rounded-full blur-xl animate-float pointer-events-none ${className} ${gradient}`}
+    className={`absolute rounded-full blur-2xl animate-float pointer-events-none ${className} ${gradient}`}
     style={{ animationDelay: `${delay}s` }}
   />
 );
@@ -192,29 +192,29 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
       <div className="absolute inset-0 bg-gradient-brand opacity-20" />
       
       {/* Floating Orbs */}
-      <FloatingOrb className="top-0 right-0 w-96 h-96 opacity-25" gradient="bg-gradient-coral" delay={0} />
-      <FloatingOrb className="bottom-0 left-0 w-96 h-96 opacity-25" gradient="bg-gradient-sky" delay={1.5} />
-      <FloatingOrb className="top-1/2 left-1/4 w-64 h-64 opacity-20" gradient="bg-gradient-brand" delay={0.5} />
-      <FloatingOrb className="bottom-1/4 right-1/4 w-48 h-48 opacity-15" gradient="bg-gradient-to-br from-magenta to-purple" delay={2} />
+      <FloatingOrb className="top-0 right-0 w-[500px] h-[500px] opacity-35" gradient="bg-gradient-coral" delay={0} />
+      <FloatingOrb className="bottom-0 left-0 w-[500px] h-[500px] opacity-35" gradient="bg-gradient-sky" delay={1.5} />
+      <FloatingOrb className="top-1/2 left-1/4 w-80 h-80 opacity-30" gradient="bg-gradient-brand" delay={0.5} />
+      <FloatingOrb className="bottom-1/4 right-1/4 w-64 h-64 opacity-25" gradient="bg-gradient-to-br from-magenta to-purple" delay={2} />
       
       {/* Sparkle Stars */}
-      <SparklesStar className="top-12 left-[10%] w-6 h-6" delay={0} />
-      <SparklesStar className="top-20 right-[15%] w-8 h-8" delay={0.4} />
-      <SparklesStar className="bottom-16 left-[20%] w-5 h-5" delay={0.8} />
-      <SparklesStar className="bottom-24 right-[25%] w-7 h-7" delay={1.2} />
-      <SparklesStar className="top-1/3 left-[5%] w-4 h-4" delay={0.2} />
-      <SparklesStar className="top-1/2 right-[8%] w-6 h-6" delay={0.6} />
-      <SparklesStar className="bottom-1/3 left-[30%] w-5 h-5" delay={1} />
-      <SparklesStar className="top-24 left-1/2 w-4 h-4" delay={1.4} />
+      <SparklesStar className="top-12 left-[10%]" delay={0} />
+      <SparklesStar className="top-20 right-[15%]" delay={0.2} />
+      <SparklesStar className="bottom-16 left-[20%]" delay={0.4} />
+      <SparklesStar className="bottom-24 right-[25%]" delay={0.6} />
+      <SparklesStar className="top-1/3 left-[5%]" delay={0.1} />
+      <SparklesStar className="top-1/2 right-[8%]" delay={0.3} />
+      <SparklesStar className="bottom-1/3 left-[30%]" delay={0.5} />
+      <SparklesStar className="top-24 left-1/2" delay={0.7} />
       
       {/* Rising Particles */}
-      {[...Array(15)].map((_, i) => (
+      {[...Array(25)].map((_, i) => (
         <Particle 
           key={i}
-          delay={i * 0.5}
+          delay={i * 0.3}
           left={Math.random() * 100}
-          size={Math.random() * 6 + 3}
-          duration={Math.random() * 3 + 5}
+          size={Math.random() * 8 + 4}
+          duration={Math.random() * 2 + 4}
         />
       ))}
       
@@ -293,29 +293,29 @@ const Landing = () => {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
         
         {/* Floating Orbs */}
-        <FloatingOrb className="top-20 right-10 w-72 h-72 opacity-25" gradient="bg-gradient-brand" delay={0} />
-        <FloatingOrb className="bottom-10 left-10 w-96 h-96 opacity-20" gradient="bg-gradient-sky" delay={1} />
-        <FloatingOrb className="top-40 left-1/4 w-48 h-48 opacity-15" gradient="bg-gradient-coral" delay={2} />
-        <FloatingOrb className="bottom-40 right-1/4 w-64 h-64 opacity-20" gradient="bg-gradient-to-br from-purple to-sky" delay={1.5} />
+        <FloatingOrb className="top-20 right-10 w-96 h-96 opacity-35" gradient="bg-gradient-brand" delay={0} />
+        <FloatingOrb className="bottom-10 left-10 w-[500px] h-[500px] opacity-30" gradient="bg-gradient-sky" delay={1} />
+        <FloatingOrb className="top-40 left-1/4 w-72 h-72 opacity-25" gradient="bg-gradient-coral" delay={2} />
+        <FloatingOrb className="bottom-40 right-1/4 w-80 h-80 opacity-30" gradient="bg-gradient-to-br from-purple to-sky" delay={1.5} />
         
         {/* Sparkle Stars */}
-        <SparklesStar className="top-24 left-[15%] w-6 h-6" delay={0} />
-        <SparklesStar className="top-32 right-[20%] w-8 h-8" delay={0.5} />
-        <SparklesStar className="top-48 left-[10%] w-5 h-5" delay={1} />
-        <SparklesStar className="top-56 right-[15%] w-7 h-7" delay={1.5} />
-        <SparklesStar className="bottom-32 left-[25%] w-6 h-6" delay={0.3} />
-        <SparklesStar className="bottom-48 right-[30%] w-5 h-5" delay={0.8} />
-        <SparklesStar className="top-36 left-[35%] w-4 h-4" delay={1.2} />
-        <SparklesStar className="bottom-24 right-[10%] w-6 h-6" delay={0.6} />
+        <SparklesStar className="top-24 left-[15%]" delay={0} />
+        <SparklesStar className="top-32 right-[20%]" delay={0.3} />
+        <SparklesStar className="top-48 left-[10%]" delay={0.6} />
+        <SparklesStar className="top-56 right-[15%]" delay={0.9} />
+        <SparklesStar className="bottom-32 left-[25%]" delay={0.2} />
+        <SparklesStar className="bottom-48 right-[30%]" delay={0.5} />
+        <SparklesStar className="top-36 left-[35%]" delay={0.8} />
+        <SparklesStar className="bottom-24 right-[10%]" delay={0.4} />
         
         {/* Rising Particles */}
-        {[...Array(20)].map((_, i) => (
+        {[...Array(30)].map((_, i) => (
           <Particle 
             key={i}
-            delay={i * 0.4}
+            delay={i * 0.3}
             left={Math.random() * 100}
-            size={Math.random() * 8 + 4}
-            duration={Math.random() * 4 + 6}
+            size={Math.random() * 10 + 5}
+            duration={Math.random() * 3 + 4}
           />
         ))}
         
