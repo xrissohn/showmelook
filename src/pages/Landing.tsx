@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown } from 'lucide-react';
 import { PLAN_CONFIG, formatPrice } from '@/lib/planConfig';
-import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';

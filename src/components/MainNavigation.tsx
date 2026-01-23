@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, X, User, LogOut, ImageIcon, Crown } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 interface MainNavigationProps {
