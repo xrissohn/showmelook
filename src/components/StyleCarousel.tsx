@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
-// Style images imports - optimized for display size (228x285)
-import minimalistMale from '@/assets/styles/minimalist-male-opt.jpg';
-import minimalistFemale from '@/assets/styles/minimalist-female-opt.jpg';
-import streetMale from '@/assets/styles/street-male-opt.jpg';
-import streetFemale from '@/assets/styles/street-female-opt.jpg';
-import classicMale from '@/assets/styles/classic-male-opt.jpg';
-import classicFemale from '@/assets/styles/classic-female-opt.jpg';
-import casualMale from '@/assets/styles/casual-male-opt.jpg';
-import casualFemale from '@/assets/styles/casual-female-opt.jpg';
-import sportyMale from '@/assets/styles/sporty-male-opt.jpg';
-import sportyFemale from '@/assets/styles/sporty-female-opt.jpg';
+// Style images imports - WebP format for optimal performance
+import minimalistMale from '@/assets/styles/minimalist-male-opt.webp';
+import minimalistFemale from '@/assets/styles/minimalist-female-opt.webp';
+import streetMale from '@/assets/styles/street-male-opt.webp';
+import streetFemale from '@/assets/styles/street-female-opt.webp';
+import classicMale from '@/assets/styles/classic-male-opt.webp';
+import classicFemale from '@/assets/styles/classic-female-opt.webp';
+import casualMale from '@/assets/styles/casual-male-opt.webp';
+import casualFemale from '@/assets/styles/casual-female-opt.webp';
+import sportyMale from '@/assets/styles/sporty-male-opt.webp';
+import sportyFemale from '@/assets/styles/sporty-female-opt.webp';
 
 interface StyleData {
   title: string;
