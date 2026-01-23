@@ -83,7 +83,7 @@ const Install = () => {
         <div className="text-center mb-8">
           <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-brand p-0.5">
             <div className="w-full h-full bg-background rounded-2xl flex items-center justify-center">
-              <img src={showmelookLogo} alt="" className="w-12 h-12 object-contain" />
+              <img src={showmelookLogo} alt="" width={48} height={48} className="w-12 h-12 object-contain" />
             </div>
           </div>
           <h1 className="font-korean text-2xl sm:text-3xl text-foreground mb-2">

@@ -332,8 +332,8 @@ const Auth = () => {
         <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-15 animate-gradient-flow" style={{ animationDelay: '1s' }} />
         <div className="relative z-10 text-center">
           <div className="flex items-center justify-center gap-0 mb-6">
-            <img src={showmelookLogo} alt="쇼미룩 로고" className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[90px] object-contain -ml-3" />
+            <img src={showmelookLogo} alt="쇼미룩 로고" width={40} height={40} className="w-10 h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="쇼미룩" width={90} height={90} className="h-[90px] object-contain -ml-3" />
           </div>
           <p className="text-primary-foreground/80 text-xl font-korean font-light max-w-md">AI가 만들어주는 나만의 스타일</p>
           <p className="text-primary-foreground/60 mt-4 text-lg font-korean">당신만을 위한 패션을 경험하세요</p>
@@ -346,8 +346,8 @@ const Auth = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="flex items-center justify-center gap-0 mb-2">
-              <img src={showmelookLogo} alt="쇼미룩 로고" className="w-8 h-8 object-contain" />
-              <img src={showmelookKoreanLogo} alt="쇼미룩" className="h-[70px] object-contain -ml-2" />
+              <img src={showmelookLogo} alt="쇼미룩 로고" width={32} height={32} className="w-8 h-8 object-contain" />
+              <img src={showmelookKoreanLogo} alt="쇼미룩" width={70} height={70} className="h-[70px] object-contain -ml-2" />
             </div>
             <p className="text-muted-foreground font-korean text-sm">AI가 만들어주는 나만의 스타일</p>
           </div>
