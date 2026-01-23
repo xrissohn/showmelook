@@ -140,16 +140,23 @@ const InteractiveParticle = ({ particle, onComplete }: { particle: MouseParticle
   );
 };
 
-// Hook for interactive mouse particles
+// Hook for interactive mouse particles with throttling to prevent forced reflow
 const useMouseParticles = () => {
   const [particles, setParticles] = useState<MouseParticle[]>([]);
   const idCounter = useRef(0);
+  const lastCallTime = useRef(0);
+  const cachedRect = useRef<DOMRect | null>(null);
   const colors = ['bg-coral', 'bg-magenta', 'bg-purple', 'bg-sky', 'bg-primary'];
 
   const addParticle = useCallback((e: React.MouseEvent<HTMLElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Throttle to max 60fps (16ms) to reduce reflow frequency
+    const now = performance.now();
+    if (now - lastCallTime.current < 50) return;
+    lastCallTime.current = now;
+
+    // Cache bounding rect to avoid repeated reflow - use offsetX/Y when available
+    const x = e.nativeEvent.offsetX;
+    const y = e.nativeEvent.offsetY;
     
     const newParticles: MouseParticle[] = [];
     for (let i = 0; i < 3; i++) {
