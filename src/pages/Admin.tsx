@@ -215,6 +215,7 @@ const Admin = () => {
     estimatedWaitByTier: Record<string, number>;
   } | null>(null);
   const [isMonitorLoading, setIsMonitorLoading] = useState(false);
+  const [isAutoRefresh, setIsAutoRefresh] = useState(false);
 
   useEffect(() => {
     loadDnaStats();
@@ -223,6 +224,22 @@ const Admin = () => {
     loadErrorLogStats();
     loadJobStats();
   }, []);
+
+  // Auto-refresh queue monitoring every 10 seconds
+  useEffect(() => {
+    if (!isAutoRefresh) return;
+
+    // Initial load
+    loadQueueMonitor();
+    loadJobStats();
+
+    const interval = setInterval(() => {
+      loadQueueMonitor();
+      loadJobStats();
+    }, 10000); // 10초마다
+
+    return () => clearInterval(interval);
+  }, [isAutoRefresh]);
 
   // Error logs functions
   const loadErrorLogStats = async () => {
@@ -1716,12 +1733,34 @@ const Admin = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Load Monitor Button */}
-                <div className="flex gap-2">
+                {/* Control Buttons */}
+                <div className="flex gap-2 items-center">
                   <Button onClick={loadQueueMonitor} disabled={isMonitorLoading} variant="outline">
                     {isMonitorLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                    모니터링 데이터 로드
+                    새로고침
                   </Button>
+                  <Button 
+                    onClick={() => setIsAutoRefresh(!isAutoRefresh)} 
+                    variant={isAutoRefresh ? "default" : "outline"}
+                    className={isAutoRefresh ? "animate-pulse" : ""}
+                  >
+                    {isAutoRefresh ? (
+                      <>
+                        <Activity className="w-4 h-4 mr-2 animate-spin" />
+                        자동 갱신 중 (10초)
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 mr-2" />
+                        자동 갱신 시작
+                      </>
+                    )}
+                  </Button>
+                  {isAutoRefresh && (
+                    <Badge variant="secondary" className="animate-pulse">
+                      🟢 실시간
+                    </Badge>
+                  )}
                 </div>
 
                 {queueMonitor && (
