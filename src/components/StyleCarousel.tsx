@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
-// Style images imports
-import minimalistMale from '@/assets/styles/minimalist-male.jpg';
-import minimalistFemale from '@/assets/styles/minimalist-female.jpg';
-import streetMale from '@/assets/styles/street-male.jpg';
-import streetFemale from '@/assets/styles/street-female.jpg';
-import classicMale from '@/assets/styles/classic-male.jpg';
-import classicFemale from '@/assets/styles/classic-female.jpg';
-import casualMale from '@/assets/styles/casual-male.jpg';
-import casualFemale from '@/assets/styles/casual-female.jpg';
-import sportyMale from '@/assets/styles/sporty-male.jpg';
-import sportyFemale from '@/assets/styles/sporty-female.jpg';
+// Style images imports - optimized for display size (228x285)
+import minimalistMale from '@/assets/styles/minimalist-male-opt.jpg';
+import minimalistFemale from '@/assets/styles/minimalist-female-opt.jpg';
+import streetMale from '@/assets/styles/street-male-opt.jpg';
+import streetFemale from '@/assets/styles/street-female-opt.jpg';
+import classicMale from '@/assets/styles/classic-male-opt.jpg';
+import classicFemale from '@/assets/styles/classic-female-opt.jpg';
+import casualMale from '@/assets/styles/casual-male-opt.jpg';
+import casualFemale from '@/assets/styles/casual-female-opt.jpg';
+import sportyMale from '@/assets/styles/sporty-male-opt.jpg';
+import sportyFemale from '@/assets/styles/sporty-female-opt.jpg';
 
 interface StyleData {
   title: string;
@@ -241,6 +241,10 @@ const StyleCarousel = () => {
                       src={currentImage}
                       alt={`${style.title} 모델`}
                       className="w-full h-full object-cover"
+                      width={228}
+                      height={285}
+                      loading="lazy"
+                      decoding="async"
                       draggable={false}
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-20 group-hover:opacity-10 transition-opacity duration-300`} />
@@ -258,6 +262,10 @@ const StyleCarousel = () => {
                       src={isMale ? style.femaleImage : style.maleImage}
                       alt={`${style.title} 모델`}
                       className="w-full h-full object-cover"
+                      width={228}
+                      height={285}
+                      loading="lazy"
+                      decoding="async"
                       draggable={false}
                     />
                     <div className={`absolute inset-0 bg-gradient-to-br ${style.gradient} opacity-20`} />
