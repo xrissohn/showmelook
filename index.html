@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Early Preconnect for critical third-party origins (MUST be first for maximum effect) -->
+    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://fastly.jsdelivr.net" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://mggedvvzpwxlgrhatrau.supabase.co" />
+    <link rel="dns-prefetch" href="https://t1.kakaocdn.net" />
+    
+    <!-- Preload critical font to break chain -->
+    <link rel="preload" href="https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff" as="font" type="font/woff" crossorigin />
+    
     <!-- Google Search Console Verification -->
     <meta name="google-site-verification" content="FuAHJzuY6PJOhwoO-x46j-ZuWQCQ4qJLvBdm7EkOHP8" />
     
@@ -17,16 +30,7 @@
     <meta name="language" content="Korean" />
     <meta name="revisit-after" content="7 days" />
     
-    <!-- Early Preconnect for critical third-party origins -->
-    <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- Preload critical font to break chain -->
-    <link rel="preload" href="https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff" as="font" type="font/woff" crossorigin />
-    
-    <!-- Canonical URL - 커스텀 도메인 사용 -->
+    <!-- Canonical URL -->
     <link rel="canonical" href="https://showmelook.com/" />
     
     <!-- Favicon -->
@@ -50,8 +54,8 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://showmelook.com/" />
-    
-    
+    <meta property="og:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
+    <meta property="og:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
     <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/frSzHlY30qWs2oTnMdMQjtK6Zy82/social-images/social-1768878949489-쇼미룩_텍스트_-removebg-preview.png">
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -61,8 +65,8 @@
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="https://showmelook.com/" />
-    
-    
+    <meta name="twitter:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
+    <meta name="twitter:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
     <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/frSzHlY30qWs2oTnMdMQjtK6Zy82/social-images/social-1768878949489-쇼미룩_텍스트_-removebg-preview.png">
     <meta name="twitter:site" content="@ShowMeLook" />
     <meta name="twitter:creator" content="@ShowMeLook" />
@@ -96,29 +100,12 @@
     }
     </script>
     
-    <!-- DNS Prefetch -->
-    <link rel="dns-prefetch" href="https://mggedvvzpwxlgrhatrau.supabase.co" />
-    
     <!-- Load fonts asynchronously to improve FCP -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" /></noscript>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" media="print" onload="this.media='all'" />
     <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" /></noscript>
-    <meta property="og:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
-  <meta name="twitter:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
-  <meta property="og:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
-  <meta name="twitter:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
-    
-    <!-- Load fonts asynchronously to improve FCP -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap" /></noscript>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" media="print" onload="this.media='all'" />
-    <noscript><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" /></noscript>
-    <meta property="og:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
-  <meta name="twitter:title" content="쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook">
-  <meta property="og:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
-  <meta name="twitter:description" content="AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!">
-</head>
+  </head>
 
   <body>
     <div id="root"></div>
@@ -131,7 +118,6 @@
         var isLookPage = window.location.pathname.indexOf('/look/') === 0;
         
         if (isKakaoInApp && isLookPage) {
-          // 로딩 오버레이를 body에 추가 (root 외부에 별도로)
           var overlay = document.createElement('div');
           overlay.id = 'kakao-loading-overlay';
           overlay.innerHTML = '<div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#fff;text-align:center;z-index:99999;">' +
@@ -141,33 +127,25 @@
           '</div>';
           document.body.insertBefore(overlay, document.body.firstChild);
           
-          // React 앱이 충분히 로드될 때까지 기다린 후 오버레이 제거
           var checkInterval = setInterval(function() {
             var root = document.getElementById('root');
-            // React 앱이 로드되면 root에 자식 요소가 생김
             if (root && root.children.length > 0) {
-              // 페이드 아웃 효과
               overlay.style.transition = 'opacity 0.3s ease';
               overlay.style.opacity = '0';
               setTimeout(function() {
-                if (overlay.parentNode) {
-                  overlay.parentNode.removeChild(overlay);
-                }
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
               }, 300);
               clearInterval(checkInterval);
             }
           }, 100);
           
-          // 최대 10초 후에는 무조건 오버레이 제거 (타임아웃 안전장치)
           setTimeout(function() {
             clearInterval(checkInterval);
             if (overlay.parentNode) {
               overlay.style.transition = 'opacity 0.3s ease';
               overlay.style.opacity = '0';
               setTimeout(function() {
-                if (overlay.parentNode) {
-                  overlay.parentNode.removeChild(overlay);
-                }
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
               }, 300);
             }
           }, 10000);
