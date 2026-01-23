@@ -1165,7 +1165,7 @@ JSON 응답:
       };
     }
 
-    // Step 5: Enforce STRICT 1 per category
+    // Step 5: Enforce STRICT 1 per category - GPT 선택 제품만 사용
     const { data: selectedProducts } = await supabase
       .from('products_cache')
       .select('*')
@@ -1175,19 +1175,18 @@ JSON 응답:
     let runningTotal = 0;
     const usedCategories = new Set<string>();
     
-    if (selectedProducts) {
-      // Sort by priority
-      const sortedProducts = selectedProducts.sort((a, b) => {
-        const aPriorityCat = a.dna_meta?.item_slot 
-          ? itemSlotToPriorityCategory(a.dna_meta.item_slot)
-          : mapToPriorityCategory(a.category, a.sub_category, a.name);
-        const bPriorityCat = b.dna_meta?.item_slot
-          ? itemSlotToPriorityCategory(b.dna_meta.item_slot)
-          : mapToPriorityCategory(b.category, b.sub_category, b.name);
-        const aIdx = CATEGORY_PRIORITY.indexOf(aPriorityCat);
-        const bIdx = CATEGORY_PRIORITY.indexOf(bPriorityCat);
-        return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
-      });
+    // GPT가 선택한 제품 ID 목록 (순서 유지)
+    const gptSelectedIds = ragResponse.selectedProductIds || [];
+    console.log(`[style-recommend] GPT selected IDs: ${gptSelectedIds.join(', ')}`);
+    console.log(`[style-recommend] DB returned products: ${selectedProducts?.length || 0}`);
+    
+    if (selectedProducts && selectedProducts.length > 0) {
+      // GPT가 선택한 순서대로 정렬 (중요: reasoning과 일치하도록)
+      const sortedProducts = gptSelectedIds
+        .map(id => selectedProducts.find(p => p.id === id))
+        .filter(Boolean) as typeof selectedProducts;
+      
+      console.log(`[style-recommend] Products matched to GPT order: ${sortedProducts.length}`);
       
       for (const product of sortedProducts) {
         const priorityCat = product.dna_meta?.item_slot
@@ -1220,6 +1219,7 @@ JSON 응답:
     // Step 6: ENSURE MINIMUM 4 ITEMS with formality matching
     const MIN_ITEMS = 4;
     let lastFormality = 5;
+    let wasAutoFilled = false;
     
     if (lookItems.length > 0 && lookItems[0].product?.dna_meta?.formality) {
       lastFormality = lookItems[0].product.dna_meta.formality;
@@ -1227,6 +1227,7 @@ JSON 응답:
     
     if (lookItems.length < MIN_ITEMS) {
       console.log(`[style-recommend] Only ${lookItems.length} items, need ${MIN_ITEMS}. Auto-filling with formality matching...`);
+      wasAutoFilled = true;
       
       for (const cat of CATEGORY_PRIORITY) {
         if (usedCategories.has(cat)) continue;
@@ -1284,8 +1285,72 @@ JSON 응답:
     const autoSelectedTotal = lookItems.filter(i => i.isAutoSelected).reduce((sum, item) => sum + (item.product?.price || 0), 0);
     const autoSelectedCount = lookItems.filter(i => i.isAutoSelected).length;
 
-    // ragResponse에서 styleReasoning 먼저 추출
-    const finalStyleReasoning = ragResponse?.styleReasoning || ragResponse?.stylingTips || '';
+    // Step 8: 🎯 실제 선택된 제품 기반으로 styleReasoning 재생성 (불일치 방지)
+    let finalStyleReasoning = ragResponse?.styleReasoning || ragResponse?.stylingTips || '';
+    
+    // GPT가 선택하지 않은 제품이 추가된 경우 OR reasoning이 비어있는 경우 → 실제 제품 기반 재생성
+    if (wasAutoFilled || !finalStyleReasoning) {
+      console.log(`[style-recommend] Regenerating styleReasoning based on actual products (wasAutoFilled: ${wasAutoFilled})`);
+      
+      const topProduct = lookItems.find(l => {
+        const slot = l.product?.dna_meta?.item_slot;
+        return slot === 'top';
+      })?.product;
+      const bottomProduct = lookItems.find(l => {
+        const slot = l.product?.dna_meta?.item_slot;
+        return slot === 'bottom' || slot === 'dress';
+      })?.product;
+      const outerProduct = lookItems.find(l => {
+        const slot = l.product?.dna_meta?.item_slot;
+        return slot === 'outer';
+      })?.product;
+      const etcProduct = lookItems.find(l => {
+        const slot = l.product?.dna_meta?.item_slot;
+        return slot === 'shoes' || slot === 'bag' || slot === 'accessory';
+      })?.product;
+      
+      const actualBrands = [...new Set(lookItems.map(l => l.product?.brand).filter(Boolean))].slice(0, 3);
+      const actualConcepts = [...new Set(lookItems.flatMap(l => l.product?.dna_meta?.concepts || []))].slice(0, 3);
+      
+      // 실제 아이템 기반 reasoning 생성
+      let newReasoning = '';
+      
+      // 훅 문장
+      if (actualConcepts.length > 0) {
+        newReasoning = `이 룩의 핵심은 '${actualConcepts[0]}'예요. `;
+      } else {
+        newReasoning = `이 룩의 핵심은 '${occasion}에 어울리는 균형감'이에요. `;
+      }
+      
+      // 중간 설명 - 실제 상하의 조화
+      if (topProduct && bottomProduct) {
+        const topBrand = topProduct.brand || '';
+        const topName = (topProduct.name || '').split(' ').slice(0, 3).join(' ');
+        const bottomBrand = bottomProduct.brand || '';
+        const bottomName = (bottomProduct.name || '').split(' ').slice(0, 3).join(' ');
+        newReasoning += `${topBrand} ${topName}이(가) 상체 라인을 잡아주고, ${bottomBrand} ${bottomName}이(가) 하체 실루엣을 완성해주거든요. `;
+      } else if (topProduct) {
+        const topBrand = topProduct.brand || '';
+        const topName = (topProduct.name || '').split(' ').slice(0, 3).join(' ');
+        newReasoning += `${topBrand} ${topName}이(가) 이 룩의 중심을 잡아줘요. `;
+      }
+      
+      // 킬링 포인트 - 아우터 또는 액세서리
+      if (outerProduct) {
+        const outerBrand = outerProduct.brand || '';
+        const outerName = (outerProduct.name || '').split(' ').slice(0, 3).join(' ');
+        newReasoning += `킬링 포인트? ${outerBrand} ${outerName}의 레이어링이 ${occasion} 무드를 완성해요!`;
+      } else if (etcProduct) {
+        const etcBrand = etcProduct.brand || '';
+        const etcName = (etcProduct.name || '').split(' ').slice(0, 3).join(' ');
+        newReasoning += `킬링 포인트? ${etcBrand} ${etcName}이(가) 전체 룩에 센스를 더해요!`;
+      } else {
+        newReasoning += `킬링 포인트? 각 아이템의 조화로운 밸런스가 ${occasion}에서 자연스러운 시선 집중을 만들어요!`;
+      }
+      
+      finalStyleReasoning = newReasoning;
+      console.log(`[style-recommend] Generated new reasoning: ${finalStyleReasoning.slice(0, 150)}...`);
+    }
 
     // Save to cache - 이제 styleReasoning도 함께 저장!
     if (lookItems.length >= 2) {
