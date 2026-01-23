@@ -114,12 +114,12 @@ export default {
         },
         "twinkle": {
           "0%, 100%": {
-            opacity: "0.2",
-            transform: "scale(0.5)"
+            opacity: "0.1",
+            transform: "scale(0.3)"
           },
           "50%": {
             opacity: "1",
-            transform: "scale(1.5)"
+            transform: "scale(1.6)"
           }
         },
         "float": {

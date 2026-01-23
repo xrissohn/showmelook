@@ -47,50 +47,52 @@ const Particle = ({ delay, left, size, duration }: { delay: number; left: number
 // Brand colors for random selection
 const SPARKLE_COLORS = ['text-coral', 'text-magenta', 'text-purple', 'text-sky', 'text-primary'];
 
+// Generate stable random values for a sparkle
+const getSparkleStyle = (delay: number, baseSize: number = 24) => {
+  const duration = 0.3 + Math.random() * 0.5; // 0.3s ~ 0.8s
+  const animDelay = delay + Math.random() * 0.8;
+  const size = baseSize + Math.random() * 12;
+  const color = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+  
+  return {
+    color,
+    style: {
+      width: size,
+      height: size,
+      animation: `twinkle ${duration}s ease-in-out ${animDelay}s infinite`
+    }
+  };
+};
+
 // Sparkle star component with random timing, size, and color
 const SparklesStar = ({ className, delay }: { className: string; delay: number }) => {
-  const randomDuration = 0.3 + Math.random() * 0.5; // 0.3s ~ 0.8s
-  const randomDelay = delay + Math.random() * 0.8;
-  const randomSize = 20 + Math.random() * 16; // 20px ~ 36px
-  const randomColor = SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+  const [sparkle] = useState(() => getSparkleStyle(delay, 20));
   
   return (
     <div className={`absolute ${className} pointer-events-none`}>
-      <Sparkles 
-        className={randomColor}
-        style={{ 
-          width: randomSize,
-          height: randomSize,
-          animationName: 'twinkle',
-          animationDuration: `${randomDuration}s`,
-          animationTimingFunction: 'ease-in-out',
-          animationIterationCount: 'infinite',
-          animationDelay: `${randomDelay}s`
-        }} 
-      />
+      <Sparkles className={sparkle.color} style={sparkle.style} />
     </div>
   );
 };
 
 // Inline sparkle for decorative elements (always animated with random timing)
 const InlineSparkle = ({ className, size = 16, delay = 0 }: { className?: string; size?: number; delay?: number }) => {
-  const randomDuration = 0.3 + Math.random() * 0.4;
-  const randomColor = className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
-  
-  return (
-    <Sparkles 
-      className={randomColor}
-      style={{ 
+  const [sparkle] = useState(() => {
+    const duration = 0.3 + Math.random() * 0.4;
+    const animDelay = delay + Math.random() * 0.5;
+    const color = className || SPARKLE_COLORS[Math.floor(Math.random() * SPARKLE_COLORS.length)];
+    
+    return {
+      color,
+      style: {
         width: size,
         height: size,
-        animationName: 'twinkle',
-        animationDuration: `${randomDuration}s`,
-        animationTimingFunction: 'ease-in-out',
-        animationIterationCount: 'infinite',
-        animationDelay: `${delay + Math.random() * 0.5}s`
-      }} 
-    />
-  );
+        animation: `twinkle ${duration}s ease-in-out ${animDelay}s infinite`
+      }
+    };
+  });
+  
+  return <Sparkles className={sparkle.color} style={sparkle.style} />;
 };
 
 // Floating orb component
