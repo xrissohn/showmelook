@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { X, Users, Clock } from 'lucide-react';
-import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookLogo from '@/assets/showmelook-logo.webp';
 
 interface QueueStatus {
   totalQueued: number;

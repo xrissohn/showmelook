@@ -17,7 +17,7 @@ import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle } from 'lucide-react';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
-import showmelookLogo from '@/assets/showmelook-logo.png';
+import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 import MainNavigation from '@/components/MainNavigation';
 import useEmblaCarousel from 'embla-carousel-react';
