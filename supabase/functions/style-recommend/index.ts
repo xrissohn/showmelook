@@ -624,89 +624,98 @@ serve(async (req) => {
     const seasonMap: Record<string, string> = { '봄': 'spring', '여름': 'summer', '가을': 'fall', '겨울': 'winter' };
     const seasonEn = seasonMap[requestedSeason] || 'spring';
 
-    // ============= 🔥 Stage 1: GPT가 DB 검색 조건 생성 =============
-    console.log(`[style-recommend] 🔥 Stage 1: GPT analyzing user request to generate search conditions...`);
+    // ============= 🔥 Stage 1: 규칙 기반 검색 조건 생성 (GPT 없이 비용 절약) =============
+    console.log(`[style-recommend] 🔥 Stage 1: Rule-based search condition generation (no GPT cost)...`);
     
-    let searchConditions: SearchConditions | null = null;
+    // 키워드 → 컨셉 매핑
+    const CONCEPT_KEYWORDS: Record<string, string[]> = {
+      '캐주얼': ['캐주얼', 'casual', '편한', '데일리', '일상', '평상복'],
+      '미니멀': ['미니멀', 'minimal', '심플', 'simple', '깔끔', '모던'],
+      '클래식': ['클래식', 'classic', '정장', '격식', '포멀', 'formal', '오피스', '회사'],
+      '스트릿': ['스트릿', 'street', '힙합', '오버사이즈', '후드', '스케이터'],
+      '스포티': ['스포티', 'sporty', '운동', '애슬레저', 'athleisure', '짐', '헬스'],
+      '로맨틱': ['로맨틱', 'romantic', '데이트', '여성스러운', '플로럴', '레이스'],
+      '프레피': ['프레피', 'preppy', '학교', '캠퍼스', '단정한'],
+      '럭셔리': ['럭셔리', 'luxury', '고급', '하이엔드', '명품'],
+    };
     
-    if (LOVABLE_API_KEY) {
-      const stage1SystemPrompt = `당신은 패션 데이터베이스 검색 전문가입니다. 사용자의 스타일 요청을 분석하여 정확한 검색 조건을 생성하세요.
-
-데이터베이스에는 다음 필드가 있습니다:
-- dna_meta.concepts: 스타일 컨셉 배열 (예: ["캐주얼", "미니멀", "클래식", "스트릿", "포멀", "스포티"])
-- dna_meta.occasions: 적합한 상황 배열 (예: ["데일리", "출근", "데이트", "여행", "운동", "미팅"])
-- dna_meta.formality: 격식 수준 0-10 (0=매우 캐주얼, 10=매우 격식)
-- dna_meta.color_family: 색상 계열 ("neutral", "warm", "cool", "bold", "pastel")
-- dna_meta.season_fit: 계절 적합성 배열 (["spring", "summer", "fall", "winter"])
-- category: 상품 카테고리 (상의, 하의, 아우터, 신발, 가방, 액세서리)
-
-사용자 요청을 분석하여 최적의 검색 조건을 JSON으로 반환하세요.
-reasoning 필드에 왜 이 조건을 선택했는지 간단히 설명하세요.`;
-
-      const stage1UserPrompt = `사용자 요청: "${userRequest}"
-대상: ${isKids ? '키즈' : gender} ${ageGroupLabel}
-현재 시즌: ${requestedSeason}
-
-위 요청에 맞는 검색 조건을 생성하세요:
-{
-  "concepts": ["요청에 맞는 컨셉 1-3개"],
-  "occasions": ["적합한 상황 1-2개"],
-  "formalityMin": 0-10,
-  "formalityMax": 0-10,
-  "colorFamilies": ["적합한 색상 계열"],
-  "excludeCategories": ["제외할 카테고리"],
-  "seasonFit": ["${seasonEn}"],
-  "reasoning": "이 조건을 선택한 이유"
-}`;
-
-      try {
-        const stage1Response = await fetchWithRetry(
-          'https://ai.gateway.lovable.dev/v1/chat/completions',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'google/gemini-3-flash-preview',
-              messages: [
-                { role: 'system', content: stage1SystemPrompt },
-                { role: 'user', content: stage1UserPrompt }
-              ],
-            }),
-          },
-          2
-        );
-
-        if (stage1Response.ok) {
-          const stage1Data = await stage1Response.json();
-          const content = stage1Data.choices?.[0]?.message?.content || '';
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            searchConditions = JSON.parse(jsonMatch[0]) as SearchConditions;
-            console.log(`[style-recommend] Stage 1 complete - GPT search conditions:`, JSON.stringify(searchConditions));
-          }
-        }
-      } catch (e) {
-        console.error('[style-recommend] Stage 1 GPT error:', e);
+    // 키워드 → 상황 매핑
+    const OCCASION_KEYWORDS: Record<string, string[]> = {
+      '데일리': ['데일리', '일상', '평소', '매일'],
+      '출근': ['출근', '오피스', '회사', '비즈니스', '미팅'],
+      '데이트': ['데이트', '소개팅', '만남'],
+      '여행': ['여행', '휴가', '나들이', '외출'],
+      '운동': ['운동', '짐', '헬스', '조깅', '러닝'],
+      '파티': ['파티', '행사', '결혼식', '웨딩'],
+    };
+    
+    // 키워드 → 격식도 매핑
+    const FORMALITY_KEYWORDS: { pattern: string[]; min: number; max: number }[] = [
+      { pattern: ['정장', '포멀', 'formal', '면접', '결혼식', '비즈니스'], min: 7, max: 10 },
+      { pattern: ['오피스', '출근', '회사', '세미포멀'], min: 5, max: 8 },
+      { pattern: ['스마트캐주얼', '데이트', '약속'], min: 4, max: 7 },
+      { pattern: ['캐주얼', '편한', '일상', '데일리'], min: 2, max: 5 },
+      { pattern: ['운동', '스포티', '애슬레저', '짐'], min: 0, max: 3 },
+    ];
+    
+    const requestLower = userRequest.toLowerCase();
+    
+    // 컨셉 추출
+    const detectedConcepts: string[] = [];
+    for (const [concept, keywords] of Object.entries(CONCEPT_KEYWORDS)) {
+      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
+        detectedConcepts.push(concept);
       }
     }
-
-    // Fallback: 기본 검색 조건
-    if (!searchConditions) {
-      searchConditions = {
-        concepts: requestedConcepts,
-        occasions: requestedOccasions,
-        formalityMin: 0,
-        formalityMax: 10,
-        colorFamilies: [],
-        excludeCategories: [],
-        seasonFit: [seasonEn],
-        reasoning: 'Fallback to user-provided concepts',
-      };
-      console.log(`[style-recommend] Using fallback search conditions`);
+    
+    // 상황 추출
+    const detectedOccasions: string[] = [];
+    for (const [occasion, keywords] of Object.entries(OCCASION_KEYWORDS)) {
+      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
+        detectedOccasions.push(occasion);
+      }
     }
+    
+    // 격식도 추출
+    let formalityMin = 0;
+    let formalityMax = 10;
+    for (const { pattern, min, max } of FORMALITY_KEYWORDS) {
+      if (pattern.some(kw => requestLower.includes(kw.toLowerCase()))) {
+        formalityMin = min;
+        formalityMax = max;
+        break;
+      }
+    }
+    
+    // 색상 키워드 추출
+    const COLOR_KEYWORDS: Record<string, string[]> = {
+      'neutral': ['블랙', 'black', '화이트', 'white', '그레이', 'gray', '베이지', '뉴트럴'],
+      'warm': ['브라운', 'brown', '오렌지', '레드', '와인', '베이지'],
+      'cool': ['블루', 'blue', '네이비', 'navy', '민트', '그린'],
+      'bold': ['레드', 'red', '옐로우', '핑크', '퍼플', '비비드'],
+      'pastel': ['파스텔', '라벤더', '민트', '피치', '연한'],
+    };
+    
+    const detectedColors: string[] = [];
+    for (const [color, keywords] of Object.entries(COLOR_KEYWORDS)) {
+      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
+        detectedColors.push(color);
+      }
+    }
+    
+    // 검색 조건 생성 (GPT 호출 없음!)
+    const searchConditions: SearchConditions = {
+      concepts: detectedConcepts.length > 0 ? detectedConcepts : requestedConcepts,
+      occasions: detectedOccasions.length > 0 ? detectedOccasions : requestedOccasions,
+      formalityMin,
+      formalityMax,
+      colorFamilies: detectedColors,
+      excludeCategories: [],
+      seasonFit: [seasonEn],
+      reasoning: `Rule-based: concepts=${detectedConcepts.join(',')}, occasions=${detectedOccasions.join(',')}, formality=${formalityMin}-${formalityMax}`,
+    };
+    
+    console.log(`[style-recommend] Stage 1 complete (no GPT cost): ${JSON.stringify(searchConditions)}`);
 
     // ============= 🔥 Stage 2: GPT 조건 기반 DB 쿼리 =============
     console.log(`[style-recommend] 🔥 Stage 2: Querying DB with GPT-generated conditions...`);
