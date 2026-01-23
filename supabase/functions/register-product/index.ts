@@ -570,6 +570,16 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
     );
     
     if (!storageUrl) {
+      // 이미지 저장 실패 시 pending_products로 이동
+      console.log(`[Register] Image failed, moving to pending_products...`);
+      
+      await supabase.from('pending_products').insert({
+        source: product.merchant_id,
+        error_type: 'image_download_failed',
+        error_message: `이미지 다운로드 실패: ${singleImageUrl?.substring(0, 200)}`,
+        raw_data: product,
+      });
+      
       // Rollback: Delete the product
       await supabase.from('products_cache').delete().eq('id', productId);
       
@@ -578,7 +588,7 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
         product_id: productId,
         image_stored: false,
         dna_generated: false,
-        error: `이미지 저장 실패: 원본 URL에서 이미지를 다운로드할 수 없습니다. URL: ${singleImageUrl?.substring(0, 100)}`,
+        error: `이미지 저장 실패 → 수동 처리 대기열에 추가됨`,
         step_failed: 'image',
       };
     }
@@ -586,14 +596,23 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
     // Already in storage
     storageUrl = singleImageUrl;
   } else {
-    // No image URL provided
+    // No image URL provided - 이미지 없는 상품도 pending_products로 이동
+    console.log(`[Register] No image URL, moving to pending_products...`);
+    
+    await supabase.from('pending_products').insert({
+      source: product.merchant_id,
+      error_type: 'no_image_url',
+      error_message: `이미지 URL이 제공되지 않았습니다`,
+      raw_data: product,
+    });
+    
     await supabase.from('products_cache').delete().eq('id', productId);
     return {
       success: false,
       product_id: productId,
       image_stored: false,
       dna_generated: false,
-      error: `이미지 URL이 없습니다.`,
+      error: `이미지 없음 → 수동 처리 대기열에 추가됨`,
       step_failed: 'image',
     };
   }
