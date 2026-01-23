@@ -15,9 +15,11 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: null, // Defer SW registration to avoid render-blocking
       devOptions: {
         enabled: false
       },
+      selfDestroying: false,
       includeAssets: ["favicon.png", "robots.txt", "sitemap.xml"],
       manifest: {
         name: "쇼미룩 - AI 패션 스타일링",
