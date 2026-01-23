@@ -261,6 +261,57 @@ export type Database = {
           },
         ]
       }
+      generation_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          id: string
+          max_retries: number | null
+          priority: number | null
+          progress: number | null
+          request_payload: Json
+          result_payload: Json | null
+          result_url: string | null
+          retry_count: number | null
+          started_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          priority?: number | null
+          progress?: number | null
+          request_payload: Json
+          result_payload?: Json | null
+          result_url?: string | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          max_retries?: number | null
+          priority?: number | null
+          progress?: number | null
+          request_payload?: Json
+          result_payload?: Json | null
+          result_url?: string | null
+          retry_count?: number | null
+          started_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       liked_products: {
         Row: {
           created_at: string
