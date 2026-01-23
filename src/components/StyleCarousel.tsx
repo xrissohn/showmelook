@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
-// Style images - Use optimized small images from /public for LCP
+// Style images - All optimized small WebP images from /public for LCP
 // These are ~50KB each instead of 1MB+, served directly for instant discovery
 const minimalistMale = '/carousel/minimalist-male-sm.webp';
 const minimalistFemale = '/carousel/minimalist-female-sm.webp';
@@ -9,12 +9,10 @@ const streetMale = '/carousel/street-male-sm.webp';
 const streetFemale = '/carousel/street-female-sm.webp';
 const classicMale = '/carousel/classic-male-sm.webp';
 const classicFemale = '/carousel/classic-female-sm.webp';
-
-// Non-LCP images imported via Vite for lazy loading
-import casualMale from '@/assets/styles/casual-male-opt.webp';
-import casualFemale from '@/assets/styles/casual-female-opt.webp';
-import sportyMale from '@/assets/styles/sporty-male-opt.webp';
-import sportyFemale from '@/assets/styles/sporty-female-opt.webp';
+const casualMale = '/carousel/casual-male-sm.webp';
+const casualFemale = '/carousel/casual-female-sm.webp';
+const sportyMale = '/carousel/sporty-male-sm.webp';
+const sportyFemale = '/carousel/sporty-female-sm.webp';
 
 interface StyleData {
   title: string;
