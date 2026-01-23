@@ -262,8 +262,7 @@ const PendingProductsManager = () => {
           등록 대기 제품 관리
         </CardTitle>
         <CardDescription>
-          이미지 다운로드 실패 또는 머천트 ID 오류로 대기 중인 제품들입니다. 
-          머천트를 수정 후 재등록하세요.
+          머천트 ID 오류로 대기 중인 제품들입니다. 머천트를 수정 후 재등록하세요.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
