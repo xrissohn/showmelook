@@ -130,35 +130,37 @@ const StyleCarousel = () => {
     };
   }, [animate]);
 
-  // Random gender flip effect - slower and smoother
+  // Random gender flip effect - very slow and smooth
   useEffect(() => {
     const flipInterval = setInterval(() => {
       const cardIndex = Math.floor(Math.random() * duplicatedStyles.length);
       
+      // Start the flip
       setFlippingCards(prev => {
         const newState = [...prev];
         newState[cardIndex] = true;
         return newState;
       });
 
-      // Change gender at the midpoint of the flip (900ms into 1800ms animation)
+      // Change gender exactly at 90 degrees (halfway through 3s = 1.5s)
+      // This is when the card is edge-on and the change is invisible
       setTimeout(() => {
         setCardGenders(prev => {
           const newState = [...prev];
           newState[cardIndex] = !newState[cardIndex];
           return newState;
         });
-      }, 900);
+      }, 1500);
 
-      // End flip animation after full rotation
+      // End flip animation after full 180-degree rotation (3 seconds)
       setTimeout(() => {
         setFlippingCards(prev => {
           const newState = [...prev];
           newState[cardIndex] = false;
           return newState;
         });
-      }, 1800);
-    }, 4000); // Flip cards less frequently
+      }, 3000);
+    }, 6000); // Flip every 6 seconds for a calm experience
 
     return () => clearInterval(flipInterval);
   }, [duplicatedStyles.length]);
@@ -234,7 +236,7 @@ const StyleCarousel = () => {
                   style={{
                     transformStyle: 'preserve-3d',
                     transform: isFlipping ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                    transition: 'transform 1.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'transform 3s cubic-bezier(0.25, 0.1, 0.25, 1)',
                   }}
                 >
                   {/* Front face */}
