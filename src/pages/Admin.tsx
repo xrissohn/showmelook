@@ -19,6 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
+import PendingProductsManager from "@/components/admin/PendingProductsManager";
 
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
@@ -197,7 +198,8 @@ const Admin = () => {
   const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
-
+  const [pendingImageCount, setPendingImageCount] = useState(0);
+  const [pendingOtherCount, setPendingOtherCount] = useState(0);
   // Excel upload state
   const [excelProducts, setExcelProducts] = useState<ExcelProduct[]>([]);
   const [excelFileNames, setExcelFileNames] = useState<string[]>([]);
@@ -414,11 +416,23 @@ const Admin = () => {
 
   const loadPendingCount = async () => {
     try {
-      const { count } = await supabase
+      // 이미지 누락 카운트
+      const { count: imageCount } = await supabase
         .from('pending_products')
         .select('*', { count: 'exact', head: true })
-        .is('resolved_at', null);
-      setPendingCount(count || 0);
+        .is('resolved_at', null)
+        .eq('error_type', 'missing_image');
+      
+      // 기타 에러 카운트 (머천트 오류 등)
+      const { count: otherCount } = await supabase
+        .from('pending_products')
+        .select('*', { count: 'exact', head: true })
+        .is('resolved_at', null)
+        .neq('error_type', 'missing_image');
+      
+      setPendingImageCount(imageCount || 0);
+      setPendingOtherCount(otherCount || 0);
+      setPendingCount((imageCount || 0) + (otherCount || 0));
     } catch (error) {
       console.error('Error loading pending count:', error);
     }
@@ -1252,11 +1266,18 @@ const Admin = () => {
                 <Link2 className="w-4 h-4 mr-1" />
                 딥링크
               </TabsTrigger>
+              <TabsTrigger value="pending" className="relative flex-shrink-0 whitespace-nowrap">
+                <AlertTriangle className="w-4 h-4 mr-1" />
+                등록 대기
+                {pendingOtherCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingOtherCount}</Badge>
+                )}
+              </TabsTrigger>
               <TabsTrigger value="images" className="relative flex-shrink-0 whitespace-nowrap">
                 <ImageOff className="w-4 h-4 mr-1" />
                 이미지 관리
-                {pendingCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingCount}</Badge>
+                {pendingImageCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{pendingImageCount}</Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="products" className="flex-shrink-0 whitespace-nowrap">
@@ -1499,6 +1520,10 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
+          {/* Pending Products Tab (머천트/기타 에러) */}
+          <TabsContent value="pending" className="space-y-4">
+            <PendingProductsManager />
+          </TabsContent>
 
           {/* DNA Management Tab */}
           <TabsContent value="dna" className="space-y-4">
