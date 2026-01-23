@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
-// Style images - Use public folder paths for LCP-critical images (preloaded in HTML)
-// These images are served directly from /public for instant discovery
-const minimalistMale = '/carousel/minimalist-male-opt.webp';
-const minimalistFemale = '/carousel/minimalist-female-opt.webp';
-const streetMale = '/carousel/street-male-opt.webp';
-const streetFemale = '/carousel/street-female-opt.webp';
-const classicMale = '/carousel/classic-male-opt.webp';
-const classicFemale = '/carousel/classic-female-opt.webp';
+// Style images - Use optimized small images from /public for LCP
+// These are ~50KB each instead of 1MB+, served directly for instant discovery
+const minimalistMale = '/carousel/minimalist-male-sm.webp';
+const minimalistFemale = '/carousel/minimalist-female-sm.webp';
+const streetMale = '/carousel/street-male-sm.webp';
+const streetFemale = '/carousel/street-female-sm.webp';
+const classicMale = '/carousel/classic-male-sm.webp';
+const classicFemale = '/carousel/classic-female-sm.webp';
 
 // Non-LCP images imported via Vite for lazy loading
 import casualMale from '@/assets/styles/casual-male-opt.webp';
