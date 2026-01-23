@@ -327,6 +327,36 @@ function generateDNA(product: ProductInput): { dna_meta: DNAMeta; dna_text: stri
 }
 
 // ============= Image Download & Storage =============
+
+// Extract first URL if image_url is a JSON array string
+function extractFirstImageUrl(imageUrl: string | null | undefined): string | null {
+  if (!imageUrl) return null;
+  
+  // Trim whitespace
+  const trimmed = imageUrl.trim();
+  
+  // Check if it's a JSON array string (starts with '[')
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`[Image] Extracted first URL from array of ${parsed.length} images`);
+        return parsed[0];
+      }
+    } catch (e) {
+      console.warn(`[Image] Failed to parse image array: ${e}`);
+      // Try to extract first URL using regex as fallback
+      const match = trimmed.match(/"(https?:\/\/[^"]+)"/);
+      if (match) {
+        console.log(`[Image] Extracted URL via regex fallback`);
+        return match[1];
+      }
+    }
+  }
+  
+  return trimmed;
+}
+
 function getHighResImageUrl(imageUrl: string, merchantId: string): string {
   if (!imageUrl) return imageUrl;
   
@@ -341,6 +371,10 @@ function getHighResImageUrl(imageUrl: string, merchantId: string): string {
   }
   if (merchantId === 'stockx' && imageUrl.includes('?w=')) {
     return imageUrl.split('?')[0];
+  }
+  if (merchantId === 'thehyundai' && imageUrl.includes('_1950')) {
+    // Keep high resolution for TheHyundai
+    return imageUrl;
   }
   
   return imageUrl;
@@ -468,12 +502,15 @@ async function registerProduct(supabase: any, product: ProductInput): Promise<Re
   
   let storageUrl: string | null = null;
   
+  // Extract first image URL if it's an array
+  const singleImageUrl = extractFirstImageUrl(product.image_url);
+  
   // Skip if already stored in our storage
-  if (product.image_url && !product.image_url.startsWith(storageBaseUrl)) {
+  if (singleImageUrl && !singleImageUrl.startsWith(storageBaseUrl)) {
     storageUrl = await downloadAndStoreImage(
       supabase,
       productId,
-      product.image_url,
+      singleImageUrl,
       product.merchant_id
     );
     
@@ -486,13 +523,24 @@ async function registerProduct(supabase: any, product: ProductInput): Promise<Re
         product_id: productId,
         image_stored: false,
         dna_generated: false,
-        error: `이미지 저장 실패: 원본 URL에서 이미지를 다운로드할 수 없습니다. URL: ${product.image_url?.substring(0, 100)}`,
+        error: `이미지 저장 실패: 원본 URL에서 이미지를 다운로드할 수 없습니다. URL: ${singleImageUrl?.substring(0, 100)}`,
         step_failed: 'image',
       };
     }
-  } else {
+  } else if (singleImageUrl) {
     // Already in storage
-    storageUrl = product.image_url;
+    storageUrl = singleImageUrl;
+  } else {
+    // No image URL provided
+    await supabase.from('products_cache').delete().eq('id', productId);
+    return {
+      success: false,
+      product_id: productId,
+      image_stored: false,
+      dna_generated: false,
+      error: `이미지 URL이 없습니다.`,
+      step_failed: 'image',
+    };
   }
 
   // Step 3: Generate DNA metadata (REQUIRED)
