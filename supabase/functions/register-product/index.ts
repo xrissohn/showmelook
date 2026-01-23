@@ -751,12 +751,29 @@ serve(async (req) => {
       }
 
       if (!product.image_url) {
-        results.push({
-          success: false,
-          image_stored: false,
-          dna_generated: false,
-          error: '이미지 URL이 없습니다. image_url은 필수입니다.',
-        });
+        // 이미지 없는 제품은 pending_products로 이동 (수동 이미지 업로드 대기)
+        try {
+          await supabase.from('pending_products').insert({
+            source: product.merchant_id || 'unknown',
+            error_type: 'missing_image',
+            error_message: '이미지 URL이 없습니다. 수동으로 이미지를 업로드해주세요.',
+            raw_data: product,
+          });
+          results.push({
+            success: false,
+            pending: true,
+            image_stored: false,
+            dna_generated: false,
+            error: '이미지 없음 - 수동 처리 대기열로 이동',
+          });
+        } catch (pendingError) {
+          results.push({
+            success: false,
+            image_stored: false,
+            dna_generated: false,
+            error: '이미지 URL이 없습니다. image_url은 필수입니다.',
+          });
+        }
         failCount++;
         continue;
       }
