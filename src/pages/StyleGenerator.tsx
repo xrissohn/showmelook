@@ -2462,6 +2462,7 @@ const StyleGenerator = () => {
     isQueued,
     isProcessing,
     progress: queueProgress,
+    queueStatus,
     submitJob,
     cancelJob,
   } = useGenerationQueue(user?.id);
@@ -4375,6 +4376,7 @@ const StyleGenerator = () => {
         isVisible={isQueued || isProcessing}
         progress={queueProgress}
         status={currentJob?.status || 'queued'}
+        queueStatus={queueStatus}
         onCancel={() => currentJob && cancelJob(currentJob.id)}
       />
       {/* Header - using shared MainNavigation */}
