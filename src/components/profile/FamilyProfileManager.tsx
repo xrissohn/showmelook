@@ -172,9 +172,28 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
   };
 
   const handleAdd = async () => {
+    // 🔥 필수 필드 검증: 이름, 성별, 연령대
     if (!formData.full_name.trim()) {
       toast({
         title: '이름을 입력해주세요',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!formData.gender) {
+      toast({
+        title: '성별을 선택해주세요',
+        description: '정확한 스타일 추천을 위해 필요해요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (!formData.age_group) {
+      toast({
+        title: '연령대를 선택해주세요',
+        description: '연령에 맞는 스타일을 추천해드려요.',
         variant: 'destructive',
       });
       return;
@@ -540,7 +559,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
               
               <div>
-                <Label className="font-korean">성별</Label>
+                <Label className="font-korean">성별 <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.gender}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
@@ -601,7 +620,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
 
               <div>
-                <Label className="font-korean">연령대</Label>
+                <Label className="font-korean">연령대 <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.age_group}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, age_group: value }))}
