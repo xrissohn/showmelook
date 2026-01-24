@@ -168,23 +168,30 @@ export const GenerationProgress = ({
             />
           </svg>
 
-          {/* 중앙 로고 컨테이너 */}
+          {/* 중앙 로고 컨테이너 - 투명 배경 유지 */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-background/95 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/30 overflow-hidden">
-              {/* Inner rotating gradient */}
+            <div className="relative w-20 h-20 rounded-full flex items-center justify-center">
+              {/* 배경 원 */}
+              <div className="absolute inset-0 rounded-full bg-background shadow-2xl border-2 border-accent/30" />
+              {/* 회전하는 글로우 링 (로고 뒤) */}
               <div 
-                className="absolute inset-0 opacity-20 animate-spin-slow"
+                className="absolute inset-[-4px] rounded-full opacity-50"
                 style={{
                   background: 'conic-gradient(from 0deg, hsl(var(--accent)), hsl(var(--primary)), hsl(var(--magenta)), hsl(var(--accent)))',
+                  filter: 'blur(6px)',
+                  animation: 'spin 8s linear infinite',
                 }}
               />
-              {/* Logo with glow */}
+              {/* Logo with glow - 투명 배경 유지 */}
               <img 
                 src={showmelookLogo} 
                 alt="ShowMeLook" 
                 width={48}
                 height={48}
-                className="w-12 h-12 object-contain relative z-10 animate-logo-glow"
+                className="w-12 h-12 object-contain relative z-10"
+                style={{
+                  animation: 'logo-glow 3s ease-in-out infinite',
+                }}
               />
             </div>
           </div>
