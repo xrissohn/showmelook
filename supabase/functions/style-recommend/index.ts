@@ -894,6 +894,11 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
 - 마무리는 항상 유쾌하고 자신감 넘치게!
 - 🚫 절대로 "(이)가", "~이(가)" 같은 어색한 조사 사용 금지! 자연스러운 한국어만!
 
+🚨🚨🚨 **가장 중요한 규칙 (절대 위반 금지!):**
+- **상품 목록에 있는 브랜드와 상품명만 사용하세요!**
+- **상품 목록에 없는 브랜드(몽클레어, 캉골, 구찌 등)는 절대 언급하지 마세요!**
+- **styleReasoning에서 언급하는 모든 브랜드와 상품은 반드시 selectedProductIds에 포함된 것만!**
+
 🚨 핵심 규칙 (반드시 준수!):
 1. ${isFormalOccasion 
   ? `[필수] 상의(top) 1개 + 하의(bottom) 1개 + 신발(shoes) 1개 (구두/로퍼/힐 권장)\n   [선택] 아우터(outer)/가방(bag)/액세서리 중 1개`
@@ -916,7 +921,8 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
    - 실제 그 장소/상황에서의 분위기, 조명, 사람들의 시선을 상상하며 묘사
    - "~라는 공간의 분위기를 생각해보세요" / "~에서 이 룩을 입고 걸으면..."
 
-3. **각 아이템별 전문가 해설** (선택한 상품만! 브랜드명 + 상품명 정확히):
+3. **각 아이템별 전문가 해설** (⚠️ 선택한 상품만! 상품 목록에 있는 브랜드명 + 상품명 정확히):
+   - **절대로 상품 목록에 없는 브랜드/상품을 언급하지 마세요!**
    - 소재 이야기: "코듀로이의 은은한 광택이...", "린넨 특유의 내추럴한 구김이..."
    - 실루엣 분석: "릴랙스드 핏이 어깨 라인을 자연스럽게 잡아주고...", "와이드 레그가 다리를 길어 보이게..."
    - 컬러 조화: "블랙과 네이비의 톤온톤 조합이...", "뉴트럴 톤 베이스에 포인트 컬러가..."
@@ -927,7 +933,7 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
    - 시간대/TPO 변주: "저녁엔 자켓을 어깨에 걸치면 분위기 UP"
 
 5. **킬링 포인트 마무리** (자신감 넘치는 한 줄):
-   - "킬링 포인트? 바로 [브랜드]의 [아이템]과 [브랜드]의 만남이에요!"
+   - "킬링 포인트? 바로 [선택한 브랜드]의 [선택한 아이템]과 [선택한 브랜드]의 만남이에요!"
    - "이 조합의 백미는 단연 [구체적인 포인트]죠."
    - "솔직히 이 가격에 이 무드? 거의 범죄 수준이에요 🔥"
 
@@ -944,6 +950,12 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
     ? `\n⚠️ 제외 필수: ${stage1Result.excludeItems.join(', ')}` 
     : '';
 
+  // 상품 목록에서 브랜드 추출 (AI에게 사용 가능한 브랜드 명시)
+  const availableBrands = [...new Set(productListContext.split('\n').map(line => {
+    const parts = line.split('|');
+    return parts[1] || '';
+  }).filter(Boolean))];
+
   const stage2UserPrompt = `요청: "${userRequest.slice(0, 80)}"
 타겟: ${gender} ${ageGroupLabel}
 상황: ${occasion}
@@ -955,6 +967,9 @@ TPO 분석 결과 (Stage 1):
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
 
+🚨 **사용 가능한 브랜드 목록 (이 브랜드들만 언급하세요!):**
+${availableBrands.join(', ')}
+
 상품 목록 (이미 조건에 맞게 필터링됨):
 ${productListContext}
 
@@ -962,10 +977,12 @@ ${isFormalOccasion
   ? `[필수] 상의(top) 1개 + 하의(bottom) 1개 + 신발(shoes) 1개`
   : `[필수] 상의(top) 1개 + 하의(bottom) 1개`}
 
-⚠️ 중요: 
-- 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서)
-- selectedProductIds에 포함된 상품만 styleReasoning에서 언급하세요
-- 상품 목록의 item_slot 값을 확인하여 올바른 카테고리를 선택하세요 (top/bottom/outer/shoes/bag)
+⚠️⚠️⚠️ 최우선 규칙: 
+- **위 상품 목록에 있는 ID, 브랜드, 상품명만 사용하세요!**
+- **상품 목록에 없는 브랜드(몽클레어, 캉골, 구찌, 발렌시아가 등)는 절대 언급 금지!**
+- 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/outer/shoes/bag)
+- selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!
+- styleReasoning에서 언급하는 모든 브랜드/상품은 selectedProductIds에 해당하는 것만!
 - styleReasoning은 최소 200자 이상, 풍부하고 전문적으로 작성하세요
 - "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
 
@@ -1733,6 +1750,69 @@ serve(async (req) => {
       const sortedProducts = gptSelectedIds
         .map(id => selectedProducts.find(p => p.id === id))
         .filter(Boolean) as typeof selectedProducts;
+      
+      // ============= 🔥 Reasoning 검증 및 교정 =============
+      // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
+      const actualBrands = sortedProducts.map(p => p.brand?.toLowerCase()).filter(Boolean);
+      
+      // 상품 목록에 없는 브랜드가 reasoning에 언급되었는지 확인
+      const reasoning = ragResponse.styleReasoning || '';
+      const reasoningLower = reasoning.toLowerCase();
+      
+      // 흔히 잘못 언급되는 유명 브랜드 목록
+      const HALLUCINATED_BRANDS = ['몽클레어', 'moncler', '캉골', 'kangol', '구찌', 'gucci', 
+        '발렌시아가', 'balenciaga', '프라다', 'prada', '샤넬', 'chanel', '루이비통', 'louis vuitton',
+        '버버리', 'burberry', '디올', 'dior', '생로랑', 'saint laurent', '보테가', 'bottega',
+        '셀린느', 'celine', '펜디', 'fendi', '지방시', 'givenchy', '발렌티노', 'valentino'];
+      
+      const hasHallucinatedBrand = HALLUCINATED_BRANDS.some(brand => {
+        if (reasoningLower.includes(brand)) {
+          // 실제 선택된 상품에 해당 브랜드가 있으면 OK
+          return !actualBrands.some(ab => ab?.includes(brand));
+        }
+        return false;
+      });
+      
+      if (hasHallucinatedBrand) {
+        console.log(`[style-recommend] ⚠️ Reasoning에 잘못된 브랜드 언급 감지, 재생성...`);
+        
+        // 실제 선택된 상품 기반으로 reasoning 재생성
+        const topProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'top');
+        const bottomProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'bottom');
+        const outerProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'outer');
+        const shoesProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'shoes');
+        const bagProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'bag');
+        
+        let correctedReasoning = getRandomWittyOpener() + ' ';
+        correctedReasoning += `${occasion}에 완벽한 룩을 준비했어요. `;
+        
+        if (topProduct) {
+          correctedReasoning += `상의는 **${topProduct.brand}의 ${topProduct.name}**으로, `;
+          const topConcepts = topProduct.dna_meta?.concepts?.slice(0, 2).join('/') || '세련된';
+          correctedReasoning += `${topConcepts} 무드를 잡아줍니다. `;
+        }
+        
+        if (bottomProduct) {
+          correctedReasoning += `하의는 **${bottomProduct.brand}의 ${bottomProduct.name}**을 매치했어요. `;
+        }
+        
+        if (outerProduct) {
+          correctedReasoning += `아우터로 **${outerProduct.brand}의 ${outerProduct.name}**을 더해 스타일을 완성했죠. `;
+        }
+        
+        if (shoesProduct) {
+          correctedReasoning += `신발은 **${shoesProduct.brand}의 ${shoesProduct.name}**으로, 전체 룩의 포인트가 됩니다. `;
+        }
+        
+        if (bagProduct) {
+          correctedReasoning += `가방은 **${bagProduct.brand}의 ${bagProduct.name}**으로 실용성과 스타일을 모두 챙겼어요. `;
+        }
+        
+        correctedReasoning += getRandomWittyCloser();
+        
+        ragResponse.styleReasoning = correctedReasoning;
+        console.log(`[style-recommend] Reasoning 교정 완료`);
+      }
       
       for (const product of sortedProducts) {
         const priorityCat = product.dna_meta?.item_slot
