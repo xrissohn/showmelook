@@ -260,13 +260,21 @@ const EXCLUDED_PRODUCT_KEYWORDS = [
   '세제', '청소', '주방', '욕실', '인테리어', '가구', 'cleaning', 'kitchen', 'furniture',
 ];
 
-// 🔥 세트상품 키워드 (상의+하의 합쳐진 세트는 피팅 오작동 유발)
+// 🔥 세트상품 키워드 (상의+하의 합쳐진 세트 - 피팅 시 분리 적용 필요)
+// 세트상품은 제외하지 않고, 추천 시 상의 슬롯이면 상의로만, 하의 슬롯이면 하의로만 피팅
 const SET_PRODUCT_KEYWORDS = [
   '[set]', '[SET]', '(set)', '(SET)', 'set]', 'SET]',
   '세트', '상하세트', '트레이닝세트', '운동세트', '조거세트',
   'hood & jogger', 'hoodie & jogger', '후드 & 조거', '후드앤조거',
   'sweat set', 'tracksuit set', 'training set',
 ];
+
+// 세트상품인지 확인하는 함수 (제외용이 아닌 분류용)
+function isSetProduct(productName: string | null | undefined): boolean {
+  if (!productName) return false;
+  const lower = productName.toLowerCase();
+  return SET_PRODUCT_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
+}
 
 // 키즈/주니어 상품 키워드 (성인에게 추천하지 않음)
 const KIDS_PRODUCT_KEYWORDS = [
@@ -298,10 +306,18 @@ function isStyleRelevantProduct(product: CachedProduct): boolean {
     return false;
   }
   
-  // 🔥 세트상품 제외 (상의+하의 세트는 피팅 시 오작동)
+  // 🔥 세트상품은 제외하지 않음 - 대신 추천 시 상의/하의 슬롯에 맞게 분리 피팅
+  // (세트상품도 상의로 추천되면 상의 파트만, 하의로 추천되면 하의 파트만 피팅됨)
   if (isSetProduct(product.name)) {
-    console.log(`[style-recommend] 세트상품 제외: ${product.name}`);
-    return false;
+    console.log(`[style-recommend] 세트상품 발견 (포함): ${product.name}`);
+    // 세트상품은 포함하되, 카테고리가 명확해야 함
+    // category가 '상의' 또는 '하의'로 지정되어 있으면 OK
+    const cat = (product.category || '').toLowerCase();
+    if (!cat.includes('상의') && !cat.includes('하의') && !cat.includes('top') && !cat.includes('bottom')) {
+      // 카테고리가 불명확한 세트상품은 제외
+      console.log(`[style-recommend] 카테고리 불명확 세트상품 제외: ${product.name}`);
+      return false;
+    }
   }
   
   const category = (product.category || '').toLowerCase();
@@ -411,12 +427,7 @@ function hasBagKeyword(productName: string | null | undefined): boolean {
   return BAG_KEYWORDS.some(kw => lower.includes(kw));
 }
 
-// 🔥 세트상품 체크 (상의+하의 합쳐진 세트 제외)
-function isSetProduct(productName: string | null | undefined): boolean {
-  if (!productName) return false;
-  const lower = productName.toLowerCase();
-  return SET_PRODUCT_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
-}
+// isSetProduct 함수는 위에서 정의됨 (line 273)
 
 function itemSlotToPriorityCategory(itemSlot: string | undefined, productName?: string | null): string {
   if (hasBagKeyword(productName)) {
