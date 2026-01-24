@@ -121,6 +121,9 @@ export const ProfileSelector = ({
   };
 
   const handleSelectFamily = (profile: FamilyProfile) => {
+    // 🔥 FamilyProfile 타입에 age_group, style_preferences가 정의되어 있으므로 as any 불필요
+    console.log(`[ProfileSelector] 🎯 Selected family profile: ${profile.full_name}, age_group=${profile.age_group}, gender=${profile.gender}`);
+    
     onProfileSelect({
       id: profile.id,
       type: 'family',
@@ -130,8 +133,8 @@ export const ProfileSelector = ({
       weight: profile.weight,
       body_type: profile.body_type,
       gender: profile.gender,
-      age_group: (profile as any).age_group,
-      style_preferences: (profile as any).style_preferences,
+      age_group: profile.age_group,  // 직접 접근 (타입에 정의됨)
+      style_preferences: profile.style_preferences,  // 직접 접근 (타입에 정의됨)
     });
     setIsOpen(false);
   };
