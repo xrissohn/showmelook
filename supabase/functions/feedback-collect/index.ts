@@ -47,13 +47,12 @@ serve(async (req) => {
       }
     }
 
+    // 비로그인 사용자는 피드백 저장 없이 성공 반환 (앱 중단 방지)
     if (!userId) {
+      console.log('[feedback-collect] Anonymous user, skipping feedback save');
       return new Response(
-        JSON.stringify({ success: false, error: 'Authentication required' }),
-        { 
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+        JSON.stringify({ success: true, count: 0, skipped: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
