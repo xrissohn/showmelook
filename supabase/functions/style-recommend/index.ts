@@ -1417,7 +1417,7 @@ serve(async (req) => {
       'unknown': []
     };
 
-    // DB 쿼리
+    // DB 쿼리 - 다양성을 위해 limit 제거하고 전체 상품 가져오기
     let query = supabase
       .from('products_cache')
       .select('*, dna_text, dna_meta, dna_generated_at')
@@ -1426,9 +1426,7 @@ serve(async (req) => {
       .not('image_url', 'is', null)
       .not('dna_meta', 'is', null);
 
-    const { data: allProductsRaw, error: productError } = await query
-      .order('dna_generated_at', { ascending: false, nullsFirst: false })
-      .limit(500);
+    const { data: allProductsRaw, error: productError } = await query;
     
     if (productError) {
       console.error('[style-recommend] Product fetch error:', productError);
@@ -1585,6 +1583,9 @@ serve(async (req) => {
     
     // ============= 점수 계산 및 카테고리 분류 =============
     
+    // 🎲 다양성을 위한 랜덤 시드 생성 (요청마다 다름)
+    const randomSeed = Date.now() % 1000;
+    
     const scoredProducts = allProducts.map(p => {
       const feedbackScore = p.feedback_score || 0.5;
       const conceptScore = calculateConceptScore(p, stage1Result.concepts);
@@ -1596,11 +1597,17 @@ serve(async (req) => {
         formalityScore = Math.max(0, 1 - diff * 0.15);
       }
       
-      const totalScore = (feedbackScore * 0.3) + (conceptScore * 0.4) + (formalityScore * 0.3);
+      // 🎲 랜덤 다양성 요소 추가 (0~0.15 범위의 랜덤 보너스)
+      // 상품 ID와 시드를 조합하여 일관되면서도 요청마다 다른 랜덤값 생성
+      const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const diversityBonus = ((idHash + randomSeed) % 100) / 666;  // 0 ~ 0.15 범위
+      
+      const totalScore = (feedbackScore * 0.25) + (conceptScore * 0.35) + (formalityScore * 0.25) + diversityBonus;
       
       return { product: p, score: totalScore };
     });
     
+    // 점수순 정렬 후 상위 권 내에서 섞기
     scoredProducts.sort((a, b) => b.score - a.score);
     
     // 카테고리별 분류
@@ -1638,22 +1645,30 @@ serve(async (req) => {
 
     // ============= 🔥 Stage 2: Gemini Flash 최종 선택 (교차 Fallback) =============
     
-    // GPT에 보낼 상품 목록 준비
+    // GPT에 보낼 상품 목록 준비 - 다양성 강화
     const getProductsForStage2 = () => {
       const result: CachedProduct[] = [];
+      const usedBrands = new Map<string, number>();
       
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = 6;
+        const maxPerCategory = 10;  // 🔥 카테고리당 후보 수 증가 (6 → 10)
         
-        for (const p of catProducts) {
+        // 🎲 카테고리 내에서 상위 20개 중 랜덤 샘플링
+        const topCandidates = catProducts.slice(0, 25);
+        const shuffledCandidates = [...topCandidates].sort(() => Math.random() - 0.5);
+        
+        for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
           
           const brand = p.brand || 'unknown';
-          const brandCountInCat = result.filter(r => r.brand === brand).length;
-          if (brandCountInCat < 2) {
+          const brandCount = usedBrands.get(brand) || 0;
+          
+          // 브랜드당 최대 2개로 다양성 확보
+          if (brandCount < 2) {
             result.push(p);
+            usedBrands.set(brand, brandCount + 1);
             selectedFromCat++;
           }
         }
