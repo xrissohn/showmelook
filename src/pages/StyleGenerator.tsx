@@ -3188,17 +3188,27 @@ const StyleGenerator = () => {
       
       // 프로필의 성별 정보로 초기 성별 설정
       if (preloadedProfile.gender) {
-        const genderMap: Record<string, 'female' | 'male' | 'kids'> = {
+        const genderMap: Record<string, 'female' | 'male' | 'unisex' | 'kids'> = {
           'female': 'female',
           'male': 'male',
           '여성': 'female',
           '남성': 'male',
+          'unisex': 'unisex',
+          '유니섹스': 'unisex',
           'kids': 'kids',
           '키즈': 'kids',
         };
         const mappedGender = genderMap[preloadedProfile.gender.toLowerCase()] || 'female';
         setCustomGender(mappedGender);
+        
+        // 키즈 모드가 아니면 기본 나이 설정 해제
+        if (mappedGender !== 'kids') {
+          setCustomAge(undefined);
+        }
       }
+      
+      // 🔥 연령대 기반 로깅 (디버깅용)
+      console.log(`[StyleGenerator] Profile loaded: gender=${preloadedProfile.gender}, age_group=${preloadedProfile.age_group}`);
     }
   }, [preloadedProfile, userProfile]);
 
@@ -3651,9 +3661,15 @@ const StyleGenerator = () => {
         'female': '여성',
         'male': '남성',
         'unisex': '유니섹스',
-        'kids': '여성' // 키즈는 기본 여성으로 처리하고 age로 구분
+        'kids': '키즈' // 키즈는 키즈로 전달하여 백엔드에서 필터링
       };
       const genderKo = genderMapping[customGender] || '여성';
+      
+      // 🔥 연령대 정보 확인 (성인에게 키즈 상품 추천 방지)
+      const effectiveAgeGroup = selectedGenerationProfile?.age_group || userProfile?.age_group;
+      const isKidsRequest = customGender === 'kids' || effectiveAgeGroup === 'child';
+      
+      console.log(`[StyleGenerator] Recommendation request: gender=${genderKo}, ageGroup=${effectiveAgeGroup}, isKids=${isKidsRequest}`);
       
       const { data, error } = await supabase.functions.invoke('style-recommend', {
         body: {
@@ -3661,8 +3677,8 @@ const StyleGenerator = () => {
           gender: genderKo,
           budget: customBudget[0],
           forceRefresh: false,
-          age: customGender === 'kids' ? (customAge || 10) : customAge,
-          ageGroup: selectedGenerationProfile?.age_group || userProfile?.age_group,
+          age: isKidsRequest ? (customAge || 10) : undefined,
+          ageGroup: effectiveAgeGroup,
           stylePreferences: selectedGenerationProfile?.style_preferences || userProfile?.style_preferences
         }
       });
@@ -3797,9 +3813,15 @@ const StyleGenerator = () => {
       'female': '여성',
       'male': '남성',
       'unisex': '유니섹스',
-      'kids': '여성'
+      'kids': '키즈'
     };
     const genderKo = genderMapping[customGender] || '여성';
+    
+    // 🔥 연령대 정보 확인 (성인에게 키즈 상품 추천 방지)
+    const effectiveAgeGroup = selectedGenerationProfile?.age_group || userProfile?.age_group;
+    const isKidsRequest = customGender === 'kids' || effectiveAgeGroup === 'child';
+    
+    console.log(`[StyleGenerator] Generation request: gender=${genderKo}, ageGroup=${effectiveAgeGroup}, isKids=${isKidsRequest}`);
 
     // 1. 스타일 추천 시작 (비동기로 진행)
     const recommendationPromise = supabase.functions.invoke('style-recommend', {
@@ -3808,8 +3830,8 @@ const StyleGenerator = () => {
         gender: genderKo,
         budget: customBudget[0],
         forceRefresh: false,
-        age: customGender === 'kids' ? (customAge || 10) : customAge,
-        ageGroup: selectedGenerationProfile?.age_group || userProfile?.age_group,
+        age: isKidsRequest ? (customAge || 10) : undefined,
+        ageGroup: effectiveAgeGroup,
         stylePreferences: selectedGenerationProfile?.style_preferences || userProfile?.style_preferences
       }
     });

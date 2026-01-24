@@ -260,6 +260,13 @@ const EXCLUDED_PRODUCT_KEYWORDS = [
   '세제', '청소', '주방', '욕실', '인테리어', '가구', 'cleaning', 'kitchen', 'furniture',
 ];
 
+// 키즈/주니어 상품 키워드 (성인에게 추천하지 않음)
+const KIDS_PRODUCT_KEYWORDS = [
+  '키즈', 'kids', 'kid', '주니어', 'junior', 'jr', '아동', '어린이', '유아', '베이비', 'baby',
+  '아기', '초등', '소아', '남아', '여아', '아동용', '키즈용', '어린이용', '유아용',
+  'children', 'child', 'toddler', 'infant', 'boys', 'girls',
+];
+
 function isStyleRelevantProduct(product: CachedProduct): boolean {
   const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.brand || ''}`.toLowerCase();
   
@@ -276,6 +283,37 @@ function isStyleRelevantProduct(product: CachedProduct): boolean {
   }
   
   return true;
+}
+
+// 성인 사용자에게 키즈/주니어 상품 필터링
+function filterKidsProductsForAdults(products: CachedProduct[], isKids: boolean): CachedProduct[] {
+  // 키즈 모드면 키즈 상품만 허용
+  if (isKids) {
+    return products.filter(p => {
+      const combined = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.brand || ''}`.toLowerCase();
+      // 키즈 키워드가 있거나 dna_meta.target이 kids인 상품만
+      const hasKidsKeyword = KIDS_PRODUCT_KEYWORDS.some(kw => combined.includes(kw));
+      const isKidsTarget = p.dna_meta?.target?.toString().includes('kids') || false;
+      return hasKidsKeyword || isKidsTarget;
+    });
+  }
+  
+  // 성인 모드면 키즈 상품 제외
+  return products.filter(p => {
+    const combined = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.brand || ''}`.toLowerCase();
+    
+    // 키즈 키워드가 있으면 제외
+    if (KIDS_PRODUCT_KEYWORDS.some(kw => combined.includes(kw))) {
+      return false;
+    }
+    
+    // dna_meta.target이 kids로 시작하면 제외
+    if (p.dna_meta?.target?.toString().startsWith('kids')) {
+      return false;
+    }
+    
+    return true;
+  });
 }
 
 // 가방 키워드 체크
@@ -1256,7 +1294,11 @@ serve(async (req) => {
     allProducts = allProducts.filter(p => isStyleRelevantProduct(p));
     console.log(`[style-recommend] After style filter: ${allProducts.length}`);
     
-    // 타겟 필터링
+    // 🔥 키즈/주니어 상품 필터링 (성인에게 키즈 상품 추천 방지)
+    allProducts = filterKidsProductsForAdults(allProducts, isKids);
+    console.log(`[style-recommend] After kids filter (isKids=${isKids}): ${allProducts.length}`);
+    
+    // 타겟 필터링 (dna_meta.target 기반)
     allProducts = filterByTarget(allProducts, isKids, gender);
     console.log(`[style-recommend] After target filter: ${allProducts.length}`);
     
