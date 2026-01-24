@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { X, Users, Clock } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
+import { useMemo } from 'react';
 
 interface QueueStatus {
   totalQueued: number;
@@ -27,6 +28,23 @@ const statusMessages: Record<string, { label: string; emoji: string }> = {
   failed: { label: '실패', emoji: '❌' },
 };
 
+// Pre-calculated particle positions for consistent rendering
+const PARTICLES = Array.from({ length: 12 }, (_, i) => ({
+  id: i,
+  size: 3 + (i % 4) * 2,
+  left: (i * 8.3) % 100,
+  delay: i * 0.3,
+  duration: 3 + (i % 3),
+  drift: (i % 2 === 0 ? 1 : -1) * (10 + (i % 5) * 5),
+  color: i % 3,
+}));
+
+const ORBIT_DOTS = [
+  { id: 0, radius: 55, duration: 4, delay: 0 },
+  { id: 1, radius: 62, duration: 5, delay: 0.5 },
+  { id: 2, radius: 70, duration: 6, delay: 1 },
+];
+
 export const GenerationProgress = ({ 
   isVisible, 
   progress, 
@@ -48,19 +66,75 @@ export const GenerationProgress = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-border relative">
+      <div className="bg-card rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-border relative overflow-hidden">
+        
+        {/* Background floating particles */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {PARTICLES.map((p) => (
+            <div
+              key={p.id}
+              className="absolute rounded-full animate-float-particle"
+              style={{
+                width: p.size,
+                height: p.size,
+                left: `${p.left}%`,
+                bottom: 0,
+                background: p.color === 0 
+                  ? 'hsl(var(--accent))' 
+                  : p.color === 1 
+                    ? 'hsl(var(--primary))' 
+                    : 'hsl(var(--magenta))',
+                animationDelay: `${p.delay}s`,
+                animationDuration: `${p.duration}s`,
+                '--drift': `${p.drift}px`,
+              } as React.CSSProperties}
+            />
+          ))}
+        </div>
+
         {/* 취소 버튼 */}
         <button
           onClick={onCancel}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-secondary/50 hover:bg-secondary flex items-center justify-center transition-colors"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-secondary/50 hover:bg-secondary flex items-center justify-center transition-colors z-10"
           aria-label="취소"
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>
 
         {/* 원형 프로그레스 + 로고 */}
-        <div className="relative w-28 h-28 mx-auto mb-6">
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        <div className="relative w-36 h-36 mx-auto mb-6">
+          
+          {/* Expanding ring effect */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-full h-full rounded-full border-2 border-accent/30 animate-ring-expand" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center" style={{ animationDelay: '1s' }}>
+            <div className="w-full h-full rounded-full border border-primary/20 animate-ring-expand" style={{ animationDelay: '1s' }} />
+          </div>
+          
+          {/* Outer spinning dashed ring */}
+          <div className="absolute -inset-4 flex items-center justify-center">
+            <div className="w-44 h-44 rounded-full border-2 border-dashed border-accent/40 animate-spin-slow" />
+          </div>
+          
+          {/* Rotating gradient ring */}
+          <div className="absolute -inset-2 flex items-center justify-center">
+            <div 
+              className="w-40 h-40 rounded-full animate-spin-reverse opacity-60"
+              style={{
+                background: 'conic-gradient(from 0deg, transparent 0%, hsl(var(--accent)) 15%, transparent 30%, hsl(var(--primary)) 50%, transparent 65%, hsl(var(--magenta)) 85%, transparent 100%)',
+                filter: 'blur(2px)',
+              }}
+            />
+          </div>
+          
+          {/* Inner glow pulse */}
+          <div className="absolute inset-2 flex items-center justify-center">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-accent/30 via-primary/20 to-magenta/30 animate-pulse-glow" />
+          </div>
+
+          {/* SVG Progress circle */}
+          <svg className="w-full h-full -rotate-90 relative z-10" viewBox="0 0 100 100">
             {/* 배경 원 */}
             <circle 
               cx="50" 
@@ -68,13 +142,15 @@ export const GenerationProgress = ({
               r="42" 
               fill="none" 
               stroke="hsl(var(--secondary))" 
-              strokeWidth="6" 
+              strokeWidth="4" 
+              opacity="0.5"
             />
             {/* 프로그레스 원 (그라데이션) */}
             <defs>
               <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                 <stop offset="0%" stopColor="hsl(var(--accent))" />
-                <stop offset="100%" stopColor="hsl(var(--primary))" />
+                <stop offset="50%" stopColor="hsl(var(--primary))" />
+                <stop offset="100%" stopColor="hsl(var(--magenta))" />
               </linearGradient>
             </defs>
             <circle 
@@ -83,39 +159,86 @@ export const GenerationProgress = ({
               r="42" 
               fill="none" 
               stroke="url(#progressGradient)"
-              strokeWidth="6"
+              strokeWidth="5"
               strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={strokeDashoffset}
               className="transition-all duration-500 ease-out"
+              style={{ filter: 'drop-shadow(0 0 6px hsl(var(--primary)))' }}
             />
           </svg>
-          {/* 중앙 로고 */}
-          <div className="absolute inset-4 flex items-center justify-center">
-            <img 
-              src={showmelookLogo} 
-              alt="ShowMeLook" 
-              width={56}
-              height={56}
-              className="w-14 h-14 object-contain animate-pulse"
-            />
+
+          {/* 중앙 로고 컨테이너 */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full bg-background/95 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/30 overflow-hidden">
+              {/* Inner rotating gradient */}
+              <div 
+                className="absolute inset-0 opacity-20 animate-spin-slow"
+                style={{
+                  background: 'conic-gradient(from 0deg, hsl(var(--accent)), hsl(var(--primary)), hsl(var(--magenta)), hsl(var(--accent)))',
+                }}
+              />
+              {/* Logo with glow */}
+              <img 
+                src={showmelookLogo} 
+                alt="ShowMeLook" 
+                width={48}
+                height={48}
+                className="w-12 h-12 object-contain relative z-10 animate-logo-glow"
+              />
+            </div>
           </div>
+          
+          {/* Orbiting dots */}
+          {ORBIT_DOTS.map((dot) => (
+            <div
+              key={dot.id}
+              className="absolute inset-0 flex items-center justify-center"
+              style={{ 
+                animation: `orbit ${dot.duration}s linear infinite`,
+                animationDelay: `${dot.delay}s`,
+                '--orbit-radius': `${dot.radius}px`,
+              } as React.CSSProperties}
+            >
+              <div 
+                className="w-2.5 h-2.5 rounded-full"
+                style={{ 
+                  background: dot.id === 0 
+                    ? 'hsl(var(--accent))' 
+                    : dot.id === 1 
+                      ? 'hsl(var(--primary))' 
+                      : 'hsl(var(--magenta))',
+                  boxShadow: `0 0 12px ${dot.id === 0 ? 'hsl(var(--accent))' : dot.id === 1 ? 'hsl(var(--primary))' : 'hsl(var(--magenta))'}`,
+                }}
+              />
+            </div>
+          ))}
         </div>
 
         {/* 진행률 텍스트 */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-2 relative z-10">
           <p className="text-4xl font-bold text-foreground">
             {progress}%
           </p>
           <p className="text-base text-muted-foreground font-korean flex items-center justify-center gap-2">
             <span>{statusInfo.emoji}</span>
             <span>{statusInfo.label}</span>
+            {/* Bouncing dots */}
+            <span className="flex gap-0.5 ml-1">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-primary animate-bounce-dot"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </span>
           </p>
         </div>
 
         {/* 대기 상태 정보 (Phase 3) */}
         {isQueued && queueStatus && (
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-2 relative z-10">
             {/* 앞에 대기 중인 인원 */}
             {aheadCount > 0 && (
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -146,7 +269,7 @@ export const GenerationProgress = ({
         )}
 
         {/* 안내 메시지 */}
-        <div className="mt-6 p-3 bg-secondary/50 rounded-xl">
+        <div className="mt-6 p-3 bg-secondary/50 rounded-xl relative z-10">
           <p className="text-xs text-muted-foreground text-center font-korean">
             {isQueued && aheadCount > 0 ? (
               <>
@@ -166,7 +289,7 @@ export const GenerationProgress = ({
         <Button 
           variant="ghost" 
           onClick={onCancel} 
-          className="mt-6 w-full font-korean text-muted-foreground hover:text-foreground"
+          className="mt-6 w-full font-korean text-muted-foreground hover:text-foreground relative z-10"
         >
           취소하기
         </Button>

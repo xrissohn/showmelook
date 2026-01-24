@@ -111,6 +111,24 @@ const bodyTypes = [
   { id: 'curvy', label: '볼륨 체형' },
 ];
 
+// Pre-calculated particle positions for consistent animations (no Math.random() during render)
+const loadingParticles = Array.from({ length: 20 }, (_, i) => ({
+  id: i,
+  size: 4 + (i % 5) * 2,
+  left: (i * 5) % 100,
+  delay: (i * 0.2) % 4,
+  duration: 3 + (i % 4),
+  drift: (i % 2 === 0 ? 1 : -1) * (10 + (i % 6) * 8),
+  color: i % 3,
+}));
+
+// Pre-calculated orbit dot positions
+const orbitDots = [
+  { id: 0, radius: 52, duration: 4, delay: 0 },
+  { id: 1, radius: 60, duration: 5.5, delay: 0.6 },
+  { id: 2, radius: 68, duration: 7, delay: 1.2 },
+];
+
 // 이미지 스켈레톤 로딩 컴포넌트 with Progressive Loading (블러 -> 선명)
 const ProductImage = ({ src, alt, className, rounded }: { src: string; alt: string; className?: string; rounded?: string }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -5184,99 +5202,99 @@ const StyleGenerator = () => {
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
                   {(isGenerating || isCustomSearching) ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative">
-                      {/* 배경 파티클 효과 - 더 많고 다양한 크기 */}
+                      {/* 배경 파티클 효과 - 고정된 위치 */}
                       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        {[...Array(20)].map((_, i) => (
+                        {loadingParticles.map((p) => (
                           <div
-                            key={i}
-                            className="absolute rounded-full"
+                            key={p.id}
+                            className="absolute rounded-full animate-float-particle"
                             style={{
-                              width: `${4 + Math.random() * 8}px`,
-                              height: `${4 + Math.random() * 8}px`,
-                              background: i % 3 === 0 
+                              width: p.size,
+                              height: p.size,
+                              left: `${p.left}%`,
+                              bottom: 0,
+                              background: p.color === 0 
                                 ? 'hsl(var(--accent))' 
-                                : i % 3 === 1 
+                                : p.color === 1 
                                   ? 'hsl(var(--primary))' 
                                   : 'hsl(var(--magenta))',
-                              left: `${Math.random() * 100}%`,
-                              top: `${Math.random() * 100}%`,
-                              opacity: 0.2 + Math.random() * 0.4,
-                              animation: `float ${4 + Math.random() * 4}s ease-in-out infinite`,
-                              animationDelay: `${Math.random() * 3}s`,
-                            }}
+                              animationDelay: `${p.delay}s`,
+                              animationDuration: `${p.duration}s`,
+                              '--drift': `${p.drift}px`,
+                            } as React.CSSProperties}
                           />
                         ))}
                       </div>
                       
                       {/* 메인 로고 애니메이션 - 개선된 버전 */}
                       <div className="relative z-10">
-                        {/* 외부 점선 회전 링 */}
-                        <div className="absolute inset-[-28px] sm:inset-[-32px] flex items-center justify-center">
-                          <div 
-                            className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-2 border-dashed border-accent/40"
-                            style={{ animation: 'spin 10s linear infinite' }}
-                          />
+                        {/* 확장되는 링 이펙트 */}
+                        <div className="absolute inset-[-40px] sm:inset-[-48px] flex items-center justify-center">
+                          <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border-2 border-accent/30 animate-ring-expand" />
+                        </div>
+                        <div className="absolute inset-[-40px] sm:inset-[-48px] flex items-center justify-center">
+                          <div className="w-40 h-40 sm:w-48 sm:h-48 rounded-full border border-primary/20 animate-ring-expand" style={{ animationDelay: '1s' }} />
                         </div>
                         
-                        {/* 외부 펄스 링 */}
-                        <div className="absolute inset-[-20px] sm:inset-[-24px] flex items-center justify-center">
-                          <div 
-                            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border border-primary/30"
-                            style={{ animation: 'ring-pulse 2s ease-in-out infinite' }}
-                          />
+                        {/* 외부 점선 회전 링 */}
+                        <div className="absolute inset-[-32px] sm:inset-[-36px] flex items-center justify-center">
+                          <div className="w-36 h-36 sm:w-44 sm:h-44 rounded-full border-2 border-dashed border-accent/40 animate-spin-slow" />
                         </div>
                         
                         {/* 회전하는 그라데이션 링 */}
-                        <div className="absolute inset-[-12px] sm:inset-[-16px] flex items-center justify-center">
+                        <div className="absolute inset-[-16px] sm:inset-[-20px] flex items-center justify-center">
                           <div 
-                            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full"
+                            className="w-32 h-32 sm:w-40 sm:h-40 rounded-full animate-spin-reverse"
                             style={{
-                              background: 'conic-gradient(from 0deg, transparent 0%, hsl(var(--accent)) 20%, transparent 40%, hsl(var(--primary)) 60%, transparent 80%, hsl(var(--magenta)) 100%)',
-                              animation: 'spin 4s linear infinite',
-                              filter: 'blur(1px)',
+                              background: 'conic-gradient(from 0deg, transparent 0%, hsl(var(--accent)) 15%, transparent 30%, hsl(var(--primary)) 50%, transparent 65%, hsl(var(--magenta)) 85%, transparent 100%)',
+                              filter: 'blur(2px)',
+                              opacity: 0.7,
                             }}
                           />
                         </div>
                         
                         {/* 내부 글로우 효과 */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div 
-                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-accent/20 via-primary/15 to-magenta/10 blur-xl"
-                            style={{ animation: 'pulse 2.5s ease-in-out infinite' }}
-                          />
+                        <div className="absolute inset-[-8px] sm:inset-[-10px] flex items-center justify-center">
+                          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-accent/30 via-primary/20 to-magenta/30 animate-pulse-glow" />
                         </div>
                         
                         {/* 로고 컨테이너 */}
-                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-background/95 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/40 overflow-hidden">
+                        <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-background/95 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/40 overflow-hidden">
                           {/* 내부 회전 그라데이션 */}
                           <div 
-                            className="absolute inset-0 opacity-20"
+                            className="absolute inset-0 opacity-25 animate-spin-slow"
                             style={{
                               background: 'conic-gradient(from 0deg, hsl(var(--accent)), hsl(var(--primary)), hsl(var(--magenta)), hsl(var(--accent)))',
-                              animation: 'spin 6s linear infinite reverse',
                             }}
                           />
                           {/* 로고 이미지 - 글로우 애니메이션 */}
                           <img 
                             src={showmelookLogo} 
                             alt="" 
-                            className="w-12 h-12 sm:w-14 sm:h-14 object-contain relative z-10"
-                            style={{ animation: 'logo-glow 3s ease-in-out infinite' }}
+                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain relative z-10 animate-logo-glow"
                           />
                         </div>
                         
                         {/* 궤도를 도는 작은 점들 */}
-                        {[0, 1, 2].map((i) => (
+                        {orbitDots.map((dot) => (
                           <div
-                            key={i}
+                            key={dot.id}
                             className="absolute inset-0 flex items-center justify-center"
-                            style={{ animation: `spin ${5 + i}s linear infinite`, animationDelay: `${i * 0.5}s` }}
+                            style={{ 
+                              animation: `orbit ${dot.duration}s linear infinite`,
+                              animationDelay: `${dot.delay}s`,
+                              '--orbit-radius': `${dot.radius}px`,
+                            } as React.CSSProperties}
                           >
                             <div 
-                              className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-accent shadow-lg"
+                              className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full"
                               style={{ 
-                                transform: `translateX(${48 + i * 8}px)`,
-                                boxShadow: '0 0 10px hsl(var(--accent))',
+                                background: dot.id === 0 
+                                  ? 'hsl(var(--accent))' 
+                                  : dot.id === 1 
+                                    ? 'hsl(var(--primary))' 
+                                    : 'hsl(var(--magenta))',
+                                boxShadow: `0 0 12px ${dot.id === 0 ? 'hsl(var(--accent))' : dot.id === 1 ? 'hsl(var(--primary))' : 'hsl(var(--magenta))'}`,
                               }}
                             />
                           </div>
@@ -5284,7 +5302,7 @@ const StyleGenerator = () => {
                       </div>
                       
                       {/* 로딩 텍스트 - 상품 추천 중일 때는 다른 문구 */}
-                      <div className="mt-10 sm:mt-12 text-center px-4 z-10">
+                      <div className="mt-12 sm:mt-14 text-center px-4 z-10">
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-lg sm:text-xl font-semibold text-foreground font-korean">
                             {isCustomSearching ? 'AI가 스타일을 분석중' : 'AI가 스타일을 만들고 있어요'}
@@ -5293,11 +5311,8 @@ const StyleGenerator = () => {
                             {[0, 1, 2].map((i) => (
                               <span
                                 key={i}
-                                className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-r from-accent to-primary"
-                                style={{
-                                  animation: 'bounce 0.8s ease-in-out infinite',
-                                  animationDelay: `${i * 0.15}s`,
-                                }}
+                                className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-r from-accent to-primary animate-bounce-dot"
+                                style={{ animationDelay: `${i * 0.15}s` }}
                               />
                             ))}
                           </span>
@@ -5316,22 +5331,15 @@ const StyleGenerator = () => {
                       )}
                       
                       {/* 프로그레스 바 - 개선된 shimmer */}
-                      <div className="mt-6 sm:mt-8 w-48 sm:w-64 h-2 bg-secondary/50 rounded-full overflow-hidden z-10 relative">
+                      <div className="mt-6 sm:mt-8 w-48 sm:w-64 h-2.5 bg-secondary/50 rounded-full overflow-hidden z-10 relative">
                         <div 
-                          className="absolute inset-0 bg-gradient-to-r from-accent via-primary via-50% to-accent rounded-full"
-                          style={{
-                            animation: 'shimmer 1.5s ease-in-out infinite',
-                            backgroundSize: '200% 100%',
-                          }}
+                          className="absolute inset-0 bg-gradient-to-r from-accent via-primary via-60% to-magenta rounded-full animate-shimmer"
+                          style={{ backgroundSize: '200% 100%' }}
                         />
                         {/* 글로우 오버레이 */}
                         <div 
-                          className="absolute inset-0 bg-white/20 rounded-full"
-                          style={{
-                            animation: 'shimmer 1.5s ease-in-out infinite',
-                            animationDelay: '0.3s',
-                            backgroundSize: '200% 100%',
-                          }}
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent rounded-full animate-shimmer"
+                          style={{ backgroundSize: '200% 100%', animationDelay: '0.5s' }}
                         />
                       </div>
                       
@@ -5341,11 +5349,8 @@ const StyleGenerator = () => {
                           {['👗', '👔', '👟', '👜', '🧥'].map((emoji, i) => (
                             <span
                               key={i}
-                              className="text-xl sm:text-2xl drop-shadow-md"
-                              style={{
-                                animation: 'bounce 1.2s ease-in-out infinite',
-                                animationDelay: `${i * 0.12}s`,
-                              }}
+                              className="text-xl sm:text-2xl drop-shadow-md animate-bounce-dot"
+                              style={{ animationDelay: `${i * 0.12}s` }}
                             >
                               {emoji}
                             </span>
