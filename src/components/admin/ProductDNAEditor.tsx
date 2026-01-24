@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 interface DNAMeta {
   item_slot?: string;
   target?: string;
-  color_family?: string;
+  color_family?: string[];
   formality?: number;
   concepts?: string[];
   occasions?: string[];
@@ -69,7 +69,7 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
   // DNA Meta fields
   const [itemSlot, setItemSlot] = useState<string>("");
   const [target, setTarget] = useState<string>("");
-  const [colorFamily, setColorFamily] = useState<string>("");
+  const [colorFamily, setColorFamily] = useState<string[]>([]);
   const [formality, setFormality] = useState<number>(0.5);
   const [concepts, setConcepts] = useState<string[]>([]);
   const [occasions, setOccasions] = useState<string[]>([]);
@@ -89,7 +89,14 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
       const meta = product.dna_meta;
       setItemSlot(meta.item_slot || "");
       setTarget(meta.target || "");
-      setColorFamily(meta.color_family || "");
+      // Handle color_family as array or legacy string
+      if (Array.isArray(meta.color_family)) {
+        setColorFamily(meta.color_family);
+      } else if (typeof meta.color_family === 'string') {
+        setColorFamily(meta.color_family ? [meta.color_family] : []);
+      } else {
+        setColorFamily([]);
+      }
       setFormality(meta.formality ?? 0.5);
       setConcepts(meta.concepts || []);
       setOccasions(meta.occasions || []);
@@ -99,7 +106,7 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
       // Reset to defaults
       setItemSlot("");
       setTarget("");
-      setColorFamily("");
+      setColorFamily([]);
       setFormality(0.5);
       setConcepts([]);
       setOccasions([]);
@@ -113,7 +120,7 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
   useEffect(() => {
     if (product) {
       const parts = [
-        colorFamily,
+        colorFamily.join("/"),
         concepts.join("/"),
         target === "male" ? "남성" : target === "female" ? "여성" : target === "unisex" ? "유니섹스" : target === "kids" ? "키즈" : "",
         occasions.join("/"),
@@ -132,7 +139,7 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
       const updatedMeta: Record<string, unknown> = {
         item_slot: itemSlot || undefined,
         target: target || undefined,
-        color_family: colorFamily || undefined,
+        color_family: colorFamily.length > 0 ? colorFamily : undefined,
         formality: formality,
         concepts: concepts.length > 0 ? concepts : undefined,
         occasions: occasions.length > 0 ? occasions : undefined,
@@ -205,7 +212,14 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
         if (meta) {
           setItemSlot(meta.item_slot || "");
           setTarget(meta.target || "");
-          setColorFamily(meta.color_family || "");
+          // Handle color_family as array or legacy string
+          if (Array.isArray(meta.color_family)) {
+            setColorFamily(meta.color_family);
+          } else if (typeof meta.color_family === 'string') {
+            setColorFamily(meta.color_family ? [meta.color_family] : []);
+          } else {
+            setColorFamily([]);
+          }
           setFormality(meta.formality ?? 0.5);
           setConcepts(meta.concepts || []);
           setOccasions(meta.occasions || []);
@@ -335,18 +349,34 @@ export function ProductDNAEditor({ product, open, onOpenChange, onSaved }: Produ
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Color Family</Label>
-              <Select value={colorFamily} onValueChange={setColorFamily}>
-                <SelectTrigger>
-                  <SelectValue placeholder="선택" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COLOR_FAMILIES.map(color => (
-                    <SelectItem key={color} value={color}>{color}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-2 col-span-2">
+              <Label>Color Family (다중 선택)</Label>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {colorFamily.map(c => (
+                  <Badge key={c} variant="default" className="gap-1">
+                    {c}
+                    <X 
+                      className="w-3 h-3 cursor-pointer hover:text-destructive" 
+                      onClick={() => setColorFamily(colorFamily.filter(cf => cf !== c))} 
+                    />
+                  </Badge>
+                ))}
+                {colorFamily.length === 0 && (
+                  <span className="text-xs text-muted-foreground">색상을 선택하세요</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {COLOR_FAMILIES.filter(c => !colorFamily.includes(c)).map(c => (
+                  <Badge 
+                    key={c} 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs"
+                    onClick={() => setColorFamily([...colorFamily, c])}
+                  >
+                    + {c}
+                  </Badge>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2">
