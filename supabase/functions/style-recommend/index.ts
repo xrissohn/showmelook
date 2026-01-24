@@ -267,6 +267,22 @@ const KIDS_PRODUCT_KEYWORDS = [
   'children', 'child', 'toddler', 'infant', 'boys', 'girls',
 ];
 
+// 🔥 여성 전용 브랜드 (남성에게 추천하지 않음)
+const FEMALE_ONLY_BRANDS = [
+  '제이에스티나', 'j.estina', 'jestina', 'j estina',
+  '미샤', 'missha', '에뛰드', 'etude', '이니스프리', 'innisfree',
+  '랑콤', 'lancome', '에스티로더', 'estee lauder',
+  '빅토리아시크릿', 'victoria secret', "victoria's secret",
+  '라펠라', 'la perla', '에이전트프로보케이터', 'agent provocateur',
+  '마리끌레르', 'marie claire',
+];
+
+// 🔥 남성 전용 브랜드 (여성에게 추천하지 않음)
+const MALE_ONLY_BRANDS = [
+  '지오다노맨', 'giordano men',
+  // 대부분의 브랜드는 유니섹스 또는 양성 라인이 있으므로 최소화
+];
+
 function isStyleRelevantProduct(product: CachedProduct): boolean {
   const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.brand || ''}`.toLowerCase();
   
@@ -283,6 +299,41 @@ function isStyleRelevantProduct(product: CachedProduct): boolean {
   }
   
   return true;
+}
+
+// 🔥 성별 기반 브랜드 필터링
+function filterByGenderBrand(products: CachedProduct[], gender: string): CachedProduct[] {
+  return products.filter(p => {
+    const brand = (p.brand || '').toLowerCase();
+    const name = (p.name || '').toLowerCase();
+    const combined = `${brand} ${name}`;
+    
+    // 남성인 경우 여성 전용 브랜드 제외
+    if (gender === '남성' || gender === 'male') {
+      if (FEMALE_ONLY_BRANDS.some(b => combined.includes(b))) {
+        return false;
+      }
+      // dna_meta.target이 명시적으로 female인 경우 제외
+      const target = p.dna_meta?.target?.toString() || '';
+      if (target === 'adult_female' || target === 'female') {
+        return false;
+      }
+    }
+    
+    // 여성인 경우 남성 전용 브랜드 제외
+    if (gender === '여성' || gender === 'female') {
+      if (MALE_ONLY_BRANDS.some(b => combined.includes(b))) {
+        return false;
+      }
+      // dna_meta.target이 명시적으로 male인 경우 제외
+      const target = p.dna_meta?.target?.toString() || '';
+      if (target === 'adult_male' || target === 'male') {
+        return false;
+      }
+    }
+    
+    return true;
+  });
 }
 
 // 성인 사용자에게 키즈/주니어 상품 필터링
@@ -832,14 +883,16 @@ async function runStage2WithModel(
   
   const isFormalOccasion = stage1Result.formalityMin >= 7 || stage1Result.requiredItems.includes('신발');
   
-  const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트이자 트렌드 큐레이터입니다.
-당신의 멘트는 위트있고, 트렌디하며, 때로는 도발적입니다!
+const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트이자 트렌드 큐레이터입니다.
+파리, 밀라노, 뉴욕 패션위크를 수십 년간 다녀온 베테랑이며, 셀럽들의 퍼스널 스타일리스트로 활동 중입니다.
+당신의 멘트는 위트있고, 트렌디하며, 때로는 도발적이지만 항상 전문성이 묻어납니다!
 
 ✨ 톤 & 매너:
 - "~거든요", "~죠" 등 친근하지만 전문가다운 말투
-- 패션 업계 은어와 트렌드 용어 적극 활용
+- 패션 업계 은어와 트렌드 용어 적극 활용 (실루엣, 레이어링, 톤온톤, 컬러 팝 등)
 - 브랜드 스토리와 디테일에 대한 해박한 지식 어필
 - 마무리는 항상 유쾌하고 자신감 넘치게!
+- 🚫 절대로 "(이)가", "~이(가)" 같은 어색한 조사 사용 금지! 자연스러운 한국어만!
 
 🚨 핵심 규칙 (반드시 준수!):
 1. ${isFormalOccasion 
@@ -851,17 +904,39 @@ async function runStage2WithModel(
 5. ⚠️⚠️⚠️ **정확히 4개의 서로 다른 카테고리 상품을 선택하세요** (상의/하의/아우터/신발/가방 등에서 중복 없이)
 6. ⚠️⚠️⚠️ **item_slot 값을 확인하세요**: top=상의, bottom=하의, outer=아우터, shoes=신발, bag=가방
 
-📝 styleReasoning 필수 구조:
-1. 후킹 오프닝: "이 조합, 솔직히 천재적이에요." / "믿고 가세요, 이건 실패가 없어요." 등 자신감 넘치는 시작
-2. ⚠️ **selectedProductIds에 포함된 상품만 언급하세요!** 선택하지 않은 상품은 절대 언급하지 마세요.
-3. 선택한 각 상품의 브랜드명과 상품명을 정확히 언급하며 왜 이 조합인지 전문가적 분석
-4. 컬러 매칭, 실루엣 밸런스, TPO 완벽 매칭 포인트 설명
-5. "킬링 포인트?"로 마무리하며 핵심 아이템 or 조합의 백미 강조
+📝 styleReasoning 필수 구조 (최소 200자 이상, 풍부하게!):
+
+1. **후킹 오프닝** (자신감 넘치는 한 줄):
+   - "이 조합? 솔직히 말해서 천재적이에요 😏" 
+   - "자, 집중하세요. 오늘 제가 진짜 제대로 골랐거든요."
+   - "이 정도면 패션 테러 방지법 1조를 지킨 거예요."
+
+2. **TPO 맥락 분석** (왜 이 조합이 완벽한지 전문가적 분석):
+   - 요청한 상황(예: 홍대 클럽, 발리 여행, 결혼식)에 왜 이 조합이 완벽한지 설명
+   - 실제 그 장소/상황에서의 분위기, 조명, 사람들의 시선을 상상하며 묘사
+   - "~라는 공간의 분위기를 생각해보세요" / "~에서 이 룩을 입고 걸으면..."
+
+3. **각 아이템별 전문가 해설** (선택한 상품만! 브랜드명 + 상품명 정확히):
+   - 소재 이야기: "코듀로이의 은은한 광택이...", "린넨 특유의 내추럴한 구김이..."
+   - 실루엣 분석: "릴랙스드 핏이 어깨 라인을 자연스럽게 잡아주고...", "와이드 레그가 다리를 길어 보이게..."
+   - 컬러 조화: "블랙과 네이비의 톤온톤 조합이...", "뉴트럴 톤 베이스에 포인트 컬러가..."
+
+4. **스타일링 팁** (프로의 노하우):
+   - 레이어링 제안: "안에 화이트 티를 받쳐 입으면 더 세련돼요"
+   - 액세서리 매칭: "여기에 실버 체인 목걸이 하나면 완벽"
+   - 시간대/TPO 변주: "저녁엔 자켓을 어깨에 걸치면 분위기 UP"
+
+5. **킬링 포인트 마무리** (자신감 넘치는 한 줄):
+   - "킬링 포인트? 바로 [브랜드]의 [아이템]과 [브랜드]의 만남이에요!"
+   - "이 조합의 백미는 단연 [구체적인 포인트]죠."
+   - "솔직히 이 가격에 이 무드? 거의 범죄 수준이에요 🔥"
 
 🎯 위트 예시:
 - "이 조합 보고 안 사시면, 솔직히 패션 테러입니다 😏"
 - "지금 장바구니에 안 담으면 미래의 당신이 후회해요"
+- "거리에서 '저 사람 뭐 입은 거야?' 시선 각오하세요"
 - "이건 찰떡궁합 그 자체예요. 마치 된장찌개에 두부 같은!"
+- "${ageGroupLabel}이라고요? 나이는 숫자에 불과해요. 스타일에는 정년이 없거든요 ✨"
 
 반드시 유효한 JSON만 응답하세요.`;
 
@@ -891,9 +966,11 @@ ${isFormalOccasion
 - 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서)
 - selectedProductIds에 포함된 상품만 styleReasoning에서 언급하세요
 - 상품 목록의 item_slot 값을 확인하여 올바른 카테고리를 선택하세요 (top/bottom/outer/shoes/bag)
+- styleReasoning은 최소 200자 이상, 풍부하고 전문적으로 작성하세요
+- "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
 
 JSON만 응답:
-{"lookName":"캐치한 코디명","styleConcept":"이 룩의 무드 한줄","styleReasoning":"후킹 오프닝으로 시작...선택한 상품만 브랜드/상품명 직접 언급...킬링포인트?로 마무리","selectedProductIds":["id1","id2","id3","id4"]}`;
+{"lookName":"캐치한 코디명 (예: 홍대 클럽 킬러룩)","styleConcept":"이 룩의 무드 한줄","styleReasoning":"[200자 이상] 후킹 오프닝 → TPO 맥락 분석 → 각 아이템 전문가 해설 → 스타일링 팁 → 킬링 포인트 마무리","selectedProductIds":["id1","id2","id3","id4"]}`;
 
   try {
     const controller = new AbortController();
@@ -915,8 +992,8 @@ JSON만 응답:
             { role: 'system', content: stage2SystemPrompt },
             { role: 'user', content: stage2UserPrompt }
           ],
-          max_tokens: 800,
-          temperature: 0.7, // 창의성 허용
+          max_tokens: 1200, // 더 풍부한 설명을 위해 토큰 증가
+          temperature: 0.8, // 창의성 더 허용
         }),
         signal: controller.signal,
       }
@@ -1297,6 +1374,10 @@ serve(async (req) => {
     // 🔥 키즈/주니어 상품 필터링 (성인에게 키즈 상품 추천 방지)
     allProducts = filterKidsProductsForAdults(allProducts, isKids);
     console.log(`[style-recommend] After kids filter (isKids=${isKids}): ${allProducts.length}`);
+    
+    // 🔥 성별 기반 브랜드 필터링 (남성에게 여성 전용 브랜드 추천 방지)
+    allProducts = filterByGenderBrand(allProducts, gender);
+    console.log(`[style-recommend] After gender brand filter (gender=${gender}): ${allProducts.length}`);
     
     // 타겟 필터링 (dna_meta.target 기반)
     allProducts = filterByTarget(allProducts, isKids, gender);
