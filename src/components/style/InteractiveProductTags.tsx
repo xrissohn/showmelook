@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, ExternalLink, ShoppingBag, Heart, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -46,23 +46,6 @@ const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
   '가방': { x: 80, y: 50, category: '가방' },
 };
 
-// 여러 상품이 같은 카테고리인 경우 위치 오프셋
-const getOffsetPosition = (basePos: ProductTagPosition, index: number): ProductTagPosition => {
-  const offsets = [
-    { x: 0, y: 0 },
-    { x: 15, y: 5 },
-    { x: -15, y: 5 },
-    { x: 10, y: -8 },
-    { x: -10, y: -8 },
-  ];
-  const offset = offsets[index % offsets.length];
-  return {
-    ...basePos,
-    x: Math.min(90, Math.max(10, basePos.x + offset.x)),
-    y: Math.min(95, Math.max(5, basePos.y + offset.y)),
-  };
-};
-
 // 카테고리 매핑 (다양한 표현을 통일)
 const normalizeCategory = (category: string): string => {
   const lower = category.toLowerCase();
@@ -74,6 +57,54 @@ const normalizeCategory = (category: string): string => {
   if (['bag', '가방', 'backpack', 'clutch'].some(k => lower.includes(k))) return '가방';
   if (['accessory', '액세서리', 'jewelry', 'watch', 'necklace'].some(k => lower.includes(k))) return '액세서리';
   return category;
+};
+
+// 최소 태그 간 거리 (%)
+const MIN_TAG_DISTANCE = 12;
+
+// 두 위치 간 거리 계산
+const getDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }): number => {
+  return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+};
+
+// 충돌을 피해 위치 조정
+const adjustPositionToAvoidCollision = (
+  position: ProductTagPosition,
+  existingPositions: ProductTagPosition[],
+  attempt: number = 0
+): ProductTagPosition => {
+  // 최대 시도 횟수 초과 시 원래 위치 반환
+  if (attempt > 8) return position;
+
+  // 기존 위치들과 충돌 확인
+  const hasCollision = existingPositions.some(
+    existing => getDistance(position, existing) < MIN_TAG_DISTANCE
+  );
+
+  if (!hasCollision) return position;
+
+  // 충돌 시 나선형으로 위치 조정
+  const spiralOffsets = [
+    { x: 18, y: 0 },    // 오른쪽
+    { x: -18, y: 0 },   // 왼쪽
+    { x: 0, y: 15 },    // 아래
+    { x: 0, y: -15 },   // 위
+    { x: 14, y: 12 },   // 오른쪽 아래
+    { x: -14, y: 12 },  // 왼쪽 아래
+    { x: 14, y: -12 },  // 오른쪽 위
+    { x: -14, y: -12 }, // 왼쪽 위
+    { x: 25, y: 0 },    // 더 오른쪽
+  ];
+
+  const offset = spiralOffsets[attempt % spiralOffsets.length];
+  const newPosition: ProductTagPosition = {
+    ...position,
+    x: Math.min(88, Math.max(12, position.x + offset.x)),
+    y: Math.min(92, Math.max(8, position.y + offset.y)),
+  };
+
+  // 재귀적으로 다시 충돌 확인
+  return adjustPositionToAvoidCollision(newPosition, existingPositions, attempt + 1);
 };
 
 interface InteractiveProductTagsProps {
@@ -146,28 +177,50 @@ export function InteractiveProductTags({
     }
   };
 
-  // 카테고리별로 상품 그룹화하고 위치 계산
-  const categoryCount: Record<string, number> = {};
-  const productsWithPositions = products.map((product) => {
-    const normalizedCategory = normalizeCategory(product.category);
-    const categoryIndex = categoryCount[normalizedCategory] || 0;
-    categoryCount[normalizedCategory] = categoryIndex + 1;
+  // 카테고리별로 상품 그룹화하고 위치 계산 (충돌 방지 적용)
+  const productsWithPositions = useMemo(() => {
+    const assignedPositions: ProductTagPosition[] = [];
+    const categoryCount: Record<string, number> = {};
     
-    // AI 분석 위치가 있으면 우선 사용
-    const aiPos = aiPositions.find(p => normalizeCategory(p.category) === normalizedCategory);
-    let position: ProductTagPosition;
-    
-    if (aiPos && aiPos.confidence > 0.3) {
-      position = getOffsetPosition({ x: aiPos.x, y: aiPos.y, category: normalizedCategory }, categoryIndex);
-    } else {
-      const basePosition = DEFAULT_POSITIONS[normalizedCategory] || 
-                          DEFAULT_POSITIONS[product.category] || 
-                          { x: 50, y: 50, category: 'default' };
-      position = getOffsetPosition(basePosition, categoryIndex);
-    }
-    
-    return { product, position };
-  });
+    return products.map((product) => {
+      const normalizedCategory = normalizeCategory(product.category);
+      const categoryIndex = categoryCount[normalizedCategory] || 0;
+      categoryCount[normalizedCategory] = categoryIndex + 1;
+      
+      // AI 분석 위치가 있으면 우선 사용
+      const aiPos = aiPositions.find(p => normalizeCategory(p.category) === normalizedCategory);
+      let basePosition: ProductTagPosition;
+      
+      if (aiPos && aiPos.confidence > 0.3) {
+        basePosition = { x: aiPos.x, y: aiPos.y, category: normalizedCategory };
+      } else {
+        basePosition = DEFAULT_POSITIONS[normalizedCategory] || 
+                       DEFAULT_POSITIONS[product.category] || 
+                       { x: 50, y: 50, category: 'default' };
+      }
+      
+      // 같은 카테고리 내에서 약간의 오프셋 적용
+      const categoryOffsets = [
+        { x: 0, y: 0 },
+        { x: 16, y: 6 },
+        { x: -16, y: 6 },
+        { x: 12, y: -10 },
+        { x: -12, y: -10 },
+      ];
+      const categoryOffset = categoryOffsets[categoryIndex % categoryOffsets.length];
+      const offsetPosition: ProductTagPosition = {
+        ...basePosition,
+        x: Math.min(88, Math.max(12, basePosition.x + categoryOffset.x)),
+        y: Math.min(92, Math.max(8, basePosition.y + categoryOffset.y)),
+      };
+      
+      // 충돌 방지: 기존 위치들과 겹치지 않도록 조정
+      const finalPosition = adjustPositionToAvoidCollision(offsetPosition, assignedPositions);
+      assignedPositions.push(finalPosition);
+      
+      return { product, position: finalPosition };
+    });
+  }, [products, aiPositions]);
 
   const handleTagClick = (product: TaggedProduct, e: React.MouseEvent) => {
     e.stopPropagation();
