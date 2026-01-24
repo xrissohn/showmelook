@@ -260,6 +260,14 @@ const EXCLUDED_PRODUCT_KEYWORDS = [
   '세제', '청소', '주방', '욕실', '인테리어', '가구', 'cleaning', 'kitchen', 'furniture',
 ];
 
+// 🔥 세트상품 키워드 (상의+하의 합쳐진 세트는 피팅 오작동 유발)
+const SET_PRODUCT_KEYWORDS = [
+  '[set]', '[SET]', '(set)', '(SET)', 'set]', 'SET]',
+  '세트', '상하세트', '트레이닝세트', '운동세트', '조거세트',
+  'hood & jogger', 'hoodie & jogger', '후드 & 조거', '후드앤조거',
+  'sweat set', 'tracksuit set', 'training set',
+];
+
 // 키즈/주니어 상품 키워드 (성인에게 추천하지 않음)
 const KIDS_PRODUCT_KEYWORDS = [
   '키즈', 'kids', 'kid', '주니어', 'junior', 'jr', '아동', '어린이', '유아', '베이비', 'baby',
@@ -287,6 +295,12 @@ function isStyleRelevantProduct(product: CachedProduct): boolean {
   const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.brand || ''}`.toLowerCase();
   
   if (EXCLUDED_PRODUCT_KEYWORDS.some(kw => combined.includes(kw.toLowerCase()))) {
+    return false;
+  }
+  
+  // 🔥 세트상품 제외 (상의+하의 세트는 피팅 시 오작동)
+  if (isSetProduct(product.name)) {
+    console.log(`[style-recommend] 세트상품 제외: ${product.name}`);
     return false;
   }
   
@@ -367,18 +381,41 @@ function filterKidsProductsForAdults(products: CachedProduct[], isKids: boolean)
   });
 }
 
-// 가방 키워드 체크
+// 가방 키워드 체크 (버킷백은 가방, 버킷햇은 모자!)
 const BAG_KEYWORDS = [
   '가방', 'bag', 'bags', '백', '토트', 'tote', '숄더', 'shoulder', 
   '크로스백', 'crossbody', '클러치', 'clutch', '백팩', 'backpack', 
-  '파우치', 'pouch', '호보', 'hobo', '새들', 'saddle', '버킷', 'bucket',
+  '파우치', 'pouch', '호보', 'hobo', '새들', 'saddle', '버킷백', 'bucket bag',
   '미니백', 'minibag', '에코백', 'ecobag', '캔버스백', 'canvas bag'
 ];
+
+// 🎩 모자/액세서리 키워드 체크
+const HAT_ACCESSORY_KEYWORDS = [
+  '햇', 'hat', '캡', 'cap', '모자', '비니', 'beanie', '버킷햇', 'bucket hat',
+  '버뮤다', 'bermuda', '스냅백', 'snapback', '볼캡', '야구모자', 'baseball cap',
+  '페도라', 'fedora', '파나마', 'panama', '베레모', 'beret'
+];
+
+function hasHatKeyword(productName: string | null | undefined): boolean {
+  if (!productName) return false;
+  const lower = productName.toLowerCase();
+  // 버킷햇, 버뮤다 버킷햇 등은 모자로 인식
+  return HAT_ACCESSORY_KEYWORDS.some(kw => lower.includes(kw));
+}
 
 function hasBagKeyword(productName: string | null | undefined): boolean {
   if (!productName) return false;
   const lower = productName.toLowerCase();
+  // 버킷햇/모자 키워드가 있으면 가방이 아님!
+  if (hasHatKeyword(productName)) return false;
   return BAG_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+// 🔥 세트상품 체크 (상의+하의 합쳐진 세트 제외)
+function isSetProduct(productName: string | null | undefined): boolean {
+  if (!productName) return false;
+  const lower = productName.toLowerCase();
+  return SET_PRODUCT_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()));
 }
 
 function itemSlotToPriorityCategory(itemSlot: string | undefined, productName?: string | null): string {
@@ -437,7 +474,16 @@ function mapToPriorityCategory(category: string, subCategory?: string | null, pr
 }
 
 function getDisplaySubCategory(category: string, subCategory?: string | null, productName?: string | null, dnaMeta?: DNAMeta | null): string {
+  // 🎩 모자/햇 키워드 우선 체크 (버킷햇이 가방으로 잘못 분류되는 것 방지)
+  if (hasHatKeyword(productName)) {
+    return '액세서리';
+  }
+  
   if (dnaMeta?.item_slot) {
+    // 🔥 item_slot이 'bag'이지만 실제로 모자인 경우 보정
+    if (dnaMeta.item_slot === 'bag' && hasHatKeyword(productName)) {
+      return '액세서리';
+    }
     switch (dnaMeta.item_slot) {
       case 'top': return '상의';
       case 'bottom': return '하의';
@@ -451,6 +497,11 @@ function getDisplaySubCategory(category: string, subCategory?: string | null, pr
   
   const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
+  // 🎩 모자/햇 키워드 체크 (가방보다 우선)
+  if (['햇', 'hat', '캡', 'cap', '모자', '비니', 'beanie', '버킷햇', '버뮤다', 'bucket hat', '스냅백', 'snapback', '볼캡', '페도라', '베레모'].some(v => combined.includes(v))) {
+    return '액세서리';
+  }
+  
   if (['하의', 'bottom', 'pants', '팬츠', '바지', '청바지', 'jeans', 'skirt', '스커트', '원피스', 'dress', '반바지', 'bootcut', '부츠컷', 'trousers', '슬랙스'].some(v => combined.includes(v))) {
     return '하의';
   }
@@ -462,7 +513,7 @@ function getDisplaySubCategory(category: string, subCategory?: string | null, pr
   if (['가방', 'bag', 'bags', '백', '클러치', 'clutch', 'tote', '토트백', 'backpack', '숄더백', '크로스백'].some(v => combined.includes(v))) {
     return '가방';
   }
-  if (['목걸이', 'necklace', '팔찌', 'bracelet', '반지', 'ring', '귀걸이', 'earring', '시계', 'watch', '선글라스', 'sunglasses', '모자', 'hat', 'cap', '스카프', 'scarf', '머플러', '벨트', 'belt', '장갑', 'gloves'].some(v => combined.includes(v))) {
+  if (['목걸이', 'necklace', '팔찌', 'bracelet', '반지', 'ring', '귀걸이', 'earring', '시계', 'watch', '선글라스', 'sunglasses', '스카프', 'scarf', '머플러', '벨트', 'belt', '장갑', 'gloves'].some(v => combined.includes(v))) {
     return '액세서리';
   }
   
@@ -1777,11 +1828,35 @@ serve(async (req) => {
         console.log(`[style-recommend] ⚠️ Reasoning에 잘못된 브랜드 언급 감지, 재생성...`);
         
         // 실제 선택된 상품 기반으로 reasoning 재생성
-        const topProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'top');
-        const bottomProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'bottom');
-        const outerProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'outer');
-        const shoesProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'shoes');
-        const bagProduct = sortedProducts.find(p => p.dna_meta?.item_slot === 'bag');
+        // 🔥 item_slot 대신 실제 카테고리 분류 사용
+        const topProduct = sortedProducts.find(p => 
+          p.dna_meta?.item_slot === 'top' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '상의'
+        );
+        const bottomProduct = sortedProducts.find(p => 
+          p.dna_meta?.item_slot === 'bottom' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '하의'
+        );
+        const outerProduct = sortedProducts.find(p => 
+          p.dna_meta?.item_slot === 'outer' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '아우터'
+        );
+        const shoesProduct = sortedProducts.find(p => 
+          p.dna_meta?.item_slot === 'shoes' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '신발'
+        );
+        // 🎩 액세서리(모자 포함) vs 가방 구분
+        const accessoryProduct = sortedProducts.find(p => 
+          hasHatKeyword(p.name) || 
+          p.dna_meta?.item_slot === 'accessory' ||
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '액세서리'
+        );
+        const bagProduct = sortedProducts.find(p => 
+          !hasHatKeyword(p.name) && (
+            p.dna_meta?.item_slot === 'bag' || 
+            getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '가방'
+          )
+        );
         
         let correctedReasoning = getRandomWittyOpener() + ' ';
         correctedReasoning += `${occasion}에 완벽한 룩을 준비했어요. `;
@@ -1802,6 +1877,12 @@ serve(async (req) => {
         
         if (shoesProduct) {
           correctedReasoning += `신발은 **${shoesProduct.brand}의 ${shoesProduct.name}**으로, 전체 룩의 포인트가 됩니다. `;
+        }
+        
+        // 🎩 액세서리(모자)와 가방을 별도로 처리
+        if (accessoryProduct) {
+          const accCategory = getDisplaySubCategory(accessoryProduct.category, accessoryProduct.sub_category, accessoryProduct.name, accessoryProduct.dna_meta);
+          correctedReasoning += `${accCategory}는 **${accessoryProduct.brand}의 ${accessoryProduct.name}**으로 스타일에 포인트를 더했어요. `;
         }
         
         if (bagProduct) {
