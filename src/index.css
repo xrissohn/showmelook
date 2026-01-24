@@ -389,45 +389,47 @@
   50% { transform: scale(1) rotate(180deg); opacity: 1; }
 }
 
-/* Animation utility classes */
-.animate-spin-slow {
-  animation: spin 8s linear infinite;
-}
+/* Animation utility classes - must be in @layer utilities for Tailwind JIT */
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 8s linear infinite;
+  }
 
-.animate-spin-reverse {
-  animation: spin-reverse 6s linear infinite;
-}
+  .animate-spin-reverse {
+    animation: spin-reverse 6s linear infinite;
+  }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2.5s ease-in-out infinite;
-}
+  .animate-pulse-glow {
+    animation: pulse-glow 2.5s ease-in-out infinite;
+  }
 
-.animate-bounce-dot {
-  animation: bounce-dot 1s ease-in-out infinite;
-}
+  .animate-bounce-dot {
+    animation: bounce-dot 1s ease-in-out infinite;
+  }
 
-.animate-ring-pulse {
-  animation: ring-pulse 2s ease-in-out infinite;
-}
+  .animate-ring-pulse {
+    animation: ring-pulse 2s ease-in-out infinite;
+  }
 
-.animate-ring-expand {
-  animation: ring-expand 2s ease-out infinite;
-}
+  .animate-ring-expand {
+    animation: ring-expand 2s ease-out infinite;
+  }
 
-.animate-logo-glow {
-  animation: logo-glow 3s ease-in-out infinite;
-}
+  .animate-logo-glow {
+    animation: logo-glow 3s ease-in-out infinite;
+  }
 
-.animate-orbit {
-  animation: orbit 5s linear infinite;
-}
+  .animate-orbit {
+    animation: orbit 5s linear infinite;
+  }
 
-.animate-float-particle {
-  animation: float-particle 4s ease-in-out infinite;
-}
+  .animate-float-particle {
+    animation: float-particle 4s ease-in-out infinite;
+  }
 
-.animate-sparkle {
-  animation: sparkle 2s ease-in-out infinite;
+  .animate-sparkle-custom {
+    animation: sparkle 2s ease-in-out infinite;
+  }
 }
 
 .line-clamp-2 {
