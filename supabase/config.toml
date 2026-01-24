@@ -117,3 +117,6 @@ verify_jwt = false
 
 [functions.analyze-product-colors]
 verify_jwt = false
+
+[functions.feedback-collect]
+verify_jwt = false

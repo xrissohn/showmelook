@@ -262,44 +262,111 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     ];
 
     // If face composite is enabled, include the avatar image
+    let avatarFetchSuccess = false;
     if (useFaceComposite && userAvatarUrl) {
       let avatarDataUrl = userAvatarUrl;
       
       if (userAvatarUrl.includes('supabase.co/storage')) {
         try {
           console.log('[generate-style] Fetching avatar from storage...');
-          const avatarResponse = await fetch(userAvatarUrl);
-          if (avatarResponse.ok) {
-            const avatarBuffer = await avatarResponse.arrayBuffer();
-            const base64Avatar = btoa(
-              new Uint8Array(avatarBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-            );
-            const contentType = avatarResponse.headers.get('content-type') || 'image/png';
-            avatarDataUrl = `data:${contentType};base64,${base64Avatar}`;
-            console.log('[generate-style] Avatar converted to base64, length:', avatarDataUrl.length);
-          } else {
-            console.error('[generate-style] Failed to fetch avatar:', avatarResponse.status);
+          
+          // If it's a signed URL that might have expired, try to get a fresh signed URL
+          // Extract the path from the URL
+          const urlMatch = userAvatarUrl.match(/\/avatars\/([^?]+)/);
+          if (urlMatch) {
+            const avatarPath = urlMatch[1];
+            console.log('[generate-style] Avatar path:', avatarPath);
+            
+            // Get a fresh signed URL using service role
+            const { data: signedData, error: signedError } = await supabase
+              .storage
+              .from('avatars')
+              .createSignedUrl(avatarPath, 300); // 5 minute validity
+            
+            if (signedData?.signedUrl) {
+              console.log('[generate-style] Got fresh signed URL');
+              const avatarResponse = await fetch(signedData.signedUrl);
+              if (avatarResponse.ok) {
+                const avatarBuffer = await avatarResponse.arrayBuffer();
+                const base64Avatar = btoa(
+                  new Uint8Array(avatarBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+                );
+                const contentType = avatarResponse.headers.get('content-type') || 'image/png';
+                avatarDataUrl = `data:${contentType};base64,${base64Avatar}`;
+                console.log('[generate-style] Avatar converted to base64, length:', avatarDataUrl.length);
+                avatarFetchSuccess = true;
+              } else {
+                console.error('[generate-style] Failed to fetch avatar with fresh URL:', avatarResponse.status);
+              }
+            } else {
+              console.error('[generate-style] Failed to create signed URL:', signedError);
+            }
+          }
+          
+          // Fallback: try the original URL if fresh signed URL failed
+          if (!avatarFetchSuccess) {
+            console.log('[generate-style] Trying original avatar URL...');
+            const avatarResponse = await fetch(userAvatarUrl);
+            if (avatarResponse.ok) {
+              const avatarBuffer = await avatarResponse.arrayBuffer();
+              const base64Avatar = btoa(
+                new Uint8Array(avatarBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+              );
+              const contentType = avatarResponse.headers.get('content-type') || 'image/png';
+              avatarDataUrl = `data:${contentType};base64,${base64Avatar}`;
+              console.log('[generate-style] Avatar converted to base64 from original URL, length:', avatarDataUrl.length);
+              avatarFetchSuccess = true;
+            } else {
+              console.error('[generate-style] Failed to fetch avatar with original URL:', avatarResponse.status);
+            }
           }
         } catch (fetchError) {
           console.error('[generate-style] Error fetching avatar:', fetchError);
         }
+      } else if (userAvatarUrl.startsWith('data:')) {
+        // Already a data URL
+        avatarDataUrl = userAvatarUrl;
+        avatarFetchSuccess = true;
       }
       
-      messages[0] = {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: prompt
-          },
-          {
-            type: 'image_url',
-            image_url: {
-              url: avatarDataUrl
+      // Only include avatar in messages if we successfully fetched it
+      if (avatarFetchSuccess) {
+        messages[0] = {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: prompt
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: avatarDataUrl
+              }
             }
-          }
-        ]
-      };
+          ]
+        };
+        console.log('[generate-style] Avatar included in request');
+      } else {
+        // If avatar fetch failed, proceed without face composite
+        console.log('[generate-style] Avatar fetch failed, proceeding without face composite');
+        // Revert to non-face-composite prompt
+        prompt = `Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
+
+${bodyProportionHint}
+
+Style concept: ${style}
+
+Wearing these items:
+${products}
+
+IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+        
+        messages[0] = {
+          role: 'user',
+          content: prompt
+        };
+      }
     }
 
     // Call Lovable AI Gateway with retry logic
