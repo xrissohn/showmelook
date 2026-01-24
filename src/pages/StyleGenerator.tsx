@@ -5183,82 +5183,120 @@ const StyleGenerator = () => {
               {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
               <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
                   {(isGenerating || isCustomSearching) ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden">
-                      {/* 배경 파티클 효과 */}
-                      <div className="absolute inset-0 overflow-hidden">
-                        {[...Array(12)].map((_, i) => (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative">
+                      {/* 배경 파티클 효과 - 더 많고 다양한 크기 */}
+                      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                        {[...Array(20)].map((_, i) => (
                           <div
                             key={i}
-                            className="absolute w-2 h-2 rounded-full bg-accent/20"
+                            className="absolute rounded-full"
                             style={{
+                              width: `${4 + Math.random() * 8}px`,
+                              height: `${4 + Math.random() * 8}px`,
+                              background: i % 3 === 0 
+                                ? 'hsl(var(--accent))' 
+                                : i % 3 === 1 
+                                  ? 'hsl(var(--primary))' 
+                                  : 'hsl(var(--magenta))',
                               left: `${Math.random() * 100}%`,
                               top: `${Math.random() * 100}%`,
-                              animation: `float ${3 + Math.random() * 2}s ease-in-out infinite`,
-                              animationDelay: `${Math.random() * 2}s`,
+                              opacity: 0.2 + Math.random() * 0.4,
+                              animation: `float ${4 + Math.random() * 4}s ease-in-out infinite`,
+                              animationDelay: `${Math.random() * 3}s`,
                             }}
                           />
                         ))}
                       </div>
                       
-                      {/* 메인 로고 애니메이션 */}
+                      {/* 메인 로고 애니메이션 - 개선된 버전 */}
                       <div className="relative z-10">
-                        {/* 외부 회전 링 */}
-                        <div className="absolute inset-[-20px] sm:inset-[-24px] flex items-center justify-center">
+                        {/* 외부 점선 회전 링 */}
+                        <div className="absolute inset-[-28px] sm:inset-[-32px] flex items-center justify-center">
                           <div 
-                            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border-2 border-dashed border-accent/40"
-                            style={{ animation: 'spin 8s linear infinite' }}
+                            className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-2 border-dashed border-accent/40"
+                            style={{ animation: 'spin 10s linear infinite' }}
                           />
                         </div>
                         
-                        {/* 펄스 링 애니메이션 */}
-                        <div className="absolute inset-[-10px] sm:inset-[-12px] flex items-center justify-center">
-                          <div className="w-24 sm:w-32 h-24 sm:h-32 rounded-full border-2 border-accent/30 animate-ping" style={{ animationDuration: '2s' }} />
+                        {/* 외부 펄스 링 */}
+                        <div className="absolute inset-[-20px] sm:inset-[-24px] flex items-center justify-center">
+                          <div 
+                            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full border border-primary/30"
+                            style={{ animation: 'ring-pulse 2s ease-in-out infinite' }}
+                          />
                         </div>
                         
                         {/* 회전하는 그라데이션 링 */}
-                        <div className="absolute inset-[-8px] sm:inset-[-10px] flex items-center justify-center">
+                        <div className="absolute inset-[-12px] sm:inset-[-16px] flex items-center justify-center">
                           <div 
-                            className="w-24 sm:w-32 h-24 sm:h-32 rounded-full"
+                            className="w-28 h-28 sm:w-36 sm:h-36 rounded-full"
                             style={{
-                              background: 'conic-gradient(from 0deg, transparent 0%, hsl(var(--accent)) 25%, transparent 50%, hsl(var(--primary)) 75%, transparent 100%)',
-                              animation: 'spin 3s linear infinite',
+                              background: 'conic-gradient(from 0deg, transparent 0%, hsl(var(--accent)) 20%, transparent 40%, hsl(var(--primary)) 60%, transparent 80%, hsl(var(--magenta)) 100%)',
+                              animation: 'spin 4s linear infinite',
+                              filter: 'blur(1px)',
                             }}
                           />
                         </div>
                         
-                        {/* 내부 글로우 */}
+                        {/* 내부 글로우 효과 */}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div 
-                            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-accent/10 blur-xl"
-                            style={{ animation: 'pulse 2s ease-in-out infinite' }}
+                            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-accent/20 via-primary/15 to-magenta/10 blur-xl"
+                            style={{ animation: 'pulse 2.5s ease-in-out infinite' }}
                           />
                         </div>
                         
                         {/* 로고 컨테이너 */}
-                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-background/90 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/30">
+                        <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-background/95 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/40 overflow-hidden">
+                          {/* 내부 회전 그라데이션 */}
+                          <div 
+                            className="absolute inset-0 opacity-20"
+                            style={{
+                              background: 'conic-gradient(from 0deg, hsl(var(--accent)), hsl(var(--primary)), hsl(var(--magenta)), hsl(var(--accent)))',
+                              animation: 'spin 6s linear infinite reverse',
+                            }}
+                          />
+                          {/* 로고 이미지 - 글로우 애니메이션 */}
                           <img 
                             src={showmelookLogo} 
                             alt="" 
-                            className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
-                            style={{ animation: 'pulse 2s ease-in-out infinite' }}
+                            className="w-12 h-12 sm:w-14 sm:h-14 object-contain relative z-10"
+                            style={{ animation: 'logo-glow 3s ease-in-out infinite' }}
                           />
                         </div>
+                        
+                        {/* 궤도를 도는 작은 점들 */}
+                        {[0, 1, 2].map((i) => (
+                          <div
+                            key={i}
+                            className="absolute inset-0 flex items-center justify-center"
+                            style={{ animation: `spin ${5 + i}s linear infinite`, animationDelay: `${i * 0.5}s` }}
+                          >
+                            <div 
+                              className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-accent shadow-lg"
+                              style={{ 
+                                transform: `translateX(${48 + i * 8}px)`,
+                                boxShadow: '0 0 10px hsl(var(--accent))',
+                              }}
+                            />
+                          </div>
+                        ))}
                       </div>
                       
                       {/* 로딩 텍스트 - 상품 추천 중일 때는 다른 문구 */}
-                      <div className="mt-8 sm:mt-10 text-center px-4 z-10">
+                      <div className="mt-10 sm:mt-12 text-center px-4 z-10">
                         <div className="flex items-center justify-center gap-1">
                           <span className="text-lg sm:text-xl font-semibold text-foreground font-korean">
                             {isCustomSearching ? 'AI가 스타일을 분석중' : 'AI가 스타일을 만들고 있어요'}
                           </span>
-                          <span className="flex gap-0.5">
+                          <span className="flex gap-0.5 ml-1">
                             {[0, 1, 2].map((i) => (
                               <span
                                 key={i}
-                                className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-accent"
+                                className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-gradient-to-r from-accent to-primary"
                                 style={{
-                                  animation: 'bounce 1s ease-in-out infinite',
-                                  animationDelay: `${i * 0.2}s`,
+                                  animation: 'bounce 0.8s ease-in-out infinite',
+                                  animationDelay: `${i * 0.15}s`,
                                 }}
                               />
                             ))}
@@ -5277,12 +5315,21 @@ const StyleGenerator = () => {
                         />
                       )}
                       
-                      {/* 프로그레스 바 */}
-                      <div className="mt-6 sm:mt-8 w-48 sm:w-64 h-1.5 bg-secondary rounded-full overflow-hidden z-10">
+                      {/* 프로그레스 바 - 개선된 shimmer */}
+                      <div className="mt-6 sm:mt-8 w-48 sm:w-64 h-2 bg-secondary/50 rounded-full overflow-hidden z-10 relative">
                         <div 
-                          className="h-full bg-gradient-to-r from-accent via-primary to-accent rounded-full"
+                          className="absolute inset-0 bg-gradient-to-r from-accent via-primary via-50% to-accent rounded-full"
                           style={{
-                            animation: 'shimmer 2s ease-in-out infinite',
+                            animation: 'shimmer 1.5s ease-in-out infinite',
+                            backgroundSize: '200% 100%',
+                          }}
+                        />
+                        {/* 글로우 오버레이 */}
+                        <div 
+                          className="absolute inset-0 bg-white/20 rounded-full"
+                          style={{
+                            animation: 'shimmer 1.5s ease-in-out infinite',
+                            animationDelay: '0.3s',
                             backgroundSize: '200% 100%',
                           }}
                         />
@@ -5294,10 +5341,10 @@ const StyleGenerator = () => {
                           {['👗', '👔', '👟', '👜', '🧥'].map((emoji, i) => (
                             <span
                               key={i}
-                              className="text-xl sm:text-2xl"
+                              className="text-xl sm:text-2xl drop-shadow-md"
                               style={{
-                                animation: 'bounce 1.5s ease-in-out infinite',
-                                animationDelay: `${i * 0.15}s`,
+                                animation: 'bounce 1.2s ease-in-out infinite',
+                                animationDelay: `${i * 0.12}s`,
                               }}
                             >
                               {emoji}
