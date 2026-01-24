@@ -591,7 +591,7 @@ serve(async (req) => {
   }
 
   try {
-    const { batchSize = 50, scheduled = false, maxIterations = 10 } = await req.json().catch(() => ({}));
+    const { batchSize = 50, scheduled = false, maxIterations = 10, forceRegenerate = false, productIds = [] } = await req.json().catch(() => ({}));
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -599,11 +599,109 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // 배치 사이즈 제한 (AI 호출 없으므로 더 많이 처리 가능)
-    const effectiveBatchSize = Math.min(batchSize, 100);
+    const effectiveBatchSize = Math.min(batchSize, 200);
     
-    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize})`);
+    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize}, force=${forceRegenerate})`);
     
-    // dna_meta가 없는 상품 조회
+    // 특정 productIds가 지정된 경우 (단일 상품 재생성)
+    if (productIds && productIds.length > 0) {
+      const { data: specificProducts, error: specificError } = await supabase
+        .from('products_cache')
+        .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
+        .in('id', productIds);
+      
+      if (specificError) throw new Error(`Failed to fetch specific products: ${specificError.message}`);
+      
+      let updatedCount = 0;
+      for (const product of specificProducts || []) {
+        const dnaResult = generateDNA(product);
+        await supabase.from('products_cache').update({
+          dna_meta: dnaResult.dna_meta as unknown as Record<string, never>,
+          dna_text: dnaResult.dna_text,
+          dna_generated_at: new Date().toISOString(),
+          ...(dnaResult.category && { category: dnaResult.category }),
+          ...(dnaResult.sub_category && { sub_category: dnaResult.sub_category }),
+        }).eq('id', product.id);
+        updatedCount++;
+      }
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: `${updatedCount}개 상품 DNA 재생성 완료`,
+        updated: updatedCount,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    
+    // forceRegenerate: dna_generated_at이 오래된 상품 또는 null인 상품 재생성
+    if (forceRegenerate) {
+      // 최근 1분 이내 업데이트된 상품은 제외 (중복 방지)
+      const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+      
+      const { data: allProducts, error: allError } = await supabase
+        .from('products_cache')
+        .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
+        .eq('is_active', true)
+        .or(`dna_generated_at.is.null,dna_generated_at.lt.${oneMinuteAgo}`)
+        .order('dna_generated_at', { ascending: true, nullsFirst: true })
+        .limit(effectiveBatchSize);
+      
+      if (allError) throw new Error(`Failed to fetch products: ${allError.message}`);
+      
+      if (!allProducts || allProducts.length === 0) {
+        const { count: totalCount } = await supabase
+          .from('products_cache')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true);
+        
+        return new Response(JSON.stringify({
+          success: true,
+          message: '모든 상품 DNA 재생성 완료!',
+          processed: 0,
+          total: totalCount || 0,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      console.log(`[dna-batch] 강제 재생성 모드: ${allProducts.length}개 처리 중...`);
+      
+      let updatedCount = 0;
+      const results: DNAResult[] = [];
+      
+      for (const product of allProducts) {
+        try {
+          const dnaResult = generateDNA(product);
+          results.push(dnaResult);
+          
+          await supabase.from('products_cache').update({
+            dna_meta: dnaResult.dna_meta as unknown as Record<string, never>,
+            dna_text: dnaResult.dna_text,
+            dna_generated_at: new Date().toISOString(),
+            ...(dnaResult.category && { category: dnaResult.category }),
+            ...(dnaResult.sub_category && { sub_category: dnaResult.sub_category }),
+          }).eq('id', product.id);
+          
+          updatedCount++;
+        } catch (err) {
+          console.error(`[dna-batch] Product ${product.id} error:`, err);
+        }
+      }
+      
+      // 전체 통계
+      const { count: totalCount } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+      
+      return new Response(JSON.stringify({
+        success: true,
+        message: `DNA 강제 재생성 완료`,
+        processed: updatedCount,
+        remaining: (totalCount || 0) - updatedCount,
+        total: totalCount || 0,
+        sample: results.slice(0, 3).map(r => ({ id: r.id, target: r.dna_meta.target, color: r.dna_meta.color_family, formality: r.dna_meta.formality })),
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    
+    // 기본 모드: dna_meta가 없는 상품만 조회
     const { data: products, error: fetchError } = await supabase
       .from('products_cache')
       .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
