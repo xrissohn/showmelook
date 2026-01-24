@@ -218,10 +218,10 @@ interface LookItem {
   isAutoSelected: boolean;
 }
 
-// Category priority
-const CATEGORY_PRIORITY = ['상의', '하의', '아우터', '기타'];
+// Category priority - 신발을 별도 카테고리로 분리하여 4개 이상 추천 보장
+const CATEGORY_PRIORITY = ['상의', '하의', '신발', '아우터', '액세서리'];
 const REQUIRED_CATEGORIES = ['상의', '하의'];
-const OPTIONAL_CATEGORIES = ['아우터', '기타'];
+const OPTIONAL_CATEGORIES = ['신발', '아우터', '액세서리'];
 
 // ============= 유틸리티 함수들 =============
 
@@ -430,8 +430,13 @@ function hasBagKeyword(productName: string | null | undefined): boolean {
 // isSetProduct 함수는 위에서 정의됨 (line 273)
 
 function itemSlotToPriorityCategory(itemSlot: string | undefined, productName?: string | null): string {
+  // 모자 키워드가 있으면 액세서리
+  if (hasHatKeyword(productName)) {
+    return '액세서리';
+  }
+  
   if (hasBagKeyword(productName)) {
-    return '기타';
+    return '액세서리';  // 가방도 액세서리로 통합
   }
   
   if (!itemSlot) return 'unknown';
@@ -441,9 +446,9 @@ function itemSlotToPriorityCategory(itemSlot: string | undefined, productName?: 
     case 'bottom': 
     case 'dress': return '하의';
     case 'outer': return '아우터';
-    case 'shoes':
+    case 'shoes': return '신발';  // 🔥 신발은 별도 카테고리
     case 'bag':
-    case 'accessory': return '기타';
+    case 'accessory': return '액세서리';
     default: return 'unknown';
   }
 }
@@ -452,7 +457,7 @@ function mapToPriorityCategory(category: string, subCategory?: string | null, pr
   const combined = `${category || ''} ${subCategory || ''} ${productName || ''}`.toLowerCase();
   
   if (['가방', 'bag', 'bags', '백', '토트', 'tote', '숄더', 'shoulder', '크로스백', 'crossbody', '클러치', 'clutch', '백팩', 'backpack', '파우치', 'pouch'].some(v => combined.includes(v))) {
-    return '기타';
+    return '액세서리';
   }
   
   if (['아우터', 'outerwear', 'outer', 'jacket', '자켓', '코트', 'coat', '점퍼', 'jumper', 'cardigan', '가디건', 'jackets', 'coats', '패딩', 'padding', 'puffer', 'blazer', '블레이저', '야상', '트렌치', 'trench'].some(v => combined.includes(v))) {
@@ -460,7 +465,7 @@ function mapToPriorityCategory(category: string, subCategory?: string | null, pr
       return '상의';
     }
     if (['가방', 'bag', '토트', 'tote', '백팩', 'backpack'].some(v => combined.includes(v))) {
-      return '기타';
+      return '액세서리';
     }
     return '아우터';
   }
@@ -473,8 +478,15 @@ function mapToPriorityCategory(category: string, subCategory?: string | null, pr
     return '하의';
   }
   
-  if (['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'loafers', '로퍼', '힐', '가방', 'bag', 'bags', '백', '클러치', 'tote', '액세서리', 'accessory', 'accessories', '스카프', '모자', 'hat', '벨트', 'belt', '목걸이', '반지', '귀걸이', '팔찌', '시계', '선글라스'].some(v => combined.includes(v))) {
-    return '기타';
+  // 🔥 신발은 별도 카테고리로 분리
+  const isBootcut = combined.includes('bootcut') || combined.includes('부츠컷');
+  if (!isBootcut && ['신발', 'shoes', 'footwear', '구두', '스니커즈', 'sneakers', '부츠', 'boots', 'sandals', '샌들', 'loafers', '로퍼', '힐'].some(v => combined.includes(v))) {
+    return '신발';
+  }
+  
+  // 가방, 액세서리는 '액세서리'로 통합
+  if (['가방', 'bag', 'bags', '백', '클러치', 'tote', '액세서리', 'accessory', 'accessories', '스카프', '모자', 'hat', '벨트', 'belt', '목걸이', '반지', '귀걸이', '팔찌', '시계', '선글라스'].some(v => combined.includes(v))) {
+    return '액세서리';
   }
   
   if (['여성', '남성', '여성의류', '남성의류', '라이프', '뷰티', '키즈', '골프', '스포츠', '명품'].includes(category)) {
@@ -1399,8 +1411,9 @@ serve(async (req) => {
     const productsByPriority: Record<string, CachedProduct[]> = {
       '상의': [],
       '하의': [],
+      '신발': [],    // 🔥 신발 별도 카테고리
       '아우터': [],
-      '기타': [],
+      '액세서리': [], // 🔥 액세서리 별도 카테고리 (가방, 모자, 벨트 등)
       'unknown': []
     };
 
