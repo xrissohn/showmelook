@@ -1445,7 +1445,9 @@ serve(async (req) => {
     // 상품 컨텍스트 생성
     const productListContext = stage2Products.map(p => {
       const concepts = p.dna_meta?.concepts?.slice(0, 2).join('/') || '';
-      const color = p.dna_meta?.color_family || '';
+      // color_family 배열 처리
+      const colorFamily = p.dna_meta?.color_family;
+      const color = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
       const slot = p.dna_meta?.item_slot || 'unknown';
       return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}`;
     }).join('\n');

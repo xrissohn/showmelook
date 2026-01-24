@@ -32,7 +32,7 @@ interface DNAMeta {
   formality: number;
   pair_slots: string[];
   occasions: string[];
-  color_family: string; // Standard colors: black, white, navy, beige, cream, gray, brown, blue, pink, green, red, etc.
+  color_family: string[]; // Array of standard colors
   season_fit: string[];
 }
 
@@ -147,9 +147,9 @@ function normalizeTarget(gender: string | null, name: string): DNAMeta['target']
   return 'unisex';
 }
 
-// 색상 파싱 유틸리티 - 배열/문자열 처리
-function parseColorField(color: string | null): string {
-  if (!color) return '';
+// 색상 파싱 유틸리티 - 배열/문자열 처리 → 모든 색상 배열로 반환
+function parseColorField(color: string | null): string[] {
+  if (!color) return [];
   const trimmed = color.trim();
   
   // JSON 배열 형태 처리: ["베이지", "화이트"]
@@ -157,81 +157,81 @@ function parseColorField(color: string | null): string {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed[0].toString().toLowerCase();
+        return parsed.map(c => c.toString().toLowerCase());
       }
     } catch {
       // 파싱 실패시 원본 사용
     }
   }
   
-  return trimmed.toLowerCase();
+  // 콤마 구분 처리: "베이지, 화이트"
+  if (trimmed.includes(',')) {
+    return trimmed.split(',').map(c => c.trim().toLowerCase()).filter(c => c);
+  }
+  
+  return [trimmed.toLowerCase()];
 }
 
-// 색상 패밀리 추론 - 표준 색상으로 정규화
-function inferColorFamily(color: string | null, name: string): string {
-  // 한글 → 영문 색상 매핑
+// 색상 패밀리 추론 - 다중 색상 추출
+function inferColorFamily(color: string | null, name: string): string[] {
   const COLOR_MAP: Record<string, string> = {
-    // 블랙/화이트/그레이
     '블랙': 'black', '검정': 'black', '검은': 'black', 'black': 'black',
     '화이트': 'white', '흰색': 'white', '흰': 'white', 'white': 'white',
     '그레이': 'gray', '회색': 'gray', '그레': 'gray', 'gray': 'gray', 'grey': 'gray', '차콜': 'gray', 'charcoal': 'gray',
-    
-    // 베이지/크림/아이보리
     '베이지': 'beige', 'beige': 'beige',
     '아이보리': 'cream', '크림': 'cream', 'ivory': 'cream', 'cream': 'cream',
-    
-    // 네이비/블루
     '네이비': 'navy', 'navy': 'navy',
     '블루': 'blue', '파랑': 'blue', '파란': 'blue', 'blue': 'blue',
     '하늘': 'sky', '스카이': 'sky', 'sky': 'sky',
     '인디고': 'indigo', 'indigo': 'indigo',
-    
-    // 브라운/카멜/탄
     '브라운': 'brown', '갈색': 'brown', 'brown': 'brown',
     '카멜': 'camel', 'camel': 'camel',
     '탄': 'tan', 'tan': 'tan',
     '카키': 'olive', '올리브': 'olive', 'khaki': 'olive', 'olive': 'olive',
-    
-    // 레드/핑크
     '레드': 'red', '빨강': 'red', '빨간': 'red', 'red': 'red',
     '버건디': 'burgundy', '와인': 'burgundy', 'burgundy': 'burgundy', 'wine': 'burgundy',
     '핑크': 'pink', '분홍': 'pink', 'pink': 'pink', '코랄': 'coral', 'coral': 'coral',
-    
-    // 그린
     '그린': 'green', '녹색': 'green', '초록': 'green', 'green': 'green',
     '민트': 'mint', 'mint': 'mint',
-    
-    // 옐로우/오렌지
     '옐로우': 'yellow', '노랑': 'yellow', '노란': 'yellow', 'yellow': 'yellow',
     '오렌지': 'orange', '주황': 'orange', 'orange': 'orange',
     '머스타드': 'mustard', 'mustard': 'mustard',
-    
-    // 퍼플
     '퍼플': 'purple', '보라': 'purple', 'purple': 'purple',
     '라벤더': 'lavender', 'lavender': 'lavender',
-    
-    // 멀티
     '멀티': 'multi', '믹스': 'multi', 'multi': 'multi', 'mixed': 'multi',
   };
   
-  // 1. color 필드에서 추출
-  const colorStr = parseColorField(color);
-  for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
-    if (colorStr.includes(keyword)) {
-      return standardColor;
+  const foundColors: string[] = [];
+  const addedColors = new Set<string>();
+  
+  // 1. color 필드의 모든 색상에서 추출
+  const colorStrs = parseColorField(color);
+  for (const colorStr of colorStrs) {
+    for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
+      if (colorStr.includes(keyword) && !addedColors.has(standardColor)) {
+        foundColors.push(standardColor);
+        addedColors.add(standardColor);
+      }
     }
   }
   
-  // 2. 상품명에서 추출
-  const nameLower = name.toLowerCase();
-  for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
-    if (nameLower.includes(keyword)) {
-      return standardColor;
+  // 2. 상품명에서도 추출 (color 필드에서 못 찾은 경우 보완)
+  if (foundColors.length < 2) {
+    const nameLower = name.toLowerCase();
+    for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
+      if (nameLower.includes(keyword) && !addedColors.has(standardColor)) {
+        foundColors.push(standardColor);
+        addedColors.add(standardColor);
+      }
     }
   }
   
   // 3. 추출 실패시 unknown 반환
-  return 'unknown';
+  if (foundColors.length === 0) {
+    return ['unknown'];
+  }
+  
+  return foundColors.slice(0, 5);
 }
 
 function inferSeasonFit(name: string, category: string): string[] {

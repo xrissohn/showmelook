@@ -57,10 +57,14 @@ serve(async (req) => {
       throw new Error(`Failed to fetch products: ${fetchError.message}`);
     }
 
-    // unknown 색상만 필터링
+    // unknown 색상만 필터링 (배열 또는 단일값 모두 처리)
     const unknownColorProducts = products?.filter(p => {
       const colorFamily = p.dna_meta?.color_family;
-      return !colorFamily || colorFamily === 'unknown';
+      if (!colorFamily) return true;
+      if (Array.isArray(colorFamily)) {
+        return colorFamily.length === 0 || (colorFamily.length === 1 && colorFamily[0] === 'unknown');
+      }
+      return colorFamily === 'unknown';
     }) || [];
 
     console.log(`[analyze-colors] Found ${unknownColorProducts.length} products with unknown color`);
@@ -97,19 +101,22 @@ serve(async (req) => {
 
         console.log(`[analyze-colors] Analyzing: ${product.name.substring(0, 30)}...`);
 
-        // AI로 이미지 색상 분석
-        const prompt = `Analyze this product image and identify the PRIMARY/DOMINANT color of the clothing or accessory item.
+        // AI로 이미지 색상 분석 - 다중 색상 추출
+        const prompt = `Analyze this product image and identify ALL visible colors of the clothing or accessory item.
 
-Return ONLY ONE color from this exact list (choose the closest match):
+Return up to 5 colors from this exact list (choose the closest matches):
 ${STANDARD_COLORS.join(', ')}
 
 Rules:
-- Choose the single most dominant color
-- If the item has multiple colors, choose the largest area color
-- If it's a pattern (stripes, checks, prints), return "pattern" or "multicolor"
-- Return ONLY the color word, nothing else
+- List colors in order of prominence (largest area first)
+- Include secondary/accent colors if clearly visible
+- If it's a pattern (stripes, checks, prints), return "pattern" or "multicolor" as first, then list component colors
+- Return ONLY color words separated by commas, nothing else
 
-Example responses: "navy", "beige", "black", "multicolor"`;
+Example responses: 
+- Single color: "navy"
+- Two colors: "black, white"
+- Pattern: "pattern, navy, cream"`;
 
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
@@ -128,7 +135,7 @@ Example responses: "navy", "beige", "black", "multicolor"`;
                 ]
               }
             ],
-            max_tokens: 50,
+            max_tokens: 100,
           }),
         });
 
@@ -163,42 +170,55 @@ Example responses: "navy", "beige", "black", "multicolor"`;
         const aiData = await response.json();
         const rawColor = aiData.choices?.[0]?.message?.content?.trim().toLowerCase() || '';
         
-        // 표준 색상으로 정규화
-        let detectedColor = 'unknown';
-        for (const stdColor of STANDARD_COLORS) {
-          if (rawColor.includes(stdColor)) {
-            detectedColor = stdColor;
-            break;
-          }
-        }
-
-        // 추가 매핑
-        if (detectedColor === 'unknown') {
-          const colorMap: Record<string, string> = {
-            'grey': 'gray',
-            'dark blue': 'navy',
-            'light blue': 'skyblue',
-            'off-white': 'ivory',
-            'dark green': 'forest',
-            'light green': 'mint',
-            'dark red': 'burgundy',
-            'light pink': 'rose',
-          };
-          for (const [key, val] of Object.entries(colorMap)) {
-            if (rawColor.includes(key)) {
-              detectedColor = val;
+        // 다중 색상 추출 - 콤마로 분리
+        const colorMap: Record<string, string> = {
+          'grey': 'gray',
+          'dark blue': 'navy',
+          'light blue': 'skyblue',
+          'off-white': 'ivory',
+          'dark green': 'forest',
+          'light green': 'mint',
+          'dark red': 'burgundy',
+          'light pink': 'rose',
+        };
+        
+        const detectedColors: string[] = [];
+        const addedColors = new Set<string>();
+        
+        // 콤마로 분리하여 각 색상 처리
+        const rawParts = rawColor.split(',').map((s: string) => s.trim()).filter((s: string) => s);
+        
+        for (const part of rawParts) {
+          // 표준 색상 매칭
+          for (const stdColor of STANDARD_COLORS) {
+            if (part.includes(stdColor) && !addedColors.has(stdColor)) {
+              detectedColors.push(stdColor);
+              addedColors.add(stdColor);
               break;
+            }
+          }
+          
+          // 추가 매핑
+          if (!addedColors.has(part)) {
+            for (const [key, val] of Object.entries(colorMap)) {
+              if (part.includes(key) && !addedColors.has(val)) {
+                detectedColors.push(val);
+                addedColors.add(val);
+                break;
+              }
             }
           }
         }
 
-        console.log(`[analyze-colors] ${product.name.substring(0, 20)}: AI said "${rawColor}" → mapped to "${detectedColor}"`);
+        const finalColors = detectedColors.length > 0 ? detectedColors.slice(0, 5) : ['unknown'];
 
-        if (detectedColor !== 'unknown' && !dryRun) {
-          // DB 업데이트
+        console.log(`[analyze-colors] ${product.name.substring(0, 20)}: AI said "${rawColor}" → mapped to [${finalColors.join(', ')}]`);
+
+        if (finalColors[0] !== 'unknown' && !dryRun) {
+          // DB 업데이트 - 배열로 저장
           const updatedMeta = {
             ...product.dna_meta,
-            color_family: detectedColor,
+            color_family: finalColors,
             color_analyzed_at: new Date().toISOString()
           };
 
@@ -215,7 +235,7 @@ Example responses: "navy", "beige", "black", "multicolor"`;
               id: product.id,
               name: product.name,
               oldColor: 'unknown',
-              newColor: detectedColor,
+              newColor: finalColors.join(', '),
               success: false,
               error: `DB update failed: ${updateError.message}`
             });
@@ -225,7 +245,7 @@ Example responses: "navy", "beige", "black", "multicolor"`;
               id: product.id,
               name: product.name,
               oldColor: 'unknown',
-              newColor: detectedColor,
+              newColor: finalColors.join(', '),
               success: true
             });
           }
@@ -234,8 +254,8 @@ Example responses: "navy", "beige", "black", "multicolor"`;
             id: product.id,
             name: product.name,
             oldColor: 'unknown',
-            newColor: detectedColor,
-            success: detectedColor !== 'unknown',
+            newColor: finalColors.join(', '),
+            success: finalColors[0] !== 'unknown',
             error: dryRun ? 'Dry run - not saved' : undefined
           });
         }
