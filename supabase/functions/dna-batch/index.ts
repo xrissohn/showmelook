@@ -30,7 +30,7 @@ interface DNAMeta {
   formality: number;
   pair_slots: string[];
   occasions: string[];
-  color_family: string; // Standard colors: black, white, navy, beige, cream, gray, brown, blue, pink, green, red, etc.
+  color_family: string[]; // Array of standard colors: black, white, navy, beige, cream, gray, brown, blue, pink, green, red, etc.
   season_fit: string[];
 }
 
@@ -144,9 +144,9 @@ function normalizeTarget(gender: string | null, name: string): DNAMeta['target']
   return 'unisex';
 }
 
-// 색상 파싱 유틸리티 - 배열/문자열 처리
-function parseColorField(color: string | null): string {
-  if (!color) return '';
+// 색상 파싱 유틸리티 - 배열/문자열 처리 → 모든 색상 배열로 반환
+function parseColorField(color: string | null): string[] {
+  if (!color) return [];
   const trimmed = color.trim();
   
   // JSON 배열 형태 처리: ["베이지", "화이트"]
@@ -154,18 +154,23 @@ function parseColorField(color: string | null): string {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed[0].toString().toLowerCase();
+        return parsed.map(c => c.toString().toLowerCase());
       }
     } catch {
       // 파싱 실패시 원본 사용
     }
   }
   
-  return trimmed.toLowerCase();
+  // 콤마 구분 처리: "베이지, 화이트"
+  if (trimmed.includes(',')) {
+    return trimmed.split(',').map(c => c.trim().toLowerCase()).filter(c => c);
+  }
+  
+  return [trimmed.toLowerCase()];
 }
 
-// 색상 패밀리 추론 - 표준 색상으로 정규화
-function inferColorFamily(color: string | null, name: string): string {
+// 색상 패밀리 추론 - 다중 색상 추출로 변경
+function inferColorFamily(color: string | null, name: string): string[] {
   // 한글 → 영문 색상 매핑
   const COLOR_MAP: Record<string, string> = {
     // 블랙/화이트/그레이
@@ -211,24 +216,38 @@ function inferColorFamily(color: string | null, name: string): string {
     '멀티': 'multi', '믹스': 'multi', 'multi': 'multi', 'mixed': 'multi',
   };
   
-  // 1. color 필드에서 추출
-  const colorStr = parseColorField(color);
-  for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
-    if (colorStr.includes(keyword)) {
-      return standardColor;
+  const foundColors: string[] = [];
+  const addedColors = new Set<string>();
+  
+  // 1. color 필드의 모든 색상에서 추출
+  const colorStrs = parseColorField(color);
+  for (const colorStr of colorStrs) {
+    for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
+      if (colorStr.includes(keyword) && !addedColors.has(standardColor)) {
+        foundColors.push(standardColor);
+        addedColors.add(standardColor);
+      }
     }
   }
   
-  // 2. 상품명에서 추출
-  const nameLower = name.toLowerCase();
-  for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
-    if (nameLower.includes(keyword)) {
-      return standardColor;
+  // 2. 상품명에서도 추출 (color 필드에서 못 찾은 경우 보완)
+  if (foundColors.length < 2) {
+    const nameLower = name.toLowerCase();
+    for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
+      if (nameLower.includes(keyword) && !addedColors.has(standardColor)) {
+        foundColors.push(standardColor);
+        addedColors.add(standardColor);
+      }
     }
   }
   
-  // 3. 추출 실패시 unknown 반환 (나중에 수동 보완 가능)
-  return 'unknown';
+  // 3. 추출 실패시 unknown 반환
+  if (foundColors.length === 0) {
+    return ['unknown'];
+  }
+  
+  // 최대 5개까지만 반환
+  return foundColors.slice(0, 5);
 }
 
 // 시즌 추론
