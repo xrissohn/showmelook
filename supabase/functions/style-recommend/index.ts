@@ -195,8 +195,28 @@ function isStyleRelevantProduct(product: CachedProduct): boolean {
   return true;
 }
 
-// Map item_slot to priority category
-function itemSlotToPriorityCategory(itemSlot: string | undefined): string {
+// 가방 키워드 목록 (패딩 토트, 패딩백 등 잘못 분류 방지)
+const BAG_KEYWORDS = [
+  '가방', 'bag', 'bags', '백', '토트', 'tote', '숄더', 'shoulder', 
+  '크로스백', 'crossbody', '클러치', 'clutch', '백팩', 'backpack', 
+  '파우치', 'pouch', '호보', 'hobo', '새들', 'saddle', '버킷', 'bucket',
+  '미니백', 'minibag', '에코백', 'ecobag', '캔버스백', 'canvas bag'
+];
+
+// 상품명에 가방 키워드가 있는지 체크
+function hasBagKeyword(productName: string | null | undefined): boolean {
+  if (!productName) return false;
+  const lower = productName.toLowerCase();
+  return BAG_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+// Map item_slot to priority category (상품명으로 가방 오분류 보정)
+function itemSlotToPriorityCategory(itemSlot: string | undefined, productName?: string | null): string {
+  // 🚫 상품명에 가방 키워드가 있으면 무조건 '기타' (패딩 토트백 등)
+  if (hasBagKeyword(productName)) {
+    return '기타';
+  }
+  
   if (!itemSlot) return 'unknown';
   
   switch (itemSlot) {
@@ -1298,7 +1318,7 @@ serve(async (req) => {
       let priorityCat: string;
       
       if (product.dna_meta?.item_slot) {
-        priorityCat = itemSlotToPriorityCategory(product.dna_meta.item_slot);
+        priorityCat = itemSlotToPriorityCategory(product.dna_meta.item_slot, product.name);
       } else {
         priorityCat = mapToPriorityCategory(product.category, product.sub_category, product.name);
       }
@@ -1346,7 +1366,7 @@ serve(async (req) => {
       price: p.price,
       category: p.category,
       priorityCategory: p.dna_meta?.item_slot 
-        ? itemSlotToPriorityCategory(p.dna_meta.item_slot)
+        ? itemSlotToPriorityCategory(p.dna_meta.item_slot, p.name)
         : mapToPriorityCategory(p.category, p.sub_category, p.name),
       sub_category: p.sub_category,
       color: p.color,
@@ -1692,10 +1712,10 @@ JSON만 응답:
     // Step 7: Final sort by priority
     lookItems.sort((a, b) => {
       const aPriorityCat = a.product?.dna_meta?.item_slot
-        ? itemSlotToPriorityCategory(a.product.dna_meta.item_slot)
+        ? itemSlotToPriorityCategory(a.product.dna_meta.item_slot, a.product?.name)
         : mapToPriorityCategory(a.product?.category || '', a.product?.sub_category, a.product?.name);
       const bPriorityCat = b.product?.dna_meta?.item_slot
-        ? itemSlotToPriorityCategory(b.product.dna_meta.item_slot)
+        ? itemSlotToPriorityCategory(b.product.dna_meta.item_slot, b.product?.name)
         : mapToPriorityCategory(b.product?.category || '', b.product?.sub_category, b.product?.name);
       const aIdx = CATEGORY_PRIORITY.indexOf(aPriorityCat);
       const bIdx = CATEGORY_PRIORITY.indexOf(bPriorityCat);
