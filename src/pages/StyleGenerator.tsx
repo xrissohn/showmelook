@@ -5258,20 +5258,27 @@ const StyleGenerator = () => {
                           <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-accent/30 via-primary/20 to-magenta/30 animate-pulse-glow" />
                         </div>
                         
-                        {/* 로고 컨테이너 */}
-                        <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-background/95 backdrop-blur-md flex items-center justify-center shadow-2xl border-2 border-accent/40 overflow-hidden">
-                          {/* 내부 회전 그라데이션 */}
+                        {/* 로고 컨테이너 - 회전 그라데이션 배경을 로고 뒤로 이동하여 투명도 유지 */}
+                        <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center">
+                          {/* 배경 원 (로고 뒤) */}
+                          <div className="absolute inset-0 rounded-full bg-background shadow-2xl border-2 border-accent/40" />
+                          {/* 회전하는 글로우 링 (로고 뒤) */}
                           <div 
-                            className="absolute inset-0 opacity-25 animate-spin-slow"
+                            className="absolute inset-[-4px] rounded-full opacity-60"
                             style={{
                               background: 'conic-gradient(from 0deg, hsl(var(--accent)), hsl(var(--primary)), hsl(var(--magenta)), hsl(var(--accent)))',
+                              filter: 'blur(8px)',
+                              animation: 'spin 8s linear infinite',
                             }}
                           />
-                          {/* 로고 이미지 - 글로우 애니메이션 */}
+                          {/* 로고 이미지 - 글로우 애니메이션, 투명 배경 유지 */}
                           <img 
                             src={showmelookLogo} 
                             alt="" 
-                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain relative z-10 animate-logo-glow"
+                            className="w-14 h-14 sm:w-16 sm:h-16 object-contain relative z-10"
+                            style={{
+                              animation: 'logo-glow 3s ease-in-out infinite',
+                            }}
                           />
                         </div>
                         
