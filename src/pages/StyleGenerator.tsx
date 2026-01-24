@@ -92,6 +92,7 @@ interface UserProfile {
   avatar_url: string | null;
   full_name: string | null;
   gender: string | null;
+  age_group: string | null;
 }
 
 const styleOptions = [
@@ -3661,7 +3662,7 @@ const StyleGenerator = () => {
           budget: customBudget[0],
           forceRefresh: false,
           age: customGender === 'kids' ? (customAge || 10) : customAge,
-          ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group,
+          ageGroup: selectedGenerationProfile?.age_group || userProfile?.age_group,
           stylePreferences: selectedGenerationProfile?.style_preferences || userProfile?.style_preferences
         }
       });
@@ -3808,7 +3809,7 @@ const StyleGenerator = () => {
         budget: customBudget[0],
         forceRefresh: false,
         age: customGender === 'kids' ? (customAge || 10) : customAge,
-        ageGroup: selectedGenerationProfile?.age_group || (userProfile as any)?.age_group,
+        ageGroup: selectedGenerationProfile?.age_group || userProfile?.age_group,
         stylePreferences: selectedGenerationProfile?.style_preferences || userProfile?.style_preferences
       }
     });

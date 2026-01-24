@@ -12,6 +12,7 @@ interface UserProfile {
   avatar_url: string | null;
   full_name: string | null;
   gender: string | null;
+  age_group: string | null;
 }
 
 interface GeneratedLook {
@@ -88,7 +89,7 @@ export function DataPreloaderProvider({ children }: { children: ReactNode }) {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
+        .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender, age_group')
         .eq('user_id', user.id)
         .single();
 
