@@ -20,7 +20,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
 import PendingProductsManager from "@/components/admin/PendingProductsManager";
-import { ProductDNAEditor } from "@/components/admin/ProductDNAEditor";
+import { ProductDetailEditor } from "@/components/admin/ProductDetailEditor";
 
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
@@ -46,10 +46,14 @@ interface CachedProduct {
   name: string;
   brand: string | null;
   price: number;
+  original_price?: number | null;
   image_url: string | null;
   product_url: string;
   category: string;
   sub_category: string | null;
+  gender: string | null;
+  color: string | null;
+  sizes: unknown;
   style_tags: string[] | null;
   is_in_stock: boolean;
   is_active: boolean;
@@ -880,7 +884,7 @@ const Admin = () => {
     setSelectedProductIds([]);
     try {
       let query = supabase.from('products_cache')
-        .select('id, merchant_id, name, brand, price, image_url, product_url, category, sub_category, style_tags, is_in_stock, is_active, collected_at, dna_meta, dna_text');
+        .select('id, merchant_id, name, brand, price, original_price, image_url, product_url, category, sub_category, gender, color, sizes, style_tags, is_in_stock, is_active, collected_at, dna_meta, dna_text');
       
       if (filter === 'active') query = query.eq('is_active', true);
       else if (filter === 'inactive') query = query.eq('is_active', false);
@@ -2110,7 +2114,7 @@ const Admin = () => {
                 )}
                 
                 {/* DNA Editor Modal */}
-                <ProductDNAEditor
+                <ProductDetailEditor
                   product={dnaEditorProduct ? {
                     id: dnaEditorProduct.id,
                     name: dnaEditorProduct.name,
@@ -2118,7 +2122,16 @@ const Admin = () => {
                     category: dnaEditorProduct.category,
                     sub_category: dnaEditorProduct.sub_category,
                     price: dnaEditorProduct.price,
+                    original_price: dnaEditorProduct.original_price,
                     image_url: dnaEditorProduct.image_url,
+                    product_url: dnaEditorProduct.product_url,
+                    merchant_id: dnaEditorProduct.merchant_id,
+                    gender: dnaEditorProduct.gender,
+                    color: dnaEditorProduct.color,
+                    sizes: dnaEditorProduct.sizes,
+                    style_tags: dnaEditorProduct.style_tags,
+                    is_active: dnaEditorProduct.is_active,
+                    is_in_stock: dnaEditorProduct.is_in_stock,
                     dna_meta: dnaEditorProduct.dna_meta as Record<string, unknown> | null,
                     dna_text: dnaEditorProduct.dna_text,
                   } : null}
