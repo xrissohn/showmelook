@@ -20,6 +20,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { Checkbox } from "@/components/ui/checkbox";
 import MissingImagesManager from "@/components/admin/MissingImagesManager";
 import PendingProductsManager from "@/components/admin/PendingProductsManager";
+import { ProductDNAEditor } from "@/components/admin/ProductDNAEditor";
 
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
@@ -47,10 +48,13 @@ interface CachedProduct {
   image_url: string | null;
   product_url: string;
   category: string;
+  sub_category: string | null;
   style_tags: string[] | null;
   is_in_stock: boolean;
   is_active: boolean;
   collected_at: string;
+  dna_meta: unknown;
+  dna_text: string | null;
 }
 
 interface StyleRecommendResult {
@@ -155,7 +159,10 @@ const Admin = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [availableMerchants, setAvailableMerchants] = useState<string[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-
+  
+  // DNA Editor state
+  const [dnaEditorOpen, setDnaEditorOpen] = useState(false);
+  const [dnaEditorProduct, setDnaEditorProduct] = useState<CachedProduct | null>(null);
   // Style-recommend (AI) test state
   const [aiUserRequest, setAiUserRequest] = useState("");
   const [aiGender, setAiGender] = useState("여성");
@@ -872,7 +879,7 @@ const Admin = () => {
     setSelectedProductIds([]);
     try {
       let query = supabase.from('products_cache')
-        .select('id, merchant_id, name, brand, price, image_url, product_url, category, style_tags, is_in_stock, is_active, collected_at');
+        .select('id, merchant_id, name, brand, price, image_url, product_url, category, sub_category, style_tags, is_in_stock, is_active, collected_at, dna_meta, dna_text');
       
       if (filter === 'active') query = query.eq('is_active', true);
       else if (filter === 'inactive') query = query.eq('is_active', false);
@@ -2063,17 +2070,31 @@ const Admin = () => {
                             <span className="font-bold text-foreground flex-shrink-0">₩{product.price.toLocaleString()}</span>
                           </div>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="flex-shrink-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(product.product_url, '_blank');
-                          }}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </Button>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDnaEditorProduct(product);
+                              setDnaEditorOpen(true);
+                            }}
+                          >
+                            <Dna className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="flex-shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(product.product_url, '_blank');
+                            }}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2082,6 +2103,24 @@ const Admin = () => {
                     {productsLoading ? '로딩 중...' : '상품이 없습니다. "새로고침" 버튼을 클릭해주세요.'}
                   </div>
                 )}
+                
+                {/* DNA Editor Modal */}
+                <ProductDNAEditor
+                  product={dnaEditorProduct ? {
+                    id: dnaEditorProduct.id,
+                    name: dnaEditorProduct.name,
+                    brand: dnaEditorProduct.brand,
+                    category: dnaEditorProduct.category,
+                    sub_category: dnaEditorProduct.sub_category,
+                    price: dnaEditorProduct.price,
+                    image_url: dnaEditorProduct.image_url,
+                    dna_meta: dnaEditorProduct.dna_meta as Record<string, unknown> | null,
+                    dna_text: dnaEditorProduct.dna_text,
+                  } : null}
+                  open={dnaEditorOpen}
+                  onOpenChange={setDnaEditorOpen}
+                  onSaved={() => loadCachedProducts(productFilter, showAllProducts, merchantFilter, categoryFilter)}
+                />
               </CardContent>
             </Card>
           </TabsContent>
