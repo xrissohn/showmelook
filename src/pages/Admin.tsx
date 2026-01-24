@@ -195,6 +195,20 @@ const Admin = () => {
     error?: string;
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
+  
+  // Color analysis state
+  const [isColorAnalyzing, setIsColorAnalyzing] = useState(false);
+  const [colorAnalysisResult, setColorAnalysisResult] = useState<{
+    success: boolean;
+    processed?: number;
+    updated?: number;
+    failed?: number;
+    colorDistribution?: Record<string, number>;
+    error?: string;
+    dryRun?: boolean;
+  } | null>(null);
+  const [colorBatchSize, setColorBatchSize] = useState("20");
+  const [colorUnknownCount, setColorUnknownCount] = useState(0);
 
   // Feedback stats state (v4.0)
   const [feedbackStats, setFeedbackStats] = useState<{
@@ -1189,6 +1203,80 @@ const Admin = () => {
     }
   };
 
+  // Load unknown color count
+  const loadColorUnknownCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .not('image_url', 'is', null)
+        .or('dna_meta->color_family.is.null,dna_meta->color_family.eq.unknown');
+      
+      if (!error) {
+        setColorUnknownCount(count || 0);
+      }
+    } catch (err) {
+      console.error('Error loading unknown color count:', err);
+    }
+  };
+
+  // Run color analysis
+  const runColorAnalysis = async (dryRun = false) => {
+    setIsColorAnalyzing(true);
+    setColorAnalysisResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-product-colors', {
+        body: { batchSize: parseInt(colorBatchSize) || 20, dryRun },
+      });
+
+      if (error) throw error;
+      setColorAnalysisResult(data);
+
+      if (data.success) {
+        toast({ 
+          title: dryRun ? "색상 분석 테스트 완료" : "색상 분석 완료", 
+          description: `${data.updated || 0}개 색상 추출됨 (${data.processed}개 처리)` 
+        });
+        loadDnaStats();
+        loadColorUnknownCount();
+      } else {
+        toast({ title: "색상 분석 실패", description: data.error, variant: "destructive" });
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setColorAnalysisResult({ success: false, error: errorMessage });
+      toast({ title: "색상 분석 오류", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsColorAnalyzing(false);
+    }
+  };
+
+  // Add to initial load
+  useEffect(() => {
+    loadColorUnknownCount();
+  }, []);
+
+  // Helper function for color display
+  const getColorHex = (color: string): string => {
+    const colorMap: Record<string, string> = {
+      white: '#FFFFFF', ivory: '#FFFFF0', cream: '#FFFDD0', beige: '#F5F5DC',
+      brown: '#8B4513', tan: '#D2B48C', camel: '#C19A6B',
+      black: '#000000', charcoal: '#36454F', gray: '#808080', silver: '#C0C0C0',
+      navy: '#000080', blue: '#0000FF', skyblue: '#87CEEB', lightblue: '#ADD8E6', denim: '#1560BD',
+      red: '#FF0000', burgundy: '#800020', wine: '#722F37', coral: '#FF7F50', 
+      pink: '#FFC0CB', rose: '#FF007F', salmon: '#FA8072',
+      orange: '#FFA500', peach: '#FFDAB9', apricot: '#FBCEB1',
+      yellow: '#FFFF00', gold: '#FFD700', mustard: '#FFDB58', lemon: '#FFF44F',
+      green: '#008000', olive: '#808000', khaki: '#C3B091', mint: '#98FF98', 
+      sage: '#87AE73', emerald: '#50C878', forest: '#228B22',
+      purple: '#800080', lavender: '#E6E6FA', violet: '#EE82EE', plum: '#DDA0DD', lilac: '#C8A2C8',
+      multicolor: '#888888', pattern: '#888888', unknown: '#CCCCCC'
+    };
+    return colorMap[color.toLowerCase()] || '#CCCCCC';
+  };
+
   const dnaPercentage = dnaStats ? Math.round((dnaStats.withDna / dnaStats.total) * 100) : 0;
 
   // 인증/권한 체크
@@ -1763,11 +1851,111 @@ const Admin = () => {
                     </div>
                   )}
                 </div>
+
+                {/* AI Color Analysis */}
+                <div className="p-4 border-2 border-blue-500/30 rounded-lg space-y-4 bg-blue-500/5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <Eye className="w-4 h-4 text-blue-600" />
+                        AI 색상 분석
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        이미지를 AI로 분석하여 색상을 자동 추출합니다.
+                      </p>
+                    </div>
+                    {colorUnknownCount > 0 && (
+                      <Badge variant="secondary" className="text-blue-600">
+                        미분석 {colorUnknownCount}개
+                      </Badge>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap items-end gap-4">
+                    <div>
+                      <label className="text-sm font-medium mb-1 block">배치 크기</label>
+                      <Select value={colorBatchSize} onValueChange={setColorBatchSize}>
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10개</SelectItem>
+                          <SelectItem value="20">20개</SelectItem>
+                          <SelectItem value="50">50개</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      variant="outline" 
+                      onClick={() => runColorAnalysis(true)} 
+                      disabled={isColorAnalyzing}
+                    >
+                      {isColorAnalyzing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                      테스트 (저장 안함)
+                    </Button>
+
+                    <Button 
+                      onClick={() => runColorAnalysis(false)} 
+                      disabled={isColorAnalyzing || colorUnknownCount === 0}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      {isColorAnalyzing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                      🎨 색상 분석 실행
+                    </Button>
+                  </div>
+
+                  {colorAnalysisResult && (
+                    <div className={`p-4 rounded-lg border ${
+                      colorAnalysisResult.success 
+                        ? 'bg-accent/10 border-accent/30'
+                        : 'bg-destructive/10 border-destructive/30'
+                    }`}>
+                      {colorAnalysisResult.success ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-5 h-5 text-primary" />
+                            <span className="font-medium">
+                              색상 분석 완료 {colorAnalysisResult.dryRun && '(테스트)'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div><span className="text-muted-foreground">처리:</span> <span className="font-medium">{colorAnalysisResult.processed}</span></div>
+                            <div><span className="text-muted-foreground">성공:</span> <span className="font-medium text-primary">{colorAnalysisResult.updated}</span></div>
+                            <div><span className="text-muted-foreground">실패:</span> <span className="font-medium text-destructive">{colorAnalysisResult.failed || 0}</span></div>
+                          </div>
+                          
+                          {colorAnalysisResult.colorDistribution && Object.keys(colorAnalysisResult.colorDistribution).length > 0 && (
+                            <div className="pt-2 border-t">
+                              <p className="text-sm font-medium mb-2">추출된 색상:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(colorAnalysisResult.colorDistribution)
+                                  .sort((a, b) => b[1] - a[1])
+                                  .map(([color, count]) => (
+                                    <Badge key={color} variant="outline" className="gap-1">
+                                      <span 
+                                        className="w-3 h-3 rounded-full border" 
+                                        style={{ backgroundColor: getColorHex(color) }}
+                                      />
+                                      {color}: {count}
+                                    </Badge>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle className="w-5 h-5 text-destructive" />
+                          <span className="font-medium">오류: {colorAnalysisResult.error}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
-
-          {/* AI Recommend Tab */}
           <TabsContent value="recommend" className="space-y-4">
             <Card>
               <CardHeader>
