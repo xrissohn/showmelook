@@ -26,6 +26,7 @@ import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
 import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
+import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 
 import * as XLSX from 'xlsx';
 
@@ -1312,6 +1313,10 @@ const Admin = () => {
               <TabsTrigger value="analytics" className="flex-shrink-0 whitespace-nowrap">
                 <BarChart3 className="w-4 h-4 mr-1" />
                 처리량 분석
+              </TabsTrigger>
+              <TabsTrigger value="inference" className="flex-shrink-0 whitespace-nowrap">
+                <Activity className="w-4 h-4 mr-1" />
+                추론 성능
               </TabsTrigger>
               <TabsTrigger value="ratelimit" className="flex-shrink-0 whitespace-nowrap">
                 <Gauge className="w-4 h-4 mr-1" />
@@ -2620,6 +2625,11 @@ const Admin = () => {
                 <ThroughputAnalytics />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Inference Performance Tab */}
+          <TabsContent value="inference" className="space-y-4">
+            <InferenceMetricsPanel />
           </TabsContent>
 
           {/* Token Bucket Rate Limiter Tab */}

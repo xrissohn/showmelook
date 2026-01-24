@@ -1,4 +1,4 @@
-// style-recommend v6.0 - Hybrid 2-Stage RAG: GPT-5-mini(TPO분석) → Gemini Flash(선택/설명)
+// style-recommend v7.0 - 세계 최고 패셔니스타 + 하이브리드 2단계 추론 + 교차 Fallback
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -39,6 +39,22 @@ interface SearchConditions {
   reasoning: string;
 }
 
+// 추론 메트릭
+interface InferenceMetrics {
+  stage1Model: string;
+  stage2Model: string;
+  stage1TimeMs: number;
+  stage2TimeMs: number;
+  totalTimeMs: number;
+  stage1Success: boolean;
+  stage2Success: boolean;
+  usedFallback: boolean;
+  fallbackReason: string | null;
+  occasion: string | null;
+  concepts: string[];
+  productCount: number;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -48,6 +64,37 @@ const corsHeaders = {
 const STAGE1_TIMEOUT = 15000; // 15초 (GPT-5-mini 짧은 응답)
 const STAGE2_TIMEOUT = 25000; // 25초 (Gemini Flash 상세 응답)
 const TOTAL_TIMEOUT = 45000;  // 전체 45초
+
+// ============= 🎭 세계 최고 패셔니스타 위트 멘트 =============
+const WITTY_OPENERS = [
+  "이 조합, 솔직히 천재적이에요 😏",
+  "믿고 가세요, 이 조합은 실패가 없거든요.",
+  "자, 주목! 오늘의 베스트 픽입니다 ✨",
+  "이 룩 보고 안 사시면, 솔직히 손해예요!",
+  "패션 테러 방지법 1조: 이거 입기 📋",
+  "지금 이 순간, 최고의 선택을 하고 계십니다.",
+  "이건 진짜... 찐 스타일리스트만 아는 조합이에요.",
+  "당신의 패션 운세: 오늘 대박 예정 🌟",
+];
+
+const WITTY_CLOSERS = [
+  "킬링 포인트? 바로 이 조합 자체예요!",
+  "장바구니 담기, 후회 없을 거예요 ✨",
+  "이거 안 사면 미래의 나한테 혼나요!",
+  "이 정도면 거리에서 찰칵 당할 각오하세요 📸",
+  "솔직히 이 가격에 이 스타일? 거의 범죄 수준 🔥",
+  "이 룩으로 나가면 '어디서 샀어?' 공격 예상됩니다",
+  "패션 치트키 발동! 이건 반칙이에요 ㅋㅋ",
+  "스타일 만렙 달성! 축하드려요 🎉",
+];
+
+function getRandomWittyOpener(): string {
+  return WITTY_OPENERS[Math.floor(Math.random() * WITTY_OPENERS.length)];
+}
+
+function getRandomWittyCloser(): string {
+  return WITTY_CLOSERS[Math.floor(Math.random() * WITTY_CLOSERS.length)];
+}
 
 // Exponential backoff retry helper
 async function fetchWithRetry(
@@ -105,6 +152,29 @@ async function logError(
     console.log(`[style-recommend] Error logged: ${errorCode} - ${errorMessage.slice(0, 100)}`);
   } catch (logErr) {
     console.error('[style-recommend] Failed to log error:', logErr);
+  }
+}
+
+// 추론 메트릭 저장
+async function saveInferenceMetrics(supabase: any, metrics: InferenceMetrics, userId: string | null) {
+  try {
+    await supabase.from('inference_metrics').insert({
+      user_id: userId,
+      stage1_model: metrics.stage1Model,
+      stage2_model: metrics.stage2Model,
+      stage1_time_ms: metrics.stage1TimeMs,
+      stage2_time_ms: metrics.stage2TimeMs,
+      total_time_ms: metrics.totalTimeMs,
+      stage1_success: metrics.stage1Success,
+      stage2_success: metrics.stage2Success,
+      used_fallback: metrics.usedFallback,
+      fallback_reason: metrics.fallbackReason,
+      occasion: metrics.occasion,
+      concepts: metrics.concepts,
+      product_count: metrics.productCount,
+    });
+  } catch (err) {
+    console.error('[style-recommend] Failed to save metrics:', err);
   }
 }
 
@@ -458,14 +528,14 @@ function extractConcepts(request: string): string[] {
 
 function extractOccasions(request: string): string[] {
   const occasionKeywords: Record<string, string[]> = {
-    '데일리': ['데일리', '일상', '평소'],
-    '출근': ['출근', '오피스', '회사', '비즈니스'],
-    '데이트': ['데이트', '소개팅', '만남'],
-    '결혼식': ['결혼식', '웨딩', '하객'],
+    '캐주얼': ['캐주얼', '일상', '데일리', '편하게', '쇼핑', '약속', '친구'],
+    '데이트': ['데이트', '소개팅', '만남', '기념일'],
+    '출근': ['출근', '오피스', '회사', '비즈니스', '미팅'],
     '면접': ['면접', '인터뷰', '취업'],
-    '파티': ['파티', '행사', '돌잔치'],
-    '여행': ['여행', '휴가', '나들이'],
-    '운동': ['운동', '짐', '헬스'],
+    '결혼식': ['결혼식', '웨딩', '하객', '청첩장'],
+    '파티': ['파티', '행사', '돌잔치', '모임'],
+    '여행': ['여행', '휴가', '바캉스'],
+    '운동': ['운동', '헬스', '요가', '산책'],
   };
   
   const found: string[] = [];
@@ -477,37 +547,41 @@ function extractOccasions(request: string): string[] {
     }
   }
   
-  return found.length > 0 ? found : ['데일리'];
+  return found.length > 0 ? found : ['캐주얼'];
 }
 
 function detectSeason(request: string): string | null {
   const seasonKeywords: Record<string, string[]> = {
-    '봄': ['봄', '봄철', '3월', '4월', '5월', '벚꽃', '나들이', '산뜻'],
-    '여름': ['여름', '여름철', '6월', '7월', '8월', '더운', '시원한', '바캉스', '휴가', '해변'],
-    '가을': ['가을', '가을철', '9월', '10월', '11월', '단풍', '선선한'],
-    '겨울': ['겨울', '겨울철', '12월', '1월', '2월', '추운', '따뜻한', '크리스마스', '눈', '스키'],
+    '봄': ['봄', 'spring', '3월', '4월', '5월'],
+    '여름': ['여름', 'summer', '6월', '7월', '8월', '시원한', '시원하게'],
+    '가을': ['가을', 'fall', 'autumn', '9월', '10월', '11월'],
+    '겨울': ['겨울', 'winter', '12월', '1월', '2월', '따뜻한', '따뜻하게'],
   };
   
+  const lower = request.toLowerCase();
+  
   for (const [season, keywords] of Object.entries(seasonKeywords)) {
-    if (keywords.some(kw => request.includes(kw))) {
+    if (keywords.some(kw => lower.includes(kw))) {
       return season;
     }
   }
+  
   return null;
 }
 
-// ============= 🔥 Stage 1: GPT-5-mini TPO 분석 =============
+// ============= 🔥 Stage 1: GPT TPO 분석 (with cross-fallback) =============
 
-async function runStage1GPT(
+async function runStage1WithModel(
+  modelName: string,
   userRequest: string,
   gender: string,
   ageGroupLabel: string,
   occasion: string,
   LOVABLE_API_KEY: string
 ): Promise<Stage1Result | null> {
-  console.log('[style-recommend] 🔥 Stage 1: GPT-5-mini TPO 분석 시작...');
+  console.log(`[style-recommend] Stage 1: ${modelName} TPO 분석 시작...`);
   
-  const stage1SystemPrompt = `당신은 패션 TPO 분석 전문가입니다.
+  const stage1SystemPrompt = `당신은 세계 최고의 패션 TPO 분석 전문가입니다.
 사용자의 요청을 분석하여 최적의 스타일 검색 조건을 JSON으로 반환하세요.
 
 분석 규칙:
@@ -567,7 +641,7 @@ JSON 응답:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'openai/gpt-5-mini',
+          model: modelName,
           messages: [
             { role: 'system', content: stage1SystemPrompt },
             { role: 'user', content: stage1UserPrompt }
@@ -581,7 +655,7 @@ JSON 응답:
     
     clearTimeout(timeoutId);
     const elapsed = Date.now() - startTime;
-    console.log(`[style-recommend] Stage 1 응답: ${elapsed}ms`);
+    console.log(`[style-recommend] Stage 1 ${modelName} 응답: ${elapsed}ms`);
     
     if (!response.ok) {
       console.error(`[style-recommend] Stage 1 API 에러: ${response.status}`);
@@ -603,9 +677,9 @@ JSON 응답:
     
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
-      console.warn('[style-recommend] Stage 1 타임아웃 (15s)');
+      console.warn(`[style-recommend] Stage 1 ${modelName} 타임아웃 (15s)`);
     } else {
-      console.error('[style-recommend] Stage 1 에러:', e);
+      console.error(`[style-recommend] Stage 1 ${modelName} 에러:`, e);
     }
     return null;
   }
@@ -704,9 +778,10 @@ function generateRuleBasedConditions(
   };
 }
 
-// ============= 🔥 Stage 2: Gemini Flash 최종 선택 =============
+// ============= 🔥 Stage 2: Gemini Flash 최종 선택 (with cross-fallback) =============
 
-async function runStage2Gemini(
+async function runStage2WithModel(
+  modelName: string,
   stage1Result: Stage1Result,
   productListContext: string,
   userRequest: string,
@@ -715,13 +790,18 @@ async function runStage2Gemini(
   occasion: string,
   LOVABLE_API_KEY: string
 ): Promise<RAGStyleResponse | null> {
-  console.log('[style-recommend] 🔥 Stage 2: Gemini Flash 최종 선택 시작...');
+  console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
   const isFormalOccasion = stage1Result.formalityMin >= 7 || stage1Result.requiredItems.includes('신발');
   
-  const stage2SystemPrompt = `당신은 최고의 패션 스타일리스트입니다.
-이미 TPO 분석이 완료된 조건에 맞는 상품들이 제공됩니다.
-4개 아이템을 선택하고 매력적인 스타일 설명을 작성하세요.
+  const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트이자 트렌드 큐레이터입니다.
+당신의 멘트는 위트있고, 트렌디하며, 때로는 도발적입니다!
+
+✨ 톤 & 매너:
+- "~거든요", "~죠" 등 친근하지만 전문가다운 말투
+- 패션 업계 은어와 트렌드 용어 적극 활용
+- 브랜드 스토리와 디테일에 대한 해박한 지식 어필
+- 마무리는 항상 유쾌하고 자신감 넘치게!
 
 선택 규칙:
 1. ${isFormalOccasion 
@@ -731,14 +811,16 @@ async function runStage2Gemini(
 3. F값(격식도)이 비슷한 아이템끼리 조합 (±2 이내)
 4. ⚠️ 제외 아이템은 절대 선택하지 마세요!
 
-응답 규칙:
-1. lookName: 캐치한 한글 코디명 (예: "도시의 댄디", "우아한 하객", "세련된 첫인상")
-2. styleConcept: 이 룩의 무드를 한 문장으로
-3. styleReasoning: 반드시 포함할 내용
-   - 선택한 브랜드명과 상품명을 직접 언급
-   - 왜 이 조합이 어울리는지 (컬러 매칭, 실루엣 밸런스)
-   - 어떤 상황/장소에 완벽한지
-   - "킬링 포인트?"로 마무리하며 핵심 아이템 강조
+📝 styleReasoning 필수 구조:
+1. 후킹 오프닝: "이 조합, 솔직히 천재적이에요." / "믿고 가세요, 이건 실패가 없어요." 등 자신감 넘치는 시작
+2. 브랜드명과 상품명을 직접 언급하며 왜 이 조합인지 전문가적 분석
+3. 컬러 매칭, 실루엣 밸런스, TPO 완벽 매칭 포인트 설명
+4. "킬링 포인트?"로 마무리하며 핵심 아이템 or 조합의 백미 강조
+
+🎯 위트 예시:
+- "이 조합 보고 안 사시면, 솔직히 패션 테러입니다 😏"
+- "지금 장바구니에 안 담으면 미래의 당신이 후회해요"
+- "이건 찰떡궁합 그 자체예요. 마치 된장찌개에 두부 같은!"
 
 반드시 유효한 JSON만 응답하세요.`;
 
@@ -765,7 +847,7 @@ ${isFormalOccasion
   : `[필수] 상의 1개 + 하의 1개`}
 
 JSON만 응답:
-{"lookName":"코디명","styleConcept":"한줄설명","styleReasoning":"이 룩의 핵심은...브랜드/상품명 언급...킬링포인트?로 마무리","selectedProductIds":["id1","id2","id3","id4"]}`;
+{"lookName":"캐치한 코디명","styleConcept":"이 룩의 무드 한줄","styleReasoning":"후킹 오프닝으로 시작...브랜드/상품명 직접 언급...킬링포인트?로 마무리","selectedProductIds":["id1","id2","id3","id4"]}`;
 
   try {
     const controller = new AbortController();
@@ -782,7 +864,7 @@ JSON만 응답:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: modelName,
           messages: [
             { role: 'system', content: stage2SystemPrompt },
             { role: 'user', content: stage2UserPrompt }
@@ -796,7 +878,7 @@ JSON만 응답:
     
     clearTimeout(timeoutId);
     const elapsed = Date.now() - startTime;
-    console.log(`[style-recommend] Stage 2 응답: ${elapsed}ms`);
+    console.log(`[style-recommend] Stage 2 ${modelName} 응답: ${elapsed}ms`);
     
     if (!response.ok) {
       console.error(`[style-recommend] Stage 2 API 에러: ${response.status}`);
@@ -819,9 +901,9 @@ JSON만 응답:
     
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
-      console.warn('[style-recommend] Stage 2 타임아웃 (25s)');
+      console.warn(`[style-recommend] Stage 2 ${modelName} 타임아웃 (25s)`);
     } else {
-      console.error('[style-recommend] Stage 2 에러:', e);
+      console.error(`[style-recommend] Stage 2 ${modelName} 에러:`, e);
     }
     return null;
   }
@@ -894,10 +976,28 @@ serve(async (req) => {
 
   const startTime = Date.now();
   let requestPayload: any = null;
+  let userId: string | null = null;
+
+  // 메트릭 초기화
+  const metrics: InferenceMetrics = {
+    stage1Model: 'openai/gpt-5-mini',
+    stage2Model: 'google/gemini-2.5-flash',
+    stage1TimeMs: 0,
+    stage2TimeMs: 0,
+    totalTimeMs: 0,
+    stage1Success: false,
+    stage2Success: false,
+    usedFallback: false,
+    fallbackReason: null,
+    occasion: null,
+    concepts: [],
+    productCount: 0,
+  };
 
   try {
     requestPayload = await req.json();
     const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences } = requestPayload;
+    userId = requestPayload.userId || null;
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
@@ -913,6 +1013,27 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // 모델 설정 조회 (동적 모델 로드)
+    const { data: modelConfigData } = await supabase
+      .from('model_config')
+      .select('id, model_name')
+      .eq('is_active', true);
+
+    const modelConfig: Record<string, string> = {};
+    if (modelConfigData) {
+      for (const c of modelConfigData) {
+        modelConfig[c.id] = c.model_name;
+      }
+    }
+
+    const stage1Primary = modelConfig['stage1'] || 'openai/gpt-5-mini';
+    const stage1Backup = modelConfig['stage1_backup'] || 'google/gemini-2.5-flash';
+    const stage2Primary = modelConfig['stage2'] || 'google/gemini-2.5-flash';
+    const stage2Backup = modelConfig['stage2_backup'] || 'openai/gpt-5-mini';
+
+    metrics.stage1Model = stage1Primary;
+    metrics.stage2Model = stage2Primary;
+
     const isKids = ageGroup === 'child' || (age !== undefined && age <= 12);
     const ageGroupLabel = ageGroup ? getAgeGroupLabel(ageGroup) : (age ? `${Math.floor(age / 10) * 10}대` : '성인');
     
@@ -922,9 +1043,12 @@ serve(async (req) => {
     const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
     const patternKey = generatePatternKey(gender, occasion, requestedConcepts, budget);
     
-    console.log(`[style-recommend] v6.0 하이브리드 2단계 추론`);
+    metrics.occasion = occasion;
+    
+    console.log(`[style-recommend] v7.0 세계 최고 패셔니스타 + 하이브리드 2단계 + 교차 Fallback`);
     console.log(`[style-recommend] Request: "${userRequest}"`);
     console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Pattern: ${patternKey}`);
+    console.log(`[style-recommend] Models: Stage1=${stage1Primary}/${stage1Backup}, Stage2=${stage2Primary}/${stage2Backup}`);
 
     // ============= PHASE 1: 캐시 체크 =============
     
@@ -969,33 +1093,45 @@ serve(async (req) => {
           const elapsed = Date.now() - startTime;
           console.log(`[style-recommend] Cache response in ${elapsed}ms`);
 
+          // 캐시 히트도 위트 멘트 추가
+          let cachedReasoning = cachedLook.style_reasoning || '';
+          if (!cachedReasoning.includes('킬링 포인트') && !cachedReasoning.includes('✨')) {
+            cachedReasoning = `${getRandomWittyOpener()} ${cachedReasoning} ${getRandomWittyCloser()}`;
+          }
+
           return new Response(JSON.stringify({
             success: true,
             cacheHit: true,
             look: {
               name: cachedLook.look_name || '스타일 추천',
               styleConcept: cachedLook.style_concept || '',
-              styleReasoning: cachedLook.style_reasoning || '',
+              styleReasoning: cachedReasoning,
               items: lookItems,
-              totalPrice: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
-              autoSelectedTotal: lookItems.reduce((sum, i) => sum + (i.product?.price || 0), 0),
-              autoSelectedCount: lookItems.length,
-              budget,
+              totalPrice: cachedProducts.reduce((sum, p) => sum + (p.price || 0), 0),
+              stylingTips: '캐시된 추천입니다.',
+              styleTags: cachedProducts.flatMap(p => p.style_tags || []).slice(0, 5),
             },
             apiCalls: { gpt5: 0, gemini: 0 },
-            stats: { cacheHit: true, responseTime: elapsed },
-          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+            stats: { cached: true }
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
       }
     }
 
-    // ============= 🔥 Stage 1: GPT-5-mini TPO 분석 =============
+    console.log(`[style-recommend] Cache MISS, generating new recommendation...`);
+
+    // ============= 🔥 Stage 1: GPT TPO 분석 (교차 Fallback) =============
     
-    let stage1Result: Stage1Result;
-    let stage1Source: 'gpt' | 'fallback' = 'gpt';
-    
+    let stage1Result: Stage1Result | null = null;
+    let stage1Source = 'gpt';
+    const stage1Start = Date.now();
+
     if (LOVABLE_API_KEY) {
-      const gptResult = await runStage1GPT(
+      // 1차: Primary 모델
+      stage1Result = await runStage1WithModel(
+        stage1Primary,
         userRequest,
         gender,
         ageGroupLabel,
@@ -1003,18 +1139,45 @@ serve(async (req) => {
         LOVABLE_API_KEY
       );
       
-      if (gptResult) {
-        stage1Result = gptResult;
-        console.log(`[style-recommend] Stage 1 GPT 성공: ${stage1Result.reasoning}`);
+      // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
+      if (!stage1Result) {
+        console.log(`[style-recommend] Stage 1 ${stage1Primary} 실패, ${stage1Backup}으로 교차 Fallback...`);
+        metrics.stage1Model = stage1Backup;
+        stage1Result = await runStage1WithModel(
+          stage1Backup,
+          userRequest,
+          gender,
+          ageGroupLabel,
+          occasion,
+          LOVABLE_API_KEY
+        );
+        
+        if (stage1Result) {
+          metrics.usedFallback = true;
+          metrics.fallbackReason = `stage1_cross_fallback_to_${stage1Backup.split('/')[1]}`;
+        }
+      }
+      
+      if (stage1Result) {
+        metrics.stage1Success = true;
+        console.log(`[style-recommend] Stage 1 성공: ${stage1Result.reasoning}`);
       } else {
+        // 3차: 둘 다 실패 시 규칙 기반
         stage1Result = generateRuleBasedConditions(userRequest, requestedConcepts, requestedOccasions);
         stage1Source = 'fallback';
-        console.log(`[style-recommend] Stage 1 GPT 실패, 규칙 기반 fallback 사용`);
+        metrics.usedFallback = true;
+        metrics.fallbackReason = 'stage1_rule_based';
+        console.log(`[style-recommend] Stage 1 AI 실패, 규칙 기반 fallback 사용`);
       }
     } else {
       stage1Result = generateRuleBasedConditions(userRequest, requestedConcepts, requestedOccasions);
       stage1Source = 'fallback';
+      metrics.usedFallback = true;
+      metrics.fallbackReason = 'no_api_key';
     }
+
+    metrics.stage1TimeMs = Date.now() - stage1Start;
+    metrics.concepts = stage1Result.concepts;
 
     // ============= Stage 1 결과 기반 DB 쿼리 =============
     
@@ -1195,6 +1358,7 @@ serve(async (req) => {
     
     allProducts = conceptFilteredProducts;
     console.log(`[style-recommend] Final filtered products: ${allProducts.length}`);
+    metrics.productCount = allProducts.length;
     
     // ============= 점수 계산 및 카테고리 분류 =============
     
@@ -1237,6 +1401,9 @@ serve(async (req) => {
     const uniqueProducts = topScoredProducts.map(s => s.product);
     
     if (uniqueProducts.length === 0) {
+      metrics.totalTimeMs = Date.now() - startTime;
+      await saveInferenceMetrics(supabase, metrics, userId);
+      
       return new Response(JSON.stringify({
         success: false,
         error: '추천할 수 있는 상품이 없습니다.',
@@ -1246,7 +1413,7 @@ serve(async (req) => {
       });
     }
 
-    // ============= 🔥 Stage 2: Gemini Flash 최종 선택 =============
+    // ============= 🔥 Stage 2: Gemini Flash 최종 선택 (교차 Fallback) =============
     
     // GPT에 보낼 상품 목록 준비
     const getProductsForStage2 = () => {
@@ -1285,9 +1452,12 @@ serve(async (req) => {
 
     let ragResponse: RAGStyleResponse | null = null;
     let apiCalls = { gpt5: 1, gemini: 0 };
+    const stage2Start = Date.now();
     
     if (LOVABLE_API_KEY && stage2Products.length > 0) {
-      ragResponse = await runStage2Gemini(
+      // 1차: Primary 모델
+      ragResponse = await runStage2WithModel(
+        stage2Primary,
         stage1Result,
         productListContext,
         userRequest,
@@ -1297,15 +1467,50 @@ serve(async (req) => {
         LOVABLE_API_KEY
       );
       
+      // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
+      if (!ragResponse) {
+        console.log(`[style-recommend] Stage 2 ${stage2Primary} 실패, ${stage2Backup}으로 교차 Fallback...`);
+        metrics.stage2Model = stage2Backup;
+        ragResponse = await runStage2WithModel(
+          stage2Backup,
+          stage1Result,
+          productListContext,
+          userRequest,
+          gender,
+          ageGroupLabel,
+          occasion,
+          LOVABLE_API_KEY
+        );
+        
+        if (ragResponse) {
+          if (!metrics.usedFallback) {
+            metrics.usedFallback = true;
+            metrics.fallbackReason = `stage2_cross_fallback_to_${stage2Backup.split('/')[1]}`;
+          } else {
+            metrics.fallbackReason += `+stage2_cross_fallback`;
+          }
+        }
+      }
+      
       if (ragResponse) {
         apiCalls.gemini = 1;
-        console.log(`[style-recommend] Stage 2 Gemini 성공: ${ragResponse.selectedProductIds?.length}개 선택`);
+        metrics.stage2Success = true;
+        console.log(`[style-recommend] Stage 2 성공: ${ragResponse.selectedProductIds?.length}개 선택`);
       }
     }
 
-    // Fallback: AI 실패 시 점수 기반 자동 선택
+    metrics.stage2TimeMs = Date.now() - stage2Start;
+
+    // 3차: AI 모두 실패 시 점수 기반 자동 선택
     if (!ragResponse) {
       console.log(`[style-recommend] AI 실패, 점수 기반 fallback 선택`);
+      
+      if (!metrics.usedFallback) {
+        metrics.usedFallback = true;
+        metrics.fallbackReason = 'stage2_auto_select';
+      } else {
+        metrics.fallbackReason += '+stage2_auto_select';
+      }
       
       const selectedIds: string[] = [];
       let lastFormality = (stage1Result.formalityMin + stage1Result.formalityMax) / 2;
@@ -1342,7 +1547,7 @@ serve(async (req) => {
         }
       }
       
-      // Fallback reasoning 생성
+      // Fallback reasoning 생성 (위트 멘트 추가!)
       const selectedFallbackProducts = selectedIds.map(id => {
         for (const cat of CATEGORY_PRIORITY) {
           const found = productsByPriority[cat]?.find(p => p.id === id);
@@ -1354,21 +1559,21 @@ serve(async (req) => {
       const fallbackBrands = [...new Set(selectedFallbackProducts.map(p => p?.brand).filter(Boolean))].slice(0, 2);
       const fallbackConcepts = stage1Result.concepts;
       
-      let fallbackReasoning = '';
+      // 🎭 세계 최고 패셔니스타 위트 멘트!
+      let fallbackReasoning = getRandomWittyOpener() + ' ';
+      
       if (fallbackConcepts.length > 0) {
-        fallbackReasoning = `이 룩의 핵심은 '${fallbackConcepts[0]}'예요. `;
-      } else {
-        fallbackReasoning = `이 룩의 핵심은 '${occasion}에 완벽한 균형감'이에요. `;
+        fallbackReasoning += `이 룩의 핵심은 '${fallbackConcepts[0]}' 무드거든요. `;
       }
       
       const topProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'top');
       const bottomProduct = selectedFallbackProducts.find(p => p?.dna_meta?.item_slot === 'bottom' || p?.dna_meta?.item_slot === 'dress');
       
       if (topProduct && bottomProduct) {
-        fallbackReasoning += `${topProduct.brand || ''} ${(topProduct.name || '').split(' ').slice(0, 2).join(' ')}이(가) 상체 비율을 잡아주고, ${bottomProduct.brand || ''} ${(bottomProduct.name || '').split(' ').slice(0, 2).join(' ')}이(가) 하체 라인을 정돈해주거든요. `;
+        fallbackReasoning += `${topProduct.brand || ''} ${(topProduct.name || '').split(' ').slice(0, 2).join(' ')}이(가) 상체 비율을 잡아주고, ${bottomProduct.brand || ''} ${(bottomProduct.name || '').split(' ').slice(0, 2).join(' ')}이(가) 하체 라인을 정돈해줘요. `;
       }
       
-      fallbackReasoning += `킬링 포인트? ${stage1Result.dressCodeHint}에 맞는 완벽한 밸런스!`;
+      fallbackReasoning += getRandomWittyCloser();
       
       ragResponse = {
         lookName: `${stage1Result.concepts[0] || '스타일'} ${gender} ${occasion} 룩`,
@@ -1427,156 +1632,116 @@ serve(async (req) => {
     if (lookItems.length > 0 && lookItems[0].product?.dna_meta?.formality) {
       lastFormality = lookItems[0].product.dna_meta.formality;
     }
-    
-    if (lookItems.length < MIN_ITEMS) {
-      console.log(`[style-recommend] Only ${lookItems.length} items, auto-filling...`);
-      wasAutoFilled = true;
-      
-      const isFormalOccasion = stage1Result.formalityMin >= 7 || stage1Result.requiredItems.includes('신발');
-      const fillOrder = isFormalOccasion 
-        ? ['상의', '하의', '기타', '아우터']
-        : CATEGORY_PRIORITY;
-      
-      for (const cat of fillOrder) {
-        if (usedCategories.has(cat)) continue;
+
+    while (lookItems.length < MIN_ITEMS) {
+      for (const cat of CATEGORY_PRIORITY) {
         if (lookItems.length >= MIN_ITEMS) break;
+        if (usedCategories.has(cat)) continue;
         
         let catProducts = productsByPriority[cat] || [];
         
+        // Formality 유사도로 정렬
         catProducts = catProducts.sort((a, b) => {
           const fA = a.dna_meta?.formality || 5;
           const fB = b.dna_meta?.formality || 5;
           return Math.abs(fA - lastFormality) - Math.abs(fB - lastFormality);
         });
         
-        // 포멀 상황에서 '기타'는 신발 우선
-        if (isFormalOccasion && cat === '기타') {
-          const shoesFirst = catProducts.filter(p => p.dna_meta?.item_slot === 'shoes');
-          const others = catProducts.filter(p => p.dna_meta?.item_slot !== 'shoes');
-          catProducts = [...shoesFirst, ...others];
-        }
-        
         if (catProducts.length > 0) {
-          const product = catProducts[0];
-          const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
-          const displayCat = getDisplaySubCategory(product.category, product.sub_category, product.name, product.dna_meta);
+          const selectedProduct = catProducts[0];
+          usedCategories.add(cat);
+          wasAutoFilled = true;
+          
+          const affiliateUrl = await generateAffiliateUrl(selectedProduct, merchants || [], LINKPRICE_AFFILIATE_ID);
+          const displayCat = getDisplaySubCategory(selectedProduct.category, selectedProduct.sub_category, selectedProduct.name, selectedProduct.dna_meta);
           
           lookItems.push({
             category: displayCat,
-            product: product,
+            product: selectedProduct,
             affiliateUrl,
             source: 'cache',
             isAutoSelected: true
           });
-          usedCategories.add(cat);
-          lastFormality = product.dna_meta?.formality || lastFormality;
+          
+          if (selectedProduct.dna_meta?.formality) {
+            lastFormality = selectedProduct.dna_meta.formality;
+          }
         }
       }
+      
+      if (lookItems.length < MIN_ITEMS && 
+          usedCategories.size >= Object.keys(productsByPriority).filter(k => productsByPriority[k].length > 0).length) {
+        break;
+      }
     }
-    
-    // 정렬
-    lookItems.sort((a, b) => {
-      const aPriorityCat = a.product?.dna_meta?.item_slot
-        ? itemSlotToPriorityCategory(a.product.dna_meta.item_slot, a.product?.name)
-        : mapToPriorityCategory(a.product?.category || '', a.product?.sub_category, a.product?.name);
-      const bPriorityCat = b.product?.dna_meta?.item_slot
-        ? itemSlotToPriorityCategory(b.product.dna_meta.item_slot, b.product?.name)
-        : mapToPriorityCategory(b.product?.category || '', b.product?.sub_category, b.product?.name);
-      const aIdx = CATEGORY_PRIORITY.indexOf(aPriorityCat);
-      const bIdx = CATEGORY_PRIORITY.indexOf(bPriorityCat);
-      return (aIdx === -1 ? 999 : aIdx) - (bIdx === -1 ? 999 : bIdx);
-    });
-
-    console.log(`[style-recommend] Final: ${lookItems.length} items, Categories: ${Array.from(usedCategories).join(', ')}`);
 
     const totalPrice = lookItems.reduce((sum, item) => sum + (item.product?.price || 0), 0);
-    const autoSelectedTotal = lookItems.filter(i => i.isAutoSelected).reduce((sum, item) => sum + (item.product?.price || 0), 0);
-    const autoSelectedCount = lookItems.filter(i => i.isAutoSelected).length;
-
-    // styleReasoning 재생성 (auto-fill된 경우)
-    let finalStyleReasoning = ragResponse?.styleReasoning || '';
-    
-    if (wasAutoFilled || !finalStyleReasoning) {
-      const topProduct = lookItems.find(l => l.product?.dna_meta?.item_slot === 'top')?.product;
-      const bottomProduct = lookItems.find(l => ['bottom', 'dress'].includes(l.product?.dna_meta?.item_slot || ''))?.product;
-      const outerProduct = lookItems.find(l => l.product?.dna_meta?.item_slot === 'outer')?.product;
-      const shoesProduct = lookItems.find(l => l.product?.dna_meta?.item_slot === 'shoes')?.product;
-      
-      const actualConcepts = stage1Result.concepts;
-      
-      let newReasoning = '';
-      if (actualConcepts.length > 0) {
-        newReasoning = `이 룩의 핵심은 '${actualConcepts[0]}'예요. `;
-      } else {
-        newReasoning = `이 룩의 핵심은 '${occasion}에 어울리는 균형감'이에요. `;
-      }
-      
-      if (topProduct && bottomProduct) {
-        newReasoning += `${topProduct.brand || ''} ${(topProduct.name || '').split(' ').slice(0, 3).join(' ')}이(가) 상체 라인을 잡아주고, ${bottomProduct.brand || ''} ${(bottomProduct.name || '').split(' ').slice(0, 3).join(' ')}이(가) 하체 실루엣을 완성해주거든요. `;
-      }
-      
-      if (shoesProduct) {
-        newReasoning += `킬링 포인트? ${shoesProduct.brand || ''} ${(shoesProduct.name || '').split(' ').slice(0, 3).join(' ')}이(가) ${occasion} 무드를 완성해요!`;
-      } else if (outerProduct) {
-        newReasoning += `킬링 포인트? ${outerProduct.brand || ''} ${(outerProduct.name || '').split(' ').slice(0, 3).join(' ')}의 레이어링이 센스를 더해요!`;
-      } else {
-        newReasoning += `킬링 포인트? 각 아이템의 조화로운 밸런스가 자연스러운 시선 집중을 만들어요!`;
-      }
-      
-      finalStyleReasoning = newReasoning;
-    }
+    const styleTags = [...new Set(lookItems.flatMap(item => item.product?.style_tags || []))].slice(0, 5);
 
     // 캐시 저장
-    if (lookItems.length >= 2) {
-      const lookData = {
-        cache_key: cacheKey,
-        product_ids: lookItems.map(l => l.product!.id),
-        image_url: lookItems[0].product!.image_url || '',
-        use_count: 1,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        style_reasoning: finalStyleReasoning || null,
-        style_concept: ragResponse?.styleConcept || null,
-        look_name: ragResponse?.lookName || null,
-      };
-
-      await supabase.from('style_cache').upsert(lookData, { onConflict: 'cache_key' });
+    if (lookItems.length >= 3) {
+      const productIds = lookItems.map(item => item.product?.id).filter(Boolean);
+      
+      await supabase
+        .from('style_cache')
+        .upsert({
+          cache_key: cacheKey,
+          image_url: lookItems[0]?.product?.image_url || '',
+          product_ids: productIds,
+          look_name: ragResponse.lookName,
+          style_concept: ragResponse.styleConcept,
+          style_reasoning: ragResponse.styleReasoning,
+          use_count: 1,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        }, {
+          onConflict: 'cache_key'
+        });
     }
+
+    const elapsed = Date.now() - startTime;
+    metrics.totalTimeMs = elapsed;
     
-    const response = {
+    // 메트릭 저장
+    await saveInferenceMetrics(supabase, metrics, userId);
+    
+    console.log(`[style-recommend] Response in ${elapsed}ms, ${lookItems.length} items, Stage1: ${metrics.stage1TimeMs}ms, Stage2: ${metrics.stage2TimeMs}ms`);
+
+    return new Response(JSON.stringify({
       success: true,
       cacheHit: false,
       look: {
-        name: ragResponse?.lookName || '스타일 추천',
-        styleConcept: ragResponse?.styleConcept || '오늘의 룩',
-        styleReasoning: finalStyleReasoning,
+        name: ragResponse.lookName,
+        styleConcept: ragResponse.styleConcept,
+        styleReasoning: ragResponse.styleReasoning,
         items: lookItems,
         totalPrice,
-        autoSelectedTotal,
-        autoSelectedCount,
-        budget,
-        stylingTips: ragResponse?.stylingTips || finalStyleReasoning,
+        stylingTips: ragResponse.stylingTips || stage1Result.dressCodeHint,
+        styleTags,
       },
       apiCalls,
       stats: {
-        productsInContext: uniqueProducts.length,
-        selectedProducts: lookItems.length,
-        autoSelectedProducts: autoSelectedCount,
-        dna2Stats: dnaStats,
+        requestedItems: 4,
+        foundInCache: lookItems.length,
+        foundViaSerpapi: 0,
+        notFound: 0,
+        dnaStats,
+        wasAutoFilled,
         stage1Source,
+        stage1Concepts: stage1Result.concepts,
+        stage1Formality: `${stage1Result.formalityMin}-${stage1Result.formalityMax}`,
+        metricsRecorded: true,
       }
-    };
-
-    const elapsed = Date.now() - startTime;
-    console.log(`[style-recommend] v6.0 Complete in ${elapsed}ms. ${lookItems.length} items, Total: ₩${totalPrice}`);
-    console.log(`[style-recommend] Stage1: ${stage1Source}, Stage2: ${apiCalls.gemini > 0 ? 'gemini' : 'fallback'}`);
-
-    return new Response(JSON.stringify(response), {
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('[style-recommend] Error:', error);
+    metrics.totalTimeMs = Date.now() - startTime;
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('[style-recommend] Error:', errorMessage);
+    
+    // 에러 로깅
     try {
       const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
       const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -1585,19 +1750,22 @@ serve(async (req) => {
       await logError(
         supabase,
         'style-recommend',
-        'EXCEPTION',
-        error instanceof Error ? error.message : String(error),
-        null,
-        requestPayload ? { userRequest: requestPayload.userRequest?.slice(0, 100), gender: requestPayload.gender } : null,
-        Date.now() - startTime
+        'INTERNAL_ERROR',
+        errorMessage,
+        userId,
+        requestPayload,
+        metrics.totalTimeMs
       );
+      
+      await saveInferenceMetrics(supabase, metrics, userId);
     } catch (logErr) {
       console.error('[style-recommend] Failed to log error:', logErr);
     }
     
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : 'Unknown error',
-      errorCode: 'EXCEPTION'
+    return new Response(JSON.stringify({
+      success: false,
+      error: errorMessage,
+      look: null
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

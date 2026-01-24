@@ -312,6 +312,60 @@ export type Database = {
         }
         Relationships: []
       }
+      inference_metrics: {
+        Row: {
+          concepts: string[] | null
+          created_at: string | null
+          fallback_reason: string | null
+          id: string
+          occasion: string | null
+          product_count: number | null
+          stage1_model: string
+          stage1_success: boolean | null
+          stage1_time_ms: number | null
+          stage2_model: string
+          stage2_success: boolean | null
+          stage2_time_ms: number | null
+          total_time_ms: number | null
+          used_fallback: boolean | null
+          user_id: string | null
+        }
+        Insert: {
+          concepts?: string[] | null
+          created_at?: string | null
+          fallback_reason?: string | null
+          id?: string
+          occasion?: string | null
+          product_count?: number | null
+          stage1_model: string
+          stage1_success?: boolean | null
+          stage1_time_ms?: number | null
+          stage2_model: string
+          stage2_success?: boolean | null
+          stage2_time_ms?: number | null
+          total_time_ms?: number | null
+          used_fallback?: boolean | null
+          user_id?: string | null
+        }
+        Update: {
+          concepts?: string[] | null
+          created_at?: string | null
+          fallback_reason?: string | null
+          id?: string
+          occasion?: string | null
+          product_count?: number | null
+          stage1_model?: string
+          stage1_success?: boolean | null
+          stage1_time_ms?: number | null
+          stage2_model?: string
+          stage2_success?: boolean | null
+          stage2_time_ms?: number | null
+          total_time_ms?: number | null
+          used_fallback?: boolean | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       liked_products: {
         Row: {
           created_at: string
@@ -393,6 +447,33 @@ export type Database = {
           name_ko?: string
           scrape_config?: Json | null
           scrape_type?: string | null
+        }
+        Relationships: []
+      }
+      model_config: {
+        Row: {
+          id: string
+          is_active: boolean | null
+          model_name: string
+          priority: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id: string
+          is_active?: boolean | null
+          model_name: string
+          priority?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_active?: boolean | null
+          model_name?: string
+          priority?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -1103,6 +1184,7 @@ export type Database = {
     }
     Functions: {
       cleanup_old_error_logs: { Args: never; Returns: undefined }
+      cleanup_old_inference_metrics: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }
       has_role: {
         Args: {
