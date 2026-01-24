@@ -24,13 +24,13 @@ interface Product {
 }
 
 interface DNAMeta {
-  target: 'adult_female' | 'adult_male' | 'kids_female' | 'kids_male' | 'kids_unisex' | 'unisex';
+  target: 'female' | 'male' | 'kids' | 'unisex';
   item_slot: 'top' | 'bottom' | 'outer' | 'shoes' | 'bag' | 'accessory' | 'dress';
   concepts: string[];
   formality: number;
   pair_slots: string[];
   occasions: string[];
-  color_family: 'neutral' | 'warm' | 'cool' | 'bold' | 'pastel';
+  color_family: string; // Standard colors: black, white, navy, beige, cream, gray, brown, blue, pink, green, red, etc.
   season_fit: string[];
 }
 
@@ -120,47 +120,115 @@ function categoryToItemSlot(category: string, subCategory: string | null): DNAMe
   return 'accessory';
 }
 
-// 성별 정규화 (키즈 포함)
+// 성별 정규화 - 표준 4값: female, male, kids, unisex
 function normalizeTarget(gender: string | null, name: string): DNAMeta['target'] {
   const nameLower = name.toLowerCase();
   const genderLower = (gender || '').toLowerCase();
   
+  // 키즈 감지
   const kidsKeywords = ['키즈', 'kids', 'children', '아동', '유아', '주니어', 'junior', 'baby', '베이비', 'boy', 'girl', '남아', '여아'];
   const isKids = kidsKeywords.some(k => nameLower.includes(k) || genderLower.includes(k));
+  if (isKids) return 'kids';
   
-  if (isKids) {
-    if (['여아', 'girl', '여자아이'].some(k => nameLower.includes(k) || genderLower.includes(k))) return 'kids_female';
-    if (['남아', 'boy', '남자아이'].some(k => nameLower.includes(k) || genderLower.includes(k))) return 'kids_male';
-    return 'kids_unisex';
-  }
+  // 여성 감지
+  if (['여성', 'women', 'woman', 'female', 'ladies', 'lady'].some(k => genderLower.includes(k))) return 'female';
+  if (['여성', 'women', 'woman', 'ladies'].some(k => nameLower.includes(k))) return 'female';
   
-  if (['여성', 'women', 'woman', 'female', 'f', 'w', 'ladies', 'lady'].some(k => genderLower.includes(k))) return 'adult_female';
-  if (['남성', 'men', 'man', 'male', 'm', 'gentleman'].some(k => genderLower.includes(k))) return 'adult_male';
+  // 남성 감지
+  if (['남성', 'men', 'man', 'male', 'gentleman'].some(k => genderLower.includes(k))) return 'male';
+  if (['남성', 'men', 'man', 'gentleman'].some(k => nameLower.includes(k))) return 'male';
+  
+  // Unisex
   if (['unisex', '유니섹스', '공용'].some(k => genderLower.includes(k))) return 'unisex';
-  
-  if (['여성', 'women', 'woman', 'ladies'].some(k => nameLower.includes(k))) return 'adult_female';
-  if (['남성', 'men', 'man', 'gentleman'].some(k => nameLower.includes(k))) return 'adult_male';
   
   return 'unisex';
 }
 
-// 색상 패밀리 추론
-function inferColorFamily(color: string | null, name: string): DNAMeta['color_family'] {
-  const combined = `${color || ''} ${name}`.toLowerCase();
+// 색상 파싱 유틸리티 - 배열/문자열 처리
+function parseColorField(color: string | null): string {
+  if (!color) return '';
+  const trimmed = color.trim();
   
-  const neutralColors = ['검정', 'black', '블랙', '흰색', 'white', '화이트', '회색', 'gray', 'grey', '그레이', '베이지', 'beige', '아이보리', 'ivory', '크림', 'cream', '브라운', 'brown', '갈색', '카키', 'khaki', '네이비', 'navy'];
-  const warmColors = ['빨강', 'red', '레드', '오렌지', 'orange', '주황', '노랑', 'yellow', '옐로우', '핑크', 'pink', '분홍', '코랄', 'coral', '버건디', 'burgundy', '와인', 'wine', '테라코타', 'terracotta'];
-  const coolColors = ['파랑', 'blue', '블루', '민트', 'mint', '하늘색', 'sky', '청록', 'teal', '퍼플', 'purple', '보라', '라벤더', 'lavender'];
-  const boldColors = ['형광', 'neon', '비비드', 'vivid', '브라이트', 'bright', '원색', '강렬'];
-  const pastelColors = ['파스텔', 'pastel', '연한', '라이트', 'light', '소프트', 'soft', '밝은'];
+  // JSON 배열 형태 처리: ["베이지", "화이트"]
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed[0].toString().toLowerCase();
+      }
+    } catch {
+      // 파싱 실패시 원본 사용
+    }
+  }
   
-  if (boldColors.some(c => combined.includes(c))) return 'bold';
-  if (pastelColors.some(c => combined.includes(c))) return 'pastel';
-  if (warmColors.some(c => combined.includes(c))) return 'warm';
-  if (coolColors.some(c => combined.includes(c))) return 'cool';
-  if (neutralColors.some(c => combined.includes(c))) return 'neutral';
+  return trimmed.toLowerCase();
+}
+
+// 색상 패밀리 추론 - 표준 색상으로 정규화
+function inferColorFamily(color: string | null, name: string): string {
+  // 한글 → 영문 색상 매핑
+  const COLOR_MAP: Record<string, string> = {
+    // 블랙/화이트/그레이
+    '블랙': 'black', '검정': 'black', '검은': 'black', 'black': 'black',
+    '화이트': 'white', '흰색': 'white', '흰': 'white', 'white': 'white',
+    '그레이': 'gray', '회색': 'gray', '그레': 'gray', 'gray': 'gray', 'grey': 'gray', '차콜': 'gray', 'charcoal': 'gray',
+    
+    // 베이지/크림/아이보리
+    '베이지': 'beige', 'beige': 'beige',
+    '아이보리': 'cream', '크림': 'cream', 'ivory': 'cream', 'cream': 'cream',
+    
+    // 네이비/블루
+    '네이비': 'navy', 'navy': 'navy',
+    '블루': 'blue', '파랑': 'blue', '파란': 'blue', 'blue': 'blue',
+    '하늘': 'sky', '스카이': 'sky', 'sky': 'sky',
+    '인디고': 'indigo', 'indigo': 'indigo',
+    
+    // 브라운/카멜/탄
+    '브라운': 'brown', '갈색': 'brown', 'brown': 'brown',
+    '카멜': 'camel', 'camel': 'camel',
+    '탄': 'tan', 'tan': 'tan',
+    '카키': 'olive', '올리브': 'olive', 'khaki': 'olive', 'olive': 'olive',
+    
+    // 레드/핑크
+    '레드': 'red', '빨강': 'red', '빨간': 'red', 'red': 'red',
+    '버건디': 'burgundy', '와인': 'burgundy', 'burgundy': 'burgundy', 'wine': 'burgundy',
+    '핑크': 'pink', '분홍': 'pink', 'pink': 'pink', '코랄': 'coral', 'coral': 'coral',
+    
+    // 그린
+    '그린': 'green', '녹색': 'green', '초록': 'green', 'green': 'green',
+    '민트': 'mint', 'mint': 'mint',
+    
+    // 옐로우/오렌지
+    '옐로우': 'yellow', '노랑': 'yellow', '노란': 'yellow', 'yellow': 'yellow',
+    '오렌지': 'orange', '주황': 'orange', 'orange': 'orange',
+    '머스타드': 'mustard', 'mustard': 'mustard',
+    
+    // 퍼플
+    '퍼플': 'purple', '보라': 'purple', 'purple': 'purple',
+    '라벤더': 'lavender', 'lavender': 'lavender',
+    
+    // 멀티
+    '멀티': 'multi', '믹스': 'multi', 'multi': 'multi', 'mixed': 'multi',
+  };
   
-  return 'neutral';
+  // 1. color 필드에서 추출
+  const colorStr = parseColorField(color);
+  for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
+    if (colorStr.includes(keyword)) {
+      return standardColor;
+    }
+  }
+  
+  // 2. 상품명에서 추출
+  const nameLower = name.toLowerCase();
+  for (const [keyword, standardColor] of Object.entries(COLOR_MAP)) {
+    if (nameLower.includes(keyword)) {
+      return standardColor;
+    }
+  }
+  
+  // 3. 추출 실패시 unknown 반환 (나중에 수동 보완 가능)
+  return 'unknown';
 }
 
 // 시즌 추론
@@ -355,6 +423,46 @@ function generateDNAText(product: Product, meta: DNAMeta, subCategory: string): 
   return `[${conceptsStr}] | ${formalityLabel} ${subCategory || meta.item_slot} | ${brandInfo} | 추천: ${occasionStr} | 시즌: ${seasonStr} | 코디: ${pairStr}와 매치`;
 }
 
+// 복합 Formality 추론 (가격 + 카테고리 + 브랜드 + 키워드)
+function inferFormality(product: Product, itemSlot: DNAMeta['item_slot']): number {
+  let base = 5;
+  
+  // 1. 가격 기반 (기본)
+  if (product.price > 500000) base = 8;
+  else if (product.price > 300000) base = 7;
+  else if (product.price > 150000) base = 6;
+  else if (product.price > 80000) base = 5;
+  else if (product.price < 30000) base = 3;
+  else if (product.price < 50000) base = 4;
+  
+  // 2. 카테고리/아이템슬롯 보정 (-2 ~ +2)
+  const casualSlots: DNAMeta['item_slot'][] = ['shoes', 'accessory'];
+  const formalSlots: DNAMeta['item_slot'][] = ['dress', 'outer'];
+  if (casualSlots.includes(itemSlot)) base -= 1;
+  if (formalSlots.includes(itemSlot)) base += 1;
+  
+  // 3. 상품명 키워드 보정
+  const nameLower = product.name.toLowerCase();
+  const casualKeywords = ['스니커즈', 'sneakers', '운동화', '후드', 'hoodie', '맨투맨', '조거', 'jogger', '트레이닝', 'training', '반바지', 'shorts'];
+  const formalKeywords = ['블레이저', 'blazer', '슬랙스', 'slacks', '정장', 'suit', '코트', 'coat', '캐시미어', 'cashmere', '울', 'wool', '실크', 'silk'];
+  
+  if (casualKeywords.some(k => nameLower.includes(k))) base -= 2;
+  if (formalKeywords.some(k => nameLower.includes(k))) base += 2;
+  
+  // 4. 브랜드 보정
+  const brandLower = (product.brand || '').toLowerCase();
+  const casualBrands = ['nike', 'adidas', 'vans', 'converse', '나이키', '아디다스', 'puma', '푸마', 'new balance', 'fila'];
+  const premiumBrands = ['gucci', 'prada', 'max mara', '구찌', '프라다', 'thom browne', 'burberry', 'louis vuitton', 'dior', 'chanel', 'hermes'];
+  const contemporaryBrands = ['cos', 'acne', 'apc', 'theory', 'sandro', 'maje'];
+  
+  if (casualBrands.some(b => brandLower.includes(b))) base -= 1;
+  if (premiumBrands.some(b => brandLower.includes(b))) base += 2;
+  if (contemporaryBrands.some(b => brandLower.includes(b))) base += 1;
+  
+  // 5. 범위 제한 (1~10)
+  return Math.max(1, Math.min(10, base));
+}
+
 // DNA 2.0 생성 (AI 없이 빠르게 처리)
 function generateDNA(product: Product): DNAResult {
   const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
@@ -364,13 +472,8 @@ function generateDNA(product: Product): DNAResult {
   const colorFamily = inferColorFamily(product.color, product.name);
   const seasonFit = inferSeasonFit(product.name, inferredCategory);
   
-  // 가격대로 formality 추론
-  let formality = 5;
-  if (product.price > 300000) formality = 8;
-  else if (product.price > 150000) formality = 7;
-  else if (product.price > 80000) formality = 6;
-  else if (product.price < 30000) formality = 3;
-  else if (product.price < 50000) formality = 4;
+  // 복합 formality 추론 (가격 + 카테고리 + 브랜드 + 키워드)
+  const formality = inferFormality(product, itemSlot);
   
   const concepts = inferConcepts(product, formality);
   const occasions = inferOccasions(formality, itemSlot, concepts);
@@ -387,14 +490,13 @@ function generateDNA(product: Product): DNAResult {
     season_fit: seasonFit,
   };
   
-  // dna_text는 dna_meta 기반으로 자동 생성
   const dnaText = generateDNAText(product, dnaMeta, subCategory);
   
   return {
     id: product.id,
     dna_text: dnaText,
     dna_meta: dnaMeta,
-    category: inferredCategory,
+    category: inferredCategory !== product.category ? inferredCategory : undefined,
     sub_category: subCategory || undefined,
   };
 }
