@@ -294,6 +294,84 @@
   }
 }
 
+/* 🔥 Loading Animation Keyframes */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-25%);
+  }
+}
+
+@keyframes logo-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px hsla(280, 70%, 55%, 0.5)) drop-shadow(0 0 20px hsla(10, 85%, 65%, 0.3));
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    filter: drop-shadow(0 0 15px hsla(280, 70%, 55%, 0.8)) drop-shadow(0 0 30px hsla(10, 85%, 65%, 0.5));
+    transform: scale(1.05) rotate(2deg);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px hsla(10, 85%, 65%, 0.6)) drop-shadow(0 0 25px hsla(280, 70%, 55%, 0.4));
+    transform: scale(1.02) rotate(-1deg);
+  }
+  75% {
+    filter: drop-shadow(0 0 18px hsla(330, 75%, 55%, 0.7)) drop-shadow(0 0 35px hsla(200, 85%, 55%, 0.4));
+    transform: scale(1.08) rotate(1deg);
+  }
+}
+
+@keyframes orbit {
+  from {
+    transform: rotate(0deg) translateX(50px) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(50px) rotate(-360deg);
+  }
+}
+
+@keyframes ring-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.2;
+  }
+}
+
+@keyframes gradient-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes float {
   0%, 100% {
     transform: translateY(0) rotate(0deg);
