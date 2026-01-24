@@ -788,15 +788,24 @@ serve(async (req) => {
       },
     };
     
-    // ========== 확장된 키워드 → 상황(TPO) 매핑 ==========
-    const OCCASION_KEYWORDS: Record<string, { keywords: string[]; formality: { min: number; max: number } }> = {
+    // ========== 확장된 키워드 → 상황(TPO) 매핑 + 필수 컨셉/아이템 ==========
+    const OCCASION_KEYWORDS: Record<string, { 
+      keywords: string[]; 
+      formality: { min: number; max: number }; 
+      requiredConcepts?: string[];  // 🆕 상황별 필수 컨셉
+      requiredItems?: string[];     // 🆕 상황별 필수 아이템 (신발 등)
+      dressCodeHint?: string;       // 🆕 드레스코드 힌트
+    }> = {
       '데일리': { 
         keywords: ['데일리', '일상', '평소', '매일', '평상시', '생활', '보통'],
         formality: { min: 2, max: 5 }
       },
       '출근': { 
         keywords: ['출근', '오피스', '회사', '비즈니스', '미팅', '업무', '직장', '사무실', '근무'],
-        formality: { min: 5, max: 8 }
+        formality: { min: 5, max: 8 },
+        requiredConcepts: ['클래식', '포멀', '모던'],
+        requiredItems: ['신발'],
+        dressCodeHint: '깔끔한 셔츠/블라우스 + 정장바지/슬랙스 + 로퍼/펌프스'
       },
       '데이트': { 
         keywords: ['데이트', '소개팅', '만남', '약속', '저녁', '커플', '애인', '남친', '여친'],
@@ -808,11 +817,23 @@ serve(async (req) => {
       },
       '운동': { 
         keywords: ['운동', '짐', '헬스', '조깅', '러닝', '요가', '필라테스', '트레이닝', '스포츠'],
-        formality: { min: 0, max: 3 }
+        formality: { min: 0, max: 3 },
+        requiredConcepts: ['스포티', '캐주얼']
+      },
+      // 🎯 결혼식/파티: 격식 높은 상황 - 정장+구두 필수!
+      '결혼식': { 
+        keywords: ['결혼식', '웨딩', '하객', '청첩장'],
+        formality: { min: 7, max: 10 },
+        requiredConcepts: ['클래식', '포멀', '럭셔리'],
+        requiredItems: ['신발'],
+        dressCodeHint: '남성: 정장/셔츠/슬랙스 + 구두, 여성: 원피스/블라우스+스커트 + 힐/로퍼'
       },
       '파티': { 
-        keywords: ['파티', '행사', '결혼식', '웨딩', '하객', '돌잔치', '축하', '이벤트'],
-        formality: { min: 7, max: 10 }
+        keywords: ['파티', '행사', '돌잔치', '축하', '이벤트', '연회'],
+        formality: { min: 6, max: 10 },
+        requiredConcepts: ['클래식', '럭셔리', '페미닌'],
+        requiredItems: ['신발'],
+        dressCodeHint: '드레시한 스타일 + 포멀한 신발'
       },
       '카페': { 
         keywords: ['카페', '브런치', '티타임', '디저트', '애프터눈'],
@@ -824,11 +845,15 @@ serve(async (req) => {
       },
       '면접': { 
         keywords: ['면접', '인터뷰', '취업', '입사', '채용'],
-        formality: { min: 7, max: 10 }
+        formality: { min: 7, max: 10 },
+        requiredConcepts: ['포멀', '클래식', '모던'],
+        requiredItems: ['신발'],
+        dressCodeHint: '정장 셔츠 + 슬랙스/정장스커트 + 구두 필수'
       },
       '캠퍼스': { 
         keywords: ['캠퍼스', '학교', '대학', '수업', '강의', '학생'],
-        formality: { min: 2, max: 5 }
+        formality: { min: 2, max: 5 },
+        requiredConcepts: ['캐주얼', '프레피']
       },
       '집콕': { 
         keywords: ['집콕', '홈웨어', '집', '실내', '휴식', '편한'],
@@ -836,7 +861,8 @@ serve(async (req) => {
       },
       '아웃도어': { 
         keywords: ['아웃도어', '캠핑', '등산', '하이킹', '피크닉', '바베큐'],
-        formality: { min: 1, max: 4 }
+        formality: { min: 1, max: 4 },
+        requiredConcepts: ['스포티', '고프코어']
       },
     };
     
@@ -872,25 +898,50 @@ serve(async (req) => {
     detectedConcepts.sort((a, b) => b.weight - a.weight);
     const topConcepts = detectedConcepts.slice(0, 3).map(c => c.concept);
     
-    // ========== 상황 추출 + 격식도 자동 결정 ==========
+    // ========== 상황 추출 + 격식도 자동 결정 + 필수 컨셉/아이템 ==========
     const detectedOccasions: string[] = [];
     let formalityMin = 0;
     let formalityMax = 10;
     let formalityDetected = false;
+    let occasionRequiredConcepts: string[] = [];  // 🆕 상황별 필수 컨셉
+    let occasionRequiredItems: string[] = [];     // 🆕 상황별 필수 아이템
+    let occasionDressCodeHint: string | null = null;  // 🆕 드레스코드 힌트
     
-    for (const [occasion, { keywords, formality }] of Object.entries(OCCASION_KEYWORDS)) {
-      if (keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
-        detectedOccasions.push(occasion);
+    for (const [occasionName, occasionData] of Object.entries(OCCASION_KEYWORDS)) {
+      if (occasionData.keywords.some(kw => requestLower.includes(kw.toLowerCase()))) {
+        detectedOccasions.push(occasionName);
         if (!formalityDetected) {
-          formalityMin = formality.min;
-          formalityMax = formality.max;
+          formalityMin = occasionData.formality.min;
+          formalityMax = occasionData.formality.max;
           formalityDetected = true;
+          // 🆕 첫 번째 매칭된 상황의 필수 컨셉/아이템 적용
+          if (occasionData.requiredConcepts) {
+            occasionRequiredConcepts = occasionData.requiredConcepts;
+          }
+          if (occasionData.requiredItems) {
+            occasionRequiredItems = occasionData.requiredItems;
+          }
+          if (occasionData.dressCodeHint) {
+            occasionDressCodeHint = occasionData.dressCodeHint;
+          }
         } else {
           // 여러 상황이 감지되면 범위 확장
-          formalityMin = Math.min(formalityMin, formality.min);
-          formalityMax = Math.max(formalityMax, formality.max);
+          formalityMin = Math.min(formalityMin, occasionData.formality.min);
+          formalityMax = Math.max(formalityMax, occasionData.formality.max);
         }
       }
+    }
+    
+    // 🆕 사용자가 명시한 컨셉이 없으면 상황별 필수 컨셉 적용
+    if (topConcepts.length === 0 && occasionRequiredConcepts.length > 0) {
+      console.log(`[style-recommend] No explicit concept, applying occasion concepts: ${occasionRequiredConcepts.join(', ')}`);
+      topConcepts.push(...occasionRequiredConcepts.slice(0, 3));
+    }
+    
+    console.log(`[style-recommend] Occasion: ${detectedOccasions.join(', ')}, Formality: ${formalityMin}-${formalityMax}`);
+    console.log(`[style-recommend] Required concepts: ${occasionRequiredConcepts.join(', ')}, Required items: ${occasionRequiredItems.join(', ')}`);
+    if (occasionDressCodeHint) {
+      console.log(`[style-recommend] Dress code hint: ${occasionDressCodeHint}`);
     }
     
     // ========== 색상 추출 ==========
@@ -1432,17 +1483,38 @@ serve(async (req) => {
         return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${p.priorityCategory}|₩${Math.floor(p.price/1000)}k|F${p.dnaMeta?.formality || 5}|${concepts}|${color}`;
       }).join('\n');
 
-      // 🎯 강화된 시스템 프롬프트 (GPT-5-mini 최적화)
-      const systemPrompt = `당신은 최고의 패션 스타일리스트입니다.
+      // 🎯 TPO 기반 드레스코드 지침 동적 생성
+      const formalityLevel = (searchConditions?.formalityMin || 0) + (searchConditions?.formalityMax || 10) / 2;
+      const isFormalOccasion = formalityLevel >= 7 || occasionRequiredItems.includes('신발');
+      
+      // 🆕 포멀 상황(결혼식/면접/파티)에서는 신발 필수!
+      const itemSelectionRule = isFormalOccasion
+        ? `총 4개 아이템 선택:
+   - [필수] 상의 1개 + 하의(또는 원피스) 1개 + 신발 1개 (구두/로퍼/힐 권장)
+   - [선택] 아우터/가방/액세서리 중 1개`
+        : `총 4개 아이템 선택:
+   - [필수] 상의 1개 + 하의 1개
+   - [자유] 아우터/신발/가방/액세서리 중 2개`;
+      
+      // 🆕 드레스코드 힌트 추가
+      const dressCodeInstruction = occasionDressCodeHint 
+        ? `\n\n⚠️ 드레스코드 참고: ${occasionDressCodeHint}` 
+        : '';
+      
+      // 🎯 강화된 시스템 프롬프트 (GPT-5-mini 최적화 + TPO 강화)
+      const systemPrompt = `당신은 최고의 패션 스타일리스트입니다. 상황(TPO)에 완벽히 맞는 코디를 추천하세요.
 
 선택 규칙:
-1. 총 4개 아이템 선택 (상의+하의는 필수, 나머지 2개는 아우터/신발/가방/액세서리 중 자유 선택)
+1. ${itemSelectionRule}
 2. 같은 브랜드 2개 금지
 3. F값(격식도)이 비슷한 아이템끼리 조합 (±2 이내)
-4. 사용자의 TPO(시간/장소/상황)에 맞게 창의적으로 선택
+4. ⚠️ 격식 있는 상황(결혼식/면접/파티)에서는 반드시:
+   - 캐주얼한 아이템(후드티, 운동화, 조거팬츠 등) 제외
+   - 정장/셔츠/블라우스 + 슬랙스/정장스커트/원피스 권장
+   - 구두/로퍼/힐 등 포멀한 신발 선택${dressCodeInstruction}
 
 응답 규칙:
-1. lookName: 캐치한 한글 코디명 (예: "도시의 댄디", "주말 브런치", "청량한 여름")
+1. lookName: 캐치한 한글 코디명 (예: "도시의 댄디", "우아한 하객", "세련된 첫인상")
 2. styleConcept: 이 룩의 무드를 한 문장으로
 3. styleReasoning: 반드시 포함할 내용
    - 선택한 브랜드명과 상품명을 직접 언급
@@ -1450,19 +1522,28 @@ serve(async (req) => {
    - 어떤 상황/장소에 완벽한지
    - "킬링 포인트?"로 마무리하며 핵심 아이템 강조`;
 
+      // 🆕 포멀 상황 표시
+      const formalityNote = isFormalOccasion 
+        ? `⚠️ 격식 있는 상황 - 정장 스타일 + 구두 필수!` 
+        : '';
+
       const userPrompt = `요청: "${userRequest.slice(0, 80)}"
 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}
 컨셉: ${(searchConditions?.concepts || requestedConcepts).slice(0, 4).join(', ')}
-상황: ${occasion}
+상황: ${occasion} ${formalityNote}
+격식도: F${searchConditions?.formalityMin || 0}~${searchConditions?.formalityMax || 10}
 
 상품(id|브랜드|이름|카테고리|가격|격식|컨셉|색상):
 ${productListContext}
 
-[필수] 상의 1개 + 하의 1개
-[자유] 아우터/신발/가방/액세서리 중 2개 (상황에 맞게 창의적으로!)
+${isFormalOccasion 
+  ? `[필수] 상의 1개 + 하의 1개 + 신발 1개 (구두/로퍼/힐)
+[선택] 아우터/가방/액세서리 중 1개`
+  : `[필수] 상의 1개 + 하의 1개
+[자유] 아우터/신발/가방/액세서리 중 2개`}
 
 JSON만 응답:
-{"lookName":"코디명","styleConcept":"한줄설명","styleReasoning":"이 룩의 핵심은...브랜드/상품명 언급...킬링포인트?로 마무리","selectedProductIds":["필수상의id","필수하의id","자유선택1","자유선택2"]}`;
+{"lookName":"코디명","styleConcept":"한줄설명","styleReasoning":"이 룩의 핵심은...브랜드/상품명 언급...킬링포인트?로 마무리","selectedProductIds":["상의id","하의id","신발id또는자유1","자유2"]}`;
 
       try {
         console.log('[style-recommend] Stage 3: Calling GPT-5-mini for final selection...');
