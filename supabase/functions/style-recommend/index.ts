@@ -130,6 +130,9 @@ interface RAGStyleResponse {
 
 // Category priority for auto-selection (순서: 상의 → 하의 → 아우터 → 기타)
 const CATEGORY_PRIORITY = ['상의', '하의', '아우터', '기타'];
+// 필수/선택 카테고리 분리 (유연한 아이템 선택용)
+const REQUIRED_CATEGORIES = ['상의', '하의'];
+const OPTIONAL_CATEGORIES = ['아우터', '기타'];
 
 // 연령대 코드를 한글 레이블로 변환
 function getAgeGroupLabel(ageGroup: string): string {
@@ -1422,32 +1425,52 @@ serve(async (req) => {
       const gptProducts = getProductsForGPT();
       console.log(`[style-recommend] Stage 3: ${gptProducts.length} filtered products for final selection`);
       
-      // 🚀 간소화된 상품 리스트 (토큰 절약)
-      const productListContext = gptProducts.map(p => 
-        `${p.id}|${p.brand || ''}|${p.name.slice(0, 20)}|${p.priorityCategory}|₩${Math.floor(p.price/1000)}k|F${p.dnaMeta?.formality || 5}`
-      ).join('\n');
+      // 🎨 DNA 정보 포함한 상품 리스트 (품질 향상)
+      const productListContext = gptProducts.map(p => {
+        const concepts = p.dnaMeta?.concepts?.slice(0, 2).join('/') || '';
+        const color = p.dnaMeta?.colorFamily || '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${p.priorityCategory}|₩${Math.floor(p.price/1000)}k|F${p.dnaMeta?.formality || 5}|${concepts}|${color}`;
+      }).join('\n');
 
-      // 🚀 간소화된 시스템 프롬프트
-      // 🚀 간소화된 프롬프트 (토큰 50% 절감)
-      const systemPrompt = `스타일리스트. 상의+하의+아우터+기타 각 1개씩 총4개 선택. 같은브랜드 2개금지. F값(격식) 비슷하게.`;
+      // 🎯 강화된 시스템 프롬프트 (GPT-5-mini 최적화)
+      const systemPrompt = `당신은 최고의 패션 스타일리스트입니다.
 
-      const userPrompt = `요청: "${userRequest.slice(0, 50)}"
+선택 규칙:
+1. 총 4개 아이템 선택 (상의+하의는 필수, 나머지 2개는 아우터/신발/가방/액세서리 중 자유 선택)
+2. 같은 브랜드 2개 금지
+3. F값(격식도)이 비슷한 아이템끼리 조합 (±2 이내)
+4. 사용자의 TPO(시간/장소/상황)에 맞게 창의적으로 선택
+
+응답 규칙:
+1. lookName: 캐치한 한글 코디명 (예: "도시의 댄디", "주말 브런치", "청량한 여름")
+2. styleConcept: 이 룩의 무드를 한 문장으로
+3. styleReasoning: 반드시 포함할 내용
+   - 선택한 브랜드명과 상품명을 직접 언급
+   - 왜 이 조합이 어울리는지 (컬러 매칭, 실루엣 밸런스)
+   - 어떤 상황/장소에 완벽한지
+   - "킬링 포인트?"로 마무리하며 핵심 아이템 강조`;
+
+      const userPrompt = `요청: "${userRequest.slice(0, 80)}"
 타겟: ${isKids ? '키즈' : gender} ${ageGroupLabel}
-컨셉: ${(searchConditions?.concepts || requestedConcepts).slice(0, 3).join(',')}
+컨셉: ${(searchConditions?.concepts || requestedConcepts).slice(0, 4).join(', ')}
+상황: ${occasion}
 
-상품(id|브랜드|이름|카테고리|가격|F격식):
+상품(id|브랜드|이름|카테고리|가격|격식|컨셉|색상):
 ${productListContext}
 
+[필수] 상의 1개 + 하의 1개
+[자유] 아우터/신발/가방/액세서리 중 2개 (상황에 맞게 창의적으로!)
+
 JSON만 응답:
-{"lookName":"코디명","styleConcept":"한줄설명","styleReasoning":"이 룩의 핵심은...브랜드/상품명 언급...킬링포인트?로 마무리","selectedProductIds":["상의id","하의id","아우터id","기타id"]}`;
+{"lookName":"코디명","styleConcept":"한줄설명","styleReasoning":"이 룩의 핵심은...브랜드/상품명 언급...킬링포인트?로 마무리","selectedProductIds":["필수상의id","필수하의id","자유선택1","자유선택2"]}`;
 
       try {
-        console.log('[style-recommend] Stage 3: Calling Gemini Flash for final selection...');
+        console.log('[style-recommend] Stage 3: Calling GPT-5-mini for final selection...');
         const gptStartTime = Date.now();
         
-        // 🚀 30초 타임아웃으로 504 방지
+        // 🚀 45초 타임아웃 (GPT-5-mini는 Gemini보다 약간 느림)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
         
         try {
           const gptResponse = await fetch(
@@ -1459,13 +1482,13 @@ JSON만 응답:
                 'Content-Type': 'application/json',
               },
               body: JSON.stringify({
-                // 🚀 gemini-3-flash: 5배 빠른 응답 (175초 → 5-10초)
-                model: 'google/gemini-3-flash-preview',
+                // 🎯 GPT-5-mini: 고품질 추론 + 합리적 비용
+                model: 'openai/gpt-5-mini',
                 messages: [
                   { role: 'system', content: systemPrompt },
                   { role: 'user', content: userPrompt }
                 ],
-                max_tokens: 500, // 응답 길이 제한으로 속도 향상
+                max_tokens: 800, // 풍부한 스타일 설명을 위해 확장
               }),
               signal: controller.signal,
             }
@@ -1507,7 +1530,7 @@ JSON만 응답:
         } catch (fetchError) {
           clearTimeout(timeoutId);
           if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-            console.warn('[style-recommend] AI timeout (30s), using DNA fallback');
+            console.warn('[style-recommend] AI timeout (45s), using DNA fallback');
           } else {
             throw fetchError;
           }
