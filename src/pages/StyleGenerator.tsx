@@ -3906,7 +3906,11 @@ const StyleGenerator = () => {
               category: item.category,
               style_tags: item.product.style_tags,
               affiliate_url: item.affiliateUrl,
-              isAutoSelected: item.isAutoSelected
+              isAutoSelected: item.isAutoSelected,
+              // 색상 정보 추가 (generate-style에서 사용)
+              color: item.product.color,
+              dna_meta: item.product.dna_meta,
+              color_family: item.product.dna_meta?.color_family || null
             }));
 
           // styleReasoning 캡처 (DB 저장 시 이 값을 그대로 사용)
@@ -3960,13 +3964,17 @@ const StyleGenerator = () => {
           setIsCustomSearching(false);
         }
         
-        // 이미지 생성
+        // 이미지 생성 - 색상 정보 포함
         const productsWithDetails = transformedItems.map(p => ({
           id: p.id,
           name: p.name,
           brand: p.brand,
           category: p.category,
           image_url: p.image_url,
+          // 색상 정보 추가
+          color: (p as any).color,
+          dna_meta: (p as any).dna_meta,
+          color_family: (p as any).color_family
         }));
         
         const productImageUrls = productsWithDetails
@@ -4195,7 +4203,7 @@ const StyleGenerator = () => {
     try {
       const styleDescription = selectedTrend?.name_ko || customResult?.styleConcept || '트렌디한';
       
-      // 상품 정보를 상세하게 구성 (이름, 브랜드, 카테고리 포함)
+      // 상품 정보를 상세하게 구성 (이름, 브랜드, 카테고리, 색상 정보 포함)
       const productsWithDetails = useTrendProducts 
         ? selectedTrendProducts.map(p => ({
             id: p.id,
@@ -4203,6 +4211,10 @@ const StyleGenerator = () => {
             brand: p.brand,
             category: p.category,
             image_url: p.image_url,
+            // 색상 정보 추가
+            color: (p as any).color,
+            dna_meta: (p as any).dna_meta,
+            color_family: (p as any).color_family
           }))
         : selectedProducts.map(p => ({
             id: p.id,
@@ -4210,6 +4222,10 @@ const StyleGenerator = () => {
             brand: p.brand,
             category: p.category,
             image_url: p.image_url,
+            // 색상 정보 추가
+            color: (p as any).color,
+            dna_meta: (p as any).dna_meta,
+            color_family: (p as any).color_family
           }));
 
       const productsDescription = productsWithDetails.map(p => {
