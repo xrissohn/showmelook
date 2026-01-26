@@ -120,9 +120,62 @@ serve(async (req) => {
     console.log('[generate-style] Starting generation');
     console.log('[generate-style] Style:', style);
     console.log('[generate-style] Products:', products);
+    console.log('[generate-style] Product details count:', productDetails?.length || 0);
     console.log('[generate-style] Product images count:', productImageUrls?.length || 0);
     console.log('[generate-style] Face composite:', useFaceComposite);
     console.log('[generate-style] Avatar URL:', userAvatarUrl ? userAvatarUrl.substring(0, 80) + '...' : 'none');
+
+    // Build products description with color constraints from productDetails
+    const buildProductsWithColors = (productDetails: any[], fallbackProducts: string): string => {
+      if (!productDetails || productDetails.length === 0) {
+        return fallbackProducts;
+      }
+      
+      return productDetails.map((p: any) => {
+        const brandPart = p.brand ? `${p.brand} ` : '';
+        const name = p.name || 'Item';
+        
+        // Extract color_family from dna_meta or direct color field
+        let colors: string[] = [];
+        if (p.dna_meta?.color_family) {
+          colors = Array.isArray(p.dna_meta.color_family) 
+            ? p.dna_meta.color_family 
+            : [p.dna_meta.color_family];
+        } else if (p.color_family) {
+          colors = Array.isArray(p.color_family) ? p.color_family : [p.color_family];
+        } else if (p.color) {
+          // Parse color string if available
+          const colorStr = String(p.color).toLowerCase();
+          if (colorStr.includes('white')) colors.push('white');
+          if (colorStr.includes('black')) colors.push('black');
+          if (colorStr.includes('navy')) colors.push('navy');
+          if (colorStr.includes('blue')) colors.push('blue');
+          if (colorStr.includes('gray') || colorStr.includes('grey')) colors.push('gray');
+          if (colorStr.includes('beige')) colors.push('beige');
+          if (colorStr.includes('brown')) colors.push('brown');
+          if (colorStr.includes('cream')) colors.push('cream');
+          if (colorStr.includes('red')) colors.push('red');
+          if (colorStr.includes('pink')) colors.push('pink');
+          if (colorStr.includes('green')) colors.push('green');
+          if (colorStr.includes('yellow')) colors.push('yellow');
+          if (colorStr.includes('orange')) colors.push('orange');
+          if (colorStr.includes('purple')) colors.push('purple');
+        }
+        
+        // Remove 'unknown' from colors
+        colors = colors.filter(c => c && c !== 'unknown');
+        
+        if (colors.length > 0) {
+          const colorList = colors.join(' or ');
+          return `${brandPart}${name} (MUST be ${colorList} color ONLY)`;
+        }
+        
+        return `${brandPart}${name}`;
+      }).join(', ');
+    };
+
+    const productsWithColors = buildProductsWithColors(productDetails, products);
+    console.log('[generate-style] Products with colors:', productsWithColors);
 
     // Build the image generation prompt
     const genderValue = userProfile?.gender?.toLowerCase() || '';
@@ -214,8 +267,10 @@ ${bodyProportionHint}
 
 Style concept: ${style}
 
-Wearing these items:
-${products}
+Wearing these items with EXACT colors specified:
+${productsWithColors}
+
+COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors. If an item says "(MUST be white or black color ONLY)", you MUST use white or black, not red, yellow, or any other color.
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
@@ -230,8 +285,10 @@ ${bodyProportionHint}
 
 Style concept: ${style}
 
-Wearing these items:
-${products}
+Wearing these items with EXACT colors specified:
+${productsWithColors}
+
+COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
 IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
@@ -241,8 +298,10 @@ Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}$
 
 Style concept: ${style}
 
-Wearing these items:
-${products}
+Wearing these items with EXACT colors specified:
+${productsWithColors}
+
+COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
 IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, and appearance. Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
@@ -357,8 +416,10 @@ ${bodyProportionHint}
 
 Style concept: ${style}
 
-Wearing these items:
-${products}
+Wearing these items with EXACT colors specified:
+${productsWithColors}
+
+COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
         
