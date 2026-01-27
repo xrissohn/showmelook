@@ -125,7 +125,7 @@ serve(async (req) => {
     console.log('[generate-style] Face composite:', useFaceComposite);
     console.log('[generate-style] Avatar URL:', userAvatarUrl ? userAvatarUrl.substring(0, 80) + '...' : 'none');
 
-    // Build products description with color constraints from productDetails
+    // Build products description with color constraints and size hints from productDetails
     const buildProductsWithColors = (productDetails: any[], fallbackProducts: string): string => {
       if (!productDetails || productDetails.length === 0) {
         return fallbackProducts;
@@ -165,9 +165,26 @@ serve(async (req) => {
         // Remove 'unknown' from colors
         colors = colors.filter(c => c && c !== 'unknown');
         
+        // Build constraints array
+        const constraints: string[] = [];
+        
+        // Add color constraint
         if (colors.length > 0) {
-          const colorList = colors.join(' or ');
-          return `${brandPart}${name} (MUST be ${colorList} color ONLY)`;
+          constraints.push(`MUST be ${colors.join(' or ')} color ONLY`);
+        }
+        
+        // Check for small_accessory (wallet, card holder, etc.)
+        const isSmallAccessory = p.dna_meta?.small_accessory === true || 
+                                 p.dna_meta?.small_accessory === 'true' ||
+                                 (p.name && (p.name.includes('지갑') || p.name.includes('카드지갑') || p.name.includes('반지갑')));
+        
+        if (isSmallAccessory) {
+          const sizeHint = p.dna_meta?.size_hint || 'palm-sized card wallet, NOT a bag';
+          constraints.push(`SIZE: ${sizeHint} - this is a SMALL accessory held in hand, NOT a large bag`);
+        }
+        
+        if (constraints.length > 0) {
+          return `${brandPart}${name} (${constraints.join('; ')})`;
         }
         
         return `${brandPart}${name}`;
