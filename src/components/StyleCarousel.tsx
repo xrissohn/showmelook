@@ -134,18 +134,18 @@ const StyleCarousel = () => {
     };
   }, [animate]);
 
-  // Helper function to flip a single card
+  // Helper function to flip a single card - only flips once to 180deg and stays
   const flipCard = useCallback((cardIndex: number) => {
-    // Skip if this card is currently animating
+    // Skip if this card is currently animating or already flipped
     if (isAnimatingRef.current[cardIndex]) return;
     
     // Mark as animating
     isAnimatingRef.current[cardIndex] = true;
     
-    // Toggle rotation: 0 -> 180 or 180 -> 0
+    // Add 180 degrees to current rotation (accumulates: 0 -> 180 -> 360 -> ...)
     setCardRotations(prev => {
       const newState = [...prev];
-      newState[cardIndex] = prev[cardIndex] === 0 ? 180 : 0;
+      newState[cardIndex] = prev[cardIndex] + 180;
       return newState;
     });
 
