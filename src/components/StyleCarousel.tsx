@@ -69,16 +69,16 @@ const StyleCarousel = () => {
   const scrollPositionRef = useRef(0);
   const isDraggingRef = useRef(false);
 
-  // Card rotation states - each card tracks its own rotation (0 or 180)
+  // Card rotation states - each card flips once from 0 to 180 and stays
   const [cardRotations, setCardRotations] = useState<number[]>(
     Array(styles.length * 3).fill(0)
   );
-  // Track which image to show (true = male, false = female)
-  const [cardGenders, setCardGenders] = useState<boolean[]>(
+  // Track which image to show on front (true = male, false = female)
+  const [cardGenders] = useState<boolean[]>(
     Array(styles.length * 3).fill(true).map((_, i) => i % 2 === 0)
   );
-  // Track if a card is currently animating (to prevent double-flips)
-  const isAnimatingRef = useRef<boolean[]>(Array(styles.length * 3).fill(false));
+  // Track if a card has already flipped (flip only once)
+  const hasFlippedRef = useRef<boolean[]>(Array(styles.length * 3).fill(false));
 
   // Duplicate styles for seamless infinite scroll
   const duplicatedStyles = [...styles, ...styles, ...styles];
@@ -136,64 +136,38 @@ const StyleCarousel = () => {
 
   // Helper function to flip a single card - only flips once to 180deg and stays
   const flipCard = useCallback((cardIndex: number) => {
-    // Skip if this card is currently animating or already flipped
-    if (isAnimatingRef.current[cardIndex]) return;
+    // Skip if this card has already flipped
+    if (hasFlippedRef.current[cardIndex]) return;
     
-    // Mark as animating
-    isAnimatingRef.current[cardIndex] = true;
+    // Mark as flipped (won't flip again)
+    hasFlippedRef.current[cardIndex] = true;
     
-    // Add 180 degrees to current rotation (accumulates: 0 -> 180 -> 360 -> ...)
+    // Flip to 180 degrees and stay
     setCardRotations(prev => {
       const newState = [...prev];
-      newState[cardIndex] = prev[cardIndex] + 180;
+      newState[cardIndex] = 180;
       return newState;
     });
-
-    // Change gender at 90 degrees (2.5s into 5s animation)
-    setTimeout(() => {
-      setCardGenders(prev => {
-        const newState = [...prev];
-        newState[cardIndex] = !newState[cardIndex];
-        return newState;
-      });
-    }, 2500);
-
-    // Mark animation as complete after 5 seconds
-    setTimeout(() => {
-      isAnimatingRef.current[cardIndex] = false;
-    }, 5000);
   }, []);
 
-  // Random gender flip effect - each card flips independently with random timing
+  // Random flip effect - each card flips once with random timing
   useEffect(() => {
     const timeouts: NodeJS.Timeout[] = [];
-    const intervals: NodeJS.Timeout[] = [];
     
-    // Give each card a random initial delay and interval
+    // Give each card a random initial delay, then flip once
     duplicatedStyles.forEach((_, cardIndex) => {
-      // Random initial delay between 0-8 seconds
-      const initialDelay = Math.random() * 8000;
-      // Random interval between 6-12 seconds per card
-      const flipIntervalTime = 6000 + Math.random() * 6000;
+      // Random delay between 1-10 seconds
+      const delay = 1000 + Math.random() * 9000;
       
       const timeout = setTimeout(() => {
-        // First flip after initial delay
         flipCard(cardIndex);
-        
-        // Then continue flipping at random intervals
-        const interval = setInterval(() => {
-          flipCard(cardIndex);
-        }, flipIntervalTime);
-        
-        intervals.push(interval);
-      }, initialDelay);
+      }, delay);
       
       timeouts.push(timeout);
     });
 
     return () => {
       timeouts.forEach(t => clearTimeout(t));
-      intervals.forEach(i => clearInterval(i));
     };
   }, [duplicatedStyles.length, flipCard]);
 
