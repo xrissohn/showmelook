@@ -338,10 +338,12 @@ const slides = [
               </tbody>
             </table>
           </div>
-          <div className="flex gap-4 mt-3 text-xs text-muted-foreground font-korean">
-            <span>• Y1 MAU: 10,000명</span>
-            <span>• Y3 MAU: 100,000명</span>
-            <span>• Y5 MAU: 500,000명</span>
+          <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground font-korean">
+            <span>• Y1: 1만명</span>
+            <span>• Y2: 10만명</span>
+            <span>• Y3: 50만명</span>
+            <span>• Y4: 100만명</span>
+            <span>• Y5: 200만명</span>
           </div>
         </div>
       </div>
