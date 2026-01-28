@@ -208,37 +208,140 @@ const slides = [
   {
     id: 6,
     title: '비즈니스 모델',
-    subtitle: '수익 구조',
+    subtitle: '수익 구조 상세',
     content: (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            { model: 'B2C 구독', desc: 'Free → Pro → Premium', icon: '💳' },
-            { model: '어필리에이트', desc: '상품 클릭 → 구매 → 수수료 1~8%', icon: '🔗' },
-            { model: 'B2B SaaS', desc: 'Cafe24 쇼핑몰 위젯 ₩99,000/월', icon: '🏢' }
-          ].map((item, i) => (
-            <div key={i} className="p-5 bg-card rounded-xl border border-border text-center">
-              <div className="text-3xl mb-2">{item.icon}</div>
-              <h4 className="font-bold font-korean">{item.model}</h4>
-              <p className="text-sm text-muted-foreground font-korean">{item.desc}</p>
+      <div className="space-y-5">
+        {/* 3가지 수익 모델 상세 */}
+        <div className="grid md:grid-cols-3 gap-3">
+          {/* B2C 구독 */}
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">💳</span>
+              <h4 className="font-bold font-korean">B2C 구독</h4>
             </div>
-          ))}
-        </div>
-        <div className="p-4 bg-primary/5 rounded-lg">
-          <h4 className="font-bold mb-3 font-korean">📈 5년 매출 전망</h4>
-          <div className="grid grid-cols-5 gap-2 text-center text-sm">
-            {[
-              { year: 'Y1', revenue: '1.7억' },
-              { year: 'Y2', revenue: '8.4억' },
-              { year: 'Y3', revenue: '24억' },
-              { year: 'Y4', revenue: '54억' },
-              { year: 'Y5', revenue: '90억' }
-            ].map((item, i) => (
-              <div key={i} className="p-3 bg-card rounded-lg border border-border">
-                <div className="text-muted-foreground">{item.year}</div>
-                <div className="font-bold text-primary">{item.revenue}</div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span className="font-korean">Free</span>
+                <span className="font-semibold">₩0</span>
               </div>
-            ))}
+              <div className="flex justify-between p-2 bg-sky/10 rounded">
+                <span className="font-korean">Pro (월/연)</span>
+                <span className="font-semibold text-sky">₩4,900 / ₩49,000</span>
+              </div>
+              <div className="flex justify-between p-2 bg-coral/10 rounded">
+                <span className="font-korean">Premium (월/연)</span>
+                <span className="font-semibold text-coral">₩9,900 / ₩99,000</span>
+              </div>
+              <div className="text-muted-foreground font-korean pt-1 border-t">
+                전환율 목표: Free→Pro <strong>15%</strong>, Pro→Premium <strong>20%</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* 어필리에이트 */}
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">🔗</span>
+              <h4 className="font-bold font-korean">어필리에이트</h4>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span className="font-korean">LinkPrice 평균</span>
+                <span className="font-semibold">2.1~4.2%</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span className="font-korean">Coupang Partners</span>
+                <span className="font-semibold">3%</span>
+              </div>
+              <div className="p-2 bg-primary/10 rounded font-korean">
+                <div>월 10만 클릭 × 구매전환 3%</div>
+                <div>× 평균주문 5만원 × 수수료 3%</div>
+                <div className="text-primary font-bold mt-1">= 월 450만원</div>
+              </div>
+            </div>
+          </div>
+
+          {/* B2B SaaS */}
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">🏢</span>
+              <h4 className="font-bold font-korean">B2B SaaS (Cafe24)</h4>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span className="font-korean">기본료</span>
+                <span className="font-semibold">₩99,000/월</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span className="font-korean">API 호출 초과</span>
+                <span className="font-semibold">₩10/건</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span className="font-korean">엔터프라이즈</span>
+                <span className="font-semibold">₩499,000/월~</span>
+              </div>
+              <div className="text-muted-foreground font-korean pt-1 border-t">
+                가상피팅 위젯/SDK 임베딩, 상품동기화 API
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 5년 매출 전망 테이블 */}
+        <div className="p-4 bg-primary/5 rounded-lg">
+          <h4 className="font-bold mb-3 font-korean">📈 5년 매출 전망 (단위: 억원)</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="p-2 text-left font-korean">구분</th>
+                  <th className="p-2 text-center">Y1</th>
+                  <th className="p-2 text-center">Y2</th>
+                  <th className="p-2 text-center">Y3</th>
+                  <th className="p-2 text-center">Y4</th>
+                  <th className="p-2 text-center">Y5</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50">
+                  <td className="p-2 font-korean">B2C 구독</td>
+                  <td className="p-2 text-center">1.2</td>
+                  <td className="p-2 text-center">4.8</td>
+                  <td className="p-2 text-center">12</td>
+                  <td className="p-2 text-center">24</td>
+                  <td className="p-2 text-center">36</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="p-2 font-korean">어필리에이트</td>
+                  <td className="p-2 text-center">0.5</td>
+                  <td className="p-2 text-center">2.4</td>
+                  <td className="p-2 text-center">6</td>
+                  <td className="p-2 text-center">12</td>
+                  <td className="p-2 text-center">18</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="p-2 font-korean">B2B SaaS</td>
+                  <td className="p-2 text-center">-</td>
+                  <td className="p-2 text-center">1.2</td>
+                  <td className="p-2 text-center">6</td>
+                  <td className="p-2 text-center">18</td>
+                  <td className="p-2 text-center">36</td>
+                </tr>
+                <tr className="bg-primary/10 font-bold">
+                  <td className="p-2 font-korean">합계</td>
+                  <td className="p-2 text-center text-primary">1.7</td>
+                  <td className="p-2 text-center text-primary">8.4</td>
+                  <td className="p-2 text-center text-primary">24</td>
+                  <td className="p-2 text-center text-primary">54</td>
+                  <td className="p-2 text-center text-primary">90</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap-4 mt-3 text-xs text-muted-foreground font-korean">
+            <span>• Y1 MAU: 10,000명</span>
+            <span>• Y3 MAU: 100,000명</span>
+            <span>• Y5 MAU: 500,000명</span>
           </div>
         </div>
       </div>
