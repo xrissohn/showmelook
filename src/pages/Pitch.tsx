@@ -360,7 +360,7 @@ const slides = [
           {[
             { label: 'TAM', value: '58조원', desc: '한국 패션 이커머스 시장', width: '100%', color: 'bg-primary/30' },
             { label: 'SAM', value: '5.8조원', desc: '스타일링 니즈 시장', width: '60%', color: 'bg-primary/50' },
-            { label: 'SOM', value: '580억원', desc: '5년 목표 시장 점유', width: '30%', color: 'bg-primary' }
+            { label: 'SOM', value: '280억원', desc: '5년 목표 시장 점유', width: '30%', color: 'bg-primary' }
           ].map((item, i) => (
             <div key={i} className="relative">
               <div 
