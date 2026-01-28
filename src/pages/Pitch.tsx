@@ -471,32 +471,63 @@ const slides = [
     title: '투자 요청',
     subtitle: 'Seed Round',
     content: (
-      <div className="text-center space-y-8">
-        <div className="inline-block p-8 bg-gradient-brand rounded-2xl">
-          <div className="text-white">
-            <div className="text-4xl md:text-5xl font-bold mb-2">5억원</div>
-            <div className="text-lg opacity-90 font-korean">Seed 투자 유치 목표</div>
+      <div className="space-y-6">
+        {/* 투자 목표 금액 */}
+        <div className="text-center">
+          <div className="inline-block p-6 bg-gradient-brand rounded-2xl">
+            <div className="text-white">
+              <div className="text-4xl md:text-5xl font-bold mb-1">5억원</div>
+              <div className="text-base opacity-90 font-korean">Seed 투자 유치 목표</div>
+            </div>
           </div>
         </div>
-        <div className="grid md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+
+        {/* 자금 사용 계획 */}
+        <div className="grid grid-cols-4 gap-3 max-w-2xl mx-auto">
           {[
             { use: '제품 개발', percent: '40%', amount: '2억' },
             { use: '마케팅', percent: '30%', amount: '1.5억' },
             { use: '인력 채용', percent: '20%', amount: '1억' },
             { use: '운영 비용', percent: '10%', amount: '0.5억' }
           ].map((item, i) => (
-            <div key={i} className="p-4 bg-card rounded-lg border border-border">
-              <div className="text-2xl font-bold text-primary">{item.percent}</div>
-              <div className="font-semibold font-korean">{item.use}</div>
-              <div className="text-sm text-muted-foreground">{item.amount}</div>
+            <div key={i} className="p-3 bg-card rounded-lg border border-border text-center">
+              <div className="text-xl font-bold text-primary">{item.percent}</div>
+              <div className="text-sm font-semibold font-korean">{item.use}</div>
+              <div className="text-xs text-muted-foreground">{item.amount}</div>
             </div>
           ))}
         </div>
-        <div className="pt-8">
-          <p className="text-xl text-muted-foreground font-korean">
+
+        {/* 12개월 후 목표 KPI */}
+        <div className="p-4 bg-primary/5 rounded-xl max-w-3xl mx-auto">
+          <h4 className="font-bold mb-3 text-center font-korean">📊 12개월 후 목표 KPI</h4>
+          <div className="grid grid-cols-5 gap-2 text-center text-xs">
+            {[
+              { metric: 'MAU', current: '100', target: '10,000', unit: '명' },
+              { metric: '유료 구독자', current: '0', target: '1,500', unit: '명' },
+              { metric: 'MRR', current: '0', target: '1,000', unit: '만원' },
+              { metric: '상품 카탈로그', current: '1,400', target: '5,000', unit: '+' },
+              { metric: 'B2B 파트너', current: '0', target: '10', unit: '곳' }
+            ].map((kpi, i) => (
+              <div key={i} className="p-2 bg-card rounded-lg border border-border">
+                <div className="font-semibold font-korean mb-1">{kpi.metric}</div>
+                <div className="text-muted-foreground">{kpi.current}</div>
+                <div className="text-primary">→</div>
+                <div className="font-bold text-primary">{kpi.target}{kpi.unit}</div>
+              </div>
+            ))}
+          </div>
+          <div className="text-xs text-muted-foreground text-center mt-2 font-korean">
+            * 전환율 15% 기준 (MAU 10,000 × 15% = 유료 1,500명)
+          </div>
+        </div>
+
+        {/* 연락처 */}
+        <div className="text-center pt-2">
+          <p className="text-lg text-muted-foreground font-korean">
             "함께 패션의 미래를 만들어갑니다"
           </p>
-          <p className="text-primary font-bold mt-2">contact@showmelook.com</p>
+          <p className="text-primary font-bold mt-1">contact@showmelook.com</p>
         </div>
       </div>
     ),
