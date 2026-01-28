@@ -305,35 +305,35 @@ const slides = [
               <tbody>
                 <tr className="border-b border-border/50">
                   <td className="p-2 font-korean">B2C 구독</td>
-                  <td className="p-2 text-center">1.2</td>
-                  <td className="p-2 text-center">4.8</td>
-                  <td className="p-2 text-center">12</td>
-                  <td className="p-2 text-center">24</td>
-                  <td className="p-2 text-center">36</td>
+                  <td className="p-2 text-center">1</td>
+                  <td className="p-2 text-center">10</td>
+                  <td className="p-2 text-center">50</td>
+                  <td className="p-2 text-center">100</td>
+                  <td className="p-2 text-center">200</td>
                 </tr>
                 <tr className="border-b border-border/50">
                   <td className="p-2 font-korean">어필리에이트</td>
-                  <td className="p-2 text-center">0.5</td>
-                  <td className="p-2 text-center">2.4</td>
-                  <td className="p-2 text-center">6</td>
-                  <td className="p-2 text-center">12</td>
-                  <td className="p-2 text-center">18</td>
+                  <td className="p-2 text-center">0.1</td>
+                  <td className="p-2 text-center">1</td>
+                  <td className="p-2 text-center">5</td>
+                  <td className="p-2 text-center">10</td>
+                  <td className="p-2 text-center">20</td>
                 </tr>
                 <tr className="border-b border-border/50">
                   <td className="p-2 font-korean">B2B SaaS</td>
                   <td className="p-2 text-center">-</td>
-                  <td className="p-2 text-center">1.2</td>
-                  <td className="p-2 text-center">6</td>
-                  <td className="p-2 text-center">18</td>
-                  <td className="p-2 text-center">36</td>
+                  <td className="p-2 text-center">2</td>
+                  <td className="p-2 text-center">10</td>
+                  <td className="p-2 text-center">30</td>
+                  <td className="p-2 text-center">60</td>
                 </tr>
                 <tr className="bg-primary/10 font-bold">
                   <td className="p-2 font-korean">합계</td>
-                  <td className="p-2 text-center text-primary">1.7</td>
-                  <td className="p-2 text-center text-primary">8.4</td>
-                  <td className="p-2 text-center text-primary">24</td>
-                  <td className="p-2 text-center text-primary">54</td>
-                  <td className="p-2 text-center text-primary">90</td>
+                  <td className="p-2 text-center text-primary">1.1</td>
+                  <td className="p-2 text-center text-primary">13</td>
+                  <td className="p-2 text-center text-primary">65</td>
+                  <td className="p-2 text-center text-primary">140</td>
+                  <td className="p-2 text-center text-primary">280</td>
                 </tr>
               </tbody>
             </table>
