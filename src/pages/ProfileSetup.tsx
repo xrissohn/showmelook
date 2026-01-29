@@ -67,7 +67,7 @@ const ProfileSetup = () => {
     }
   }, [user, loading, navigate]);
 
-  // 기존 프로필 데이터 로드
+  // 기존 프로필 데이터 로드 - 프로필이 완성되어 있으면 바로 스타일 페이지로 이동
   useEffect(() => {
     const loadExistingProfile = async () => {
       if (!user) return;
@@ -86,7 +86,18 @@ const ProfileSetup = () => {
         }
         
         if (profile) {
-          // 기존 데이터로 폼 초기화
+          // 프로필이 완성되어 있으면 바로 스타일 생성 페이지로 리다이렉트
+          const isProfileComplete = profile.height && 
+                                    profile.style_preferences && 
+                                    profile.style_preferences.length > 0 &&
+                                    profile.avatar_url;
+          
+          if (isProfileComplete) {
+            navigate('/style');
+            return;
+          }
+          
+          // 기존 데이터로 폼 초기화 (프로필이 불완전한 경우에만)
           if (profile.height) setHeight(profile.height.toString());
           if (profile.weight) setWeight(profile.weight.toString());
           if (profile.body_type) setBodyType(profile.body_type);
@@ -120,7 +131,7 @@ const ProfileSetup = () => {
     };
     
     loadExistingProfile();
-  }, [user]);
+  }, [user, navigate]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
