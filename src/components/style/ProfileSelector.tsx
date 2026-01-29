@@ -139,26 +139,57 @@ export const ProfileSelector = ({
     setIsOpen(false);
   };
 
-  // 프리미엄이 아니거나 가족 프로필을 사용할 수 없으면 심플 UI
+  // 프리미엄이 아니거나 가족 프로필을 사용할 수 없어도 본인 프로필은 표시
+  // 추가 모델만 프리미엄 잠금
   if (!canUseFamilyProfiles) {
     return (
-      <div className="p-3 sm:p-4 rounded-xl border-2 border-dashed border-border bg-muted/30">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-muted-foreground" />
-            </div>
-            <div className="min-w-0">
+      <div className="space-y-3">
+        {/* 본인 프로필 표시 (무료 회원도 표시) */}
+        <div className="p-3 sm:p-4 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-accent/30">
+              <AvatarImage src={userProfile?.avatar_url || undefined} />
+              <AvatarFallback className="bg-accent/20">
+                <User className="w-5 h-5 text-accent" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">추가 모델</p>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
-                  <Crown className="w-3 h-3 mr-0.5 text-amber-500" />
-                  Premium
+                <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
+                  {userProfile?.full_name || '내 프로필'}
+                </p>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent">
+                  나
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground font-korean truncate">
-                프리미엄으로 업그레이드하면 다른 분을 위한 스타일도 생성할 수 있어요
+                {userProfile?.height ? `${userProfile.height}cm` : ''} 
+                {userProfile?.weight ? ` · ${userProfile.weight}kg` : ''}
+                {userProfile?.gender ? ` · ${userProfile.gender === 'male' || userProfile.gender === '남성' ? '남성' : userProfile.gender === 'female' || userProfile.gender === '여성' ? '여성' : userProfile.gender}` : ''}
               </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* 추가 모델 잠금 표시 */}
+        <div className="p-3 sm:p-4 rounded-xl border-2 border-dashed border-border bg-muted/30">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden bg-muted flex-shrink-0 flex items-center justify-center">
+                <Lock className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">추가 모델</p>
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
+                    <Crown className="w-3 h-3 mr-0.5 text-amber-500" />
+                    Premium
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground font-korean truncate">
+                  프리미엄으로 업그레이드하면 다른 분을 위한 스타일도 생성할 수 있어요
+                </p>
+              </div>
             </div>
           </div>
         </div>
