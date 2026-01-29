@@ -17,16 +17,18 @@ import {
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
-// BEP 차트 데이터
+// BEP 차트 데이터 (현실적 비용 구조 반영: 인프라+개발운영비+세무+임대+사무운영+인건비)
+// 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만, 4명 2,015만
 const bepChartData = [
-  { users: 0, revenue: 0, cost: 5, profit: -5 },
-  { users: 78, revenue: 5, cost: 5, profit: 0 },
-  { users: 500, revenue: 105, cost: 49, profit: 56 },
-  { users: 1000, revenue: 210, cost: 93, profit: 117 },
-  { users: 2500, revenue: 525, cost: 220, profit: 305 },
-  { users: 5000, revenue: 1050, cost: 430, profit: 620 },
-  { users: 7500, revenue: 1575, cost: 655, profit: 920 },
-  { users: 10000, revenue: 2100, cost: 880, profit: 1220 },
+  { users: 0, revenue: 0, cost: 215, profit: -215, staff: 1 },
+  { users: 1000, revenue: 210, cost: 308, profit: -98, staff: 1 },
+  { users: 2300, revenue: 483, cost: 415, profit: 68, staff: 1 }, // BEP (1인)
+  { users: 3000, revenue: 630, cost: 475, profit: 155, staff: 1 },
+  { users: 5000, revenue: 1050, cost: 1245, profit: -195, staff: 2 },
+  { users: 8700, revenue: 1827, cost: 1571, profit: 256, staff: 2 }, // BEP (2인)
+  { users: 10000, revenue: 2100, cost: 1695, profit: 405, staff: 2 },
+  { users: 15000, revenue: 3150, cost: 2715, profit: 435, staff: 3 },
+  { users: 30000, revenue: 6300, cost: 4615, profit: 1685, staff: 4 },
 ];
 
 // 슬라이드 데이터
@@ -369,76 +371,118 @@ const slides = [
     subtitle: '손익분기점 분석',
     content: (
       <div className="space-y-5">
-        {/* 3개 카드 - 고정비용, 변동비용, BEP 결과 */}
-        <div className="grid md:grid-cols-3 gap-4">
-          {/* 고정 비용 */}
-          <div className="p-4 bg-card rounded-xl border border-border">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">🏢</span>
-              <h4 className="font-bold font-korean">고정 비용</h4>
+        {/* 4개 카드 - 고정비용(1인), 인원비례비용, 변동비용, BEP 결과 */}
+        <div className="grid md:grid-cols-4 gap-3">
+          {/* 고정 비용 (1인 기준) */}
+          <div className="p-3 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">🏢</span>
+              <h4 className="font-bold text-sm font-korean">고정 비용 (1인)</h4>
             </div>
-            <div className="text-3xl font-bold text-primary mb-3">₩50,000<span className="text-base font-normal text-muted-foreground">/월</span></div>
-            <div className="space-y-2 text-xs font-korean">
-              <div className="flex justify-between p-2 bg-muted/30 rounded">
-                <span>Supabase Pro</span>
-                <span>₩35,000</span>
+            <div className="text-2xl font-bold text-primary mb-2">₩215만<span className="text-xs font-normal text-muted-foreground">/월</span></div>
+            <div className="space-y-1 text-xs font-korean">
+              <div className="flex justify-between p-1.5 bg-muted/30 rounded">
+                <span>인프라</span>
+                <span>₩5만</span>
               </div>
-              <div className="flex justify-between p-2 bg-muted/30 rounded">
-                <span>도메인/SSL</span>
-                <span>₩5,000</span>
+              <div className="flex justify-between p-1.5 bg-muted/30 rounded">
+                <span>개발운영비</span>
+                <span>₩100만</span>
               </div>
-              <div className="flex justify-between p-2 bg-muted/30 rounded">
-                <span>모니터링</span>
-                <span>₩10,000</span>
+              <div className="flex justify-between p-1.5 bg-muted/30 rounded">
+                <span>기장/세무</span>
+                <span>₩10만</span>
+              </div>
+              <div className="flex justify-between p-1.5 bg-muted/30 rounded">
+                <span>사무실 임대</span>
+                <span>₩50만</span>
+              </div>
+              <div className="flex justify-between p-1.5 bg-muted/30 rounded">
+                <span>사무실 운영</span>
+                <span>₩50만</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 인원비례 비용 */}
+          <div className="p-3 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">👥</span>
+              <h4 className="font-bold text-sm font-korean">인원비례 비용</h4>
+            </div>
+            <div className="space-y-1 text-xs font-korean">
+              <div className="flex justify-between p-1.5 bg-sky/10 rounded">
+                <span>개발운영비</span>
+                <span className="font-semibold text-sky">+₩100만/인</span>
+              </div>
+              <div className="flex justify-between p-1.5 bg-sky/10 rounded">
+                <span>사무실 임대</span>
+                <span className="font-semibold text-sky">+₩50만/인</span>
+              </div>
+              <div className="flex justify-between p-1.5 bg-sky/10 rounded">
+                <span>사무실 운영</span>
+                <span className="font-semibold text-sky">+₩50만/인</span>
+              </div>
+              <div className="flex justify-between p-1.5 bg-coral/10 rounded">
+                <span>인건비 (창업자 외)</span>
+                <span className="font-semibold text-coral">+₩400만/인</span>
+              </div>
+              <div className="pt-1 mt-1 border-t text-muted-foreground text-center">
+                <div className="text-xs">2명: <strong>₩815만</strong></div>
+                <div className="text-xs">3명: <strong>₩1,415만</strong></div>
               </div>
             </div>
           </div>
 
           {/* 변동 비용 */}
-          <div className="p-4 bg-card rounded-xl border border-border">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">👤</span>
-              <h4 className="font-bold font-korean">사용자당 변동 비용</h4>
+          <div className="p-3 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">👤</span>
+              <h4 className="font-bold text-sm font-korean">사용자당 변동 비용</h4>
             </div>
-            <div className="text-xs text-muted-foreground mb-3 font-korean">사용률 20-30% 기준</div>
-            <div className="space-y-2 text-xs font-korean">
-              <div className="flex justify-between p-2 bg-muted/30 rounded">
+            <div className="text-xs text-muted-foreground mb-2 font-korean">사용률 20-30% 기준</div>
+            <div className="space-y-1 text-xs font-korean">
+              <div className="flex justify-between p-1.5 bg-muted/30 rounded">
                 <span>Free (70%)</span>
                 <span className="font-semibold">₩562</span>
               </div>
-              <div className="flex justify-between p-2 bg-sky/10 rounded">
+              <div className="flex justify-between p-1.5 bg-sky/10 rounded">
                 <span>Pro (20%)</span>
                 <span className="font-semibold text-sky">₩2,715</span>
               </div>
-              <div className="flex justify-between p-2 bg-coral/10 rounded">
+              <div className="flex justify-between p-1.5 bg-coral/10 rounded">
                 <span>Premium (10%)</span>
                 <span className="font-semibold text-coral">₩4,500</span>
               </div>
-              <div className="pt-2 border-t text-muted-foreground">
-                가중 평균 기여 마진: <strong className="text-primary">+₩644/명</strong>
+              <div className="pt-1 border-t text-muted-foreground">
+                가중 평균: <strong className="text-primary">~₩930/명</strong>
               </div>
             </div>
           </div>
 
           {/* BEP 결과 */}
-          <div className="p-4 bg-primary/5 rounded-xl border border-primary/30">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">🎯</span>
-              <h4 className="font-bold font-korean">BEP 결과</h4>
+          <div className="p-3 bg-primary/5 rounded-xl border border-primary/30">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xl">🎯</span>
+              <h4 className="font-bold text-sm font-korean">BEP 결과</h4>
             </div>
-            <div className="text-center py-3">
-              <div className="text-4xl font-bold text-primary">78명</div>
-              <div className="text-sm text-muted-foreground font-korean">총 사용자 손익분기점</div>
-              <div className="text-lg font-semibold text-coral mt-1">(유료 23명)</div>
+            <div className="text-center py-2">
+              <div className="text-3xl font-bold text-primary">2,300명</div>
+              <div className="text-xs text-muted-foreground font-korean">1인 손익분기점</div>
+              <div className="text-sm font-semibold text-coral mt-1">(유료 690명)</div>
             </div>
-            <div className="space-y-2 text-xs font-korean pt-2 border-t">
+            <div className="space-y-1.5 text-xs font-korean pt-2 border-t">
               <div className="flex justify-between">
-                <span>1,000명</span>
-                <span className="font-bold text-primary">월 ₩117만 이익</span>
+                <span>2인 팀</span>
+                <span className="font-bold text-sky">8,700명</span>
+              </div>
+              <div className="flex justify-between">
+                <span>3,000명</span>
+                <span className="font-bold text-primary">월 ₩155만</span>
               </div>
               <div className="flex justify-between">
                 <span>10,000명</span>
-                <span className="font-bold text-primary">월 ₩1,220만 이익</span>
+                <span className="font-bold text-primary">월 ₩405만</span>
               </div>
             </div>
           </div>
@@ -491,7 +535,8 @@ const slides = [
                     ]}
                     labelFormatter={(label) => `${label.toLocaleString()}명`}
                   />
-                  <ReferenceLine x={78} stroke="hsl(var(--coral))" strokeDasharray="5 5" label={{ value: 'BEP', fontSize: 10, fill: 'hsl(var(--coral))' }} />
+                  <ReferenceLine x={2300} stroke="hsl(var(--coral))" strokeDasharray="5 5" label={{ value: 'BEP(1인)', fontSize: 9, fill: 'hsl(var(--coral))' }} />
+                  <ReferenceLine x={8700} stroke="hsl(var(--sky))" strokeDasharray="5 5" label={{ value: 'BEP(2인)', fontSize: 9, fill: 'hsl(var(--sky))' }} />
                   <Area type="monotone" dataKey="revenue" stroke="hsl(var(--sky))" fill="url(#colorRevenue)" strokeWidth={2} name="revenue" />
                   <Area type="monotone" dataKey="cost" stroke="hsl(var(--coral))" fill="url(#colorCost)" strokeWidth={2} name="cost" />
                   <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" fill="url(#colorProfit)" strokeWidth={2} name="profit" />
@@ -513,36 +558,62 @@ const slides = [
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="p-2 text-left font-korean">사용자</th>
-                    <th className="p-2 text-center font-korean">매출</th>
-                    <th className="p-2 text-center font-korean">비용</th>
-                    <th className="p-2 text-center font-korean">순이익</th>
+                    <th className="p-1.5 text-left font-korean">사용자</th>
+                    <th className="p-1.5 text-center font-korean">인원</th>
+                    <th className="p-1.5 text-center font-korean">매출</th>
+                    <th className="p-1.5 text-center font-korean">비용</th>
+                    <th className="p-1.5 text-center font-korean">순이익</th>
+                    <th className="p-1.5 text-center font-korean">마진</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-b border-border/50">
-                    <td className="p-2 font-korean">78명 <span className="text-coral">(BEP)</span></td>
-                    <td className="p-2 text-center">₩5만</td>
-                    <td className="p-2 text-center">₩5만</td>
-                    <td className="p-2 text-center text-muted-foreground">₩0</td>
+                    <td className="p-1.5 font-korean">1,000명</td>
+                    <td className="p-1.5 text-center">1명</td>
+                    <td className="p-1.5 text-center">₩210만</td>
+                    <td className="p-1.5 text-center">₩308만</td>
+                    <td className="p-1.5 text-center text-coral font-semibold">-₩98만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">-</td>
+                  </tr>
+                  <tr className="border-b border-border/50 bg-coral/5">
+                    <td className="p-1.5 font-korean">2,300명 <span className="text-coral">(BEP)</span></td>
+                    <td className="p-1.5 text-center">1명</td>
+                    <td className="p-1.5 text-center">₩483만</td>
+                    <td className="p-1.5 text-center">₩415만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">₩68만</td>
+                    <td className="p-1.5 text-center">14%</td>
                   </tr>
                   <tr className="border-b border-border/50">
-                    <td className="p-2 font-korean">1,000명</td>
-                    <td className="p-2 text-center">₩210만</td>
-                    <td className="p-2 text-center">₩93만</td>
-                    <td className="p-2 text-center text-primary font-semibold">₩117만</td>
+                    <td className="p-1.5 font-korean">3,000명</td>
+                    <td className="p-1.5 text-center">1명</td>
+                    <td className="p-1.5 text-center">₩630만</td>
+                    <td className="p-1.5 text-center">₩475만</td>
+                    <td className="p-1.5 text-center text-primary font-semibold">₩155만</td>
+                    <td className="p-1.5 text-center">25%</td>
                   </tr>
                   <tr className="border-b border-border/50">
-                    <td className="p-2 font-korean">5,000명</td>
-                    <td className="p-2 text-center">₩1,050만</td>
-                    <td className="p-2 text-center">₩430만</td>
-                    <td className="p-2 text-center text-primary font-semibold">₩620만</td>
+                    <td className="p-1.5 font-korean">5,000명</td>
+                    <td className="p-1.5 text-center">2명</td>
+                    <td className="p-1.5 text-center">₩1,050만</td>
+                    <td className="p-1.5 text-center">₩1,245만</td>
+                    <td className="p-1.5 text-center text-coral font-semibold">-₩195만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">-</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="p-1.5 font-korean">10,000명</td>
+                    <td className="p-1.5 text-center">2명</td>
+                    <td className="p-1.5 text-center">₩2,100만</td>
+                    <td className="p-1.5 text-center">₩1,695만</td>
+                    <td className="p-1.5 text-center text-primary font-semibold">₩405만</td>
+                    <td className="p-1.5 text-center">19%</td>
                   </tr>
                   <tr className="bg-primary/10 font-bold">
-                    <td className="p-2 font-korean">10,000명</td>
-                    <td className="p-2 text-center">₩2,100만</td>
-                    <td className="p-2 text-center">₩880만</td>
-                    <td className="p-2 text-center text-primary">₩1,220만</td>
+                    <td className="p-1.5 font-korean">30,000명</td>
+                    <td className="p-1.5 text-center">4명</td>
+                    <td className="p-1.5 text-center">₩6,300만</td>
+                    <td className="p-1.5 text-center">₩4,615만</td>
+                    <td className="p-1.5 text-center text-primary">₩1,685만</td>
+                    <td className="p-1.5 text-center">27%</td>
                   </tr>
                 </tbody>
               </table>
@@ -551,10 +622,11 @@ const slides = [
         </div>
 
         {/* 핵심 가정 */}
-        <div className="flex flex-wrap gap-3 justify-center text-xs text-muted-foreground font-korean">
-          <span className="px-3 py-1 bg-muted/50 rounded-full">📌 캐시 히트율 70%</span>
-          <span className="px-3 py-1 bg-muted/50 rounded-full">📌 사용률 20-30%</span>
-          <span className="px-3 py-1 bg-muted/50 rounded-full">📌 Free 70% / Pro 20% / Premium 10%</span>
+        <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground font-korean">
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 개발운영비 ₩100만/인</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 사무비 ₩50만/인</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 인건비 ₩400만/인 (창업자 제외)</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 캐시 히트율 70%</span>
         </div>
       </div>
     ),
