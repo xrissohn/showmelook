@@ -209,7 +209,7 @@ serve(async (req) => {
 
     // age_group을 분석하여 나이 범위 결정
     const parseAgeGroup = (ageGroup: string): { minAge: number; maxAge: number; category: string } => {
-      if (!ageGroup) return { minAge: 20, maxAge: 40, category: 'adult' };
+      if (!ageGroup) return { minAge: 30, maxAge: 40, category: 'adult_30s' };
       
       const ag = ageGroup.toLowerCase();
       
@@ -225,16 +225,64 @@ serve(async (req) => {
       if (ag.includes('child') || ag.includes('아동') || ag.includes('kids') || ag.includes('초등') || ag.includes('7-12') || ag.match(/[789]세|10세|11세|12세/)) {
         return { minAge: 7, maxAge: 12, category: 'child' };
       }
-      if (ag.includes('teen') || ag.includes('청소년') || ag.includes('13-18') || ag.match(/1[345678]세/)) {
-        return { minAge: 13, maxAge: 18, category: 'teen' };
+      if (ag.includes('teen') || ag.includes('청소년') || ag.includes('10대') || ag.includes('13-18') || ag.match(/1[345678]세/)) {
+        return { minAge: 13, maxAge: 19, category: 'teen' };
       }
-      return { minAge: 20, maxAge: 40, category: 'adult' };
+      if (ag.includes('20s') || ag.includes('20대')) {
+        return { minAge: 20, maxAge: 29, category: 'adult_20s' };
+      }
+      if (ag.includes('30s') || ag.includes('30대')) {
+        return { minAge: 30, maxAge: 39, category: 'adult_30s' };
+      }
+      if (ag.includes('40s') || ag.includes('40대')) {
+        return { minAge: 40, maxAge: 49, category: 'adult_40s' };
+      }
+      if (ag.includes('50s') || ag.includes('50대')) {
+        return { minAge: 50, maxAge: 59, category: 'adult_50s' };
+      }
+      if (ag.includes('60') || ag.includes('60대') || ag.includes('60plus') || ag.includes('60+') || ag.includes('60세 이상')) {
+        return { minAge: 60, maxAge: 70, category: 'adult_60s' };
+      }
+      return { minAge: 30, maxAge: 40, category: 'adult_30s' };
     };
 
     const ageInfo = parseAgeGroup(ageGroup);
     console.log('[generate-style] Parsed age info:', ageInfo);
+    
+    // 체형 설명 생성 (키와 몸무게 기반)
+    const weight = userProfile?.weight || null;
+    const getBodyDescription = (height: number, weight: number | null, bodyType: string): string => {
+      if (!weight) {
+        // weight 없으면 bodyType만 사용
+        switch (bodyType) {
+          case 'slim': return 'slim build';
+          case 'muscular': return 'muscular build';
+          case 'curvy': return 'curvy/full-figured build';
+          default: return 'average build';
+        }
+      }
+      
+      // BMI 계산
+      const heightM = height / 100;
+      const bmi = weight / (heightM * heightM);
+      
+      if (bmi < 18.5) {
+        return 'slim/thin build, slender body';
+      } else if (bmi >= 18.5 && bmi < 23) {
+        return 'average/healthy build';
+      } else if (bmi >= 23 && bmi < 25) {
+        return 'slightly full build, average to slightly curvy';
+      } else if (bmi >= 25 && bmi < 30) {
+        return 'full-figured/curvy build, with a fuller midsection';
+      } else {
+        return 'plus-size/full-figured build, with a rounder physique';
+      }
+    };
+    
+    const bodyDescription = getBodyDescription(height, weight, bodyType);
+    console.log('[generate-style] Body description:', bodyDescription, '(height:', height, 'weight:', weight, ')');
 
-    const getModelDescription = (ageInfo: { minAge: number; maxAge: number; category: string }, gender: string): string => {
+    const getModelDescription = (ageInfo: { minAge: number; maxAge: number; category: string }, gender: string, bodyDesc: string): string => {
       const genderKo = gender === '여성' ? '여자' : '남자';
       
       switch (ageInfo.category) {
@@ -248,18 +296,29 @@ serve(async (req) => {
           return `stylish Korean ${gender === '여성' ? 'girl' : 'boy'} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, elementary school age). The child should look like an actual ${ageInfo.minAge}-${ageInfo.maxAge} year old kid`;
         case 'teen':
           return `trendy Korean teenage ${gender === '여성' ? 'girl' : 'boy'} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The teenager should have youthful appearance appropriate for their age`;
+        case 'adult_20s':
+          return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 20s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
+        case 'adult_30s':
+          return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 30s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
+        case 'adult_40s':
+          return `elegant Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 40s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}, with mature and sophisticated appearance`;
+        case 'adult_50s':
+          return `elegant Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 50s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}, with distinguished mature appearance, showing natural signs of age`;
+        case 'adult_60s':
+          return `graceful senior Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 60s or older (ages ${ageInfo.minAge}+), ${bodyDesc}, with natural gray/white hair or age-appropriate hairstyle, gentle wrinkles and lines on face, mature and dignified appearance reflecting their age`;
         default:
-          return gender === '여성' ? 'stylish Korean woman in her 20s-30s' : 'stylish Korean man in his 20s-30s';
+          return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 30s, ${bodyDesc}`;
       }
     };
 
-    const modelDescription = getModelDescription(ageInfo, gender);
+    const modelDescription = getModelDescription(ageInfo, gender, bodyDescription);
     const isChildProfile = ageInfo.category === 'infant' || 
                           ageInfo.category === 'toddler' ||
                           ageInfo.category === 'preschool' ||
                           ageInfo.category === 'child';
+    const isAdultProfile = ageInfo.category.startsWith('adult_');
 
-    const getBodyProportionHint = (category: string): string => {
+    const getBodyProportionHint = (category: string, bodyDesc: string): string => {
       switch (category) {
         case 'infant':
           return 'CRITICAL: The baby must have infant body proportions - very short limbs, large head relative to body, no neck visible, chubby baby legs and arms.';
@@ -271,14 +330,42 @@ serve(async (req) => {
           return 'CRITICAL: The child must look like an elementary school student with appropriate body proportions for their age.';
         case 'teen':
           return 'The teenager should have youthful proportions appropriate for adolescence.';
+        case 'adult_50s':
+        case 'adult_60s':
+          return `IMPORTANT: The model must look like a mature adult in their ${category === 'adult_50s' ? '50s' : '60s or older'}. Show natural signs of aging - some wrinkles, age-appropriate skin texture, possibly gray/white hair. Body type: ${bodyDesc}.`;
         default:
-          return '';
+          return bodyDesc ? `Body build: ${bodyDesc}.` : '';
       }
     };
 
-    const bodyProportionHint = getBodyProportionHint(ageInfo.category);
+    const bodyProportionHint = getBodyProportionHint(ageInfo.category, bodyDescription);
     
-    let prompt = `${ageInfo.category !== 'adult' ? `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. DO NOT generate an adult or teenager if the age is under 13.\n\n` : ''}Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
+    // 성인 연령대 프롬프트 강화
+    const getAgeEmphasis = (category: string, gender: string): string => {
+      if (category === 'adult_60s') {
+        return `\n\nCRITICAL AGE REQUIREMENT: This model MUST appear to be 60+ years old. DO NOT generate a young-looking person. The face MUST show:
+- Natural wrinkles and fine lines around eyes, forehead, and mouth
+- Age-appropriate skin texture (not smooth youthful skin)
+- Gray/silver/white hair or age-appropriate natural hair color
+- Mature facial features typical of someone in their 60s
+- Distinguished, graceful appearance reflecting life experience\n`;
+      }
+      if (category === 'adult_50s') {
+        return `\n\nIMPORTANT AGE REQUIREMENT: This model should appear to be in their 50s. Show natural signs of aging:
+- Some visible lines and wrinkles
+- Mature skin texture
+- Age-appropriate hairstyle
+- Distinguished, elegant appearance\n`;
+      }
+      if (category === 'adult_40s') {
+        return `\n\nNote: This model should appear to be in their 40s with a mature, sophisticated look.\n`;
+      }
+      return '';
+    };
+    
+    const ageEmphasis = getAgeEmphasis(ageInfo.category, gender);
+    
+    let prompt = `${!isAdultProfile && ageInfo.category !== 'teen' ? `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. DO NOT generate an adult or teenager if the age is under 13.\n\n` : ''}${ageEmphasis}Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}${!isChildProfile && weight ? `, approximately ${weight}kg` : ''}.
 
 ${bodyProportionHint}
 
@@ -309,9 +396,35 @@ COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT 
 
 IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
+        // 성인 얼굴 합성 - 연령대와 체형 반영
+        const getAdultFaceCompositeAgeHint = (category: string, gender: string): string => {
+          if (category === 'adult_60s') {
+            return `
+CRITICAL AGE MATCHING: The person in the reference photo is in their 60s or older. The generated model MUST:
+- Show the same age as the reference photo (60+ years old)
+- Have natural wrinkles, age lines, and mature facial features matching the reference
+- Have gray/silver/white hair or age-appropriate hair as in the reference
+- Show a mature body build appropriate for their age`;
+          }
+          if (category === 'adult_50s') {
+            return `
+IMPORTANT: The person in the reference photo is in their 50s. The model should show mature features matching the reference - some wrinkles, age-appropriate appearance.`;
+          }
+          if (category === 'adult_40s') {
+            return `
+Note: The person is in their 40s. Show mature, sophisticated features matching the reference photo.`;
+          }
+          return '';
+        };
+        
+        const faceCompositeAgeHint = getAdultFaceCompositeAgeHint(ageInfo.category, gender);
+        
         prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.
+${faceCompositeAgeHint}
 
-Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}.
+Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}${weight ? `, ${weight}kg` : ''}.
+
+${bodyProportionHint}
 
 Style concept: ${style}
 
@@ -320,7 +433,7 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
-IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, and appearance. Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
+IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, age appearance, and overall look. The body should reflect the specified build (${bodyDescription}). Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
 CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       }
