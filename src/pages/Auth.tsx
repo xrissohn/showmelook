@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +10,8 @@ import { Eye, EyeOff, ArrowLeft, Mail, KeyRound, User, Loader2, Gift } from 'luc
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
+import { detectInAppBrowser } from '@/lib/inAppBrowserDetector';
+import { InAppBrowserWarning } from '@/components/auth/InAppBrowserWarning';
 
 // Google icon component
 const GoogleIcon = () => (
@@ -58,10 +60,14 @@ const Auth = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+  const [showInAppWarning, setShowInAppWarning] = useState(false);
   
   const { signIn, signUp, user, sendVerificationEmail, verifyEmailCode, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // 인앱 브라우저 감지 (한 번만 실행)
+  const browserInfo = useMemo(() => detectInAppBrowser(), []);
 
   // URL 파라미터에서 ref 코드 감지 및 localStorage 저장
   useEffect(() => {
@@ -290,6 +296,16 @@ const Auth = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    // 인앱 브라우저 감지 시 경고 표시
+    if (browserInfo.isInAppBrowser) {
+      setShowInAppWarning(true);
+      return;
+    }
+    
+    proceedWithGoogleSignIn();
+  };
+  
+  const proceedWithGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -324,6 +340,15 @@ const Auth = () => {
   };
 
   return (
+    <>
+    {/* 인앱 브라우저 경고 다이얼로그 */}
+    <InAppBrowserWarning
+      open={showInAppWarning}
+      onOpenChange={setShowInAppWarning}
+      browserInfo={browserInfo}
+      onContinueAnyway={proceedWithGoogleSignIn}
+    />
+    
     <div className="min-h-screen bg-gradient-hero flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-dark items-center justify-center p-12 relative overflow-hidden">
@@ -578,6 +603,7 @@ const Auth = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 
