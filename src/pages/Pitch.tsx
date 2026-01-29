@@ -15,6 +15,19 @@ import {
   Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+
+// BEP 차트 데이터
+const bepChartData = [
+  { users: 0, revenue: 0, cost: 5, profit: -5 },
+  { users: 78, revenue: 5, cost: 5, profit: 0 },
+  { users: 500, revenue: 105, cost: 49, profit: 56 },
+  { users: 1000, revenue: 210, cost: 93, profit: 117 },
+  { users: 2500, revenue: 525, cost: 220, profit: 305 },
+  { users: 5000, revenue: 1050, cost: 430, profit: 620 },
+  { users: 7500, revenue: 1575, cost: 655, profit: 920 },
+  { users: 10000, revenue: 2100, cost: 880, profit: 1220 },
+];
 
 // 슬라이드 데이터
 const slides = [
@@ -431,44 +444,103 @@ const slides = [
           </div>
         </div>
 
-        {/* 규모별 순이익 테이블 */}
-        <div className="p-4 bg-card rounded-lg border border-border">
-          <h4 className="font-bold mb-3 font-korean">📊 규모별 월 손익 전망</h4>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="p-2 text-left font-korean">사용자 수</th>
-                  <th className="p-2 text-center font-korean">월 매출</th>
-                  <th className="p-2 text-center font-korean">월 비용</th>
-                  <th className="p-2 text-center font-korean">월 순이익</th>
-                  <th className="p-2 text-center font-korean">마진율</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border/50">
-                  <td className="p-2 font-korean">78명 (BEP)</td>
-                  <td className="p-2 text-center">₩50,000</td>
-                  <td className="p-2 text-center">₩50,000</td>
-                  <td className="p-2 text-center text-muted-foreground">₩0</td>
-                  <td className="p-2 text-center text-muted-foreground">0%</td>
-                </tr>
-                <tr className="border-b border-border/50">
-                  <td className="p-2 font-korean">1,000명</td>
-                  <td className="p-2 text-center">₩210만</td>
-                  <td className="p-2 text-center">₩93만</td>
-                  <td className="p-2 text-center text-primary font-semibold">₩117만</td>
-                  <td className="p-2 text-center text-primary font-semibold">56%</td>
-                </tr>
-                <tr className="bg-primary/10 font-bold">
-                  <td className="p-2 font-korean">10,000명</td>
-                  <td className="p-2 text-center">₩2,100만</td>
-                  <td className="p-2 text-center">₩880만</td>
-                  <td className="p-2 text-center text-primary">₩1,220만</td>
-                  <td className="p-2 text-center text-primary">58%</td>
-                </tr>
-              </tbody>
-            </table>
+        {/* 규모별 손익 차트 */}
+        <div className="grid md:grid-cols-2 gap-4">
+          {/* 차트 */}
+          <div className="p-4 bg-card rounded-lg border border-border">
+            <h4 className="font-bold mb-3 font-korean">📈 규모별 손익 추이</h4>
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={bepChartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorProfit" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--sky))" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(var(--sky))" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis 
+                    dataKey="users" 
+                    tick={{ fontSize: 10 }} 
+                    tickFormatter={(v) => v >= 1000 ? `${v/1000}K` : v}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 10 }} 
+                    tickFormatter={(v) => `${v}만`}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                    formatter={(value: number, name: string) => [
+                      `₩${value}만`, 
+                      name === 'revenue' ? '매출' : name === 'cost' ? '비용' : '순이익'
+                    ]}
+                    labelFormatter={(label) => `${label.toLocaleString()}명`}
+                  />
+                  <ReferenceLine x={78} stroke="hsl(var(--coral))" strokeDasharray="5 5" label={{ value: 'BEP', fontSize: 10, fill: 'hsl(var(--coral))' }} />
+                  <Area type="monotone" dataKey="revenue" stroke="hsl(var(--sky))" fill="url(#colorRevenue)" strokeWidth={2} name="revenue" />
+                  <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" fill="url(#colorProfit)" strokeWidth={2} name="profit" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex justify-center gap-4 mt-2 text-xs font-korean">
+              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-sky rounded" /> 매출</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-primary rounded" /> 순이익</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-coral" style={{borderTop: '2px dashed'}} /> BEP</span>
+            </div>
+          </div>
+
+          {/* 테이블 */}
+          <div className="p-4 bg-card rounded-lg border border-border">
+            <h4 className="font-bold mb-3 font-korean">📊 규모별 월 손익</h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="p-2 text-left font-korean">사용자</th>
+                    <th className="p-2 text-center font-korean">매출</th>
+                    <th className="p-2 text-center font-korean">비용</th>
+                    <th className="p-2 text-center font-korean">순이익</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border/50">
+                    <td className="p-2 font-korean">78명 <span className="text-coral">(BEP)</span></td>
+                    <td className="p-2 text-center">₩5만</td>
+                    <td className="p-2 text-center">₩5만</td>
+                    <td className="p-2 text-center text-muted-foreground">₩0</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="p-2 font-korean">1,000명</td>
+                    <td className="p-2 text-center">₩210만</td>
+                    <td className="p-2 text-center">₩93만</td>
+                    <td className="p-2 text-center text-primary font-semibold">₩117만</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="p-2 font-korean">5,000명</td>
+                    <td className="p-2 text-center">₩1,050만</td>
+                    <td className="p-2 text-center">₩430만</td>
+                    <td className="p-2 text-center text-primary font-semibold">₩620만</td>
+                  </tr>
+                  <tr className="bg-primary/10 font-bold">
+                    <td className="p-2 font-korean">10,000명</td>
+                    <td className="p-2 text-center">₩2,100만</td>
+                    <td className="p-2 text-center">₩880만</td>
+                    <td className="p-2 text-center text-primary">₩1,220만</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
