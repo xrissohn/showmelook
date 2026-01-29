@@ -461,6 +461,10 @@ const slides = [
                       <stop offset="5%" stopColor="hsl(var(--sky))" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="hsl(var(--sky))" stopOpacity={0}/>
                     </linearGradient>
+                    <linearGradient id="colorCost" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="hsl(var(--coral))" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="hsl(var(--coral))" stopOpacity={0}/>
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
@@ -489,14 +493,16 @@ const slides = [
                   />
                   <ReferenceLine x={78} stroke="hsl(var(--coral))" strokeDasharray="5 5" label={{ value: 'BEP', fontSize: 10, fill: 'hsl(var(--coral))' }} />
                   <Area type="monotone" dataKey="revenue" stroke="hsl(var(--sky))" fill="url(#colorRevenue)" strokeWidth={2} name="revenue" />
+                  <Area type="monotone" dataKey="cost" stroke="hsl(var(--coral))" fill="url(#colorCost)" strokeWidth={2} name="cost" />
                   <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" fill="url(#colorProfit)" strokeWidth={2} name="profit" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-4 mt-2 text-xs font-korean">
               <span className="flex items-center gap-1"><span className="w-3 h-1 bg-sky rounded" /> 매출</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-1 bg-coral rounded" /> 비용</span>
               <span className="flex items-center gap-1"><span className="w-3 h-1 bg-primary rounded" /> 순이익</span>
-              <span className="flex items-center gap-1"><span className="w-3 h-0.5 bg-coral" style={{borderTop: '2px dashed'}} /> BEP</span>
+              <span className="flex items-center gap-1"><span className="w-3 h-0.5 border-t-2 border-dashed border-coral" /> BEP</span>
             </div>
           </div>
 
