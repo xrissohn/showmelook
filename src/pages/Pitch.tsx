@@ -15,7 +15,7 @@ import {
   Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 
 // BEP 차트 데이터 (현실적 비용 구조 반영: 인프라+개발운영비+세무+임대+사무운영+인건비)
 // 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만, 4명 2,015만
@@ -29,6 +29,22 @@ const bepChartData = [
   { users: 10000, revenue: 2100, cost: 1695, profit: 405, staff: 2 },
   { users: 15000, revenue: 3150, cost: 2715, profit: 435, staff: 3 },
   { users: 30000, revenue: 6300, cost: 4615, profit: 1685, staff: 4 },
+];
+
+// 12개월 현금흐름 데이터 (5,000명 돌파 시 1명 채용)
+const cashflowChartData = [
+  { month: 'M1', users: 100, staff: 1, revenue: 21, fixedCost: 215, variableCost: 9, totalCost: 224, profit: -203, cumulative: -203 },
+  { month: 'M2', users: 250, staff: 1, revenue: 53, fixedCost: 215, variableCost: 23, totalCost: 238, profit: -185, cumulative: -388 },
+  { month: 'M3', users: 500, staff: 1, revenue: 105, fixedCost: 215, variableCost: 47, totalCost: 262, profit: -157, cumulative: -545 },
+  { month: 'M4', users: 900, staff: 1, revenue: 189, fixedCost: 215, variableCost: 84, totalCost: 299, profit: -110, cumulative: -655 },
+  { month: 'M5', users: 1500, staff: 1, revenue: 315, fixedCost: 215, variableCost: 140, totalCost: 355, profit: -40, cumulative: -695 },
+  { month: 'M6', users: 2300, staff: 1, revenue: 483, fixedCost: 215, variableCost: 214, totalCost: 429, profit: 54, cumulative: -641 },
+  { month: 'M7', users: 3300, staff: 1, revenue: 693, fixedCost: 215, variableCost: 307, totalCost: 522, profit: 171, cumulative: -470 },
+  { month: 'M8', users: 4500, staff: 1, revenue: 945, fixedCost: 215, variableCost: 419, totalCost: 634, profit: 311, cumulative: -159 },
+  { month: 'M9', users: 5800, staff: 2, revenue: 1218, fixedCost: 815, variableCost: 539, totalCost: 1354, profit: -136, cumulative: -295 },
+  { month: 'M10', users: 7200, staff: 2, revenue: 1512, fixedCost: 815, variableCost: 670, totalCost: 1485, profit: 27, cumulative: -268 },
+  { month: 'M11', users: 8500, staff: 2, revenue: 1785, fixedCost: 815, variableCost: 791, totalCost: 1606, profit: 179, cumulative: -89 },
+  { month: 'M12', users: 10000, staff: 2, revenue: 2100, fixedCost: 815, variableCost: 930, totalCost: 1745, profit: 355, cumulative: 266 },
 ];
 
 // 슬라이드 데이터
@@ -634,6 +650,178 @@ const slides = [
   },
   {
     id: 8,
+    title: '12개월 현금흐름',
+    subtitle: '초기 자본금 & 손익분기 분석',
+    content: (
+      <div className="space-y-4">
+        {/* 4개 카드 */}
+        <div className="grid md:grid-cols-4 gap-3">
+          {/* 1인 고정비 */}
+          <div className="p-3 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">👤</span>
+              <h4 className="font-bold text-sm font-korean">1인 고정비</h4>
+            </div>
+            <div className="text-xl font-bold text-primary">₩215만<span className="text-xs font-normal text-muted-foreground">/월</span></div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">M1~M8 (5,000명 미만)</div>
+          </div>
+          {/* 2인 고정비 */}
+          <div className="p-3 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">👥</span>
+              <h4 className="font-bold text-sm font-korean">2인 고정비</h4>
+            </div>
+            <div className="text-xl font-bold text-coral">₩815만<span className="text-xs font-normal text-muted-foreground">/월</span></div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">M9~M12 (5,000명 초과)</div>
+          </div>
+          {/* 변동 비용 */}
+          <div className="p-3 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">📊</span>
+              <h4 className="font-bold text-sm font-korean">사용자당 비용</h4>
+            </div>
+            <div className="text-xl font-bold text-sky">~₩930<span className="text-xs font-normal text-muted-foreground">/명</span></div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">가중 평균 변동비</div>
+          </div>
+          {/* 초기 자본금 */}
+          <div className="p-3 bg-primary/10 rounded-xl border border-primary/30">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-lg">💰</span>
+              <h4 className="font-bold text-sm font-korean">권장 자본금</h4>
+            </div>
+            <div className="text-xl font-bold text-primary">₩1,000~1,200만</div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">최대손실(₩695만)+여유</div>
+          </div>
+        </div>
+
+        {/* ComposedChart */}
+        <div className="p-4 bg-card rounded-lg border border-border">
+          <h4 className="font-bold mb-3 font-korean">📈 월별 순이익 & 누적 손익 (5,000명 채용)</h4>
+          <div className="h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={cashflowChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 11 }} 
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <YAxis 
+                  tick={{ fontSize: 10 }} 
+                  tickFormatter={(v) => `${v}만`}
+                  stroke="hsl(var(--muted-foreground))"
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px'
+                  }}
+                  formatter={(value: number, name: string) => {
+                    const labels: Record<string, string> = {
+                      profit: '월 순이익',
+                      cumulative: '누적 손익'
+                    };
+                    return [`₩${value}만`, labels[name] || name];
+                  }}
+                  labelFormatter={(label) => {
+                    const data = cashflowChartData.find(d => d.month === label);
+                    return data ? `${label} (${data.users.toLocaleString()}명, ${data.staff}인)` : label;
+                  }}
+                />
+                <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+                <ReferenceLine 
+                  x="M9" 
+                  stroke="hsl(var(--coral))" 
+                  strokeDasharray="5 5" 
+                  label={{ value: '채용', fontSize: 10, fill: 'hsl(var(--coral))' }} 
+                />
+                <Bar 
+                  dataKey="profit" 
+                  name="profit"
+                  fill="hsl(var(--primary))"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="cumulative" 
+                  name="cumulative"
+                  stroke="hsl(var(--coral))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--coral))', strokeWidth: 0, r: 3 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex justify-center gap-4 mt-2 text-xs font-korean">
+            <span className="flex items-center gap-1"><span className="w-3 h-3 bg-primary rounded" /> 월 순이익</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-1 bg-coral rounded" /> 누적 손익</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-0.5 border-t-2 border-dashed border-coral" /> 채용 시점</span>
+          </div>
+        </div>
+
+        {/* 월별 손익 테이블 */}
+        <div className="p-4 bg-card rounded-lg border border-border">
+          <h4 className="font-bold mb-3 font-korean">📊 월별 손익 상세</h4>
+          <div className="overflow-x-auto max-h-40">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-card">
+                <tr className="border-b border-border">
+                  <th className="p-1.5 text-left font-korean">월</th>
+                  <th className="p-1.5 text-center font-korean">사용자</th>
+                  <th className="p-1.5 text-center font-korean">인원</th>
+                  <th className="p-1.5 text-center font-korean">매출</th>
+                  <th className="p-1.5 text-center font-korean">비용</th>
+                  <th className="p-1.5 text-center font-korean">순이익</th>
+                  <th className="p-1.5 text-center font-korean">누적</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashflowChartData.map((row) => (
+                  <tr 
+                    key={row.month} 
+                    className={cn(
+                      'border-b border-border/50',
+                      row.month === 'M6' && 'bg-primary/5',
+                      row.month === 'M9' && 'bg-coral/10',
+                      row.month === 'M12' && 'bg-primary/10 font-bold'
+                    )}
+                  >
+                    <td className="p-1.5 font-korean">
+                      {row.month}
+                      {row.month === 'M6' && <span className="text-primary ml-1">(BEP)</span>}
+                      {row.month === 'M9' && <span className="text-coral ml-1">(채용)</span>}
+                    </td>
+                    <td className="p-1.5 text-center">{row.users.toLocaleString()}</td>
+                    <td className="p-1.5 text-center">{row.staff}명</td>
+                    <td className="p-1.5 text-center">₩{row.revenue}만</td>
+                    <td className="p-1.5 text-center">₩{row.totalCost}만</td>
+                    <td className={cn('p-1.5 text-center font-semibold', row.profit >= 0 ? 'text-primary' : 'text-coral')}>
+                      {row.profit >= 0 ? '+' : ''}₩{row.profit}만
+                    </td>
+                    <td className={cn('p-1.5 text-center', row.cumulative >= 0 ? 'text-primary' : 'text-coral')}>
+                      {row.cumulative >= 0 ? '+' : ''}₩{row.cumulative}만
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 핵심 가정 */}
+        <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground font-korean">
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 ARPU ₩2,100/명</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 5,000명 초과 시 1명 채용</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 12개월 누적 +₩266만</span>
+        </div>
+      </div>
+    ),
+    background: 'bg-background'
+  },
+  {
+    id: 9,
     title: '시장 분석',
     subtitle: 'TAM / SAM / SOM',
     content: (
@@ -667,7 +855,7 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 9,
+    id: 10,
     title: '경쟁 우위',
     subtitle: '핵심 차별화 요소',
     content: (
@@ -713,7 +901,7 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 10,
+    id: 11,
     title: '로드맵',
     subtitle: '현재 80% 완료',
     content: (
@@ -749,7 +937,7 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 11,
+    id: 12,
     title: '투자 요청',
     subtitle: 'Seed Round',
     content: (
