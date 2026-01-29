@@ -11,7 +11,6 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { detectInAppBrowser } from '@/lib/inAppBrowserDetector';
-import { InAppBrowserWarning } from '@/components/auth/InAppBrowserWarning';
 
 // Google icon component
 const GoogleIcon = () => (
@@ -60,7 +59,7 @@ const Auth = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
-  const [showInAppWarning, setShowInAppWarning] = useState(false);
+  
   
   const { signIn, signUp, user, sendVerificationEmail, verifyEmailCode, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -296,16 +295,6 @@ const Auth = () => {
   };
 
   const handleGoogleSignIn = async () => {
-    // 인앱 브라우저 감지 시 경고 표시
-    if (browserInfo.isInAppBrowser) {
-      setShowInAppWarning(true);
-      return;
-    }
-    
-    proceedWithGoogleSignIn();
-  };
-  
-  const proceedWithGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -340,15 +329,6 @@ const Auth = () => {
   };
 
   return (
-    <>
-    {/* 인앱 브라우저 경고 다이얼로그 */}
-    <InAppBrowserWarning
-      open={showInAppWarning}
-      onOpenChange={setShowInAppWarning}
-      browserInfo={browserInfo}
-      onContinueAnyway={proceedWithGoogleSignIn}
-    />
-    
     <div className="min-h-screen bg-gradient-hero flex">
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-dark items-center justify-center p-12 relative overflow-hidden">
@@ -418,26 +398,31 @@ const Auth = () => {
                 {isLoading ? '로그인 중...' : '로그인'}
               </Button>
 
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
-                </div>
-              </div>
+              {/* 인앱 브라우저가 아닐 때만 Google 로그인 표시 */}
+              {!browserInfo.isInAppBrowser && (
+                <>
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
+                    </div>
+                  </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="xl"
-                className="w-full font-korean gap-3"
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading}
-              >
-                {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                Google로 계속하기
-              </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xl"
+                    className="w-full font-korean gap-3"
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading}
+                  >
+                    {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
+                    Google로 계속하기
+                  </Button>
+                </>
+              )}
             </form>
           )}
 
@@ -452,26 +437,31 @@ const Auth = () => {
                 {isLoading ? '발송 중...' : '인증코드 받기'}
               </Button>
 
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
-                </div>
-              </div>
+              {/* 인앱 브라우저가 아닐 때만 Google 로그인 표시 */}
+              {!browserInfo.isInAppBrowser && (
+                <>
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
+                    </div>
+                  </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="xl"
-                className="w-full font-korean gap-3"
-                onClick={handleGoogleSignIn}
-                disabled={isGoogleLoading}
-              >
-                {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                Google로 계속하기
-              </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xl"
+                    className="w-full font-korean gap-3"
+                    onClick={handleGoogleSignIn}
+                    disabled={isGoogleLoading}
+                  >
+                    {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
+                    Google로 계속하기
+                  </Button>
+                </>
+              )}
             </div>
           )}
 
@@ -603,7 +593,6 @@ const Auth = () => {
         </div>
       </div>
     </div>
-    </>
   );
 };
 

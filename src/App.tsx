@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DataPreloaderProvider } from "@/contexts/DataPreloaderContext";
 import { Loader2 } from "lucide-react";
-import { InAppBrowserRedirect } from "@/components/InAppBrowserRedirect";
+
 // Lazy load pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -49,8 +49,6 @@ const App = () => (
     <AuthProvider>
       <DataPreloaderProvider>
         <TooltipProvider>
-          {/* 인앱 브라우저 감지 및 외부 브라우저 안내 */}
-          <InAppBrowserRedirect />
           
           <Toaster />
           <Sonner />
