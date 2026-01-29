@@ -352,6 +352,138 @@ const slides = [
   },
   {
     id: 7,
+    title: '비용 구조 & BEP',
+    subtitle: '손익분기점 분석',
+    content: (
+      <div className="space-y-5">
+        {/* 3개 카드 - 고정비용, 변동비용, BEP 결과 */}
+        <div className="grid md:grid-cols-3 gap-4">
+          {/* 고정 비용 */}
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">🏢</span>
+              <h4 className="font-bold font-korean">고정 비용</h4>
+            </div>
+            <div className="text-3xl font-bold text-primary mb-3">₩50,000<span className="text-base font-normal text-muted-foreground">/월</span></div>
+            <div className="space-y-2 text-xs font-korean">
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span>Supabase Pro</span>
+                <span>₩35,000</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span>도메인/SSL</span>
+                <span>₩5,000</span>
+              </div>
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span>모니터링</span>
+                <span>₩10,000</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 변동 비용 */}
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">👤</span>
+              <h4 className="font-bold font-korean">사용자당 변동 비용</h4>
+            </div>
+            <div className="text-xs text-muted-foreground mb-3 font-korean">사용률 20-30% 기준</div>
+            <div className="space-y-2 text-xs font-korean">
+              <div className="flex justify-between p-2 bg-muted/30 rounded">
+                <span>Free (70%)</span>
+                <span className="font-semibold">₩562</span>
+              </div>
+              <div className="flex justify-between p-2 bg-sky/10 rounded">
+                <span>Pro (20%)</span>
+                <span className="font-semibold text-sky">₩2,715</span>
+              </div>
+              <div className="flex justify-between p-2 bg-coral/10 rounded">
+                <span>Premium (10%)</span>
+                <span className="font-semibold text-coral">₩4,500</span>
+              </div>
+              <div className="pt-2 border-t text-muted-foreground">
+                가중 평균 기여 마진: <strong className="text-primary">+₩644/명</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* BEP 결과 */}
+          <div className="p-4 bg-primary/5 rounded-xl border border-primary/30">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">🎯</span>
+              <h4 className="font-bold font-korean">BEP 결과</h4>
+            </div>
+            <div className="text-center py-3">
+              <div className="text-4xl font-bold text-primary">78명</div>
+              <div className="text-sm text-muted-foreground font-korean">총 사용자 손익분기점</div>
+              <div className="text-lg font-semibold text-coral mt-1">(유료 23명)</div>
+            </div>
+            <div className="space-y-2 text-xs font-korean pt-2 border-t">
+              <div className="flex justify-between">
+                <span>1,000명</span>
+                <span className="font-bold text-primary">월 ₩117만 이익</span>
+              </div>
+              <div className="flex justify-between">
+                <span>10,000명</span>
+                <span className="font-bold text-primary">월 ₩1,220만 이익</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 규모별 순이익 테이블 */}
+        <div className="p-4 bg-card rounded-lg border border-border">
+          <h4 className="font-bold mb-3 font-korean">📊 규모별 월 손익 전망</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="p-2 text-left font-korean">사용자 수</th>
+                  <th className="p-2 text-center font-korean">월 매출</th>
+                  <th className="p-2 text-center font-korean">월 비용</th>
+                  <th className="p-2 text-center font-korean">월 순이익</th>
+                  <th className="p-2 text-center font-korean">마진율</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/50">
+                  <td className="p-2 font-korean">78명 (BEP)</td>
+                  <td className="p-2 text-center">₩50,000</td>
+                  <td className="p-2 text-center">₩50,000</td>
+                  <td className="p-2 text-center text-muted-foreground">₩0</td>
+                  <td className="p-2 text-center text-muted-foreground">0%</td>
+                </tr>
+                <tr className="border-b border-border/50">
+                  <td className="p-2 font-korean">1,000명</td>
+                  <td className="p-2 text-center">₩210만</td>
+                  <td className="p-2 text-center">₩93만</td>
+                  <td className="p-2 text-center text-primary font-semibold">₩117만</td>
+                  <td className="p-2 text-center text-primary font-semibold">56%</td>
+                </tr>
+                <tr className="bg-primary/10 font-bold">
+                  <td className="p-2 font-korean">10,000명</td>
+                  <td className="p-2 text-center">₩2,100만</td>
+                  <td className="p-2 text-center">₩880만</td>
+                  <td className="p-2 text-center text-primary">₩1,220만</td>
+                  <td className="p-2 text-center text-primary">58%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 핵심 가정 */}
+        <div className="flex flex-wrap gap-3 justify-center text-xs text-muted-foreground font-korean">
+          <span className="px-3 py-1 bg-muted/50 rounded-full">📌 캐시 히트율 70%</span>
+          <span className="px-3 py-1 bg-muted/50 rounded-full">📌 사용률 20-30%</span>
+          <span className="px-3 py-1 bg-muted/50 rounded-full">📌 Free 70% / Pro 20% / Premium 10%</span>
+        </div>
+      </div>
+    ),
+    background: 'bg-background'
+  },
+  {
+    id: 8,
     title: '시장 분석',
     subtitle: 'TAM / SAM / SOM',
     content: (
@@ -385,7 +517,7 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 8,
+    id: 9,
     title: '경쟁 우위',
     subtitle: '핵심 차별화 요소',
     content: (
@@ -431,7 +563,7 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 9,
+    id: 10,
     title: '로드맵',
     subtitle: '현재 80% 완료',
     content: (
@@ -467,7 +599,7 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 10,
+    id: 11,
     title: '투자 요청',
     subtitle: 'Seed Round',
     content: (
