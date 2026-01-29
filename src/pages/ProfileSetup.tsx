@@ -57,12 +57,70 @@ const ProfileSetup = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [existingAvatarPath, setExistingAvatarPath] = useState<string | null>(null);
 
+  // 로그인 체크
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
+
+  // 기존 프로필 데이터 로드
+  useEffect(() => {
+    const loadExistingProfile = async () => {
+      if (!user) return;
+      
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('height, weight, body_type, style_preferences, avatar_url, gender, age_group')
+          .eq('user_id', user.id)
+          .single();
+        
+        if (error) {
+          console.error('Error loading profile:', error);
+          setIsLoadingProfile(false);
+          return;
+        }
+        
+        if (profile) {
+          // 기존 데이터로 폼 초기화
+          if (profile.height) setHeight(profile.height.toString());
+          if (profile.weight) setWeight(profile.weight.toString());
+          if (profile.body_type) setBodyType(profile.body_type);
+          if (profile.gender) setGender(profile.gender);
+          if (profile.age_group) setAgeGroup(profile.age_group);
+          if (profile.style_preferences && profile.style_preferences.length > 0) {
+            setSelectedStyles(profile.style_preferences);
+          }
+          
+          // 기존 아바타 로드
+          if (profile.avatar_url) {
+            setExistingAvatarPath(profile.avatar_url);
+            // Signed URL 생성하여 미리보기로 표시
+            if (!profile.avatar_url.startsWith('http') && !profile.avatar_url.startsWith('data:')) {
+              const { data: signedData } = await supabase.storage
+                .from('avatars')
+                .createSignedUrl(profile.avatar_url, 3600);
+              if (signedData?.signedUrl) {
+                setAvatarPreview(signedData.signedUrl);
+              }
+            } else {
+              setAvatarPreview(profile.avatar_url);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+    
+    loadExistingProfile();
+  }, [user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,9 +147,10 @@ const ProfileSetup = () => {
     
     setIsSubmitting(true);
     try {
-      let avatarPath = null;
+      // 새 아바타 업로드 또는 기존 아바타 유지
+      let avatarPath = existingAvatarPath; // 기존 아바타 경로 유지
 
-      // Upload avatar if provided
+      // Upload avatar if NEW file provided
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
@@ -108,18 +167,24 @@ const ProfileSetup = () => {
         }
       }
 
-      // Update profile
+      // Update profile - 아바타가 없어도 null이 아닌 기존값 유지
+      const updateData: Record<string, any> = {
+        height: height ? parseInt(height) : null,
+        weight: weight ? parseInt(weight) : null,
+        style_preferences: selectedStyles.length > 0 ? selectedStyles : null,
+        body_type: bodyType || null,
+        gender: gender || null,
+        age_group: ageGroup || null,
+      };
+      
+      // 아바타 경로가 있을 때만 업데이트 (없으면 기존값 유지)
+      if (avatarPath !== null) {
+        updateData.avatar_url = avatarPath;
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          height: height ? parseInt(height) : null,
-          weight: weight ? parseInt(weight) : null,
-          style_preferences: selectedStyles,
-          body_type: bodyType || null,
-          gender: gender || null,
-          age_group: ageGroup || null,
-          avatar_url: avatarPath,
-        })
+        .update(updateData)
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -149,10 +214,12 @@ const ProfileSetup = () => {
     return true;
   };
 
-  if (loading) {
+  if (loading || isLoadingProfile) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground font-korean">로딩 중...</div>
+        <div className="animate-pulse text-muted-foreground font-korean">
+          {isLoadingProfile ? '프로필 불러오는 중...' : '로딩 중...'}
+        </div>
       </div>
     );
   }

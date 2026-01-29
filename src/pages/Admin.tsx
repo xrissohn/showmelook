@@ -2355,7 +2355,12 @@ const Admin = () => {
                             return;
                           }
                           
-                          const today = new Date().toISOString().split('T')[0];
+                          // 한국시간 기준 오늘 날짜 계산
+                          const now = new Date();
+                          const kstOffset = 9 * 60 * 60 * 1000;
+                          const kstTime = new Date(now.getTime() + kstOffset);
+                          const today = kstTime.toISOString().split('T')[0];
+                          
                           await supabase.from('daily_generation_usage')
                             .update({ generation_count: 0, updated_at: new Date().toISOString() })
                             .eq('user_id', user.id)

@@ -3,6 +3,16 @@ import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
+// 한국시간(KST) 기준 오늘 날짜 계산 (UTC+9)
+const getTodayKST = (): string => {
+  const now = new Date();
+  // UTC 시간에 9시간 추가하여 KST 시간 계산
+  const kstOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
+  const kstTime = new Date(now.getTime() + kstOffset);
+  // YYYY-MM-DD 형식으로 반환
+  return kstTime.toISOString().split('T')[0];
+};
+
 interface BonusCredits {
   total: number;
   details: Array<{
@@ -42,7 +52,8 @@ export const useGenerationLimit = (userId: string | undefined) => {
     }
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      // 한국시간 기준 오늘 날짜
+      const today = getTodayKST();
 
       // Fetch subscription
       const { data: subscription } = await supabase

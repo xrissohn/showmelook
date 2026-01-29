@@ -734,6 +734,67 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     console.log(`[generate-style] Final image URL: ${finalImageUrl.slice(0, 100)}`);
     console.log(`[generate-style] Total execution time: ${totalTime}ms`);
 
+    // ===== 생성 횟수 증가 (한국시간 기준) =====
+    if (userId) {
+      try {
+        // KST (UTC+9) 기준 오늘 날짜 계산
+        const now = new Date();
+        const kstOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
+        const kstTime = new Date(now.getTime() + kstOffset);
+        const todayKST = kstTime.toISOString().split('T')[0];
+        
+        console.log(`[generate-style] Incrementing usage for user ${userId} on date ${todayKST} (KST)`);
+        
+        // Upsert: 오늘 데이터가 있으면 증가, 없으면 새로 생성
+        const { data: existingUsage, error: fetchError } = await supabase
+          .from('daily_generation_usage')
+          .select('id, generation_count')
+          .eq('user_id', userId)
+          .eq('usage_date', todayKST)
+          .single();
+        
+        if (fetchError && fetchError.code !== 'PGRST116') {
+          // PGRST116 = no rows found (정상적인 상황)
+          console.error('[generate-style] Error fetching usage:', fetchError);
+        }
+        
+        if (existingUsage) {
+          // 기존 레코드 업데이트
+          const { error: updateError } = await supabase
+            .from('daily_generation_usage')
+            .update({ 
+              generation_count: (existingUsage.generation_count || 0) + 1,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', existingUsage.id);
+          
+          if (updateError) {
+            console.error('[generate-style] Error updating usage:', updateError);
+          } else {
+            console.log(`[generate-style] Usage incremented to ${(existingUsage.generation_count || 0) + 1}`);
+          }
+        } else {
+          // 새 레코드 생성
+          const { error: insertError } = await supabase
+            .from('daily_generation_usage')
+            .insert({
+              user_id: userId,
+              usage_date: todayKST,
+              generation_count: 1,
+            });
+          
+          if (insertError) {
+            console.error('[generate-style] Error inserting usage:', insertError);
+          } else {
+            console.log('[generate-style] New usage record created with count 1');
+          }
+        }
+      } catch (usageError) {
+        console.error('[generate-style] Failed to update usage count:', usageError);
+        // 생성 횟수 업데이트 실패해도 이미지 생성은 성공했으므로 계속 진행
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
