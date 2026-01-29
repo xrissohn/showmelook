@@ -10,7 +10,7 @@ import { Eye, EyeOff, ArrowLeft, Mail, KeyRound, User, Loader2, Gift } from 'luc
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
-import { detectInAppBrowser } from '@/lib/inAppBrowserDetector';
+import { detectInAppBrowser, getExternalBrowserUrl, copyToClipboard } from '@/lib/inAppBrowserDetector';
 
 // Google icon component
 const GoogleIcon = () => (
@@ -295,6 +295,42 @@ const Auth = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    // 인앱 브라우저에서는 외부 브라우저로 이동
+    if (browserInfo.isInAppBrowser) {
+      const currentUrl = window.location.href;
+      
+      if (browserInfo.isAndroid) {
+        // Android: Chrome Intent로 외부 브라우저 열기
+        const externalUrl = getExternalBrowserUrl(currentUrl, true);
+        if (externalUrl) {
+          toast({
+            title: '외부 브라우저로 이동합니다',
+            description: 'Chrome에서 Google 로그인을 진행해주세요.',
+          });
+          setTimeout(() => {
+            window.location.href = externalUrl;
+          }, 500);
+          return;
+        }
+      } else if (browserInfo.isIOS) {
+        // iOS: 링크 복사 안내
+        const copied = await copyToClipboard(currentUrl);
+        if (copied) {
+          toast({
+            title: '링크가 복사되었습니다!',
+            description: 'Safari에서 붙여넣기 후 Google 로그인해주세요.',
+          });
+        } else {
+          toast({
+            title: 'Safari에서 열어주세요',
+            description: `${currentUrl} 주소를 Safari에서 열어주세요.`,
+          });
+        }
+        return;
+      }
+    }
+    
+    // 일반 브라우저에서는 바로 Google OAuth 진행
     setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -398,31 +434,26 @@ const Auth = () => {
                 {isLoading ? '로그인 중...' : '로그인'}
               </Button>
 
-              {/* 인앱 브라우저가 아닐 때만 Google 로그인 표시 */}
-              {!browserInfo.isInAppBrowser && (
-                <>
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
-                    </div>
-                  </div>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
+                </div>
+              </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xl"
-                    className="w-full font-korean gap-3"
-                    onClick={handleGoogleSignIn}
-                    disabled={isGoogleLoading}
-                  >
-                    {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                    Google로 계속하기
-                  </Button>
-                </>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="xl"
+                className="w-full font-korean gap-3"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
+                Google로 계속하기
+              </Button>
             </form>
           )}
 
@@ -437,31 +468,26 @@ const Auth = () => {
                 {isLoading ? '발송 중...' : '인증코드 받기'}
               </Button>
 
-              {/* 인앱 브라우저가 아닐 때만 Google 로그인 표시 */}
-              {!browserInfo.isInAppBrowser && (
-                <>
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
-                    </div>
-                  </div>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
+                </div>
+              </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="xl"
-                    className="w-full font-korean gap-3"
-                    onClick={handleGoogleSignIn}
-                    disabled={isGoogleLoading}
-                  >
-                    {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                    Google로 계속하기
-                  </Button>
-                </>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="xl"
+                className="w-full font-korean gap-3"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
+                Google로 계속하기
+              </Button>
             </div>
           )}
 
