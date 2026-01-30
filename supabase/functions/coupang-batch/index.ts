@@ -62,8 +62,26 @@ interface DNAMeta {
   pair_slots: string[];
 }
 
-function inferCategory(name: string): { category: string; subCategory: string } {
-  const lowerName = name.toLowerCase();
+// 패션 상품인지 확인하는 함수
+function isFashionProduct(name: string, categoryName?: string): boolean {
+  // 명확한 비패션 키워드 (전자기기, 생활용품 등)
+  const nonFashionKeywords = /충전기|케이블|배터리|이어폰|헤드폰|스피커|마우스|키보드|USB|HDMI|어댑터|컨버터|메모리|SD카드|보조배터리|휴대폰|스마트폰|태블릿|노트북|PC|컴퓨터|모니터|TV|세탁기|냉장고|에어컨|청소기|밥솥|전자레인지|커피머신|믹서기|토스터|드라이기|고데기|면도기|칫솔|화장품|스킨|로션|에센스|크림|마스크팩|선크림|향수|영양제|비타민|프로틴|식품|간식|음료|커피|차|라면|과자|캔디|젤리|반려동물|사료|장난감|레고|블록|인형|완구|게임|피규어|카시트|유모차|젖병|기저귀|물티슈|세제|섬유유연제|주방세제|휴지|치약|샴푸|린스|바디워시|핸드크림|손소독제|마스크|의료기기|혈압계|체온계|보청기|안마기|운동기구|덤벨|요가|필라테스|캠핑|텐트|침낭|랜턴|버너|쿨러|아이스박스|낚시|골프공|골프채|자전거|킥보드|스케이트|보드|등산|트레킹폴|배낭|공구|드릴|망치|드라이버|렌치|페인트|벽지|타일|조명|전구|콘센트|멀티탭|정수기|가습기|공기청정기|선풍기|히터|온풍기|제습기|문구|펜|연필|노트|다이어리|스티커|테이프|가위|풀|클립|파일|바인더|책|도서|만화|잡지|음반|CD|DVD|악기|기타|피아노|드럼|바이올린|플루트|우쿨렐레|화분|식물|씨앗|비료|원예|공예|뜨개질|십자수|비즈|레진|캔버스|물감|붓|이젤/i;
+  
+  if (nonFashionKeywords.test(name)) {
+    return false;
+  }
+  
+  // 패션 관련 키워드
+  const fashionKeywords = /자켓|재킷|블레이저|코트|패딩|점퍼|야상|무스탕|바람막이|집업|아우터|티셔츠|티|맨투맨|후드|스웨트|니트|가디건|셔츠|블라우스|상의|탑|팬츠|바지|진|청바지|데님|슬랙스|조거|트레이닝|레깅스|반바지|숏|하의|원피스|드레스|스커트|치마|신발|스니커즈|운동화|구두|로퍼|부츠|샌들|슬리퍼|가방|백|토트|숄더|크로스|클러치|백팩|목걸이|귀걸이|반지|팔찌|시계|주얼리|액세서리|넥워머|머플러|스카프|모자|장갑|벨트|지갑|양말|스타킹|언더웨어|속옷|브라|팬티|수영복|비키니|래시가드|정장|수트|블레이저|베스트|조끼|카디건|풀오버|크롭|오버핏|슬림핏|와이드|스트레이트|부츠컷|스키니|테이퍼드|플레어|미니|미디|맥시|롱|숏|캐주얼|포멀|스포츠|애슬레저|골프웨어|등산복|트레이닝복|운동복|홈웨어|파자마|잠옷|가운|슬립|캐미솔|탱크탑|나시|민소매|반팔|긴팔|7부|9부|루즈핏|레귤러핏|타이트|배기|조거팬츠|카고|치노|면바지|린넨|실크|울|캐시미어|코듀로이|벨벳|새틴|시폰|레이스|트위드|헤링본|체크|스트라이프|도트|플로럴|프린트|그래픽|자수|패치|워싱|빈티지|레트로|모던|클래식|미니멀|맥시멀|페미닌|매니시|유니섹스|키즈|아동|유아|베이비|주니어|여성|남성|우먼|맨|걸|보이|레이디|미씨/i;
+  
+  return fashionKeywords.test(name);
+}
+
+function inferCategory(name: string): { category: string; subCategory: string } | null {
+  // 먼저 패션 상품인지 확인
+  if (!isFashionProduct(name)) {
+    return null; // 패션 상품이 아니면 null 반환
+  }
   
   if (/자켓|재킷|블레이저|코트|패딩|점퍼|야상|무스탕|바람막이|집업|아우터/.test(name)) {
     if (/패딩|다운/.test(name)) return { category: "아우터", subCategory: "패딩" };
@@ -94,10 +112,11 @@ function inferCategory(name: string): { category: string; subCategory: string } 
   if (/가방|백|토트|숄더|크로스|클러치|백팩/.test(name)) {
     return { category: "가방", subCategory: "가방" };
   }
-  if (/목걸이|귀걸이|반지|팔찌|시계|주얼리|액세서리|넥워머|머플러|스카프|모자|장갑/.test(name)) {
+  if (/목걸이|귀걸이|반지|팔찌|시계|주얼리|액세서리|넥워머|머플러|스카프|모자|장갑|벨트/.test(name)) {
     return { category: "액세서리", subCategory: "액세서리" };
   }
   
+  // 패션 키워드가 있지만 구체적 분류가 안되면 기본값
   return { category: "기타", subCategory: "기타" };
 }
 
@@ -119,8 +138,15 @@ function generateDNA(product: {
   price: number;
   brand?: string;
   categoryId: number;
-}): { dna_meta: DNAMeta; dna_text: string } {
-  const { category, subCategory } = inferCategory(product.name);
+}): { dna_meta: DNAMeta; dna_text: string; category: string; subCategory: string } | null {
+  const categoryInfo = inferCategory(product.name);
+  
+  // 패션 상품이 아니면 null 반환
+  if (!categoryInfo) {
+    return null;
+  }
+  
+  const { category, subCategory } = categoryInfo;
   const gender = inferGender(product.categoryId, product.name);
   
   const dna_meta: DNAMeta = {
@@ -169,7 +195,7 @@ function generateDNA(product: {
     `${dna_meta.season_fit.join("/")} 시즌 적합. ` +
     `포멀리티 ${dna_meta.formality}/10.`;
   
-  return { dna_meta, dna_text };
+  return { dna_meta, dna_text, category, subCategory };
 }
 
 // BestCategories API 호출
@@ -230,7 +256,7 @@ serve(async (req) => {
     
     console.log(`Starting batch collection for categories: ${categoryIds.join(", ")}`);
     
-    const results: { categoryId: number; categoryName: string; collected: number; saved: number; errors: number }[] = [];
+    const results: { categoryId: number; categoryName: string; collected: number; saved: number; skipped: number; errors: number }[] = [];
     
     for (const catId of categoryIds) {
       const categoryInfo = FASHION_CATEGORIES.find(c => c.id === catId);
@@ -246,6 +272,8 @@ serve(async (req) => {
       let saved = 0;
       let errors = 0;
       
+      let skipped = 0;
+      
       for (const item of products) {
         try {
           const product = {
@@ -255,7 +283,16 @@ serve(async (req) => {
             categoryId: catId,
           };
           
-          const { dna_meta, dna_text } = generateDNA(product);
+          const dnaResult = generateDNA(product);
+          
+          // 패션 상품이 아니면 건너뛰기
+          if (!dnaResult) {
+            console.log(`Skipped non-fashion product: ${product.name}`);
+            skipped++;
+            continue;
+          }
+          
+          const { dna_meta, dna_text, category } = dnaResult;
           const gender = inferGender(catId, product.name);
           
           const { error } = await supabase
@@ -266,7 +303,7 @@ serve(async (req) => {
               brand: product.brand,
               image_url: item.productImage,
               product_url: item.productUrl,
-              category: item.categoryName || categoryName,
+              category: category, // 추론된 카테고리 사용
               gender: gender,
               merchant_id: "coupang",
               external_id: `coupang_${item.productId}`,
@@ -297,17 +334,19 @@ serve(async (req) => {
         categoryName,
         collected: products.length,
         saved,
+        skipped,
         errors,
       });
       
-      console.log(`Category ${categoryName}: collected=${products.length}, saved=${saved}, errors=${errors}`);
+      console.log(`Category ${categoryName}: collected=${products.length}, saved=${saved}, skipped=${skipped}, errors=${errors}`);
     }
     
     const totalCollected = results.reduce((sum, r) => sum + r.collected, 0);
     const totalSaved = results.reduce((sum, r) => sum + r.saved, 0);
+    const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
     const totalErrors = results.reduce((sum, r) => sum + r.errors, 0);
     
-    console.log(`Batch complete: total collected=${totalCollected}, saved=${totalSaved}, errors=${totalErrors}`);
+    console.log(`Batch complete: total collected=${totalCollected}, saved=${totalSaved}, skipped=${totalSkipped}, errors=${totalErrors}`);
     
     return new Response(
       JSON.stringify({
@@ -315,6 +354,7 @@ serve(async (req) => {
         summary: {
           totalCollected,
           totalSaved,
+          totalSkipped,
           totalErrors,
           timestamp: new Date().toISOString(),
         },
