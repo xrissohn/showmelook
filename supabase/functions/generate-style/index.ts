@@ -301,9 +301,9 @@ serve(async (req) => {
         case 'adult_30s':
           return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 30s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
         case 'adult_40s':
-          return `elegant Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 40s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}, with mature and sophisticated appearance`;
+          return `vibrant Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} mid-40s, ${bodyDesc}, with youthful energy and sophisticated style, looking healthy and active`;
         case 'adult_50s':
-          return `elegant Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 50s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}, with distinguished mature appearance, showing natural signs of age`;
+          return `dynamic Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} early 50s, ${bodyDesc}, with vibrant and youthful appearance for their age, looking energetic and stylish like a well-groomed middle-aged professional`;
         case 'adult_60s':
           return `graceful senior Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 60s or older (ages ${ageInfo.minAge}+), ${bodyDesc}, with natural gray/white hair or age-appropriate hairstyle, gentle wrinkles and lines on face, mature and dignified appearance reflecting their age`;
         default:
@@ -331,8 +331,9 @@ serve(async (req) => {
         case 'teen':
           return 'The teenager should have youthful proportions appropriate for adolescence.';
         case 'adult_50s':
+          return `The model should look like a vibrant, well-maintained person in their 50s - youthful for their age, healthy skin, modern hairstyle. Body type: ${bodyDesc}.`;
         case 'adult_60s':
-          return `IMPORTANT: The model must look like a mature adult in their ${category === 'adult_50s' ? '50s' : '60s or older'}. Show natural signs of aging - some wrinkles, age-appropriate skin texture, possibly gray/white hair. Body type: ${bodyDesc}.`;
+          return `IMPORTANT: The model must look like a mature adult in their 60s or older. Show natural signs of aging - some wrinkles, age-appropriate skin texture, possibly gray/white hair. Body type: ${bodyDesc}.`;
         default:
           return bodyDesc ? `Body build: ${bodyDesc}.` : '';
       }
@@ -340,7 +341,7 @@ serve(async (req) => {
 
     const bodyProportionHint = getBodyProportionHint(ageInfo.category, bodyDescription);
     
-    // 성인 연령대 프롬프트 강화
+    // 성인 연령대 프롬프트 강화 - 중장년(40-50대)은 젊고 활기차게
     const getAgeEmphasis = (category: string, gender: string): string => {
       if (category === 'adult_60s') {
         return `\n\nCRITICAL AGE REQUIREMENT: This model MUST appear to be 60+ years old. DO NOT generate a young-looking person. The face MUST show:
@@ -351,14 +352,18 @@ serve(async (req) => {
 - Distinguished, graceful appearance reflecting life experience\n`;
       }
       if (category === 'adult_50s') {
-        return `\n\nIMPORTANT AGE REQUIREMENT: This model should appear to be in their 50s. Show natural signs of aging:
-- Some visible lines and wrinkles
-- Mature skin texture
-- Age-appropriate hairstyle
-- Distinguished, elegant appearance\n`;
+        return `\n\nMIDDLE-AGED STYLING: This is a vibrant middle-aged person in their early 50s. They should look:
+- Healthy, energetic, and youthful for their age
+- Well-groomed with modern hairstyle
+- Like a successful professional in their prime
+- NOT elderly or showing prominent aging signs
+- Think "active 50s" - someone who exercises and takes care of themselves\n`;
       }
       if (category === 'adult_40s') {
-        return `\n\nNote: This model should appear to be in their 40s with a mature, sophisticated look.\n`;
+        return `\n\nMIDDLE-AGED STYLING: This is an active person in their 40s. They should look:
+- Vibrant, confident, and stylish
+- Youthful energy with mature sophistication
+- Like someone at the peak of their career\n`;
       }
       return '';
     };
