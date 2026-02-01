@@ -87,7 +87,7 @@ const sdkCode = `
     container.appendChild(button);
   };
   
-  // 가상피팅 모달 열기 (프론트엔드 앱으로 연결)
+  // 가상피팅 모달 열기 (Edge Function fitting-page 사용)
   ShowMeLook.openFitting = function(productNo) {
     const modal = document.createElement('div');
     modal.id = 'showmelook-modal';
@@ -105,8 +105,8 @@ const sdkCode = `
     \`;
     
     const iframe = document.createElement('iframe');
-    // 프론트엔드 앱 라우트로 연결 (Edge Function HTML 대신)
-    iframe.src = APP_BASE_URL + '/cafe24-fitting?mall_id=' + encodeURIComponent(this.mallId) + '&product_no=' + productNo;
+    // Edge Function fitting-page 사용 (CSP 우회 및 안정성 확보)
+    iframe.src = WIDGET_BASE_URL + '/fitting-page?mall_id=' + encodeURIComponent(this.mallId) + '&product_no=' + productNo;
     iframe.style.cssText = \`
       width: 90%;
       max-width: 500px;
