@@ -109,8 +109,8 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
             rightContent
           ) : (
             <>
-              {/* Desktop Navigation */}
-              <div className="hidden sm:flex items-center gap-3">
+              {/* Desktop Navigation - Only on lg (1024px+) */}
+              <div className="hidden lg:flex items-center gap-3">
                 {/* 요금제 */}
                 <Button 
                   variant="ghost" 
@@ -193,17 +193,18 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                 )}
               </div>
 
-              {/* Mobile Navigation */}
-              <div className="flex sm:hidden items-center gap-1">
+              {/* Mobile/Tablet Navigation - Show on screens below lg (1024px) */}
+              <div className="flex lg:hidden items-center gap-1 sm:gap-2">
                 {user && (
                   <Button 
                     variant="hero" 
                     size="sm"
                     onClick={() => navigate('/style')}
-                    className="font-korean text-xs px-2.5 h-8 rounded-full shadow-md"
+                    className="font-korean text-xs sm:text-sm px-2.5 sm:px-3 h-8 sm:h-9 rounded-full shadow-md"
                   >
-                    <Sparkles className="w-3 h-3 mr-0.5" />
-                    시작
+                    <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
+                    <span className="hidden sm:inline">스타일 만들기</span>
+                    <span className="sm:hidden">시작</span>
                   </Button>
                 )}
                 
