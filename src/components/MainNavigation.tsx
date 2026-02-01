@@ -97,7 +97,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
         
         {/* Center - Title (optional) */}
         {title && (
-          <span className="font-korean text-lg sm:text-xl text-foreground absolute left-1/2 transform -translate-x-1/2">
+          <span className="font-korean text-base sm:text-lg text-foreground truncate max-w-[120px] sm:max-w-none">
             {title}
           </span>
         )}
