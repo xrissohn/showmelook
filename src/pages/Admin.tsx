@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge, Store
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -27,6 +27,7 @@ import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
 import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
+import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 
 import * as XLSX from 'xlsx';
 
@@ -1421,6 +1422,10 @@ const Admin = () => {
               <TabsTrigger value="tools" className="flex-shrink-0 whitespace-nowrap">
                 <Zap className="w-4 h-4 mr-1" />
                 관리도구
+              </TabsTrigger>
+              <TabsTrigger value="cafe24" className="flex-shrink-0 whitespace-nowrap">
+                <Store className="w-4 h-4 mr-1" />
+                카페24
               </TabsTrigger>
             </TabsList>
           </div>
@@ -2846,6 +2851,11 @@ const Admin = () => {
           {/* Load Test Tab */}
           <TabsContent value="loadtest" className="space-y-4">
             <LoadTestPanel />
+          </TabsContent>
+
+          {/* Cafe24 Tab */}
+          <TabsContent value="cafe24" className="space-y-4">
+            <Cafe24TenantManager />
           </TabsContent>
 
         </Tabs>
