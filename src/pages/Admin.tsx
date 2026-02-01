@@ -30,7 +30,7 @@ import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel"
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
 
-import * as XLSX from 'xlsx';
+import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 
 interface DeeplinkResult {
   success?: boolean;
@@ -539,7 +539,7 @@ const Admin = () => {
     }
   };
 
-  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -548,21 +548,6 @@ const Admin = () => {
     
     const fileNames: string[] = [];
     const allProducts: ExcelProduct[] = [];
-    let filesProcessed = 0;
-
-    // 유연한 컬럼 매핑 (대소문자 무시, 공백 제거)
-    const findValue = (row: Record<string, unknown>, keys: string[]): unknown => {
-      for (const key of Object.keys(row)) {
-        const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
-        for (const searchKey of keys) {
-          const normalizedSearch = searchKey.toLowerCase().replace(/[\s_-]/g, '');
-          if (normalizedKey === normalizedSearch || normalizedKey.includes(normalizedSearch)) {
-            return row[key];
-          }
-        }
-      }
-      return undefined;
-    };
 
     // 가격 파싱 (콤마, 원화 기호 제거, JSON 형식 지원)
     const parsePrice = (value: unknown): number => {
@@ -587,7 +572,7 @@ const Admin = () => {
     const inferMerchantId = (url: string): string => {
       const urlLower = url.toLowerCase();
       if (urlLower.includes('wconcept')) return 'wconcept';
-      if (urlLower.includes('hfashionmall') || urlLower.includes('hfashion')) return 'hfashionmall';
+      if (urlLower.includes('hfashionmall') || urlLower.includes('hfashion')) return 'hfashion';
       if (urlLower.includes('paulsmith')) return 'paulsmith';
       if (urlLower.includes('ssfshop')) return 'ssfshop';
       if (urlLower.includes('sivillage')) return 'sivillage';
@@ -598,104 +583,90 @@ const Admin = () => {
       if (urlLower.includes('lfmall')) return 'lfmall';
       if (urlLower.includes('arket')) return 'arket';
       if (urlLower.includes('jestina') || urlLower.includes('j.estina')) return 'jestina';
-      if (urlLower.includes('benetton')) return 'benetton1';  // DB에 benetton1로 등록됨
-      if (urlLower.includes('hfashion') || urlLower.includes('thehyundai')) return 'hfashion';
+      if (urlLower.includes('benetton')) return 'benetton1';
       if (urlLower.includes('coupang')) return 'coupang';
-      if (urlLower.includes('paulsmith')) return 'paulsmith';
       if (urlLower.includes('stockx')) return 'stockx';
-      if (urlLower.includes('wconcept')) return 'wconcept';
       return 'unknown';
     };
 
-    // 각 파일 처리
-    Array.from(files).forEach((file) => {
+    // 각 파일 처리 (async)
+    for (const file of Array.from(files)) {
       fileNames.push(file.name);
       
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
+      try {
+        const jsonData = await parseExcelFile(file);
 
-          // 첫 행의 컬럼명 확인 (디버깅용)
-          if (jsonData.length > 0) {
-            const columns = Object.keys(jsonData[0]);
-            console.log(`[Excel] ${file.name} 발견된 컬럼:`, columns);
-          }
+        // 첫 행의 컬럼명 확인 (디버깅용)
+        if (jsonData.length > 0) {
+          const columns = Object.keys(jsonData[0]);
+          console.log(`[Excel] ${file.name} 발견된 컬럼:`, columns);
+        }
 
-          // 컬럼 매핑
-          const products: ExcelProduct[] = jsonData.map((row) => {
-            const productUrl = String(findValue(row, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || '');
-            const merchantIdRaw = findValue(row, ['merchant_id', '머천트', 'merchant', '판매처', '쇼핑몰']);
-            const merchantId = merchantIdRaw ? String(merchantIdRaw) : inferMerchantId(productUrl);
-            
-            // 이미지 URL 처리 (image_urls 배열 형식도 지원, input 컬럼도 확인)
-            let imageUrl = findValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img', 'image_urls', 'imageurls', 'input', 'images']);
-            if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('[')) {
-              // JSON 배열 형식인 경우 그대로 전달 (서버에서 처리)
-              imageUrl = imageUrl;
-            } else if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('{')) {
-              // JSON 객체 형식인 경우 url 추출 시도
-              try {
-                const parsed = JSON.parse(imageUrl);
-                if (parsed.url) imageUrl = parsed.url;
-              } catch {
-                // 파싱 실패시 그대로 사용
-              }
+        // 컬럼 매핑
+        const products: ExcelProduct[] = jsonData.map((row) => {
+          const productUrl = String(findColumnValue(row, ['product_url', 'url', '상품url', '링크', 'link', 'producturl']) || '');
+          const merchantIdRaw = findColumnValue(row, ['merchant_id', '머천트', 'merchant', '판매처', '쇼핑몰']);
+          const merchantId = merchantIdRaw ? String(merchantIdRaw) : inferMerchantId(productUrl);
+          
+          // 이미지 URL 처리 (image_urls 배열 형식도 지원, input 컬럼도 확인)
+          let imageUrl = findColumnValue(row, ['image_url', '이미지', 'image', '이미지url', 'imageurl', 'img', 'image_urls', 'imageurls', 'input', 'images']);
+          if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('[')) {
+            // JSON 배열 형식인 경우 그대로 전달 (서버에서 처리)
+            imageUrl = imageUrl;
+          } else if (typeof imageUrl === 'string' && imageUrl.trim().startsWith('{')) {
+            // JSON 객체 형식인 경우 url 추출 시도
+            try {
+              const parsed = JSON.parse(imageUrl);
+              if (parsed.url) imageUrl = parsed.url;
+            } catch {
+              // 파싱 실패시 그대로 사용
             }
-            
-            return {
-              merchant_id: merchantId,
-              product_url: productUrl,
-              name: String(findValue(row, ['name', '상품명', 'title', '제품명', 'productname', '이름', 'product_name']) || ''),
-              price: parsePrice(findValue(row, ['price', '가격', '판매가', 'saleprice', '현재가', 'final_price', 'finalprice'])),
-              image_url: imageUrl ? String(imageUrl) : undefined,
-              original_price: findValue(row, ['original_price', '원가', '정가', 'originalprice']) ? 
-                parsePrice(findValue(row, ['original_price', '원가', '정가', 'originalprice'])) : undefined,
-              category: findValue(row, ['category', '카테고리', '분류']) ? 
-                String(findValue(row, ['category', '카테고리', '분류'])) : undefined,
-              brand: findValue(row, ['brand', '브랜드']) ? 
-                String(findValue(row, ['brand', '브랜드'])) : undefined,
-              gender: findValue(row, ['gender', '성별', 'target']) ? 
-                String(findValue(row, ['gender', '성별', 'target'])) : undefined,
-              color: findValue(row, ['color', '색상', '컬러', 'colors_available']) ? 
-                String(findValue(row, ['color', '색상', '컬러', 'colors_available'])) : undefined,
-            };
-          }).filter(p => p.product_url && p.name && p.price > 0);
-
-          console.log(`[Excel] ${file.name}: ${jsonData.length}행 중 ${products.length}개 유효`);
-          allProducts.push(...products);
-          
-        } catch (error) {
-          console.error(`[Excel] ${file.name} 파싱 오류:`, error);
-          toast({ title: "파일 파싱 실패", description: `${file.name}: 올바른 엑셀 파일인지 확인해주세요.`, variant: "destructive" });
-        }
-        
-        filesProcessed++;
-        
-        // 모든 파일 처리 완료
-        if (filesProcessed === files.length) {
-          setExcelFileNames(fileNames);
-          setExcelProducts(allProducts);
-          
-          if (allProducts.length > 0) {
-            toast({ 
-              title: "파일 파싱 완료", 
-              description: `${files.length}개 파일에서 ${allProducts.length}개 제품 발견` 
-            });
-          } else {
-            toast({ 
-              title: "제품 발견 실패", 
-              description: "유효한 제품이 없습니다. 컬럼명을 확인해주세요.",
-              variant: "destructive" 
-            });
           }
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    });
+          
+          return {
+            merchant_id: merchantId,
+            product_url: productUrl,
+            name: String(findColumnValue(row, ['name', '상품명', 'title', '제품명', 'productname', '이름', 'product_name']) || ''),
+            price: parsePrice(findColumnValue(row, ['price', '가격', '판매가', 'saleprice', '현재가', 'final_price', 'finalprice'])),
+            image_url: imageUrl ? String(imageUrl) : undefined,
+            original_price: findColumnValue(row, ['original_price', '원가', '정가', 'originalprice']) ? 
+              parsePrice(findColumnValue(row, ['original_price', '원가', '정가', 'originalprice'])) : undefined,
+            category: findColumnValue(row, ['category', '카테고리', '분류']) ? 
+              String(findColumnValue(row, ['category', '카테고리', '분류'])) : undefined,
+            brand: findColumnValue(row, ['brand', '브랜드']) ? 
+              String(findColumnValue(row, ['brand', '브랜드'])) : undefined,
+            gender: findColumnValue(row, ['gender', '성별', 'target']) ? 
+              String(findColumnValue(row, ['gender', '성별', 'target'])) : undefined,
+            color: findColumnValue(row, ['color', '색상', '컬러', 'colors_available']) ? 
+              String(findColumnValue(row, ['color', '색상', '컬러', 'colors_available'])) : undefined,
+          };
+        }).filter(p => p.product_url && p.name && p.price > 0);
+
+        console.log(`[Excel] ${file.name}: ${jsonData.length}행 중 ${products.length}개 유효`);
+        allProducts.push(...products);
+        
+      } catch (error) {
+        console.error(`[Excel] ${file.name} 파싱 오류:`, error);
+        toast({ title: "파일 파싱 실패", description: `${file.name}: 올바른 엑셀 파일인지 확인해주세요.`, variant: "destructive" });
+      }
+    }
+
+    // 모든 파일 처리 완료
+    setExcelFileNames(fileNames);
+    setExcelProducts(allProducts);
+    
+    if (allProducts.length > 0) {
+      toast({ 
+        title: "파일 파싱 완료", 
+        description: `${files.length}개 파일에서 ${allProducts.length}개 제품 발견` 
+      });
+    } else {
+      toast({ 
+        title: "제품 발견 실패", 
+        description: "유효한 제품이 없습니다. 컬럼명을 확인해주세요.",
+        variant: "destructive" 
+      });
+    }
   }, [toast]);
 
   const registerExcelProducts = async () => {
