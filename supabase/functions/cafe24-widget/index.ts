@@ -351,6 +351,30 @@ serve(async (req) => {
     const previewArea = document.getElementById('preview-area');
     const previewImage = document.getElementById('preview-image');
     
+    const generateBtn = document.createElement('button');
+    generateBtn.id = 'generate-btn';
+    generateBtn.textContent = '가상 피팅 시작';
+    generateBtn.style.cssText = \`
+      display: none;
+      margin-top: 20px;
+      padding: 14px 32px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    \`;
+    document.querySelector('.upload-area').appendChild(generateBtn);
+    
+    const resultArea = document.createElement('div');
+    resultArea.id = 'result-area';
+    resultArea.style.cssText = 'display: none; margin-top: 20px; text-align: center;';
+    document.querySelector('.upload-area').appendChild(resultArea);
+
+    let uploadedImageBase64 = null;
+
     photoInput.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if (file) {
@@ -358,11 +382,71 @@ serve(async (req) => {
         reader.onload = function(e) {
           previewImage.src = e.target.result;
           previewArea.style.display = 'block';
-          
-          // 여기서 실제 가상피팅 API 호출
-          console.log('Photo selected, ready for virtual fitting');
+          generateBtn.style.display = 'inline-block';
+          uploadedImageBase64 = e.target.result;
         };
         reader.readAsDataURL(file);
+      }
+    });
+
+    generateBtn.addEventListener('click', async function() {
+      if (!uploadedImageBase64) return;
+      
+      generateBtn.disabled = true;
+      generateBtn.textContent = '생성 중...';
+      
+      try {
+        // generate-style API 호출
+        const response = await fetch('${SUPABASE_URL}/functions/v1/generate-style', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            style: 'casual',
+            products: 'virtual fitting with cafe24 product',
+            userProfile: {
+              gender: 'female',
+              height: 165,
+              body_type: 'average',
+            },
+            userAvatarUrl: uploadedImageBase64,
+            useFaceComposite: true,
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (data.imageUrl) {
+          resultArea.innerHTML = \`
+            <h3 style="color:#333;margin-bottom:10px;">🎉 피팅 완료!</h3>
+            <img src="\${data.imageUrl}" style="max-width:100%;max-height:400px;border-radius:8px;margin-bottom:10px;">
+            <p style="color:#666;font-size:14px;">이미지를 저장하려면 우클릭하세요</p>
+          \`;
+          resultArea.style.display = 'block';
+          
+          // 결과 저장 (세션 토큰이 있는 경우)
+          const sessionToken = new URLSearchParams(window.location.search).get('session');
+          if (sessionToken) {
+            await fetch('${SUPABASE_URL}/functions/v1/cafe24-widget/save-result', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                session_token: sessionToken,
+                fitting_result_url: data.imageUrl,
+              }),
+            });
+          }
+        } else {
+          resultArea.innerHTML = '<p style="color:red;">피팅 생성에 실패했습니다: ' + (data.error || '알 수 없는 오류') + '</p>';
+          resultArea.style.display = 'block';
+        }
+      } catch (error) {
+        resultArea.innerHTML = '<p style="color:red;">오류: ' + error.message + '</p>';
+        resultArea.style.display = 'block';
+      } finally {
+        generateBtn.disabled = false;
+        generateBtn.textContent = '가상 피팅 시작';
       }
     });
   </script>

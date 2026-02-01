@@ -109,9 +109,12 @@ serve(async (req) => {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // DB에 상품 동기화
+        // DB에 상품 동기화 + products_cache 연동
+        let linkedCount = 0;
+        
         for (const product of allProducts) {
-          await supabase
+          // 1. cafe24_products에 저장
+          const { data: cafe24Product } = await supabase
             .from('cafe24_products')
             .upsert({
               tenant_id: tenant.id,
@@ -123,13 +126,61 @@ serve(async (req) => {
               category_name: product.category?.name_1,
               is_synced: true,
               last_synced_at: new Date().toISOString(),
-            }, { onConflict: 'tenant_id,cafe24_product_no' });
+            }, { onConflict: 'tenant_id,cafe24_product_no' })
+            .select('id, products_cache_id')
+            .single();
+
+          // 2. products_cache에 없으면 자동 등록
+          if (cafe24Product && !cafe24Product.products_cache_id) {
+            // 상품 URL 생성
+            const productUrl = `https://${mall_id}.cafe24.com/product/${product.product_code}`;
+            
+            // 카테고리 매핑
+            const categoryName = product.category?.name_1?.toLowerCase() || '';
+            let category = 'others';
+            if (categoryName.includes('상의') || categoryName.includes('top')) category = 'top';
+            else if (categoryName.includes('하의') || categoryName.includes('bottom') || categoryName.includes('pants')) category = 'bottom';
+            else if (categoryName.includes('원피스') || categoryName.includes('dress')) category = 'dress';
+            else if (categoryName.includes('아우터') || categoryName.includes('outer') || categoryName.includes('jacket')) category = 'outerwear';
+            else if (categoryName.includes('신발') || categoryName.includes('shoes')) category = 'shoes';
+            else if (categoryName.includes('가방') || categoryName.includes('bag')) category = 'bag';
+            else if (categoryName.includes('액세서리') || categoryName.includes('accessory')) category = 'accessory';
+
+            // products_cache에 등록
+            const { data: cacheProduct } = await supabase
+              .from('products_cache')
+              .insert({
+                merchant_id: 'cafe24_' + mall_id,
+                name: product.product_name,
+                brand: product.brand?.name || null,
+                price: parseInt(product.price) || 0,
+                original_price: parseInt(product.retail_price) || null,
+                image_url: product.detail_image || product.list_image,
+                product_url: productUrl,
+                category: category,
+                gender: 'unisex',
+                is_active: true,
+                is_in_stock: product.display === 'T' && product.selling === 'T',
+              })
+              .select('id')
+              .single();
+
+            // cafe24_products에 캐시 ID 연결
+            if (cacheProduct) {
+              await supabase
+                .from('cafe24_products')
+                .update({ products_cache_id: cacheProduct.id })
+                .eq('id', cafe24Product.id);
+              linkedCount++;
+            }
+          }
         }
 
         return new Response(
           JSON.stringify({ 
             success: true, 
-            synced_count: allProducts.length 
+            synced_count: allProducts.length,
+            linked_to_cache: linkedCount,
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
