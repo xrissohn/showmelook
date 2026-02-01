@@ -470,6 +470,7 @@ export type Database = {
           id: string
           image_url: string
           is_favorite: boolean | null
+          is_public: boolean | null
           memo: string | null
           product_ids: string[] | null
           prompt_used: string | null
@@ -483,6 +484,7 @@ export type Database = {
           id?: string
           image_url: string
           is_favorite?: boolean | null
+          is_public?: boolean | null
           memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
@@ -496,6 +498,7 @@ export type Database = {
           id?: string
           image_url?: string
           is_favorite?: boolean | null
+          is_public?: boolean | null
           memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null

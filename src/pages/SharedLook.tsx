@@ -190,12 +190,14 @@ const SharedLook = () => {
 
           if (productsData) {
             // Generate affiliate URLs for products
+            const { data: { session } } = await supabase.auth.getSession();
             products = await Promise.all(
               productsData.map(async (product) => {
                 let affiliate_url = product.product_url;
                 try {
                   const response = await supabase.functions.invoke("deeplink", {
                     body: { product_url: product.product_url },
+                    headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
                   });
                   if (response.data?.affiliate_url) {
                     affiliate_url = response.data.affiliate_url;
