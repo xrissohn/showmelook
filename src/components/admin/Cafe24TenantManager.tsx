@@ -256,7 +256,7 @@ export function Cafe24TenantManager() {
           </div>
 
           {/* OAuth 테스트 */}
-          <div className="flex gap-2 pt-4 border-t">
+            <div className="flex gap-2 pt-4 border-t">
             <Input
               placeholder="테스트용 mall_id (예: test-shop)"
               value={testMallId}
@@ -274,6 +274,23 @@ export function Cafe24TenantManager() {
             >
               <ExternalLink className="w-4 h-4 mr-1" />
               OAuth 테스트
+            </Button>
+          </div>
+
+          {/* 연동 가이드 링크 */}
+          <div className="flex items-center justify-between p-4 mt-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div>
+              <p className="font-medium text-primary">📚 카페24 위젯 연동 가이드</p>
+              <p className="text-sm text-muted-foreground">
+                쇼핑몰에 가상피팅 위젯을 설치하는 방법을 안내합니다.
+              </p>
+            </div>
+            <Button
+              variant="default"
+              onClick={() => window.open('/docs/cafe24-widget-integration-guide.md', '_blank')}
+            >
+              <ExternalLink className="w-4 h-4 mr-1" />
+              가이드 보기
             </Button>
           </div>
         </CardContent>
