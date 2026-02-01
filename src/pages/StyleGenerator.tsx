@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreloadedData } from '@/contexts/DataPreloaderContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -2456,6 +2456,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
 
 const StyleGenerator = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
   // 구독 상태 (스타일 추천 먼저 받기 제한용)
@@ -2507,7 +2508,12 @@ const StyleGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
-  const [activeTab, setActiveTab] = useState<'generate' | 'mylooks' | 'mypage'>('generate');
+  const [activeTab, setActiveTab] = useState<'generate' | 'mylooks' | 'mypage'>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'mylooks') return 'mylooks';
+    if (tabParam === 'mypage') return 'mypage';
+    return 'generate';
+  });
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editForm, setEditForm] = useState({

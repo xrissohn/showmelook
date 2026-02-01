@@ -211,7 +211,7 @@ const MyPage = () => {
           <Button
             variant="outline"
             className="h-auto py-4 flex flex-col items-center gap-2"
-            onClick={() => navigate('/style?tab=gallery')}
+            onClick={() => navigate('/style?tab=mylooks')}
           >
             <Image className="w-6 h-6 text-primary" />
             <span>마이 갤러리</span>
