@@ -28,12 +28,13 @@ serve(async (req) => {
     if (endpoint === 'sdk.js') {
       const mallId = url.searchParams.get('mall_id');
       
-      const sdkCode = `
+const sdkCode = `
 (function() {
   'use strict';
   
   window.ShowMeLook = window.ShowMeLook || {};
   
+  const APP_BASE_URL = 'https://showmelook.lovable.app';
   const WIDGET_BASE_URL = '${SUPABASE_URL}/functions/v1/cafe24-widget';
   const MALL_ID = '${mallId || ''}';
   
@@ -86,7 +87,7 @@ serve(async (req) => {
     container.appendChild(button);
   };
   
-  // 가상피팅 모달 열기
+  // 가상피팅 모달 열기 (프론트엔드 앱으로 연결)
   ShowMeLook.openFitting = function(productNo) {
     const modal = document.createElement('div');
     modal.id = 'showmelook-modal';
@@ -104,10 +105,11 @@ serve(async (req) => {
     \`;
     
     const iframe = document.createElement('iframe');
-    iframe.src = WIDGET_BASE_URL + '/fitting-page?mall_id=' + encodeURIComponent(this.mallId) + '&product_no=' + productNo;
+    // 프론트엔드 앱 라우트로 연결 (Edge Function HTML 대신)
+    iframe.src = APP_BASE_URL + '/cafe24-fitting?mall_id=' + encodeURIComponent(this.mallId) + '&product_no=' + productNo;
     iframe.style.cssText = \`
       width: 90%;
-      max-width: 800px;
+      max-width: 500px;
       height: 85vh;
       border: none;
       border-radius: 16px;
@@ -459,6 +461,7 @@ serve(async (req) => {
         headers: { 
           ...corsHeaders, 
           'Content-Type': 'text/html; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
         },
       });
     }
