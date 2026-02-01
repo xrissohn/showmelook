@@ -1,13 +1,15 @@
 /**
  * MainNavigation - Unified navigation component for all pages
- * Version: 2.0 - Mobile hamburger menu with active state highlighting
- * Last updated: 2026-01-13
+ * Version: 2.1 - Added tier badge to mypage button
+ * Last updated: 2026-02-01
  */
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { Button } from '@/components/ui/button';
-import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, X, User, LogOut, ImageIcon, Crown } from 'lucide-react';
+import { TierBadge } from '@/components/ui/tier-badge';
+import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
@@ -22,10 +24,12 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { stats, isLoading: isTierLoading } = usePurchaseStats(user?.id);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   const isLandingPage = location.pathname === '/';
+  const currentTier = stats?.currentTier || 'free';
   const currentPath = location.pathname;
   
   // Helper function for active state styling
@@ -130,6 +134,18 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                 
                 {user ? (
                   <>
+                    {/* 마이페이지 + 등급 배지 */}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => navigate('/mypage')} 
+                      className="font-korean text-sm px-3 gap-2"
+                    >
+                      <User className="w-4 h-4" />
+                      마이페이지
+                      {!isTierLoading && <TierBadge tier={currentTier} size="sm" />}
+                    </Button>
+                    
                     {/* 장바구니 */}
                     <Button 
                       variant="ghost" 
@@ -239,7 +255,8 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/mypage')}
                             >
                               <User className={`w-5 h-5 ${isActive('/mypage') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              마이페이지
+                              <span className="flex-1">마이페이지</span>
+                              {user && !isTierLoading && <TierBadge tier={currentTier} size="sm" />}
                             </button>
                             <button
                               onClick={() => handleNavigate('/pricing')}
