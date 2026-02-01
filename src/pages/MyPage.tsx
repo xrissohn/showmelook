@@ -18,6 +18,7 @@ import { FamilyProfileManager } from "@/components/profile/FamilyProfileManager"
 import { PLAN_CONFIG, formatPrice } from "@/lib/planConfig";
 import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
+import { TierHistorySection } from "@/components/mypage/TierHistorySection";
 import { TIER_CONFIG, TierType } from "@/lib/tierConfig";
 import { 
   useRecommendationHistory, 
@@ -256,6 +257,12 @@ const MyPage = () => {
               stats={purchaseStats.stats}
               progressToNextTier={purchaseStats.progressToNextTier}
               nextTierInfo={purchaseStats.nextTierInfo}
+              tierHistory={purchaseStats.tierHistory}
+              isLoading={purchaseStats.isLoading}
+            />
+
+            {/* 등급 변동 이력 */}
+            <TierHistorySection
               tierHistory={purchaseStats.tierHistory}
               isLoading={purchaseStats.isLoading}
             />
