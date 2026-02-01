@@ -24,6 +24,7 @@ const SharedLook = lazy(() => import("./pages/SharedLook"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const Cafe24Fitting = lazy(() => import("./pages/Cafe24Fitting"));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
@@ -69,6 +70,7 @@ const App = () => (
                 <Route path="/look/:lookId" element={<SharedLook />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
+                <Route path="/cafe24-fitting" element={<Cafe24Fitting />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
