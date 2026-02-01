@@ -1,76 +1,88 @@
-# 구매 기반 등급 시스템 구현 현황
 
-## ✅ 완료된 작업
+# 네비게이션 마이페이지 버튼에 등급 배지 추가
 
-### Phase 1: 데이터베이스 마이그레이션
-- [x] `purchase_intents` 테이블 생성 (구매 클릭 추적)
-- [x] `user_purchase_stats` 테이블 생성 (누적 구매 통계)
-- [x] `tier_change_history` 테이블 생성 (등급 변동 이력)
-- [x] `monthly_generation_usage` 테이블 생성 (월간 사용량)
-- [x] `user_subscriptions` 테이블 확장 (5단계 등급 지원)
-- [x] `calculate_user_tier` DB 함수 생성
-- [x] `calculate_model_profile_slots` DB 함수 생성
-- [x] RLS 정책 설정
-
-### Phase 2: Edge Functions
-- [x] `deeplink` 함수 수정 - tracking_id 생성 및 purchase_intents 기록
-- [x] `linkprice-postback` 함수 생성 - 구매 확정/취소 처리
-  - confirmed: 등급 업그레이드, 이력 기록, 슬롯 계산
-  - cancelled: 등급 롤백, 유예 기간 생성
-
-### Phase 3: 프론트엔드 설정
-- [x] `src/lib/tierConfig.ts` 생성 - 5단계 등급 설정
-- [x] `src/components/subscription/TierPolicyNotice.tsx` 생성 - 등급 정책 안내
-
-### Phase 4: Pricing 페이지 개편
-- [x] 5단계 등급 프로그레스 표시
-- [x] 등급별 혜택 카드 UI
-- [x] 등급별 기능 비교 테이블
-- [x] 등급 정책 안내 (TierPolicyNotice) 추가
-- [x] FAQ 업데이트 (구매 기반 시스템 관련)
+## 목표
+모바일 메뉴와 데스크탑 네비게이션의 마이페이지 버튼에 사용자의 현재 등급(Free/Bronze/Silver/Gold/Platinum) 배지를 표시합니다.
 
 ---
 
-## 🔄 다음 단계 (선택적)
+## 변경 사항 요약
 
-### useSubscription 훅 확장
-- [ ] `user_purchase_stats` 조회 통합
-- [ ] 동적 등급 및 모델 프로필 슬롯 반환
+### 1. TierBadge 컴포넌트 분리 (재사용성)
+`TierStatusCard.tsx` 내부에 있는 `TierBadge` 컴포넌트를 별도 파일로 분리하여 여러 곳에서 재사용할 수 있게 합니다.
 
-### MyPage 등급 표시
-- [ ] 현재 등급 배지 표시
-- [ ] 누적 구매 금액 및 다음 등급 진행 상황
-- [ ] 등급 변동 이력 UI
+**새 파일**: `src/components/ui/tier-badge.tsx`
+- 등급별 색상 스타일 (Free: 회색, Bronze: 황동색, Silver: 은색, Gold: 금색, Platinum: 보라+핑크 그라디언트)
+- `size` prop 추가 (`sm`, `md`) - 네비게이션에는 작은 사이즈 사용
 
-### 등급 변동 토스트 알림
-- [ ] 등급 업그레이드 시 축하 토스트
-- [ ] 등급 다운그레이드 시 안내 토스트
-- [ ] 모델 프로필 유예 기간 알림
+### 2. MainNavigation 업데이트
+**파일**: `src/components/MainNavigation.tsx`
 
----
+- `usePurchaseStats` 훅을 import하여 로그인된 사용자의 등급 정보 조회
+- **모바일 메뉴**: "마이페이지" 항목 옆에 등급 배지 표시
+- **데스크탑**: 프로필/마이페이지 아이콘 버튼 추가 + 등급 배지 (또는 기존 장바구니 버튼 옆에 배치)
 
-## 📋 등급 체계 요약
-
-| 등급 | 누적 구매 금액 | 일일 생성 | 월간 생성 | 모델 프로필 |
-|------|---------------|-----------|-----------|-------------|
-| Free | 0원 | 5회 | 25회 | 본인만 |
-| Bronze | 1원+ | 5회 | 무제한 | 본인만 |
-| Silver | 10만원+ | 10회 | 무제한 | 본인만 |
-| Gold | 30만원+ | 20회 | 무제한 | 본인만 |
-| Platinum | 100만원+ | 무제한 | 무제한 | +1명/100만원 |
+### 3. TierStatusCard 수정
+기존 내부 `TierBadge`를 새로 분리한 컴포넌트로 대체합니다.
 
 ---
 
-## 🔗 LinkPrice Postback URL
+## 상세 구현
 
-```
-https://mggedvvzpwxlgrhatrau.supabase.co/functions/v1/linkprice-postback
-  ?lpinfo={lpinfo}
-  &order_id={order_id}
-  &price={price}
-  &payout={payout}
-  &status={status}
+### 새 컴포넌트: TierBadge
+
+```text
+┌─────────────────────────────────────┐
+│  TierBadge                          │
+│  - tier: TierType                   │
+│  - size: 'sm' | 'md' (기본: md)     │
+│  - showIcon?: boolean               │
+├─────────────────────────────────────┤
+│  출력 예시:                          │
+│  [👑 브론즈]  (md, 아이콘 포함)       │
+│  [실버]      (sm, 아이콘 없음)        │
+└─────────────────────────────────────┘
 ```
 
-- `lpinfo`: tracking_id (deeplink에서 생성)
-- `status`: `confirmed` 또는 `cancelled`
+### MainNavigation 변경 (모바일)
+
+변경 전:
+```
+[ User 아이콘 ] 마이페이지
+```
+
+변경 후:
+```
+[ User 아이콘 ] 마이페이지  [브론즈 배지]
+```
+
+### MainNavigation 변경 (데스크탑)
+
+변경 전:
+```
+[ 요금제 ] [ 앱 설치 ] [ 장바구니 ] [ 내 스타일 만들기 ]
+```
+
+변경 후:
+```
+[ 요금제 ] [ 앱 설치 ] [ 프로필(등급배지) ] [ 장바구니 ] [ 내 스타일 만들기 ]
+```
+
+---
+
+## 기술 세부사항
+
+1. **데이터 로딩 최적화**: `usePurchaseStats`는 이미 캐싱 및 에러 핸들링이 구현되어 있어 네비게이션에서 바로 사용 가능
+2. **조건부 렌더링**: 로그인한 사용자(`user`)가 있을 때만 등급 정보 조회 및 배지 표시
+3. **로딩 상태**: 등급 로딩 중에는 배지 숨김 또는 스켈레톤 표시 (네비게이션이므로 숨김 권장)
+4. **반응형**: 모바일에서는 `sm` 사이즈, 데스크탑에서는 `md` 사이즈 배지 사용
+
+---
+
+## 파일 변경 목록
+
+| 파일 | 작업 |
+|------|------|
+| `src/components/ui/tier-badge.tsx` | 새로 생성 |
+| `src/components/MainNavigation.tsx` | 수정 |
+| `src/components/mypage/TierStatusCard.tsx` | 수정 (import 변경) |
