@@ -685,6 +685,36 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_generation_usage: {
+        Row: {
+          created_at: string
+          generation_count: number
+          id: string
+          period_end: string
+          period_start: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          generation_count?: number
+          id?: string
+          period_end: string
+          period_start: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          generation_count?: number
+          id?: string
+          period_end?: string
+          period_start?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pending_products: {
         Row: {
           created_at: string | null
@@ -1010,6 +1040,80 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_intents: {
+        Row: {
+          actual_amount: number | null
+          clicked_at: string
+          commission: number | null
+          confirmation_status: string | null
+          created_at: string
+          id: string
+          merchant_id: string | null
+          order_id: string | null
+          product_id: string | null
+          product_name: string | null
+          product_price: number | null
+          product_url: string | null
+          purchased_at: string | null
+          rolled_back_at: string | null
+          status: string
+          tier_applied_at: string | null
+          tracking_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          clicked_at?: string
+          commission?: number | null
+          confirmation_status?: string | null
+          created_at?: string
+          id?: string
+          merchant_id?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_url?: string | null
+          purchased_at?: string | null
+          rolled_back_at?: string | null
+          status?: string
+          tier_applied_at?: string | null
+          tracking_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_amount?: number | null
+          clicked_at?: string
+          commission?: number | null
+          confirmation_status?: string | null
+          created_at?: string
+          id?: string
+          merchant_id?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          product_price?: number | null
+          product_url?: string | null
+          purchased_at?: string | null
+          rolled_back_at?: string | null
+          status?: string
+          tier_applied_at?: string | null
+          tracking_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_intents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_cache"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rate_limit_state: {
         Row: {
           backoff_until: string | null
@@ -1294,6 +1398,81 @@ export type Database = {
         }
         Relationships: []
       }
+      tier_change_history: {
+        Row: {
+          amount_change: number
+          change_reason: string
+          created_at: string
+          id: string
+          new_tier: string
+          previous_tier: string
+          related_order_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_change?: number
+          change_reason: string
+          created_at?: string
+          id?: string
+          new_tier: string
+          previous_tier: string
+          related_order_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_change?: number
+          change_reason?: string
+          created_at?: string
+          id?: string
+          new_tier?: string
+          previous_tier?: string
+          related_order_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_purchase_stats: {
+        Row: {
+          created_at: string
+          current_tier: string
+          first_purchase_at: string | null
+          last_tier_change_at: string | null
+          model_profile_slots: number
+          pending_amount: number
+          tier_updated_at: string
+          total_purchased_amount: number
+          total_purchases: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_tier?: string
+          first_purchase_at?: string | null
+          last_tier_change_at?: string | null
+          model_profile_slots?: number
+          pending_amount?: number
+          tier_updated_at?: string
+          total_purchased_amount?: number
+          total_purchases?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_tier?: string
+          first_purchase_at?: string | null
+          last_tier_change_at?: string | null
+          model_profile_slots?: number
+          pending_amount?: number
+          tier_updated_at?: string
+          total_purchased_amount?: number
+          total_purchases?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1325,7 +1504,9 @@ export type Database = {
           gallery_limit: number
           id: string
           max_profiles: number
+          monthly_limit: number | null
           plan: string
+          signup_day: number | null
           started_at: string | null
           updated_at: string | null
           user_id: string
@@ -1339,7 +1520,9 @@ export type Database = {
           gallery_limit?: number
           id?: string
           max_profiles?: number
+          monthly_limit?: number | null
           plan?: string
+          signup_day?: number | null
           started_at?: string | null
           updated_at?: string | null
           user_id: string
@@ -1353,7 +1536,9 @@ export type Database = {
           gallery_limit?: number
           id?: string
           max_profiles?: number
+          monthly_limit?: number | null
           plan?: string
+          signup_day?: number | null
           started_at?: string | null
           updated_at?: string | null
           user_id?: string
@@ -1391,6 +1576,11 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_model_profile_slots: {
+        Args: { p_total_amount: number }
+        Returns: number
+      }
+      calculate_user_tier: { Args: { p_total_amount: number }; Returns: string }
       cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_inference_metrics: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }

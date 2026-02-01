@@ -24,16 +24,16 @@ const DOMAIN_TO_MERCHANT: Record<string, string> = {
 
 // 머천트 딥링크 템플릿 (DB 조회 실패 시 Fallback) - LinkPrice API 형식 사용
 const MERCHANT_TEMPLATES: Record<string, string> = {
-  'paulsmith': 'https://click.linkprice.com/click.php?m=paulsmith&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'posty': 'https://click.linkprice.com/click.php?m=posty&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'stories': 'https://click.linkprice.com/click.php?m=stories&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'arket': 'https://click.linkprice.com/click.php?m=arket&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'benetton1': 'https://click.linkprice.com/click.php?m=benetton1&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'wconcept': 'https://click.linkprice.com/click.php?m=wconcept&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'hfashion': 'https://click.linkprice.com/click.php?m=hfashion&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'jestina': 'https://click.linkprice.com/click.php?m=jestina&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'stockx': 'https://click.linkprice.com/click.php?m=stockx&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
-  'kream': 'https://click.linkprice.com/click.php?m=kream&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}',
+  'paulsmith': 'https://click.linkprice.com/click.php?m=paulsmith&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'posty': 'https://click.linkprice.com/click.php?m=posty&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'stories': 'https://click.linkprice.com/click.php?m=stories&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'arket': 'https://click.linkprice.com/click.php?m=arket&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'benetton1': 'https://click.linkprice.com/click.php?m=benetton1&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'wconcept': 'https://click.linkprice.com/click.php?m=wconcept&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'hfashion': 'https://click.linkprice.com/click.php?m=hfashion&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'jestina': 'https://click.linkprice.com/click.php?m=jestina&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'stockx': 'https://click.linkprice.com/click.php?m=stockx&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
+  'kream': 'https://click.linkprice.com/click.php?m=kream&a={affiliate_id}&l=9999&l_cd1=3&l_cd2=q&tu={encoded_url}&lpinfo={tracking_id}',
 };
 
 // 도메인으로 머천트 ID 추출 (전체 도메인 매칭)
@@ -60,13 +60,21 @@ function extractMerchantIdFromDomain(url: string): string | null {
   }
 }
 
+// Tracking ID 생성 (user_id 앞 8자리 + timestamp + random)
+function generateTrackingId(userId: string | null): string {
+  const userPart = userId ? userId.slice(0, 8) : 'anon';
+  const timestamp = Date.now().toString(36);
+  const random = Math.random().toString(36).slice(2, 6);
+  return `${userPart}_${timestamp}_${random}`;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { product_url, force_api } = await req.json();
+    const { product_url, force_api, user_id, product_id, product_name, product_price } = await req.json();
 
     if (!product_url) {
       return new Response(
@@ -75,7 +83,11 @@ serve(async (req) => {
       );
     }
 
-    console.log('[deeplink] Converting product URL:', product_url, 'force_api:', force_api);
+    console.log('[deeplink] Converting product URL:', product_url, 'user_id:', user_id, 'force_api:', force_api);
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 쿠팡 제휴 링크인지 확인 (이미 유효한 딥링크)
     if (product_url.includes('link.coupang.com') || product_url.includes('coupa.ng')) {
@@ -108,6 +120,13 @@ serve(async (req) => {
     const domain = urlObj.hostname.replace('www.', '');
     const merchantName = domain.split('.')[0];
     
+    // Tracking ID 생성 (user_id가 있을 경우)
+    let trackingId: string | null = null;
+    if (user_id) {
+      trackingId = generateTrackingId(user_id);
+      console.log('[deeplink] Generated tracking_id:', trackingId);
+    }
+    
     // force_api=true인 경우 API만 사용
     if (force_api) {
       console.log('[deeplink] Force API mode - skipping template');
@@ -119,10 +138,6 @@ serve(async (req) => {
     
     if (!force_api) {
       try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        
         const { data: merchants } = await supabase
           .from('merchants')
           .select('id, base_url, deeplink_template')
@@ -163,12 +178,42 @@ serve(async (req) => {
 
     // 3. 머천트 템플릿이 있으면 바로 사용 (force_api가 아닌 경우)
     if (!force_api && merchantTemplate && matchedMerchantId) {
-      const affiliateUrl = merchantTemplate
+      let affiliateUrl = merchantTemplate
         .replace('{affiliate_id}', affiliateId)
         .replace('{encoded_url}', encodedUrl)
-        .replace('{url}', encodedUrl);
+        .replace('{url}', encodedUrl)
+        .replace('{tracking_id}', trackingId || '');
+      
+      // tracking_id가 없으면 lpinfo 파라미터 제거
+      if (!trackingId) {
+        affiliateUrl = affiliateUrl.replace('&lpinfo=', '');
+      }
       
       console.log('[deeplink] Generated affiliate URL via template:', affiliateUrl);
+
+      // 4. user_id가 있으면 purchase_intents에 기록
+      if (user_id && trackingId) {
+        try {
+          await supabase
+            .from('purchase_intents')
+            .insert({
+              tracking_id: trackingId,
+              user_id: user_id,
+              product_id: product_id || null,
+              merchant_id: matchedMerchantId,
+              product_url: product_url,
+              product_name: product_name || null,
+              product_price: product_price || 0,
+              clicked_at: new Date().toISOString(),
+              status: 'pending',
+              confirmation_status: 'pending',
+            });
+          console.log('[deeplink] Recorded purchase intent:', trackingId);
+        } catch (intentError) {
+          console.error('[deeplink] Failed to record purchase intent:', intentError);
+          // 기록 실패해도 딥링크는 정상 반환
+        }
+      }
 
       return new Response(
         JSON.stringify({
@@ -177,6 +222,7 @@ serve(async (req) => {
           merchant_name: merchantName,
           original_url: product_url,
           affiliate_url: affiliateUrl,
+          tracking_id: trackingId,
           mobile_supported: true,
           source: 'merchant_template'
         }),
@@ -184,7 +230,7 @@ serve(async (req) => {
       );
     }
 
-    // 4. LinkPrice API Fallback (알려지지 않은 머천트용)
+    // 5. LinkPrice API Fallback (알려지지 않은 머천트용)
     const apiUrl = `https://api.linkprice.com/ci/service/custom_link_xml?a_id=${affiliateId}&url=${encodedUrl}&mode=json`;
     console.log('[deeplink] Calling LinkPrice API:', apiUrl);
 
@@ -232,12 +278,44 @@ serve(async (req) => {
       );
     }
 
+    // API 결과에 lpinfo 추가 (가능한 경우)
+    let finalAffiliateUrl = linkPriceData.url;
+    if (trackingId && finalAffiliateUrl) {
+      finalAffiliateUrl = finalAffiliateUrl.includes('?') 
+        ? `${finalAffiliateUrl}&lpinfo=${trackingId}`
+        : `${finalAffiliateUrl}?lpinfo=${trackingId}`;
+    }
+
+    // user_id가 있으면 purchase_intents에 기록
+    if (user_id && trackingId) {
+      try {
+        await supabase
+          .from('purchase_intents')
+          .insert({
+            tracking_id: trackingId,
+            user_id: user_id,
+            product_id: product_id || null,
+            merchant_id: merchantName,
+            product_url: product_url,
+            product_name: product_name || null,
+            product_price: product_price || 0,
+            clicked_at: new Date().toISOString(),
+            status: 'pending',
+            confirmation_status: 'pending',
+          });
+        console.log('[deeplink] Recorded purchase intent (API):', trackingId);
+      } catch (intentError) {
+        console.error('[deeplink] Failed to record purchase intent:', intentError);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         merchant_name: merchantName,
         original_url: product_url,
-        affiliate_url: linkPriceData.url,
+        affiliate_url: finalAffiliateUrl,
+        tracking_id: trackingId,
         mobile_supported: linkPriceData.mobile_yn === 'Y',
         source: 'linkprice_api'
       }),
