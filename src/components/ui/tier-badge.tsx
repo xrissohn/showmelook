@@ -1,14 +1,17 @@
 /**
  * TierBadge - 재사용 가능한 등급 배지 컴포넌트
  * 네비게이션, 마이페이지 등 여러 곳에서 사용
- * 호버 시 혜택 요약 툴팁 표시
+ * 데스크탑: 호버 시 툴팁 / 모바일: 탭 시 Popover
  */
 
+import { useState } from 'react';
 import { Crown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TierType, TIER_CONFIG } from '@/lib/tierConfig';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface TierBadgeProps {
   tier: TierType;
@@ -51,6 +54,30 @@ const getTierBenefits = (tier: TierType): string[] => {
   return benefits;
 };
 
+// 툴팁/팝오버 콘텐츠 컴포넌트
+const TierBenefitsContent = ({ tier }: { tier: TierType }) => {
+  const config = TIER_CONFIG[tier];
+  const benefits = getTierBenefits(tier);
+  
+  return (
+    <div className="space-y-1">
+      <p className="font-bold text-sm font-korean">{config.nameKo} 등급</p>
+      <ul className="text-xs space-y-0.5">
+        {benefits.map((benefit, idx) => (
+          <li key={idx} className="text-muted-foreground font-korean">
+            • {benefit}
+          </li>
+        ))}
+      </ul>
+      {tier !== 'free' && (
+        <p className="text-[10px] text-muted-foreground pt-1 border-t border-border mt-2 font-korean">
+          누적 구매 {tier === 'bronze' ? '1원' : `${TIER_CONFIG[tier].minAmount.toLocaleString()}원`} 이상
+        </p>
+      )}
+    </div>
+  );
+};
+
 export const TierBadge = ({ 
   tier, 
   size = 'md', 
@@ -59,7 +86,8 @@ export const TierBadge = ({
   className 
 }: TierBadgeProps) => {
   const config = TIER_CONFIG[tier];
-  const benefits = getTierBenefits(tier);
+  const isMobile = useIsMobile();
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   const badgeElement = (
     <Badge 
@@ -79,6 +107,25 @@ export const TierBadge = ({
     return badgeElement;
   }
 
+  // 모바일: Popover (탭으로 열림)
+  if (isMobile) {
+    return (
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+          {badgeElement}
+        </PopoverTrigger>
+        <PopoverContent 
+          side="bottom" 
+          className="w-[200px] p-3"
+          sideOffset={5}
+        >
+          <TierBenefitsContent tier={tier} />
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // 데스크탑: Tooltip (호버)
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -90,21 +137,7 @@ export const TierBadge = ({
           className="max-w-[200px] p-3"
           sideOffset={5}
         >
-          <div className="space-y-1">
-            <p className="font-bold text-sm font-korean">{config.nameKo} 등급</p>
-            <ul className="text-xs space-y-0.5">
-              {benefits.map((benefit, idx) => (
-                <li key={idx} className="text-muted-foreground font-korean">
-                  • {benefit}
-                </li>
-              ))}
-            </ul>
-            {tier !== 'free' && (
-              <p className="text-[10px] text-muted-foreground pt-1 border-t border-border mt-2 font-korean">
-                누적 구매 {tier === 'bronze' ? '1원' : `${TIER_CONFIG[tier].minAmount.toLocaleString()}원`} 이상
-              </p>
-            )}
-          </div>
+          <TierBenefitsContent tier={tier} />
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
