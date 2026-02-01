@@ -278,15 +278,90 @@ export function CoupangDailyReportPanel() {
     return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
   };
 
+  // API 자동 조회
+  const fetchFromApi = async () => {
+    setIsLoading(true);
+    setReportResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('coupang-daily-report', {
+        body: { date: manualDate },
+      });
+
+      if (error) throw error;
+
+      setReportResult(data);
+      
+      if (data.success) {
+        toast({
+          title: data.mode === 'api' ? 'API 조회 완료' : '처리 완료',
+          description: `${data.totalRecords}건 조회, ${data.matchedIntents}건 매칭, ${data.tierChanges}건 등급 변동`,
+        });
+        loadRecentReports();
+        loadStats();
+      } else {
+        toast({
+          title: '조회 실패',
+          description: data.error || data.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: 'API 호출 실패', description: errorMessage, variant: 'destructive' });
+      setReportResult({ success: false, error: errorMessage });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* API 자동 조회 카드 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            쿠팡 일별 실적 API 조회
+          </CardTitle>
+          <CardDescription>
+            쿠팡 파트너스 API를 통해 일별 실적을 자동으로 조회합니다.
+            매일 오후 6시(KST)에 자동 실행되며, 수동으로도 실행할 수 있습니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-4 items-end">
+            <div>
+              <label className="text-sm font-medium mb-1 block">조회 날짜</label>
+              <Input
+                type="date"
+                value={manualDate}
+                onChange={(e) => setManualDate(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <Button onClick={fetchFromApi} disabled={isLoading}>
+              {isLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />조회 중...</>
+              ) : (
+                <><RefreshCw className="w-4 h-4 mr-2" />API 조회 실행</>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            * 쿠팡 파트너스 계정에 일별 실적 API 권한이 있어야 합니다. 
+            API 권한이 없는 경우 아래 수동 입력/엑셀 업로드를 이용하세요.
+          </p>
+        </CardContent>
+      </Card>
+
       {/* 안내 배너 */}
       <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
         <CardContent className="py-4">
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
             <div>
-              <p className="font-medium text-amber-800 dark:text-amber-200">쿠팡 파트너스 리포트 수동 입력</p>
+              <p className="font-medium text-amber-800 dark:text-amber-200">수동 입력 모드</p>
               <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                 쿠팡 파트너스 대시보드에서 다운로드한 실적 리포트를 업로드하거나 수동으로 입력하세요.
                 Sub ID(tracking_id)가 일치하는 구매 기록이 자동으로 확정 처리됩니다.
