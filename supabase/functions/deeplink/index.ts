@@ -151,6 +151,11 @@ function extractMerchantIdFromDomain(url: string): string | null {
   }
 }
 
+// PII sanitization helpers
+function sanitizeUserId(id: string | null): string {
+  return id ? `${id.slice(0, 8)}***` : 'null';
+}
+
 // Tracking ID 생성 (user_id 앞 8자리 + timestamp + random)
 function generateTrackingId(userId: string | null): string {
   const userPart = userId ? userId.slice(0, 8) : 'anon';
@@ -193,10 +198,10 @@ serve(async (req) => {
         const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
         if (!claimsError && claimsData?.claims?.sub) {
           userId = claimsData.claims.sub as string;
-          console.log('[deeplink] Authenticated user:', userId);
+          console.log('[deeplink] Authenticated user:', sanitizeUserId(userId));
         }
       } catch (authError) {
-        console.log('[deeplink] Token validation failed, proceeding as guest:', authError);
+        console.log('[deeplink] Token validation failed, proceeding as guest');
       }
     }
 
