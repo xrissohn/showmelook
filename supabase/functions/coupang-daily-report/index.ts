@@ -6,6 +6,45 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// 쿠팡 파트너스 HMAC-SHA256 서명 생성
+async function generateCoupangHmacSignature(
+  method: string,
+  url: string,
+  accessKey: string,
+  secretKey: string
+): Promise<string> {
+  const [path, query = ""] = url.split("?");
+  
+  // GMT 시간 형식: yyMMdd'T'HHmmss'Z'
+  const now = new Date();
+  const datetime = now.toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "")
+    .slice(2); // YYMMDDTHHmmssZ 형식
+  
+  const message = datetime + method + path + query;
+  
+  // HMAC-SHA256 서명 생성
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secretKey);
+  const messageData = encoder.encode(message);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const hexSignature = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+  
+  return `CEA algorithm=HmacSHA256, access-key=${accessKey}, signed-date=${datetime}, signature=${hexSignature}`;
+}
+
 // 등급 계산 함수 (DB 함수와 동일 로직)
 function calculateUserTier(totalAmount: number): string {
   if (totalAmount >= 1000000) return 'platinum';
@@ -23,25 +62,97 @@ function calculateModelProfileSlots(totalAmount: number): number {
   return 0;
 }
 
-interface ManualReportItem {
-  report_date: string; // yyyy-MM-dd 형식
-  sub_id: string;
-  tracking_code?: string;
-  click_count?: number;
-  order_count: number;
-  cancel_count?: number;
+// 날짜를 yyyyMMdd 형식으로 변환
+function formatDateForApi(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+// 날짜를 yyyy-MM-dd 형식으로 변환
+function formatDateForDb(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+interface CoupangReportItem {
+  trackingCode: string;
+  subId: string;
+  click: number;
+  order: number;
+  cancel: number;
   gmv: number;
-  commission?: number;
+  commission: number;
+}
+
+interface CoupangApiResponse {
+  rCode: string;
+  rMessage: string;
+  data: CoupangReportItem[];
 }
 
 interface ProcessResult {
   success: boolean;
+  reportDate: string;
   totalRecords: number;
   processedRecords: number;
   matchedIntents: number;
   updatedStats: number;
   tierChanges: number;
   errors: string[];
+}
+
+// 쿠팡 일별 실적 API 호출
+async function fetchCoupangDailyReport(
+  accessKey: string,
+  secretKey: string,
+  startDate: string,
+  endDate: string,
+  page: number = 0
+): Promise<{ success: boolean; data?: CoupangReportItem[]; error?: string; hasMore?: boolean }> {
+  const apiPath = `/v2/providers/affiliate_open_api/apis/openapi/v1/reports/daily?startDate=${startDate}&endDate=${endDate}&page=${page}`;
+  const authorization = await generateCoupangHmacSignature("GET", apiPath, accessKey, secretKey);
+  
+  try {
+    console.log('[coupang-daily-report] Calling API:', apiPath);
+    
+    const response = await fetch(`https://api-gateway.coupang.com${apiPath}`, {
+      method: "GET",
+      headers: {
+        "Authorization": authorization,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    if (response.status === 429) {
+      console.log('[coupang-daily-report] Rate limited, waiting 60s...');
+      await new Promise(resolve => setTimeout(resolve, 60000));
+      return fetchCoupangDailyReport(accessKey, secretKey, startDate, endDate, page);
+    }
+    
+    const data: CoupangApiResponse = await response.json();
+    console.log('[coupang-daily-report] API response:', JSON.stringify(data));
+    
+    if (data.rCode === "0") {
+      const hasMore = data.data && data.data.length >= 1000;
+      return {
+        success: true,
+        data: data.data || [],
+        hasMore,
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: data.rMessage || 'Coupang API failed' 
+    };
+  } catch (error) {
+    console.error('[coupang-daily-report] API error:', error);
+    return { success: false, error: String(error) };
+  }
 }
 
 serve(async (req) => {
@@ -51,23 +162,45 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const accessKey = Deno.env.get('COUPANG_ACCESS_KEY');
+  const secretKey = Deno.env.get('COUPANG_SECRET_KEY');
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    const { records } = await req.json() as { records: ManualReportItem[] };
-
-    if (!records || !Array.isArray(records) || records.length === 0) {
+    // API 키 확인
+    if (!accessKey || !secretKey) {
       return new Response(
-        JSON.stringify({ error: 'records array is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: 'Coupang API keys not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('[coupang-daily-report] Processing', records.length, 'records');
+    // 요청에서 날짜 파라미터 추출 (없으면 전날 사용)
+    let targetDate: Date;
+    try {
+      const body = await req.json();
+      if (body.date) {
+        targetDate = new Date(body.date);
+      } else {
+        // 기본값: 전날 (D-1)
+        targetDate = new Date();
+        targetDate.setDate(targetDate.getDate() - 1);
+      }
+    } catch {
+      // JSON 파싱 실패 시 기본값 사용
+      targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() - 1);
+    }
+
+    const apiDateFormat = formatDateForApi(targetDate);
+    const dbDateFormat = formatDateForDb(targetDate);
+    
+    console.log('[coupang-daily-report] Fetching report for date:', apiDateFormat);
 
     const result: ProcessResult = {
       success: true,
-      totalRecords: records.length,
+      reportDate: dbDateFormat,
+      totalRecords: 0,
       processedRecords: 0,
       matchedIntents: 0,
       updatedStats: 0,
@@ -75,19 +208,50 @@ serve(async (req) => {
       errors: [],
     };
 
-    for (const record of records) {
+    // 페이지네이션으로 모든 데이터 가져오기
+    let allRecords: CoupangReportItem[] = [];
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const apiResult = await fetchCoupangDailyReport(accessKey, secretKey, apiDateFormat, apiDateFormat, page);
+      
+      if (!apiResult.success) {
+        result.errors.push(`API error on page ${page}: ${apiResult.error}`);
+        break;
+      }
+
+      if (apiResult.data && apiResult.data.length > 0) {
+        allRecords = allRecords.concat(apiResult.data);
+      }
+
+      hasMore = apiResult.hasMore || false;
+      page++;
+
+      // 과도한 API 호출 방지
+      if (page > 100) {
+        result.errors.push('Too many pages, stopping at 100');
+        break;
+      }
+    }
+
+    result.totalRecords = allRecords.length;
+    console.log('[coupang-daily-report] Total records fetched:', allRecords.length);
+
+    // 각 레코드 처리
+    for (const record of allRecords) {
       try {
         // 1. coupang_daily_reports에 저장 (upsert)
         const { error: upsertError } = await supabase
           .from('coupang_daily_reports')
           .upsert({
-            report_date: record.report_date,
-            tracking_code: record.tracking_code || null,
-            sub_id: record.sub_id,
-            click_count: record.click_count || 0,
-            order_count: record.order_count,
-            cancel_count: record.cancel_count || 0,
-            gmv: record.gmv,
+            report_date: dbDateFormat,
+            tracking_code: record.trackingCode || null,
+            sub_id: record.subId,
+            click_count: record.click || 0,
+            order_count: record.order || 0,
+            cancel_count: record.cancel || 0,
+            gmv: record.gmv || 0,
             commission: record.commission || 0,
             processed: false,
           }, {
@@ -97,7 +261,7 @@ serve(async (req) => {
 
         if (upsertError) {
           console.error('[coupang-daily-report] Upsert error:', upsertError);
-          result.errors.push(`Upsert error for ${record.sub_id}: ${upsertError.message}`);
+          result.errors.push(`Upsert error for ${record.subId}: ${upsertError.message}`);
           continue;
         }
 
@@ -107,13 +271,13 @@ serve(async (req) => {
         const { data: intent, error: intentError } = await supabase
           .from('purchase_intents')
           .select('*')
-          .eq('tracking_id', record.sub_id)
+          .eq('tracking_id', record.subId)
           .eq('merchant_id', 'coupang')
           .maybeSingle();
 
         if (intentError) {
           console.error('[coupang-daily-report] Intent lookup error:', intentError);
-          result.errors.push(`Intent lookup error for ${record.sub_id}: ${intentError.message}`);
+          result.errors.push(`Intent lookup error for ${record.subId}: ${intentError.message}`);
           continue;
         }
 
@@ -126,7 +290,7 @@ serve(async (req) => {
         const userId = intent.user_id;
 
         // 3. 주문이 있고 아직 처리 안 된 경우 -> 구매 확정
-        if (record.order_count > 0 && intent.status !== 'purchased') {
+        if (record.order > 0 && intent.status !== 'purchased') {
           console.log('[coupang-daily-report] Confirming purchase for user:', userId);
 
           // purchase_intents 업데이트
@@ -195,7 +359,7 @@ serve(async (req) => {
                 new_tier: newTier,
                 change_reason: 'coupang_purchase',
                 amount_change: record.gmv,
-                related_order_id: `coupang_${record.report_date}_${record.sub_id}`,
+                related_order_id: `coupang_${dbDateFormat}_${record.subId}`,
               });
             result.tierChanges++;
             console.log('[coupang-daily-report] Tier upgraded:', currentTier, '->', newTier);
@@ -217,7 +381,7 @@ serve(async (req) => {
         }
 
         // 4. 취소가 있는 경우 -> 환불 처리
-        if ((record.cancel_count || 0) > 0 && intent.status === 'purchased' && intent.confirmation_status !== 'rolled_back') {
+        if ((record.cancel || 0) > 0 && intent.status === 'purchased' && intent.confirmation_status !== 'rolled_back') {
           console.log('[coupang-daily-report] Processing cancellation for user:', userId);
 
           const previousAmount = intent.actual_amount || record.gmv;
@@ -271,7 +435,7 @@ serve(async (req) => {
                   new_tier: newTier,
                   change_reason: 'coupang_refund',
                   amount_change: -previousAmount,
-                  related_order_id: `coupang_${record.report_date}_${record.sub_id}`,
+                  related_order_id: `coupang_${dbDateFormat}_${record.subId}`,
                 });
               result.tierChanges++;
               console.log('[coupang-daily-report] Tier downgraded:', currentTier, '->', newTier);
@@ -292,13 +456,13 @@ serve(async (req) => {
             processed: true,
             processed_at: new Date().toISOString(),
           })
-          .eq('report_date', record.report_date)
-          .eq('sub_id', record.sub_id);
+          .eq('report_date', dbDateFormat)
+          .eq('sub_id', record.subId);
 
       } catch (recordError: unknown) {
         const errorMsg = recordError instanceof Error ? recordError.message : 'Unknown error';
         console.error('[coupang-daily-report] Record processing error:', errorMsg);
-        result.errors.push(`Record error for ${record.sub_id}: ${errorMsg}`);
+        result.errors.push(`Record error for ${record.subId}: ${errorMsg}`);
       }
     }
 
