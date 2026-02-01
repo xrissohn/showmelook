@@ -771,8 +771,10 @@ const Admin = () => {
     setDeeplinkResult(null);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
         body: { product_url: productUrl },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 
       if (error) throw error;

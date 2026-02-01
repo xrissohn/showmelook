@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // 쿠팡 파트너스 HMAC-SHA256 서명 생성
@@ -165,7 +165,12 @@ serve(async (req) => {
   }
 
   try {
-    const { product_url, force_api, user_id, product_id, product_name, product_price } = await req.json();
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    // Parse request body
+    const { product_url, force_api, product_id, product_name, product_price } = await req.json();
 
     if (!product_url) {
       return new Response(
@@ -174,11 +179,31 @@ serve(async (req) => {
       );
     }
 
-    console.log('[deeplink] Converting product URL:', product_url, 'user_id:', user_id, 'force_api:', force_api);
+    // Authenticate user from JWT token (optional - deeplinks work for guests too, but purchase_intents require auth)
+    let userId: string | null = null;
+    const authHeader = req.headers.get('Authorization');
+    
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      try {
+        const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+        if (!claimsError && claimsData?.claims?.sub) {
+          userId = claimsData.claims.sub as string;
+          console.log('[deeplink] Authenticated user:', userId);
+        }
+      } catch (authError) {
+        console.log('[deeplink] Token validation failed, proceeding as guest:', authError);
+      }
+    }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    console.log('[deeplink] Converting product URL:', product_url, 'userId:', userId, 'force_api:', force_api);
+
+    // Use service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 쿠팡 제휴 링크인지 확인 (이미 유효한 딥링크)
     if (product_url.includes('link.coupang.com') || product_url.includes('coupa.ng')) {
@@ -202,21 +227,21 @@ serve(async (req) => {
       console.log('[deeplink] Coupang product URL detected, converting via Partners API');
       
       // Tracking ID 생성 (subId로 사용)
-      const trackingId = user_id ? generateTrackingId(user_id) : undefined;
+      const trackingId = userId ? generateTrackingId(userId) : undefined;
       
       const coupangResult = await convertCoupangToDeeplink(product_url, trackingId);
       
       if (coupangResult.success && coupangResult.shortenUrl) {
         console.log('[deeplink] Coupang deeplink generated:', coupangResult.shortenUrl);
         
-        // user_id가 있으면 purchase_intents에 기록
-        if (user_id && trackingId) {
+        // userId가 있으면 purchase_intents에 기록
+        if (userId && trackingId) {
           try {
             await supabase
               .from('purchase_intents')
               .insert({
                 tracking_id: trackingId,
-                user_id: user_id,
+                user_id: userId,
                 product_id: product_id || null,
                 merchant_id: 'coupang',
                 product_url: product_url,
@@ -273,10 +298,10 @@ serve(async (req) => {
     const domain = urlObj.hostname.replace('www.', '');
     const merchantName = domain.split('.')[0];
     
-    // Tracking ID 생성 (user_id가 있을 경우)
+    // Tracking ID 생성 (userId가 있을 경우)
     let trackingId: string | null = null;
-    if (user_id) {
-      trackingId = generateTrackingId(user_id);
+    if (userId) {
+      trackingId = generateTrackingId(userId);
       console.log('[deeplink] Generated tracking_id:', trackingId);
     }
     
@@ -344,14 +369,14 @@ serve(async (req) => {
       
       console.log('[deeplink] Generated affiliate URL via template:', affiliateUrl);
 
-      // 4. user_id가 있으면 purchase_intents에 기록
-      if (user_id && trackingId) {
+      // 4. userId가 있으면 purchase_intents에 기록
+      if (userId && trackingId) {
         try {
           await supabase
             .from('purchase_intents')
             .insert({
               tracking_id: trackingId,
-              user_id: user_id,
+              user_id: userId,
               product_id: product_id || null,
               merchant_id: matchedMerchantId,
               product_url: product_url,
@@ -439,14 +464,14 @@ serve(async (req) => {
         : `${finalAffiliateUrl}?lpinfo=${trackingId}`;
     }
 
-    // user_id가 있으면 purchase_intents에 기록
-    if (user_id && trackingId) {
+    // userId가 있으면 purchase_intents에 기록
+    if (userId && trackingId) {
       try {
         await supabase
           .from('purchase_intents')
           .insert({
             tracking_id: trackingId,
-            user_id: user_id,
+            user_id: userId,
             product_id: product_id || null,
             merchant_id: merchantName,
             product_url: product_url,

@@ -1463,8 +1463,11 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     setPurchasingProductId(product.id);
     
     try {
+      // Get auth token for deeplink tracking
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: product.product_url }
+        body: { product_url: product.product_url },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
       
       if (error) throw error;
@@ -2937,8 +2940,10 @@ const StyleGenerator = () => {
     // 딥링크가 없으면 생성 시도
     if (!product.affiliate_url && product.product_url) {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
         const { data } = await supabase.functions.invoke('deeplink', {
-          body: { product_url: product.product_url }
+          body: { product_url: product.product_url },
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
         });
         if (data?.affiliate_url) {
           affiliateUrl = data.affiliate_url;
@@ -3166,9 +3171,12 @@ const StyleGenerator = () => {
     setPurchasingProductId(product.id);
 
     try {
+      // Get auth token for deeplink tracking
+      const { data: { session } } = await supabase.auth.getSession();
       // deeplink 함수 호출하여 제휴 링크 변환
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: product.product_url }
+        body: { product_url: product.product_url },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 
       if (error) throw error;

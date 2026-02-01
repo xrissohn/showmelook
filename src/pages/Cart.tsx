@@ -187,8 +187,10 @@ const Cart = () => {
         return;
       }
 
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: item.product_url }
+        body: { product_url: item.product_url },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 
       if (error) throw error;
@@ -234,6 +236,7 @@ const Cart = () => {
     setBulkPurchasing(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const deeplinkPromises = itemsWithUrl.map(async item => {
         // Use existing affiliate URL if available
         if (item.affiliate_url) {
@@ -241,7 +244,8 @@ const Cart = () => {
         }
 
         const { data, error } = await supabase.functions.invoke('deeplink', {
-          body: { product_url: item.product_url }
+          body: { product_url: item.product_url },
+          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
         });
 
         return {
