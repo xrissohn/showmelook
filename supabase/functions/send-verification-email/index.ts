@@ -17,6 +17,13 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// PII sanitization helper for logging
+function sanitizeEmail(email: string): string {
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return '***@***';
+  return `${local.slice(0, 3)}***@${domain}`;
+}
+
 function getEmailTemplate(code: string, purpose: "signup" | "password_reset"): string {
   const title = purpose === "signup" ? "회원가입 인증코드" : "비밀번호 재설정 인증코드";
   const description = purpose === "signup" 
@@ -206,7 +213,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Verification code sent to ${email} for ${purpose}`);
+    console.log(`Verification code sent to ${sanitizeEmail(email)} for ${purpose}`);
 
     return new Response(
       JSON.stringify({ 
