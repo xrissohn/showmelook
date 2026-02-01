@@ -123,3 +123,9 @@ verify_jwt = false
 
 [functions.cafe24-oauth]
 verify_jwt = false
+
+[functions.cafe24-sync]
+verify_jwt = false
+
+[functions.cafe24-widget]
+verify_jwt = false
