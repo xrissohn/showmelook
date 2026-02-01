@@ -13,15 +13,6 @@ const getTodayKST = (): string => {
   return kstTime.toISOString().split('T')[0];
 };
 
-interface BonusCredits {
-  total: number;
-  details: Array<{
-    id: string;
-    remaining: number;
-    expires_at: string | null;
-  }>;
-}
-
 interface GenerationLimit {
   isPremium: boolean;
   dailyLimit: number;
@@ -76,18 +67,24 @@ export const useGenerationLimit = (userId: string | undefined) => {
       const currentCount = usage?.generation_count || 0;
       const baseRemaining = isPremium ? -1 : Math.max(0, dailyLimit - currentCount);
 
-      // Fetch bonus credits (non-premium only)
+      // Fetch bonus credits (non-premium only) - with authentication
       let bonusCredits = 0;
       if (!isPremium) {
         try {
-          const response = await fetch(`${SUPABASE_URL}/functions/v1/get-bonus-credits`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId }),
-          });
-          const result = await response.json();
-          if (result.success) {
-            bonusCredits = result.total || 0;
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/get-bonus-credits`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session.access_token}`
+              },
+              body: JSON.stringify({}),
+            });
+            const result = await response.json();
+            if (result.success) {
+              bonusCredits = result.total || 0;
+            }
           }
         } catch (e) {
           console.error('Failed to fetch bonus credits:', e);
@@ -126,15 +123,24 @@ export const useGenerationLimit = (userId: string | undefined) => {
     fetchLimit();
   }, [fetchLimit]);
 
-  // 보너스 크레딧 소비 함수
+  // 보너스 크레딧 소비 함수 - with authentication
   const consumeBonusCredit = useCallback(async (): Promise<{ success: boolean; remaining: number }> => {
     if (!userId) return { success: false, remaining: 0 };
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('No active session for consuming bonus credit');
+        return { success: false, remaining: limit.bonusCredits };
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/consume-bonus-credit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({}),
       });
       const result = await response.json();
       

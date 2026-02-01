@@ -15,23 +15,42 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { user_id } = await req.json();
-
-    if (!user_id) {
+    // Authenticate the user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
-        JSON.stringify({ success: false, error: 'user_id가 필요합니다.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: '인증이 필요합니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Verify the token and get user
+    const authClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(
+        JSON.stringify({ success: false, error: '유효하지 않은 인증 토큰입니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = claimsData.claims.sub;
+    
+    // Use service role for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // 가장 먼저 만료되는 활성 보너스 찾기
     const { data: rewards, error: queryError } = await supabase
       .from('referral_rewards')
       .select('*')
-      .eq('referrer_user_id', user_id)
+      .eq('referrer_user_id', userId)
       .eq('reward_type', 'bonus_credits')
       .eq('is_active', true)
       .gt('remaining_amount', 0)
@@ -79,7 +98,7 @@ serve(async (req) => {
     const { data: remainingRewards } = await supabase
       .from('referral_rewards')
       .select('remaining_amount')
-      .eq('referrer_user_id', user_id)
+      .eq('referrer_user_id', userId)
       .eq('reward_type', 'bonus_credits')
       .eq('is_active', true)
       .gt('remaining_amount', 0)

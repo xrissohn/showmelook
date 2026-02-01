@@ -48,6 +48,9 @@ export const useReferral = (userId: string | undefined) => {
     }
 
     try {
+      // Get current session for authenticated requests
+      const { data: { session } } = await supabase.auth.getSession();
+      
       // 1. 내 추천 코드 조회 또는 생성 (Edge Function 호출)
       let codeData = null;
       try {
@@ -69,17 +72,22 @@ export const useReferral = (userId: string | undefined) => {
         console.error('Failed to fetch/generate referral code:', e);
       }
 
-      // 2. 보너스 크레딧 조회 (Edge Function 호출)
+      // 2. 보너스 크레딧 조회 (Edge Function 호출) - with authentication
       let bonusData = { total: 0, details: [] };
       try {
-        const response = await fetch(`${SUPABASE_URL}/functions/v1/get-bonus-credits`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId }),
-        });
-        const result = await response.json();
-        if (result.success) {
-          bonusData = { total: result.total, details: result.details };
+        if (session?.access_token) {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/get-bonus-credits`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            },
+            body: JSON.stringify({}),
+          });
+          const result = await response.json();
+          if (result.success) {
+            bonusData = { total: result.total, details: result.details };
+          }
         }
       } catch (e) {
         console.error('Failed to fetch bonus credits:', e);
@@ -107,15 +115,24 @@ export const useReferral = (userId: string | undefined) => {
     fetchReferralData();
   }, [fetchReferralData]);
 
-  // 보너스 크레딧 소비
+  // 보너스 크레딧 소비 - with authentication
   const consumeBonusCredit = useCallback(async (): Promise<{ success: boolean; remaining: number }> => {
     if (!userId) return { success: false, remaining: 0 };
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        console.error('No active session for consuming bonus credit');
+        return { success: false, remaining: state.bonusCredits.total };
+      }
+
       const response = await fetch(`${SUPABASE_URL}/functions/v1/consume-bonus-credit`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: userId }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({}),
       });
       const result = await response.json();
       
