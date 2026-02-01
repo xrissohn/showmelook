@@ -5,12 +5,12 @@
 
 import { Crown, TrendingUp, ShoppingBag, Sparkles, ArrowUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { TierType, TIER_CONFIG, formatAmountKo, getTierBenefitsSummary } from '@/lib/tierConfig';
 import { PurchaseStats, TierChangeRecord } from '@/hooks/usePurchaseStats';
+import { TierBadge } from '@/components/ui/tier-badge';
 
 interface TierStatusCardProps {
   stats: PurchaseStats | null;
@@ -19,23 +19,6 @@ interface TierStatusCardProps {
   tierHistory: TierChangeRecord[];
   isLoading?: boolean;
 }
-
-const TierBadge = ({ tier }: { tier: TierType }) => {
-  const config = TIER_CONFIG[tier];
-  const badgeClasses: Record<TierType, string> = {
-    free: 'bg-gray-500 text-white',
-    bronze: 'bg-amber-700 text-white',
-    silver: 'bg-gray-400 text-white',
-    gold: 'bg-yellow-500 text-black',
-    platinum: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white',
-  };
-
-  return (
-    <Badge className={`${badgeClasses[tier]} font-bold`}>
-      {config.nameKo}
-    </Badge>
-  );
-};
 
 export const TierStatusCard = ({
   stats,
