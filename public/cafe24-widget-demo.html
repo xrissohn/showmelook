@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShowMeLook 카페24 위젯 데모</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      min-height: 100vh;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .header h1 {
+      font-size: 1.5rem;
+      margin-bottom: 8px;
+    }
+    
+    .header p {
+      opacity: 0.9;
+      font-size: 0.9rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    
+    .product-card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .product-image {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      background: #f1f5f9;
+    }
+    
+    .product-info {
+      padding: 16px;
+    }
+    
+    .product-brand {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .product-name {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1e293b;
+      margin: 8px 0;
+      line-height: 1.4;
+    }
+    
+    .product-price {
+      font-size: 1.125rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+    
+    .product-actions {
+      padding: 0 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .btn-cart {
+      width: 100%;
+      padding: 12px;
+      background: #1e293b;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .btn-cart:hover {
+      background: #334155;
+    }
+    
+    /* 위젯 버튼 컨테이너 */
+    .fitting-btn-container {
+      width: 100%;
+    }
+    
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .info-box {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      border-left: 4px solid #667eea;
+    }
+    
+    .info-box h3 {
+      color: #667eea;
+      margin-bottom: 12px;
+    }
+    
+    .info-box code {
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+    
+    .info-box pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+    
+    .console-log {
+      background: #1e293b;
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 0.85rem;
+      margin-top: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .console-log .log-entry {
+      margin-bottom: 4px;
+    }
+    
+    .console-log .log-time {
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛍️ ShowMeLook 카페24 위젯 데모</h1>
+    <p>가상 피팅 위젯이 쇼핑몰에서 어떻게 작동하는지 미리 확인해보세요</p>
+  </div>
+  
+  <div class="container">
+    <!-- 사용법 안내 -->
+    <div class="info-box">
+      <h3>📌 SDK 사용법</h3>
+      <p>아래 스크립트를 쇼핑몰에 추가하면 가상 피팅 버튼이 자동으로 생성됩니다:</p>
+      <pre>&lt;script src="https://mggedvvzpwxlgrhatrau.supabase.co/functions/v1/cafe24-widget/sdk.js?mall_id=palhwadang"&gt;&lt;/script&gt;
+&lt;script&gt;
+  ShowMeLook.init({ mallId: 'palhwadang' });
+  ShowMeLook.createButton(상품번호, '컨테이너ID');
+&lt;/script&gt;</pre>
+    </div>
+    
+    <h2 class="section-title">🛒 상품 목록 (데모)</h2>
+    
+    <div class="product-grid">
+      <!-- 상품 1 -->
+      <div class="product-card">
+        <img src="https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=400&fit=crop" alt="클래식 블레이저" class="product-image">
+        <div class="product-info">
+          <div class="product-brand">Tommy Hilfiger</div>
+          <div class="product-name">클래식 네이비 블레이저</div>
+          <div class="product-price">₩298,000</div>
+        </div>
+        <div class="product-actions">
+          <div id="fitting-btn-1" class="fitting-btn-container"></div>
+          <button class="btn-cart">장바구니 담기</button>
+        </div>
+      </div>
+      
+      <!-- 상품 2 -->
+      <div class="product-card">
+        <img src="https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=400&h=400&fit=crop" alt="화이트 셔츠" class="product-image">
+        <div class="product-info">
+          <div class="product-brand">Ralph Lauren</div>
+          <div class="product-name">옥스포드 화이트 셔츠</div>
+          <div class="product-price">₩168,000</div>
+        </div>
+        <div class="product-actions">
+          <div id="fitting-btn-2" class="fitting-btn-container"></div>
+          <button class="btn-cart">장바구니 담기</button>
+        </div>
+      </div>
+      
+      <!-- 상품 3 -->
+      <div class="product-card">
+        <img src="https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=400&h=400&fit=crop" alt="데님 자켓" class="product-image">
+        <div class="product-info">
+          <div class="product-brand">Levi's</div>
+          <div class="product-name">빈티지 데님 트러커 자켓</div>
+          <div class="product-price">₩189,000</div>
+        </div>
+        <div class="product-actions">
+          <div id="fitting-btn-3" class="fitting-btn-container"></div>
+          <button class="btn-cart">장바구니 담기</button>
+        </div>
+      </div>
+      
+      <!-- 상품 4 -->
+      <div class="product-card">
+        <img src="https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=400&fit=crop" alt="캐시미어 코트" class="product-image">
+        <div class="product-info">
+          <div class="product-brand">Max Mara</div>
+          <div class="product-name">울 블렌드 롱 코트</div>
+          <div class="product-price">₩598,000</div>
+        </div>
+        <div class="product-actions">
+          <div id="fitting-btn-4" class="fitting-btn-container"></div>
+          <button class="btn-cart">장바구니 담기</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 콘솔 로그 -->
+    <h2 class="section-title" style="margin-top: 32px;">🔧 SDK 로그</h2>
+    <div class="console-log" id="console-log">
+      <div class="log-entry"><span class="log-time">[시작]</span> SDK 로딩 중...</div>
+    </div>
+  </div>
+  
+  <!-- ShowMeLook SDK 로드 -->
+  <script src="https://mggedvvzpwxlgrhatrau.supabase.co/functions/v1/cafe24-widget/sdk.js?mall_id=palhwadang"></script>
+  
+  <script>
+    // 콘솔 로그를 화면에 표시
+    const logContainer = document.getElementById('console-log');
+    
+    function addLog(message, type = 'info') {
+      const time = new Date().toLocaleTimeString('ko-KR');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span> ${message}`;
+      if (type === 'success') entry.style.color = '#10b981';
+      if (type === 'error') entry.style.color = '#ef4444';
+      logContainer.appendChild(entry);
+      logContainer.scrollTop = logContainer.scrollHeight;
+    }
+    
+    // SDK 초기화
+    document.addEventListener('DOMContentLoaded', function() {
+      addLog('DOM 로드 완료');
+      
+      if (typeof ShowMeLook !== 'undefined') {
+        addLog('ShowMeLook SDK 로드 성공!', 'success');
+        
+        // SDK 초기화
+        ShowMeLook.init({ mallId: 'palhwadang' });
+        addLog('ShowMeLook.init() 호출됨');
+        
+        // 각 상품에 피팅 버튼 생성
+        const products = [
+          { no: 12345, container: 'fitting-btn-1' },
+          { no: 12346, container: 'fitting-btn-2' },
+          { no: 12347, container: 'fitting-btn-3' },
+          { no: 12348, container: 'fitting-btn-4' }
+        ];
+        
+        products.forEach(product => {
+          try {
+            ShowMeLook.createButton(product.no, product.container);
+            addLog(`createButton(${product.no}, '${product.container}') 호출됨`, 'success');
+          } catch (e) {
+            addLog(`버튼 생성 오류: ${e.message}`, 'error');
+          }
+        });
+        
+        addLog('모든 피팅 버튼 생성 완료! 🎉', 'success');
+      } else {
+        addLog('ShowMeLook SDK를 찾을 수 없습니다', 'error');
+      }
+    });
+  </script>
+</body>
+</html>
