@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import * as XLSX from 'xlsx';
+import { parseExcelFile, findColumnValue } from '@/lib/excelParser';
 
 interface ReportResult {
   success: boolean;
@@ -149,58 +149,37 @@ export function CoupangDailyReportPanel() {
     }
   };
 
-  const handleExcelUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleExcelUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet);
+    try {
+      const jsonData = await parseExcelFile(file);
+      console.log('[Excel] Parsed rows:', jsonData.length);
 
-        console.log('[Excel] Parsed rows:', jsonData.length);
+      const records: ManualRecord[] = jsonData.map((row) => {
+        return {
+          report_date: String(findColumnValue(row, ['date', '날짜', 'reportdate']) || manualDate),
+          sub_id: String(findColumnValue(row, ['subid', 'sub_id', '트래킹', 'tracking', 'lpinfo']) || ''),
+          tracking_code: String(findColumnValue(row, ['trackingcode', 'tracking_code', '코드']) || ''),
+          click_count: parseInt(String(findColumnValue(row, ['click', '클릭']) || '0'), 10),
+          order_count: parseInt(String(findColumnValue(row, ['order', '주문', 'orders']) || '0'), 10),
+          cancel_count: parseInt(String(findColumnValue(row, ['cancel', '취소', 'cancels']) || '0'), 10),
+          gmv: parseInt(String(findColumnValue(row, ['gmv', '매출', 'sales', '금액']) || '0').replace(/[^\d]/g, ''), 10),
+          commission: parseInt(String(findColumnValue(row, ['commission', '수수료', 'payout']) || '0').replace(/[^\d]/g, ''), 10),
+        };
+      }).filter(r => r.sub_id && (r.order_count > 0 || r.cancel_count > 0));
 
-        const records: ManualRecord[] = jsonData.map((row) => {
-          // 유연한 컬럼 매핑
-          const findValue = (keys: string[]): unknown => {
-            for (const key of Object.keys(row)) {
-              const normalizedKey = key.toLowerCase().replace(/[\s_-]/g, '');
-              for (const searchKey of keys) {
-                if (normalizedKey.includes(searchKey.toLowerCase())) {
-                  return row[key];
-                }
-              }
-            }
-            return undefined;
-          };
-
-          return {
-            report_date: String(findValue(['date', '날짜', 'reportdate']) || manualDate),
-            sub_id: String(findValue(['subid', 'sub_id', '트래킹', 'tracking', 'lpinfo']) || ''),
-            tracking_code: String(findValue(['trackingcode', 'tracking_code', '코드']) || ''),
-            click_count: parseInt(String(findValue(['click', '클릭']) || '0'), 10),
-            order_count: parseInt(String(findValue(['order', '주문', 'orders']) || '0'), 10),
-            cancel_count: parseInt(String(findValue(['cancel', '취소', 'cancels']) || '0'), 10),
-            gmv: parseInt(String(findValue(['gmv', '매출', 'sales', '금액']) || '0').replace(/[^\d]/g, ''), 10),
-            commission: parseInt(String(findValue(['commission', '수수료', 'payout']) || '0').replace(/[^\d]/g, ''), 10),
-          };
-        }).filter(r => r.sub_id && (r.order_count > 0 || r.cancel_count > 0));
-
-        setParsedRecords(records);
-        
-        toast({
-          title: "엑셀 파싱 완료",
-          description: `${records.length}건의 유효한 레코드가 발견되었습니다.`,
-        });
-      } catch (error) {
-        console.error('[Excel] Parse error:', error);
-        toast({ title: "파싱 실패", description: "엑셀 파일 형식을 확인해주세요.", variant: "destructive" });
-      }
-    };
-    reader.readAsArrayBuffer(file);
+      setParsedRecords(records);
+      
+      toast({
+        title: "엑셀 파싱 완료",
+        description: `${records.length}건의 유효한 레코드가 발견되었습니다.`,
+      });
+    } catch (error) {
+      console.error('[Excel] Parse error:', error);
+      toast({ title: "파싱 실패", description: "엑셀 파일 형식을 확인해주세요.", variant: "destructive" });
+    }
   }, [manualDate, toast]);
 
   const submitManualRecord = async () => {
