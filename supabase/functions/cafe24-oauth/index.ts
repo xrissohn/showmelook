@@ -33,11 +33,16 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const url = new URL(req.url);
+  // URL 파싱 - 쿼리스트링이 URL 인코딩된 경우 대응
+  const rawUrl = req.url;
+  // URL 인코딩된 쿼리스트링 복원 (%3F -> ?)
+  const decodedUrl = decodeURIComponent(rawUrl);
+  const url = new URL(decodedUrl);
+  
   const pathParts = url.pathname.split('/').filter(Boolean);
-  const endpoint = pathParts[pathParts.length - 1];
+  const endpoint = pathParts[pathParts.length - 1] || '';
 
-  console.log('Cafe24 OAuth endpoint:', endpoint, 'Method:', req.method);
+  console.log('Cafe24 OAuth endpoint:', endpoint, 'Method:', req.method, 'Search:', url.search);
 
   try {
     // ==========================================
