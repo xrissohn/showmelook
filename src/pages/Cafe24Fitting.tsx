@@ -85,12 +85,8 @@ export default function Cafe24Fitting() {
   };
 
   const handleClose = () => {
-    // 부모 창의 ShowMeLook.closeFitting() 호출 시도
-    if (window.parent && (window.parent as any).ShowMeLook) {
-      (window.parent as any).ShowMeLook.closeFitting();
-    } else {
-      window.close();
-    }
+    // postMessage로 부모 창에 닫기 요청 (cross-origin 대응)
+    window.parent.postMessage({ type: 'showmelook-close' }, '*');
   };
 
   return (

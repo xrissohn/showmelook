@@ -124,6 +124,13 @@ const sdkCode = `
       }
     };
     
+    // postMessage 리스너 (iframe에서 닫기 요청 수신)
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'showmelook-close') {
+        modal.remove();
+      }
+    });
+    
     document.body.appendChild(modal);
   };
   
