@@ -129,3 +129,6 @@ verify_jwt = false
 
 [functions.cafe24-widget]
 verify_jwt = false
+
+[functions.linkprice-postback]
+verify_jwt = false
