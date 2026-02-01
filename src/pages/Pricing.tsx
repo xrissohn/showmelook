@@ -4,11 +4,14 @@
  */
 
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
+import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import MainNavigation from '@/components/MainNavigation';
 import { TierPolicyNotice } from '@/components/subscription/TierPolicyNotice';
-import { TIER_CONFIG, TierType, formatAmountKo } from '@/lib/tierConfig';
-import { CheckCircle2, HelpCircle, ShoppingBag, TrendingUp } from 'lucide-react';
+import { TierBadge } from '@/components/ui/tier-badge';
+import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
+import { TIER_CONFIG, TierType, TIER_ORDER, formatAmountKo } from '@/lib/tierConfig';
+import { CheckCircle2, HelpCircle, ShoppingBag, TrendingUp, Crown, Sparkles } from 'lucide-react';
 import { 
   Accordion, 
   AccordionContent, 
@@ -18,7 +21,11 @@ import {
 
 const Pricing = () => {
   const { user } = useAuth();
-  const { plan: currentPlan } = useSubscription(user?.id);
+  const { stats, nextTierInfo, progressToNextTier, isLoading } = usePurchaseStats(user?.id);
+  
+  const currentTier = stats?.currentTier || 'free';
+  const totalAmount = stats?.totalPurchasedAmount || 0;
+  const currentTierIndex = TIER_ORDER.indexOf(currentTier);
 
   const faqs = [
     {
@@ -64,33 +71,101 @@ const Pricing = () => {
           </p>
         </div>
 
+        {/* Current User Status - Only show for logged in users */}
+        {user && !isLoading && (
+          <Card className="max-w-2xl mx-auto mb-12 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Crown className="w-7 h-7 text-primary" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm text-muted-foreground font-korean">내 현재 등급</span>
+                      <TierBadge tier={currentTier} size="md" showIcon />
+                    </div>
+                    <p className="text-xl font-bold font-korean">
+                      누적 구매 {formatAmountKo(totalAmount)}
+                    </p>
+                  </div>
+                </div>
+                
+                {nextTierInfo.nextTier && (
+                  <div className="w-full sm:w-48">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground font-korean">다음 등급까지</span>
+                      <span className="font-medium text-primary">{formatAmountKo(nextTierInfo.amountNeeded)}</span>
+                    </div>
+                    <Progress value={progressToNextTier} className="h-2" />
+                    <p className="text-xs text-muted-foreground mt-1 text-right font-korean">
+                      → {TIER_CONFIG[nextTierInfo.nextTier].nameKo}
+                    </p>
+                  </div>
+                )}
+                
+                {!nextTierInfo.nextTier && currentTier === 'platinum' && (
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 text-primary">
+                      <Sparkles className="w-4 h-4" />
+                      <span className="font-medium font-korean">최고 등급!</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground font-korean mt-1">
+                      다음 모델 슬롯까지 {formatAmountKo(nextTierInfo.amountNeeded)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* 5-Tier Progress */}
         <div className="max-w-4xl mx-auto mb-16">
           <div className="flex items-center justify-between mb-4">
-            {(['free', 'bronze', 'silver', 'gold', 'platinum'] as TierType[]).map((tier, idx) => (
-              <div key={tier} className="flex flex-col items-center flex-1">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                  tier === 'free' ? 'bg-muted-foreground' :
-                  tier === 'bronze' ? 'bg-amber-700' :
-                  tier === 'silver' ? 'bg-gray-400' :
-                  tier === 'gold' ? 'bg-yellow-500' :
-                  'bg-gradient-to-r from-purple-500 to-pink-500'
-                }`}>
-                  {idx + 1}
+            {(['free', 'bronze', 'silver', 'gold', 'platinum'] as TierType[]).map((tier, idx) => {
+              const isCurrentUserTier = user && currentTier === tier;
+              const isPastTier = user && currentTierIndex > idx;
+              
+              return (
+                <div key={tier} className="flex flex-col items-center flex-1 relative">
+                  {/* Current tier indicator */}
+                  {isCurrentUserTier && (
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2">
+                      <span className="text-[10px] font-bold text-primary font-korean whitespace-nowrap">현재</span>
+                    </div>
+                  )}
+                  
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all ${
+                    tier === 'free' ? 'bg-muted-foreground text-white' :
+                    tier === 'bronze' ? 'bg-amber-700 text-white' :
+                    tier === 'silver' ? 'bg-gray-400 text-white' :
+                    tier === 'gold' ? 'bg-yellow-500 text-black' :
+                    'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                  } ${isCurrentUserTier ? 'ring-4 ring-primary ring-offset-2 scale-110' : ''} ${isPastTier ? 'opacity-100' : (!user || isCurrentUserTier) ? 'opacity-100' : 'opacity-50'}`}>
+                    {isPastTier || isCurrentUserTier ? <CheckCircle2 className="w-5 h-5" /> : idx + 1}
+                  </div>
+                  <p className={`text-xs mt-2 font-korean font-medium ${isCurrentUserTier ? 'text-primary' : ''}`}>
+                    {TIER_CONFIG[tier].nameKo}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {tier === 'free' ? '0원' : formatAmountKo(TIER_CONFIG[tier].minAmount)}+
+                  </p>
                 </div>
-                <p className="text-xs mt-2 font-korean font-medium">
-                  {TIER_CONFIG[tier].nameKo}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {tier === 'free' ? '0원' : formatAmountKo(TIER_CONFIG[tier].minAmount)}+
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
           
-          {/* Progress bar */}
+          {/* Progress bar with dynamic fill based on user's tier */}
           <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-            <div className="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-700 via-yellow-500 to-purple-500 w-1/5" />
+            <div 
+              className="absolute left-0 top-0 h-full bg-gradient-to-r from-amber-700 via-yellow-500 to-purple-500 transition-all duration-500" 
+              style={{ 
+                width: user 
+                  ? `${Math.min(100, ((currentTierIndex + 1) / 5) * 100 + (progressToNextTier / 5))}%`
+                  : '20%' 
+              }}
+            />
           </div>
           
           <p className="text-center text-sm text-muted-foreground mt-4 font-korean">
@@ -101,20 +176,42 @@ const Pricing = () => {
 
         {/* Tier Benefits Cards */}
         <div className="grid md:grid-cols-5 gap-4 max-w-6xl mx-auto mb-16">
-          {(['free', 'bronze', 'silver', 'gold', 'platinum'] as TierType[]).map((tier) => {
+          {(['free', 'bronze', 'silver', 'gold', 'platinum'] as TierType[]).map((tier, idx) => {
             const config = TIER_CONFIG[tier];
-            const isCurrentTier = currentPlan === tier || (currentPlan === 'pro' && tier === 'bronze') || (currentPlan === 'premium' && tier === 'platinum');
+            const isCurrentUserTier = user && currentTier === tier;
+            const isPastTier = user && currentTierIndex > idx;
+            const isNextTier = user && nextTierInfo.nextTier === tier;
             
             return (
               <div 
                 key={tier}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  isCurrentTier 
-                    ? 'border-primary bg-primary/5 shadow-lg' 
+                className={`p-4 rounded-xl border-2 transition-all relative ${
+                  isCurrentUserTier 
+                    ? 'border-primary bg-primary/5 shadow-lg scale-105' 
+                    : isNextTier
+                    ? 'border-primary/50 bg-primary/5 shadow-md'
+                    : isPastTier
+                    ? 'border-primary/30 bg-primary/5'
                     : 'border-border bg-card hover:border-primary/30'
                 }`}
               >
-                <div className={`w-8 h-8 rounded-full mb-3 ${config.badgeColor}`} />
+                {/* Current tier badge */}
+                {isCurrentUserTier && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-bold font-korean">
+                    현재 등급
+                  </div>
+                )}
+                
+                {/* Next tier badge */}
+                {isNextTier && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary/80 text-primary-foreground text-[10px] px-2 py-0.5 rounded-full font-bold font-korean whitespace-nowrap">
+                    다음 목표
+                  </div>
+                )}
+                
+                <div className={`w-8 h-8 rounded-full mb-3 flex items-center justify-center ${config.badgeColor}`}>
+                  {isPastTier && <CheckCircle2 className="w-4 h-4 text-white" />}
+                </div>
                 <h3 className="font-bold font-korean">{config.nameKo}</h3>
                 <p className="text-xs text-muted-foreground mb-3">
                   {tier === 'free' ? '무료 가입' : `${formatAmountKo(config.minAmount)}+`}
@@ -137,9 +234,12 @@ const Pricing = () => {
                   )}
                 </ul>
                 
-                {isCurrentTier && (
-                  <div className="mt-3 text-xs font-medium text-primary font-korean">
-                    ✓ 현재 등급
+                {/* Amount needed indicator for next tier */}
+                {isNextTier && (
+                  <div className="mt-3 pt-2 border-t border-primary/20">
+                    <p className="text-xs text-primary font-medium font-korean">
+                      {formatAmountKo(nextTierInfo.amountNeeded)} 더 구매하면 달성!
+                    </p>
                   </div>
                 )}
               </div>
