@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check, Link } from "lucide-react";
+import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check, Link, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,6 +16,9 @@ import { LazyImage } from "@/components/LazyImage";
 import MainNavigation from "@/components/MainNavigation";
 import { FamilyProfileManager } from "@/components/profile/FamilyProfileManager";
 import { PLAN_CONFIG, formatPrice } from "@/lib/planConfig";
+import { usePurchaseStats } from "@/hooks/usePurchaseStats";
+import { TierStatusCard } from "@/components/mypage/TierStatusCard";
+import { TIER_CONFIG, TierType } from "@/lib/tierConfig";
 import { 
   useRecommendationHistory, 
   useLikedProducts, 
@@ -42,6 +45,7 @@ const MyPage = () => {
   const subscription = useSubscription(user?.id);
   const { profile: userProfile, isLoading: profileLoading } = useUserProfile();
   const referral = useReferral(user?.id);
+  const purchaseStats = usePurchaseStats(user?.id);
   
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("subscription");
@@ -58,6 +62,34 @@ const MyPage = () => {
   const addToCart = useAddToCart();
 
   const isLoading = isLoadingRecs || isLoadingLikes || profileLoading;
+
+  // 등급 변동 토스트 알림
+  useEffect(() => {
+    if (purchaseStats.recentTierChange) {
+      const { previousTier, newTier, changeReason } = purchaseStats.recentTierChange;
+      const prevConfig = TIER_CONFIG[previousTier];
+      const newConfig = TIER_CONFIG[newTier];
+      
+      if (changeReason === 'purchase' || changeReason === 'admin') {
+        // 업그레이드
+        toast({
+          title: `🎉 ${newConfig.nameKo} 등급 달성!`,
+          description: `축하합니다! ${prevConfig.nameKo}에서 ${newConfig.nameKo}로 업그레이드되었습니다.`,
+          duration: 5000,
+        });
+      } else if (changeReason === 'refund') {
+        // 다운그레이드
+        toast({
+          title: `등급이 변경되었습니다`,
+          description: `환불 반영으로 ${prevConfig.nameKo}에서 ${newConfig.nameKo}로 변경되었습니다.`,
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+      
+      purchaseStats.clearRecentTierChange();
+    }
+  }, [purchaseStats.recentTierChange, purchaseStats.clearRecentTierChange, toast]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ko-KR').format(price) + '원';
@@ -219,76 +251,14 @@ const MyPage = () => {
 
           {/* 구독 상태 탭 */}
           <TabsContent value="subscription" className="mt-4 space-y-4">
-            {/* 현재 플랜 카드 */}
-            <Card className={`overflow-hidden ${
-              subscription.plan === 'premium' ? 'border-amber-400 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20' :
-              subscription.plan === 'pro' ? 'border-primary bg-gradient-to-br from-primary/5 to-accent/5' :
-              ''
-            }`}>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Crown className={`w-5 h-5 ${
-                      subscription.plan === 'premium' ? 'text-amber-500' :
-                      subscription.plan === 'pro' ? 'text-primary' :
-                      'text-muted-foreground'
-                    }`} />
-                    <CardTitle className="font-korean">{planConfig.nameKo} 플랜</CardTitle>
-                  </div>
-                  <Badge variant={subscription.plan === 'free' ? 'secondary' : 'default'} className={
-                    subscription.plan === 'premium' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white' :
-                    subscription.plan === 'pro' ? 'bg-gradient-to-r from-primary to-accent text-white' :
-                    ''
-                  }>
-                    {planConfig.name}
-                  </Badge>
-                </div>
-                {subscription.currentPeriodEnd && (
-                  <CardDescription className="font-korean">
-                    만료일: {subscription.currentPeriodEnd.toLocaleDateString('ko-KR')}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* 주요 기능 요약 */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="p-3 rounded-lg bg-background/50">
-                    <p className="text-muted-foreground font-korean">일일 생성</p>
-                    <p className="font-bold font-korean">
-                      {subscription.dailyLimit === -1 ? '무제한' : `${subscription.dailyLimit}회`}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background/50">
-                    <p className="text-muted-foreground font-korean">갤러리 저장</p>
-                    <p className="font-bold font-korean">
-                      {subscription.galleryLimit === -1 ? '무제한' : `${subscription.galleryLimit}장`}
-                    </p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background/50">
-                    <p className="text-muted-foreground font-korean">프로필 관리</p>
-                    <p className="font-bold font-korean">{subscription.maxProfiles}명</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-background/50">
-                    <p className="text-muted-foreground font-korean">히스토리 보관</p>
-                    <p className="font-bold font-korean">
-                      {subscription.historyDays === -1 ? '영구' : `${subscription.historyDays}일`}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 업그레이드 버튼 */}
-                {subscription.plan !== 'premium' && (
-                  <Button
-                    variant="hero"
-                    className="w-full font-korean"
-                    onClick={() => navigate('/pricing')}
-                  >
-                    <Crown className="w-4 h-4 mr-2" />
-                    {subscription.plan === 'free' ? 'Pro로 업그레이드' : 'Premium으로 업그레이드'}
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+            {/* 구매 기반 등급 카드 */}
+            <TierStatusCard
+              stats={purchaseStats.stats}
+              progressToNextTier={purchaseStats.progressToNextTier}
+              nextTierInfo={purchaseStats.nextTierInfo}
+              tierHistory={purchaseStats.tierHistory}
+              isLoading={purchaseStats.isLoading}
+            />
 
             {/* 친구 추천 카드 */}
             <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
