@@ -120,3 +120,6 @@ verify_jwt = false
 
 [functions.feedback-collect]
 verify_jwt = false
+
+[functions.cafe24-oauth]
+verify_jwt = false
