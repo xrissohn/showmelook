@@ -6,6 +6,97 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// 쿠팡 파트너스 HMAC-SHA256 서명 생성
+async function generateCoupangHmacSignature(
+  method: string,
+  url: string,
+  accessKey: string,
+  secretKey: string
+): Promise<string> {
+  const [path, query = ""] = url.split("?");
+  
+  // GMT 시간 형식: yyMMdd'T'HHmmss'Z'
+  const now = new Date();
+  const datetime = now.toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "")
+    .slice(2); // YYMMDDTHHmmssZ 형식
+  
+  const message = datetime + method + path + query;
+  
+  // HMAC-SHA256 서명 생성
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secretKey);
+  const messageData = encoder.encode(message);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const hexSignature = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+  
+  return `CEA algorithm=HmacSHA256, access-key=${accessKey}, signed-date=${datetime}, signature=${hexSignature}`;
+}
+
+// 쿠팡 파트너스 딥링크 API 호출
+async function convertCoupangToDeeplink(productUrl: string, subId?: string): Promise<{
+  success: boolean;
+  shortenUrl?: string;
+  landingUrl?: string;
+  error?: string;
+}> {
+  const accessKey = Deno.env.get('COUPANG_ACCESS_KEY');
+  const secretKey = Deno.env.get('COUPANG_SECRET_KEY');
+  
+  if (!accessKey || !secretKey) {
+    console.error('[deeplink] Coupang API keys not configured');
+    return { success: false, error: 'Coupang API keys not configured' };
+  }
+  
+  const apiPath = "/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink";
+  const authorization = await generateCoupangHmacSignature("POST", apiPath, accessKey, secretKey);
+  
+  try {
+    const response = await fetch(`https://api-gateway.coupang.com${apiPath}`, {
+      method: "POST",
+      headers: {
+        "Authorization": authorization,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        coupangUrls: [productUrl],
+        subId: subId || undefined,
+      }),
+    });
+    
+    const data = await response.json();
+    console.log('[deeplink] Coupang API response:', JSON.stringify(data));
+    
+    if (data.rCode === "0" && data.data && data.data.length > 0) {
+      return {
+        success: true,
+        shortenUrl: data.data[0].shortenUrl,
+        landingUrl: data.data[0].landingUrl,
+      };
+    }
+    
+    return { 
+      success: false, 
+      error: data.rMessage || 'Coupang API failed' 
+    };
+  } catch (error) {
+    console.error('[deeplink] Coupang API error:', error);
+    return { success: false, error: String(error) };
+  }
+}
+
 // 도메인-머천트ID 매핑 (DB 조회 실패 시 Fallback)
 const DOMAIN_TO_MERCHANT: Record<string, string> = {
   'paulsmith.co.kr': 'paulsmith',
@@ -104,6 +195,68 @@ serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // 쿠팡 일반 URL인 경우 -> 쿠팡 파트너스 딥링크 API 사용
+    if (product_url.includes('coupang.com')) {
+      console.log('[deeplink] Coupang product URL detected, converting via Partners API');
+      
+      // Tracking ID 생성 (subId로 사용)
+      const trackingId = user_id ? generateTrackingId(user_id) : undefined;
+      
+      const coupangResult = await convertCoupangToDeeplink(product_url, trackingId);
+      
+      if (coupangResult.success && coupangResult.shortenUrl) {
+        console.log('[deeplink] Coupang deeplink generated:', coupangResult.shortenUrl);
+        
+        // user_id가 있으면 purchase_intents에 기록
+        if (user_id && trackingId) {
+          try {
+            await supabase
+              .from('purchase_intents')
+              .insert({
+                tracking_id: trackingId,
+                user_id: user_id,
+                product_id: product_id || null,
+                merchant_id: 'coupang',
+                product_url: product_url,
+                product_name: product_name || null,
+                product_price: product_price || 0,
+                clicked_at: new Date().toISOString(),
+                status: 'pending',
+                confirmation_status: 'pending',
+              });
+            console.log('[deeplink] Recorded purchase intent for Coupang:', trackingId);
+          } catch (intentError) {
+            console.error('[deeplink] Failed to record purchase intent:', intentError);
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            merchant_id: 'coupang',
+            merchant_name: 'coupang',
+            original_url: product_url,
+            affiliate_url: coupangResult.shortenUrl,
+            landing_url: coupangResult.landingUrl,
+            tracking_id: trackingId,
+            mobile_supported: true,
+            source: 'coupang_partners_api'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        console.error('[deeplink] Coupang deeplink conversion failed:', coupangResult.error);
+        return new Response(
+          JSON.stringify({
+            error: 'Coupang deeplink conversion failed',
+            message: coupangResult.error,
+            original_url: product_url
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const affiliateId = Deno.env.get('LINKPRICE_AFFILIATE_ID');
