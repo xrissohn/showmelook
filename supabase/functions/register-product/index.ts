@@ -6,6 +6,134 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============= Input Validation =============
+const URL_REGEX = /^https?:\/\/.+/;
+const MAX_PRICE = 10000000; // 1천만원
+const MIN_PRICE = 0;
+const MAX_NAME_LENGTH = 500;
+const MAX_BRAND_LENGTH = 100;
+const MAX_CATEGORY_LENGTH = 100;
+const MAX_COLOR_LENGTH = 100;
+
+interface ValidationError {
+  field: string;
+  message: string;
+}
+
+// Strip HTML/script tags from string
+function sanitizeString(input: string, maxLength: number): string {
+  return input
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[<>]/g, '') // Remove any remaining angle brackets
+    .trim()
+    .slice(0, maxLength);
+}
+
+// Validate URL format
+function isValidUrl(url: string): boolean {
+  return URL_REGEX.test(url);
+}
+
+// Comprehensive product validation - accepts any object from request body
+function validateProduct(product: ProductInput | Record<string, unknown>): { valid: boolean; errors: ValidationError[]; sanitized: ProductInput | null } {
+  const errors: ValidationError[] = [];
+  
+  // Required field checks
+  if (!product.name || typeof product.name !== 'string' || product.name.trim() === '') {
+    errors.push({ field: 'name', message: '상품명은 필수입니다.' });
+  }
+  
+  if (product.price === undefined || product.price === null) {
+    errors.push({ field: 'price', message: '가격은 필수입니다.' });
+  } else if (typeof product.price !== 'number' && typeof product.price !== 'string') {
+    errors.push({ field: 'price', message: '가격은 숫자여야 합니다.' });
+  }
+  
+  if (!product.merchant_id || typeof product.merchant_id !== 'string' || product.merchant_id.trim() === '') {
+    errors.push({ field: 'merchant_id', message: 'merchant_id는 필수입니다.' });
+  }
+  
+  if (!product.product_url || typeof product.product_url !== 'string') {
+    errors.push({ field: 'product_url', message: 'product_url은 필수입니다.' });
+  } else if (!isValidUrl(product.product_url)) {
+    errors.push({ field: 'product_url', message: 'product_url은 유효한 http/https URL이어야 합니다.' });
+  }
+  
+  // Price validation
+  const price = typeof product.price === 'string' ? parseFloat(product.price) : Number(product.price);
+  if (!isNaN(price)) {
+    if (price < MIN_PRICE) {
+      errors.push({ field: 'price', message: `가격은 ${MIN_PRICE}원 이상이어야 합니다.` });
+    }
+    if (price > MAX_PRICE) {
+      errors.push({ field: 'price', message: `가격은 ${MAX_PRICE.toLocaleString()}원 이하여야 합니다.` });
+    }
+  }
+  
+  // Optional field validations
+  if (product.image_url && typeof product.image_url === 'string' && product.image_url.trim() !== '') {
+    if (!isValidUrl(product.image_url)) {
+      errors.push({ field: 'image_url', message: 'image_url은 유효한 http/https URL이어야 합니다.' });
+    }
+  }
+  
+  if (product.original_price !== undefined && product.original_price !== null) {
+    const originalPrice = typeof product.original_price === 'string' ? parseFloat(product.original_price) : Number(product.original_price);
+    if (isNaN(originalPrice) || originalPrice < MIN_PRICE || originalPrice > MAX_PRICE) {
+      errors.push({ field: 'original_price', message: `원가는 ${MIN_PRICE}~${MAX_PRICE.toLocaleString()}원 범위여야 합니다.` });
+    }
+  }
+  
+  // If validation failed, return early
+  if (errors.length > 0) {
+    return { valid: false, errors, sanitized: null };
+  }
+  
+  // Create sanitized product object
+  const sanitized: ProductInput = {
+    merchant_id: sanitizeString(String(product.merchant_id), MAX_BRAND_LENGTH),
+    product_url: String(product.product_url).trim(),
+    name: sanitizeString(String(product.name), MAX_NAME_LENGTH),
+    price: Math.round(price),
+    category: sanitizeString(String(product.category || '기타'), MAX_CATEGORY_LENGTH),
+    image_url: typeof product.image_url === 'string' ? product.image_url.trim() : '',
+  };
+  
+  // Optional fields with sanitization
+  if (product.external_id && typeof product.external_id === 'string') {
+    sanitized.external_id = sanitizeString(product.external_id, 100);
+  }
+  if (product.brand && typeof product.brand === 'string') {
+    sanitized.brand = sanitizeString(product.brand, MAX_BRAND_LENGTH);
+  }
+  if (product.original_price !== undefined && product.original_price !== null) {
+    const origPrice = typeof product.original_price === 'string' ? parseFloat(product.original_price) : Number(product.original_price);
+    if (!isNaN(origPrice) && origPrice >= MIN_PRICE && origPrice <= MAX_PRICE) {
+      sanitized.original_price = Math.round(origPrice);
+    }
+  }
+  if (product.sub_category && typeof product.sub_category === 'string') {
+    sanitized.sub_category = sanitizeString(product.sub_category, MAX_CATEGORY_LENGTH);
+  }
+  if (Array.isArray(product.sizes)) {
+    sanitized.sizes = product.sizes.filter(s => typeof s === 'string').map(s => sanitizeString(s, 20)).slice(0, 20);
+  }
+  if (typeof product.is_in_stock === 'boolean') {
+    sanitized.is_in_stock = product.is_in_stock;
+  }
+  if (Array.isArray(product.style_tags)) {
+    sanitized.style_tags = product.style_tags.filter(t => typeof t === 'string').map(t => sanitizeString(t, 50)).slice(0, 10);
+  }
+  if (product.gender && typeof product.gender === 'string') {
+    sanitized.gender = sanitizeString(product.gender, 20);
+  }
+  if (product.color && typeof product.color === 'string') {
+    sanitized.color = sanitizeString(product.color, MAX_COLOR_LENGTH);
+  }
+  
+  return { valid: true, errors: [], sanitized };
+}
+
 // ============= Interfaces =============
 interface ProductInput {
   merchant_id: string;
@@ -42,10 +170,11 @@ interface RegistrationResult {
   image_stored: boolean;
   dna_generated: boolean;
   error?: string;
-  step_failed?: 'upsert' | 'image' | 'dna';
+  step_failed?: 'upsert' | 'image' | 'dna' | 'validation';
   pending?: boolean;  // 수동 처리 대기열에 추가됨
   duplicate?: boolean;  // 이미 등록된 제품
   product_url?: string;
+  validation_errors?: ValidationError[];
 }
 
 // ============= DNA Generation Functions =============
@@ -809,23 +938,29 @@ serve(async (req) => {
     let failCount = 0;
 
     for (const product of products) {
-      // Validate required fields
-      if (!product.name || !product.price || !product.merchant_id || !product.product_url) {
+      // Comprehensive validation with sanitization
+      const validation = validateProduct(product);
+      
+      if (!validation.valid || !validation.sanitized) {
         results.push({
           success: false,
           image_stored: false,
           dna_generated: false,
-          error: '필수 필드 누락: name, price, merchant_id, product_url 필요',
+          step_failed: 'validation',
+          error: `입력값 검증 실패: ${validation.errors.map(e => e.message).join(', ')}`,
+          validation_errors: validation.errors,
         });
         failCount++;
         continue;
       }
 
+      const sanitizedProduct = validation.sanitized;
+
       // 중복 제품 체크 (pending으로 이동하기 전에 미리 확인)
       const { data: existingProduct } = await supabase
         .from('products_cache')
         .select('id')
-        .eq('product_url', product.product_url)
+        .eq('product_url', sanitizedProduct.product_url)
         .maybeSingle();
 
       if (existingProduct) {
@@ -840,14 +975,14 @@ serve(async (req) => {
         continue;
       }
 
-      if (!product.image_url) {
+      if (!sanitizedProduct.image_url) {
         // 이미지 없는 제품은 pending_products로 이동 (수동 이미지 업로드 대기)
         try {
           await supabase.from('pending_products').insert({
-            source: product.merchant_id || 'unknown',
+            source: sanitizedProduct.merchant_id || 'unknown',
             error_type: 'missing_image',
             error_message: '이미지 URL이 없습니다. 수동으로 이미지를 업로드해주세요.',
-            raw_data: product,
+            raw_data: sanitizedProduct,
           });
           results.push({
             success: false,
@@ -868,7 +1003,7 @@ serve(async (req) => {
         continue;
       }
 
-      const result = await registerProduct(supabase, product);
+      const result = await registerProduct(supabase, sanitizedProduct);
       results.push(result);
       
       if (result.success) {
