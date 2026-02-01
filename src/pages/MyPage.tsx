@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check, Link, TrendingUp, ArrowUp, ArrowDown } from "lucide-react";
+import { History, Trash2, ExternalLink, ShoppingBag, Loader2, Sparkles, Heart, ShoppingCart, Crown, Users, Settings, User, Gift, Copy, Check, Link, TrendingUp, ArrowUp, ArrowDown, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -211,10 +211,10 @@ const MyPage = () => {
           <Button
             variant="outline"
             className="h-auto py-4 flex flex-col items-center gap-2"
-            onClick={() => navigate('/style')}
+            onClick={() => navigate('/style?tab=gallery')}
           >
-            <Sparkles className="w-6 h-6 text-primary" />
-            <span>새 추천받기</span>
+            <Image className="w-6 h-6 text-primary" />
+            <span>마이 갤러리</span>
           </Button>
           <Button
             variant="outline"
