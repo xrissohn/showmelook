@@ -275,6 +275,51 @@ export type Database = {
           },
         ]
       }
+      coupang_daily_reports: {
+        Row: {
+          cancel_count: number | null
+          click_count: number | null
+          commission: number | null
+          created_at: string
+          gmv: number | null
+          id: string
+          order_count: number | null
+          processed: boolean | null
+          processed_at: string | null
+          report_date: string
+          sub_id: string | null
+          tracking_code: string | null
+        }
+        Insert: {
+          cancel_count?: number | null
+          click_count?: number | null
+          commission?: number | null
+          created_at?: string
+          gmv?: number | null
+          id?: string
+          order_count?: number | null
+          processed?: boolean | null
+          processed_at?: string | null
+          report_date: string
+          sub_id?: string | null
+          tracking_code?: string | null
+        }
+        Update: {
+          cancel_count?: number | null
+          click_count?: number | null
+          commission?: number | null
+          created_at?: string
+          gmv?: number | null
+          id?: string
+          order_count?: number | null
+          processed?: boolean | null
+          processed_at?: string | null
+          report_date?: string
+          sub_id?: string | null
+          tracking_code?: string | null
+        }
+        Relationships: []
+      }
       daily_generation_usage: {
         Row: {
           created_at: string | null

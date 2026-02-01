@@ -28,6 +28,7 @@ import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
 import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
+import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
 
 import * as XLSX from 'xlsx';
 
@@ -1426,6 +1427,10 @@ const Admin = () => {
               <TabsTrigger value="cafe24" className="flex-shrink-0 whitespace-nowrap">
                 <Store className="w-4 h-4 mr-1" />
                 카페24
+              </TabsTrigger>
+              <TabsTrigger value="coupang-report" className="flex-shrink-0 whitespace-nowrap">
+                <ShoppingBag className="w-4 h-4 mr-1" />
+                쿠팡 리포트
               </TabsTrigger>
             </TabsList>
           </div>
@@ -2856,6 +2861,11 @@ const Admin = () => {
           {/* Cafe24 Tab */}
           <TabsContent value="cafe24" className="space-y-4">
             <Cafe24TenantManager />
+          </TabsContent>
+
+          {/* Coupang Daily Report Tab */}
+          <TabsContent value="coupang-report" className="space-y-4">
+            <CoupangDailyReportPanel />
           </TabsContent>
 
         </Tabs>
