@@ -14,6 +14,214 @@ export type Database = {
   }
   public: {
     Tables: {
+      cafe24_fitting_sessions: {
+        Row: {
+          cafe24_product_no: number
+          completed_at: string | null
+          created_at: string | null
+          customer_id: string | null
+          fitting_result_url: string | null
+          id: string
+          session_token: string
+          tenant_id: string
+        }
+        Insert: {
+          cafe24_product_no: number
+          completed_at?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          fitting_result_url?: string | null
+          id?: string
+          session_token: string
+          tenant_id: string
+        }
+        Update: {
+          cafe24_product_no?: number
+          completed_at?: string | null
+          created_at?: string | null
+          customer_id?: string | null
+          fitting_result_url?: string | null
+          id?: string
+          session_token?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cafe24_fitting_sessions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "cafe24_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cafe24_products: {
+        Row: {
+          cafe24_product_no: number
+          category_name: string | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          is_synced: boolean | null
+          last_synced_at: string | null
+          price: number
+          product_code: string | null
+          product_name: string
+          products_cache_id: string | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          cafe24_product_no: number
+          category_name?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_synced?: boolean | null
+          last_synced_at?: string | null
+          price: number
+          product_code?: string | null
+          product_name: string
+          products_cache_id?: string | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          cafe24_product_no?: number
+          category_name?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          is_synced?: boolean | null
+          last_synced_at?: string | null
+          price?: number
+          product_code?: string | null
+          product_name?: string
+          products_cache_id?: string | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cafe24_products_products_cache_id_fkey"
+            columns: ["products_cache_id"]
+            isOneToOne: false
+            referencedRelation: "products_cache"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cafe24_products_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "cafe24_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cafe24_tenants: {
+        Row: {
+          access_token: string
+          billing_cycle_start: string | null
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          mall_id: string
+          monthly_generation_limit: number | null
+          monthly_generation_used: number | null
+          plan: string | null
+          refresh_token: string
+          refresh_token_expires_at: string
+          scopes: string[] | null
+          shop_name: string | null
+          shop_no: number
+          updated_at: string | null
+          user_id: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          access_token: string
+          billing_cycle_start?: string | null
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          mall_id: string
+          monthly_generation_limit?: number | null
+          monthly_generation_used?: number | null
+          plan?: string | null
+          refresh_token: string
+          refresh_token_expires_at: string
+          scopes?: string[] | null
+          shop_name?: string | null
+          shop_no?: number
+          updated_at?: string | null
+          user_id?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          access_token?: string
+          billing_cycle_start?: string | null
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          mall_id?: string
+          monthly_generation_limit?: number | null
+          monthly_generation_used?: number | null
+          plan?: string | null
+          refresh_token?: string
+          refresh_token_expires_at?: string
+          scopes?: string[] | null
+          shop_name?: string | null
+          shop_no?: number
+          updated_at?: string | null
+          user_id?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
+      cafe24_webhook_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          event_type: string
+          id: string
+          mall_id: string | null
+          payload: Json | null
+          processed_at: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type: string
+          id?: string
+          mall_id?: string | null
+          payload?: Json | null
+          processed_at?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          mall_id?: string | null
+          payload?: Json | null
+          processed_at?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cafe24_webhook_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "cafe24_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cart_items: {
         Row: {
           created_at: string
