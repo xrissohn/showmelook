@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Store, RefreshCw, Link2, CheckCircle, XCircle, ExternalLink, 
-  Users, ShoppingBag, Loader2, Plus, Copy, Trash2
+  Users, ShoppingBag, Loader2, Plus, Copy, Trash2, FileDown
 } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -285,13 +285,115 @@ export function Cafe24TenantManager() {
                 쇼핑몰에 가상피팅 위젯을 설치하는 방법을 안내합니다.
               </p>
             </div>
-            <Button
-              variant="default"
-              onClick={() => window.open('/docs/cafe24-widget-integration-guide.md', '_blank')}
-            >
-              <ExternalLink className="w-4 h-4 mr-1" />
-              가이드 보기
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const printWindow = window.open('', '_blank');
+                  if (printWindow) {
+                    printWindow.document.write(`
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                        <title>ShowMeLook 카페24 위젯 연동 가이드</title>
+                        <style>
+                          body { font-family: 'Pretendard', -apple-system, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; line-height: 1.6; }
+                          h1 { color: #1a1a1a; border-bottom: 2px solid #6366f1; padding-bottom: 10px; }
+                          h2 { color: #374151; margin-top: 30px; }
+                          h3 { color: #4b5563; }
+                          code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+                          pre { background: #1f2937; color: #e5e7eb; padding: 16px; border-radius: 8px; overflow-x: auto; }
+                          pre code { background: none; color: inherit; }
+                          .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px; margin: 16px 0; }
+                          .info { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 12px; margin: 16px 0; }
+                          table { border-collapse: collapse; width: 100%; margin: 16px 0; }
+                          th, td { border: 1px solid #e5e7eb; padding: 8px 12px; text-align: left; }
+                          th { background: #f9fafb; }
+                          @media print { body { padding: 20px; } }
+                        </style>
+                      </head>
+                      <body>
+                        <h1>🛍️ ShowMeLook 카페24 위젯 연동 가이드</h1>
+                        
+                        <h2>1. 개요</h2>
+                        <p>ShowMeLook 가상피팅 위젯을 카페24 쇼핑몰에 설치하여 고객에게 AI 기반 가상피팅 서비스를 제공할 수 있습니다.</p>
+                        
+                        <h2>2. 사전 요구사항</h2>
+                        <ul>
+                          <li>카페24 쇼핑몰 운영 중</li>
+                          <li>ShowMeLook 앱 설치 및 OAuth 인증 완료</li>
+                          <li>쇼핑몰 디자인 편집 권한</li>
+                        </ul>
+                        
+                        <h2>3. 기본 설치</h2>
+                        <h3>3.1 SDK 스크립트 추가</h3>
+                        <p>쇼핑몰의 공통 레이아웃 또는 상품 상세 페이지에 다음 스크립트를 추가합니다:</p>
+                        <pre><code>&lt;script src="https://mggedvvzpwxlgrhatrau.supabase.co/functions/v1/cafe24-widget/sdk.js?mall_id=YOUR_MALL_ID"&gt;&lt;/script&gt;</code></pre>
+                        
+                        <h3>3.2 위젯 초기화</h3>
+                        <pre><code>&lt;script&gt;
+  document.addEventListener('DOMContentLoaded', function() {
+    ShowMeLook.init({
+      mallId: 'YOUR_MALL_ID'
+    });
+  });
+&lt;/script&gt;</code></pre>
+                        
+                        <h2>4. 상품 상세 페이지 연동</h2>
+                        <h3>4.1 피팅 버튼 자동 생성</h3>
+                        <pre><code>&lt;div id="showmelook-fitting-btn"&gt;&lt;/div&gt;
+&lt;script&gt;
+  ShowMeLook.createButton({$product_no}, 'showmelook-fitting-btn');
+&lt;/script&gt;</code></pre>
+                        
+                        <h3>4.2 수동 호출</h3>
+                        <pre><code>&lt;button onclick="ShowMeLook.openFitting({$product_no})"&gt;
+  👗 가상피팅 해보기
+&lt;/button&gt;</code></pre>
+                        
+                        <h2>5. 스타일 커스터마이징</h2>
+                        <pre><code>.showmelook-btn {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+}</code></pre>
+                        
+                        <h2>6. 문제 해결</h2>
+                        <div class="warning">
+                          <strong>버튼이 표시되지 않는 경우:</strong>
+                          <ul>
+                            <li>mall_id가 올바른지 확인</li>
+                            <li>OAuth 인증이 완료되었는지 확인</li>
+                            <li>브라우저 콘솔에서 오류 확인</li>
+                          </ul>
+                        </div>
+                        
+                        <h2>7. 지원</h2>
+                        <p>추가 문의: support@showmelook.com</p>
+                        
+                        <hr style="margin-top: 40px;">
+                        <p style="color: #6b7280; font-size: 0.9em;">© ${new Date().getFullYear()} ShowMeLook. All rights reserved.</p>
+                      </body>
+                      </html>
+                    `);
+                    printWindow.document.close();
+                    setTimeout(() => printWindow.print(), 250);
+                  }
+                }}
+              >
+                <FileDown className="w-4 h-4 mr-1" />
+                PDF 다운로드
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => window.open('/docs/cafe24-widget-integration-guide.md', '_blank')}
+              >
+                <ExternalLink className="w-4 h-4 mr-1" />
+                가이드 보기
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
