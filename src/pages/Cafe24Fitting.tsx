@@ -179,18 +179,23 @@ export default function Cafe24Fitting() {
                 {/* 버튼들 */}
                 <div className="space-y-3">
                   {!uploadedImage ? (
-                    <label className="cursor-pointer">
-                      <Button className="w-full" size="lg">
-                        <Camera className="w-5 h-5 mr-2" />
-                        사진 선택하기
-                      </Button>
+                    <>
                       <input
                         type="file"
+                        id="photo-upload"
                         accept="image/*"
                         className="hidden"
                         onChange={handleImageUpload}
                       />
-                    </label>
+                      <Button 
+                        className="w-full" 
+                        size="lg"
+                        onClick={() => document.getElementById('photo-upload')?.click()}
+                      >
+                        <Camera className="w-5 h-5 mr-2" />
+                        사진 선택하기
+                      </Button>
+                    </>
                   ) : (
                     <Button 
                       className="w-full" 
