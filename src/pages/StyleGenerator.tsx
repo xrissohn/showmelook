@@ -5226,7 +5226,7 @@ const StyleGenerator = () => {
             {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
             <div 
               ref={resultRef}
-              className={`order-1 lg:order-2 w-full space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
+              className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
             >
               {/* 모바일/태블릿/PC: 각 디바이스에 맞게 전신이 보이도록 최적화 */}
               <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] md:h-[calc(100vh-30px)] lg:h-[calc(100vh-80px)]' : 'aspect-[3/4] max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-30px)] lg:max-h-[calc(100vh-80px)] mx-auto lg:mx-0'}`}>
@@ -5462,37 +5462,47 @@ const StyleGenerator = () => {
 
               {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
-                <div className="mt-4 sm:mt-6 w-full overflow-visible">
-                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
+                <div className="mt-4 sm:mt-6 w-full" style={{ overflow: 'visible', contain: 'none' }}>
+                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base px-1">선택된 아이템 구매하기</h3>
                   
                   {/* 모바일/태블릿: 가로 스와이프 캐러셀 */}
-                  <div className="lg:hidden overflow-visible">
+                  <div 
+                    className="lg:hidden relative"
+                    style={{
+                      marginLeft: 'calc(-50vw + 50%)',
+                      marginRight: 'calc(-50vw + 50%)',
+                      paddingLeft: 'calc(50vw - 50% + 16px)',
+                      paddingRight: 'calc(50vw - 50% + 16px)',
+                      width: '100vw',
+                      maxWidth: '100vw',
+                      boxSizing: 'border-box',
+                    }}
+                  >
                     <div 
-                      className="flex gap-3 pb-4 -mx-4 px-4"
+                      className="flex gap-3 pb-4 scrollbar-hide"
                       style={{ 
-                        overflowX: 'auto',
-                        overflowY: 'hidden',
+                        overflowX: 'scroll',
+                        overflowY: 'visible',
                         WebkitOverflowScrolling: 'touch',
                         scrollSnapType: 'x mandatory',
-                        scrollBehavior: 'smooth',
                         msOverflowStyle: 'none',
                         scrollbarWidth: 'none',
-                        touchAction: 'pan-x',
+                        touchAction: 'pan-x pinch-zoom',
                         overscrollBehaviorX: 'contain',
                       }}
                     >
-                      {selectedTrendProducts.map((product, index) => (
+                      {selectedTrendProducts.map((product) => (
                         <div
                           key={product.id}
                           className="flex-none bg-secondary rounded-xl p-3 flex flex-col shadow-sm border border-border/50"
                           style={{
-                            width: '160px',
-                            minWidth: '160px',
+                            width: '150px',
+                            minWidth: '150px',
                             scrollSnapAlign: 'start',
                           }}
                         >
                           {product.image_url && (
-                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted mb-2.5">
+                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted mb-2">
                               <ProductImage 
                                 src={product.image_url} 
                                 alt={product.name}
@@ -5505,31 +5515,31 @@ const StyleGenerator = () => {
                             {product.brand && (
                               <p className="text-[10px] text-accent truncate">{product.brand}</p>
                             )}
-                            <p className="text-sm font-semibold text-foreground mt-1.5">
+                            <p className="text-sm font-semibold text-foreground mt-1">
                               ₩{product.price.toLocaleString()}
                             </p>
-                            <p className="text-[8px] text-muted-foreground mt-1 leading-tight font-korean line-clamp-2">
+                            <p className="text-[8px] text-muted-foreground mt-0.5 leading-tight font-korean line-clamp-2">
                               {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
                             </p>
                           </div>
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex gap-1.5 mt-2">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => addCachedProductToCart(product)}
-                              className="flex-1 h-9 p-0"
+                              className="flex-1 h-8 p-0"
                             >
-                              <ShoppingBag className="w-4 h-4" />
+                              <ShoppingBag className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="minimal"
                               size="sm"
                               onClick={() => handlePurchase(product)}
                               disabled={purchasingProductId === product.id}
-                              className="flex-1 h-9 text-xs px-2"
+                              className="flex-1 h-8 text-xs px-1.5"
                             >
                               {purchasingProductId === product.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
                                 '구매'
                               )}
@@ -5537,12 +5547,14 @@ const StyleGenerator = () => {
                           </div>
                         </div>
                       ))}
+                      {/* 오른쪽 패딩용 빈 요소 */}
+                      <div className="flex-none w-4" aria-hidden="true" />
                     </div>
                     {selectedTrendProducts.length > 1 && (
-                      <div className="flex items-center justify-center gap-2 mt-2">
-                        <ChevronLeft className="w-3 h-3 text-muted-foreground animate-pulse" />
-                        <p className="text-[10px] text-muted-foreground font-korean">← 스와이프 →</p>
-                        <ChevronRight className="w-3 h-3 text-muted-foreground animate-pulse" />
+                      <div className="flex items-center justify-center gap-1.5 mt-1">
+                        <ChevronLeft className="w-3 h-3 text-muted-foreground" />
+                        <p className="text-[10px] text-muted-foreground font-korean">스와이프</p>
+                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
                       </div>
                     )}
                   </div>
