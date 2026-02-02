@@ -289,91 +289,108 @@ export function InteractiveProductTags({
         </button>
       ))}
 
-      {/* 상품 상세 팝업 */}
+      {/* 상품 상세 팝업 - 모바일 최적화 */}
       {selectedProduct && (
         <div 
-          className="absolute inset-0 z-30 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in"
-          onClick={closePopup}
+          className="absolute inset-x-0 bottom-0 z-30 pointer-events-none"
+          style={{ top: 'auto', height: 'auto' }}
         >
+          {/* 백드롭 - 터치 시 닫기 */}
+          <div 
+            className="fixed inset-0 bg-black/30 pointer-events-auto"
+            onClick={closePopup}
+          />
+          
+          {/* 팝업 컨테이너 - 하단에서 슬라이드업 */}
           <div 
             ref={popupRef}
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:w-auto sm:min-w-[320px] sm:max-w-[400px] bg-card rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-slide-up sm:animate-scale-in"
+            className="relative w-full bg-card rounded-t-2xl shadow-2xl overflow-hidden pointer-events-auto animate-slide-up"
+            style={{ maxHeight: '55vh' }}
           >
-            {/* 모바일 핸들 바 */}
-            <div className="sm:hidden flex justify-center pt-2 pb-1">
-              <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+            {/* 모바일 드래그 핸들 - 터치로 닫기 */}
+            <div 
+              className="flex justify-center pt-3 pb-2 cursor-pointer"
+              onClick={closePopup}
+            >
+              <div className="w-12 h-1.5 rounded-full bg-muted-foreground/40" />
             </div>
             
-            {/* 헤더 */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-border">
+            {/* 헤더 - 네비게이션 + 닫기 */}
+            <div className="flex items-center justify-between px-4 pb-2">
               <span className="text-sm text-muted-foreground font-korean">
                 {selectedIndex + 1} / {products.length}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button
                   onClick={() => navigateProduct('prev')}
-                  className="p-1.5 hover:bg-secondary rounded-full transition-colors"
+                  className="p-2 hover:bg-secondary rounded-full transition-colors"
+                  aria-label="이전 상품"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => navigateProduct('next')}
-                  className="p-1.5 hover:bg-secondary rounded-full transition-colors"
+                  className="p-2 hover:bg-secondary rounded-full transition-colors"
+                  aria-label="다음 상품"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 <button
                   onClick={closePopup}
-                  className="p-1.5 hover:bg-secondary rounded-full transition-colors"
+                  className="p-2 hover:bg-secondary rounded-full transition-colors ml-1"
+                  aria-label="닫기"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            {/* 상품 이미지 */}
-            {selectedProduct.image_url && (
-              <div className="relative aspect-square max-h-[200px] sm:max-h-[250px] bg-secondary overflow-hidden">
-                <img 
-                  src={selectedProduct.image_url} 
-                  alt={selectedProduct.name}
-                  className="w-full h-full object-contain"
-                />
-                {/* 카테고리 배지 */}
-                <span className="absolute top-3 left-3 px-2 py-1 bg-black/60 text-white text-xs rounded-full font-korean">
-                  {selectedProduct.category}
-                </span>
-              </div>
-            )}
-
-            {/* 상품 정보 */}
-            <div className="p-4 space-y-3">
-              {selectedProduct.brand && (
-                <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-xs font-medium rounded-full">
-                  {selectedProduct.brand}
-                </span>
+            {/* 상품 콘텐츠 - 가로 레이아웃 */}
+            <div className="flex gap-3 px-4 pb-3">
+              {/* 상품 이미지 - 작게 */}
+              {selectedProduct.image_url && (
+                <div className="relative w-24 h-24 flex-shrink-0 bg-secondary rounded-xl overflow-hidden">
+                  <img 
+                    src={selectedProduct.image_url} 
+                    alt={selectedProduct.name}
+                    className="w-full h-full object-contain"
+                  />
+                  {/* 카테고리 배지 */}
+                  <span className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 text-white text-[10px] rounded-full font-korean">
+                    {selectedProduct.category}
+                  </span>
+                </div>
               )}
-              <h3 className="font-semibold text-foreground font-korean text-base leading-tight">
-                {selectedProduct.name}
-              </h3>
-              <p className="text-xl font-bold text-foreground">
-                ₩{selectedProduct.price.toLocaleString()}
-              </p>
-              {/* 제휴 공시 문구 */}
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {getProductAffiliateDisclosure(selectedProduct.product_url, selectedProduct.merchant_id)}
-              </p>
+
+              {/* 상품 정보 */}
+              <div className="flex-1 min-w-0">
+                {selectedProduct.brand && (
+                  <span className="inline-block px-2 py-0.5 bg-accent/10 text-accent text-[10px] font-medium rounded-full mb-1">
+                    {selectedProduct.brand}
+                  </span>
+                )}
+                <h3 className="font-semibold text-foreground font-korean text-sm leading-tight line-clamp-2">
+                  {selectedProduct.name}
+                </h3>
+                <p className="text-lg font-bold text-foreground mt-1">
+                  ₩{selectedProduct.price.toLocaleString()}
+                </p>
+                {/* 제휴 공시 문구 */}
+                <p className="text-[9px] text-muted-foreground leading-tight mt-1 line-clamp-2">
+                  {getProductAffiliateDisclosure(selectedProduct.product_url, selectedProduct.merchant_id)}
+                </p>
+              </div>
             </div>
 
-            {/* 액션 버튼 */}
-            <div className="p-4 pt-0 flex gap-2">
+            {/* 액션 버튼 - 하단 고정 */}
+            <div className="px-4 pb-4 pt-2 flex gap-2 border-t border-border/50">
               {onLike && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => onLike(selectedProduct)}
-                  className={`w-10 h-10 p-0 ${likedProducts.has(selectedProduct.id) ? 'text-red-500 border-red-500' : ''}`}
+                  className={`w-11 h-11 p-0 ${likedProducts.has(selectedProduct.id) ? 'text-red-500 border-red-500' : ''}`}
                 >
                   <Heart className={`w-5 h-5 ${likedProducts.has(selectedProduct.id) ? 'fill-current' : ''}`} />
                 </Button>
@@ -383,7 +400,7 @@ export function InteractiveProductTags({
                   variant="outline"
                   size="sm"
                   onClick={() => onAddToCart(selectedProduct)}
-                  className="w-10 h-10 p-0"
+                  className="w-11 h-11 p-0"
                 >
                   <ShoppingBag className="w-5 h-5" />
                 </Button>
@@ -393,7 +410,7 @@ export function InteractiveProductTags({
                 size="sm"
                 onClick={() => onPurchase(selectedProduct)}
                 disabled={purchasingProductId === selectedProduct.id}
-                className="flex-1 h-10 font-korean"
+                className="flex-1 h-11 font-korean text-sm"
               >
                 {purchasingProductId === selectedProduct.id ? (
                   <span className="flex items-center gap-2">
