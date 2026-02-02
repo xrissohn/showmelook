@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown } from 'lucide-react';
-import { PLAN_CONFIG, formatPrice } from '@/lib/planConfig';
+import { TIER_CONFIG, formatAmountKo } from '@/lib/tierConfig';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 
 // Use public path for Korean logo to enable preloading and improve LCP
@@ -547,63 +547,63 @@ const Landing = () => {
             </p>
           </div>
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8">
-            {(['free', 'pro', 'premium'] as const).map((planKey, i) => {
-              const plan = PLAN_CONFIG[planKey];
-              const isPro = planKey === 'pro';
+          {/* Tier Cards - 구매 기반 등급 시스템 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            {(['free', 'bronze', 'silver', 'gold', 'platinum'] as const).map((tierKey) => {
+              const tier = TIER_CONFIG[tierKey];
+              const isBronze = tierKey === 'bronze';
+              const isPlatinum = tierKey === 'platinum';
               
               return (
                 <HoverParticleCard 
-                  key={planKey}
-                  className={`relative bg-card rounded-2xl p-5 sm:p-6 border transition-all duration-300 hover:shadow-xl ${
-                    isPro 
+                  key={tierKey}
+                  className={`relative bg-card rounded-2xl p-4 sm:p-5 border transition-all duration-300 hover:shadow-xl ${
+                    isBronze 
                       ? 'border-primary shadow-lg ring-2 ring-primary/20' 
-                      : 'border-border hover:border-primary/30'
+                      : isPlatinum
+                        ? 'border-purple-500/50 shadow-lg ring-2 ring-purple-500/20'
+                        : 'border-border hover:border-primary/30'
                   }`}
                 >
-                  {/* Popular badge */}
-                  {isPro && (
+                  {/* First Purchase badge */}
+                  {isBronze && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                      <span className="bg-gradient-brand text-white text-xs font-medium px-3 py-1 rounded-full shadow-md">
-                        가장 인기
+                      <span className="bg-gradient-brand text-white text-xs font-medium px-3 py-1 rounded-full shadow-md whitespace-nowrap">
+                        첫 구매 시
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Platinum badge */}
+                  {isPlatinum && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-medium px-3 py-1 rounded-full shadow-md whitespace-nowrap">
+                        VIP
                       </span>
                     </div>
                   )}
                   
-                  <div className="text-center mb-4">
-                    <h3 className="font-korean text-lg sm:text-xl font-semibold text-foreground mb-1">
-                      {plan.nameKo}
+                  <div className="text-center mb-3">
+                    <h3 className="font-korean text-base sm:text-lg font-semibold text-foreground mb-1">
+                      {tier.nameKo}
                     </h3>
-                    <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-2xl sm:text-3xl font-bold text-foreground">
-                        {formatPrice(plan.monthlyPrice)}
-                      </span>
-                      {plan.monthlyPrice > 0 && (
-                        <span className="text-sm text-muted-foreground">/월</span>
-                      )}
+                    <div className="text-xs sm:text-sm text-muted-foreground">
+                      {tier.minAmount === 0 
+                        ? '가입 즉시' 
+                        : `누적 ${formatAmountKo(tier.minAmount)}+`}
                     </div>
-                    {plan.yearlyDiscount > 0 && (
-                      <p className="text-xs text-accent mt-1">
-                        연간 결제 시 {plan.yearlyDiscount}% 할인
-                      </p>
-                    )}
                   </div>
                   
-                  {/* Key features - show top 4 */}
-                  <ul className="space-y-2 mb-5">
-                    {plan.features.slice(0, 4).map((feature, j) => (
-                      <li key={j} className="flex items-start gap-2 text-sm">
-                        <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                          plan.highlightFeatures?.includes(feature) 
+                  {/* Key features - show top 3 */}
+                  <ul className="space-y-1.5 mb-4">
+                    {tier.features.slice(0, 3).map((feature, j) => (
+                      <li key={j} className="flex items-start gap-1.5 text-xs sm:text-sm">
+                        <Check className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
+                          tier.highlightFeatures?.some(h => feature.includes(h.replace('일일 ', '').replace('회', '')))
                             ? 'text-accent' 
                             : 'text-primary'
                         }`} />
-                        <span className={`font-korean ${
-                          plan.highlightFeatures?.includes(feature) 
-                            ? 'text-accent font-medium' 
-                            : 'text-muted-foreground'
-                        }`}>
+                        <span className="font-korean text-muted-foreground">
                           {feature}
                         </span>
                       </li>
@@ -611,11 +611,12 @@ const Landing = () => {
                   </ul>
                   
                   <Button 
-                    variant={isPro ? 'hero' : 'outline'} 
-                    className="w-full font-korean rounded-full"
-                    onClick={() => navigate(planKey === 'free' ? '/auth' : '/pricing')}
+                    variant={isBronze || isPlatinum ? 'hero' : 'outline'} 
+                    size="sm"
+                    className="w-full font-korean rounded-full text-xs sm:text-sm"
+                    onClick={() => navigate('/pricing')}
                   >
-                    {planKey === 'free' ? '무료로 시작' : '자세히 보기'}
+                    자세히 보기
                   </Button>
                 </HoverParticleCard>
               );
