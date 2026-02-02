@@ -5229,9 +5229,9 @@ const StyleGenerator = () => {
               className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
             >
               {/* 모바일: 네비게이션 바 아래에서 시작, 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
-              <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'min-h-[60vh] sm:min-h-0 sm:aspect-[3/4] max-h-[calc(100vh-100px)] sm:max-h-[70vh]' : 'aspect-[3/4] max-h-[70vh]'}`}>
+              <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] sm:h-auto sm:aspect-[3/4] sm:max-h-[70vh]' : 'aspect-[3/4] max-h-[70vh]'}`}>
                   {(isGenerating || isCustomSearching) ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative pt-2 sm:pt-0">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative">
                       {/* 배경 파티클 효과 - 고정된 위치 */}
                       <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         {loadingParticles.map((p) => (
