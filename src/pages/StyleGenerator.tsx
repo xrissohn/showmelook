@@ -33,6 +33,7 @@ import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSele
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 import { GenerationProgress } from '@/components/style/GenerationProgress';
+import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarousel';
 interface StyleTrend {
   id: string;
   name: string;
@@ -5462,101 +5463,17 @@ const StyleGenerator = () => {
 
               {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
-                <div className="mt-4 sm:mt-6 w-full" style={{ overflow: 'visible', contain: 'none' }}>
-                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base px-1">선택된 아이템 구매하기</h3>
+                <div className="mt-4 sm:mt-6 w-full">
+                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
                   
-                  {/* 모바일/태블릿: 가로 스와이프 캐러셀 */}
-                  <div 
-                    className="lg:hidden relative"
-                    style={{
-                      marginLeft: 'calc(-50vw + 50%)',
-                      marginRight: 'calc(-50vw + 50%)',
-                      paddingLeft: 'calc(50vw - 50% + 16px)',
-                      paddingRight: 'calc(50vw - 50% + 16px)',
-                      width: '100vw',
-                      maxWidth: '100vw',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <div 
-                      className="flex gap-3 pb-4 scrollbar-hide"
-                      style={{ 
-                        overflowX: 'scroll',
-                        overflowY: 'visible',
-                        WebkitOverflowScrolling: 'touch',
-                        scrollSnapType: 'x mandatory',
-                        msOverflowStyle: 'none',
-                        scrollbarWidth: 'none',
-                        touchAction: 'pan-x pinch-zoom',
-                        overscrollBehaviorX: 'contain',
-                      }}
-                    >
-                      {selectedTrendProducts.map((product) => (
-                        <div
-                          key={product.id}
-                          className="flex-none bg-secondary rounded-xl p-3 flex flex-col shadow-sm border border-border/50"
-                          style={{
-                            width: '150px',
-                            minWidth: '150px',
-                            scrollSnapAlign: 'start',
-                          }}
-                        >
-                          {product.image_url && (
-                            <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted mb-2">
-                              <ProductImage 
-                                src={product.image_url} 
-                                alt={product.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground font-korean text-xs line-clamp-2 mb-1">{product.name}</p>
-                            {product.brand && (
-                              <p className="text-[10px] text-accent truncate">{product.brand}</p>
-                            )}
-                            <p className="text-sm font-semibold text-foreground mt-1">
-                              ₩{product.price.toLocaleString()}
-                            </p>
-                            <p className="text-[8px] text-muted-foreground mt-0.5 leading-tight font-korean line-clamp-2">
-                              {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
-                            </p>
-                          </div>
-                          <div className="flex gap-1.5 mt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addCachedProductToCart(product)}
-                              className="flex-1 h-8 p-0"
-                            >
-                              <ShoppingBag className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="minimal"
-                              size="sm"
-                              onClick={() => handlePurchase(product)}
-                              disabled={purchasingProductId === product.id}
-                              className="flex-1 h-8 text-xs px-1.5"
-                            >
-                              {purchasingProductId === product.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                '구매'
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                      {/* 오른쪽 패딩용 빈 요소 */}
-                      <div className="flex-none w-4" aria-hidden="true" />
-                    </div>
-                    {selectedTrendProducts.length > 1 && (
-                      <div className="flex items-center justify-center gap-1.5 mt-1">
-                        <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] text-muted-foreground font-korean">스와이프</p>
-                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                      </div>
-                    )}
+                  {/* 모바일/태블릿: Embla 캐러셀 사용 */}
+                  <div className="lg:hidden">
+                    <MobilePurchaseCarousel 
+                      products={selectedTrendProducts}
+                      onAddToCart={addCachedProductToCart}
+                      onPurchase={handlePurchase}
+                      purchasingProductId={purchasingProductId}
+                    />
                   </div>
                   
                   {/* 데스크탑: 기존 리스트 뷰 */}
