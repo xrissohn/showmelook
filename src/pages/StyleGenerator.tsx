@@ -3155,6 +3155,7 @@ const StyleGenerator = () => {
     
     // affiliate_url이 이미 있으면 바로 이동
     if (product.affiliate_url) {
+      console.log('[handlePurchase] Using cached affiliate_url:', product.affiliate_url);
       window.open(product.affiliate_url, '_blank', 'noopener,noreferrer');
       return;
     }
@@ -3170,6 +3171,7 @@ const StyleGenerator = () => {
     }
 
     setPurchasingProductId(product.id);
+    console.log('[handlePurchase] Calling deeplink for:', product.product_url);
 
     try {
       // Get auth token for deeplink tracking
@@ -3180,21 +3182,35 @@ const StyleGenerator = () => {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 
+      console.log('[handlePurchase] Deeplink response:', { data, error });
+
       if (error) throw error;
 
       if (data?.success && data?.affiliate_url) {
         // 변환된 제휴 링크로 이동
+        console.log('[handlePurchase] Opening affiliate URL:', data.affiliate_url);
         window.open(data.affiliate_url, '_blank', 'noopener,noreferrer');
         toast({
           title: '구매 페이지 이동',
           description: `${product.name} 구매 페이지로 이동합니다.`,
         });
       } else {
-        // 딥링크 실패 시 원본 URL로 이동
+        // 딥링크 실패 시 원본 URL로 이동 - 경고 표시
+        console.warn('[handlePurchase] Deeplink failed, using original URL:', product.product_url);
+        toast({
+          title: '딥링크 변환 실패',
+          description: '제휴 링크 생성에 실패하여 원본 URL로 이동합니다.',
+          variant: 'destructive',
+        });
         window.open(product.product_url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
-      console.error('Deeplink error:', error);
+      console.error('[handlePurchase] Deeplink error:', error);
+      toast({
+        title: '딥링크 오류',
+        description: '제휴 링크 생성 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
       // 에러 시에도 원본 URL로 이동
       window.open(product.product_url, '_blank', 'noopener,noreferrer');
     } finally {
