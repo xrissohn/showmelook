@@ -5228,10 +5228,10 @@ const StyleGenerator = () => {
               ref={resultRef}
               className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''}`}
             >
-              {/* 모바일: 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
-              <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[70vh] sm:max-h-none animate-fade-in">
+              {/* 모바일: 네비게이션 바 아래에서 시작, 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
+              <div className="w-full aspect-[3/4] bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative max-h-[calc(100vh-160px)] sm:max-h-[70vh] animate-fade-in">
                   {(isGenerating || isCustomSearching) ? (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative">
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative pt-2 sm:pt-0">
                       {/* 배경 파티클 효과 - 고정된 위치 */}
                       <div className="absolute inset-0 overflow-hidden pointer-events-none">
                         {loadingParticles.map((p) => (
