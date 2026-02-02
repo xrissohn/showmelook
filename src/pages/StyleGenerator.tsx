@@ -5229,7 +5229,7 @@ const StyleGenerator = () => {
               className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
             >
               {/* 모바일/태블릿/PC: 각 디바이스에 맞게 전신이 보이도록 최적화 */}
-              <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] md:h-[calc(100vh-70px)] lg:h-[calc(100vh-80px)]' : 'aspect-[3/4] max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-70px)] lg:max-h-[calc(100vh-80px)] mx-auto lg:mx-0'}`}>
+              <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] md:h-[calc(100vh-50px)] lg:h-[calc(100vh-80px)]' : 'aspect-[3/4] max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-50px)] lg:max-h-[calc(100vh-80px)] mx-auto lg:mx-0'}`}>
                   {(isGenerating || isCustomSearching) ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative">
                       {/* 배경 파티클 효과 - 고정된 위치 */}
