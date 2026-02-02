@@ -1077,7 +1077,7 @@ const GeneratedStyleImage = ({
           <img 
             src={imageUrl} 
             alt={alt}
-            className={`w-full h-full object-cover transition-all duration-1000 ease-out ${
+            className={`w-full h-full object-cover md:object-contain lg:object-cover transition-all duration-1000 ease-out ${
               isLoading 
                 ? 'blur-2xl scale-110 opacity-0' 
                 : 'blur-0 scale-100 opacity-100'
