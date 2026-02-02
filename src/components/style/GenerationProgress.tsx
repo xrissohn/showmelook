@@ -65,8 +65,8 @@ export const GenerationProgress = ({
   const aheadCount = position && position > 1 ? position - 1 : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl p-8 max-w-sm w-full shadow-2xl border border-border relative overflow-hidden">
+    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+      <div className="bg-card rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl border border-border relative overflow-hidden max-h-[90%] overflow-y-auto">
         
         {/* Background floating particles */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
