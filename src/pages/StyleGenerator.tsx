@@ -1077,7 +1077,7 @@ const GeneratedStyleImage = ({
           <img 
             src={imageUrl} 
             alt={alt}
-            className={`w-full h-full object-cover transition-all duration-1000 ease-out ${
+            className={`w-full h-full object-contain transition-all duration-1000 ease-out ${
               isLoading 
                 ? 'blur-2xl scale-110 opacity-0' 
                 : 'blur-0 scale-100 opacity-100'
@@ -5228,8 +5228,8 @@ const StyleGenerator = () => {
               ref={resultRef}
               className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
             >
-              {/* 모바일: 네비게이션 바 아래에서 시작, 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑: aspect-ratio 유지 */}
-              <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] sm:h-auto sm:aspect-[3/4] sm:max-h-[70vh]' : 'aspect-[3/4] max-h-[70vh]'}`}>
+              {/* 모바일: 네비게이션 바 아래에서 시작, 전체 화면 폭에 맞춤 + 세로로 풀 이미지 표시, 데스크탑/태블릿: 전신이 보이도록 높이 확장 */}
+              <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] sm:h-auto sm:aspect-[3/4] sm:max-h-[85vh]' : 'sm:max-h-[calc(100vh-180px)] lg:max-h-[calc(100vh-120px)]'}`}>
                   {(isGenerating || isCustomSearching) ? (
                     <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 overflow-hidden relative">
                       {/* 배경 파티클 효과 - 고정된 위치 */}
