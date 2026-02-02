@@ -5226,7 +5226,7 @@ const StyleGenerator = () => {
             {/* 모바일: 생성 중이거나 생성 완료된 경우에만 표시 / 데스크탑: 항상 표시 */}
             <div 
               ref={resultRef}
-              className={`order-1 lg:order-2 w-full overflow-hidden space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
+              className={`order-1 lg:order-2 w-full space-y-4 self-start ${!isGenerating && !isCustomSearching && !generatedImage ? 'hidden lg:block' : ''} ${(isGenerating || isCustomSearching) ? 'mt-2 sm:mt-0' : ''}`}
             >
               {/* 모바일/태블릿/PC: 각 디바이스에 맞게 전신이 보이도록 최적화 */}
               <div className={`w-full bg-secondary rounded-xl sm:rounded-2xl overflow-hidden border border-border relative animate-fade-in ${(isGenerating || isCustomSearching) ? 'h-[calc(100vh-120px)] md:h-[calc(100vh-30px)] lg:h-[calc(100vh-80px)]' : 'aspect-[3/4] max-h-[calc(100vh-120px)] md:max-h-[calc(100vh-30px)] lg:max-h-[calc(100vh-80px)] mx-auto lg:mx-0'}`}>
@@ -5462,22 +5462,34 @@ const StyleGenerator = () => {
 
               {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
-                <div className="mt-4 sm:mt-6 w-full">
+                <div className="mt-4 sm:mt-6 w-full overflow-visible">
                   <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
                   
                   {/* 모바일/태블릿: 가로 스와이프 캐러셀 */}
-                  <div className="lg:hidden">
+                  <div className="lg:hidden overflow-visible">
                     <div 
-                      className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-2 px-2 touch-pan-x"
+                      className="flex gap-3 pb-4 -mx-4 px-4"
                       style={{ 
+                        overflowX: 'auto',
+                        overflowY: 'hidden',
                         WebkitOverflowScrolling: 'touch',
-                        overscrollBehaviorX: 'contain'
+                        scrollSnapType: 'x mandatory',
+                        scrollBehavior: 'smooth',
+                        msOverflowStyle: 'none',
+                        scrollbarWidth: 'none',
+                        touchAction: 'pan-x',
+                        overscrollBehaviorX: 'contain',
                       }}
                     >
                       {selectedTrendProducts.map((product, index) => (
                         <div
                           key={product.id}
-                          className="flex-shrink-0 w-[160px] sm:w-[180px] snap-start bg-secondary rounded-xl p-3 flex flex-col shadow-sm border border-border/50"
+                          className="flex-none bg-secondary rounded-xl p-3 flex flex-col shadow-sm border border-border/50"
+                          style={{
+                            width: '160px',
+                            minWidth: '160px',
+                            scrollSnapAlign: 'start',
+                          }}
                         >
                           {product.image_url && (
                             <div className="w-full aspect-square rounded-lg overflow-hidden bg-muted mb-2.5">
@@ -5489,11 +5501,11 @@ const StyleGenerator = () => {
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-foreground font-korean text-xs sm:text-sm line-clamp-2 mb-1">{product.name}</p>
+                            <p className="font-medium text-foreground font-korean text-xs line-clamp-2 mb-1">{product.name}</p>
                             {product.brand && (
-                              <p className="text-[10px] sm:text-xs text-accent truncate">{product.brand}</p>
+                              <p className="text-[10px] text-accent truncate">{product.brand}</p>
                             )}
-                            <p className="text-sm sm:text-base font-semibold text-foreground mt-1.5">
+                            <p className="text-sm font-semibold text-foreground mt-1.5">
                               ₩{product.price.toLocaleString()}
                             </p>
                             <p className="text-[8px] text-muted-foreground mt-1 leading-tight font-korean line-clamp-2">
@@ -5514,7 +5526,7 @@ const StyleGenerator = () => {
                               size="sm"
                               onClick={() => handlePurchase(product)}
                               disabled={purchasingProductId === product.id}
-                              className="flex-1 h-9 text-xs sm:text-sm px-2"
+                              className="flex-1 h-9 text-xs px-2"
                             >
                               {purchasingProductId === product.id ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -5528,9 +5540,9 @@ const StyleGenerator = () => {
                     </div>
                     {selectedTrendProducts.length > 1 && (
                       <div className="flex items-center justify-center gap-2 mt-2">
-                        <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-[10px] sm:text-xs text-muted-foreground font-korean">스와이프하여 더보기</p>
-                        <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                        <ChevronLeft className="w-3 h-3 text-muted-foreground animate-pulse" />
+                        <p className="text-[10px] text-muted-foreground font-korean">← 스와이프 →</p>
+                        <ChevronRight className="w-3 h-3 text-muted-foreground animate-pulse" />
                       </div>
                     )}
                   </div>
