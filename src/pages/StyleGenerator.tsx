@@ -2900,11 +2900,11 @@ const StyleGenerator = () => {
     fetchLikedProducts();
   }, [user]);
 
-  // 로딩 화면 추천 상품 로드 (모든 회원에게 표시)
+  // 로딩 화면 추천 상품 로드 (모든 회원에게 표시 - 생성 중이거나 추천 검색 중일 때)
   useEffect(() => {
     const loadAdsProducts = async () => {
-      // 생성 중일 때만 상품 로드
-      if (!isGenerating) return;
+      // 생성 중이거나 추천 검색 중일 때만 상품 로드
+      if (!isGenerating && !isCustomSearching) return;
       if (loadingAdsProducts.length > 0) return; // 이미 로드됨
 
       try {
@@ -2931,7 +2931,7 @@ const StyleGenerator = () => {
     };
 
     loadAdsProducts();
-  }, [isGenerating, loadingAdsProducts.length]);
+  }, [isGenerating, isCustomSearching, loadingAdsProducts.length]);
 
   // 광고 상품 클릭 핸들러
   const handleAdsProductClick = async (product: CachedProduct) => {
