@@ -174,13 +174,23 @@ serve(async (req) => {
         }
         
         // Check for small_accessory (wallet, card holder, etc.)
+        const productName = p.name?.toLowerCase() || '';
+        const isCardWallet = productName.includes('카드지갑') || productName.includes('카드홀더') || productName.includes('카드케이스');
+        const isWallet = productName.includes('지갑') || productName.includes('반지갑') || productName.includes('머니클립');
         const isSmallAccessory = p.dna_meta?.small_accessory === true || 
                                  p.dna_meta?.small_accessory === 'true' ||
-                                 (p.name && (p.name.includes('지갑') || p.name.includes('카드지갑') || p.name.includes('반지갑')));
+                                 isCardWallet || isWallet;
         
         if (isSmallAccessory) {
-          const sizeHint = p.dna_meta?.size_hint || 'palm-sized card wallet, NOT a bag';
-          constraints.push(`SIZE: ${sizeHint} - this is a SMALL accessory held in hand, NOT a large bag`);
+          // 카드지갑은 특히 작은 사이즈 강조
+          if (isCardWallet) {
+            constraints.push(`CRITICAL SIZE: This is a TINY card wallet - approximately 10cm x 7cm, about the size of a credit card. It should fit in ONE PALM. Do NOT render as a bag, purse, or handbag. Show it held between fingers or in a single hand, NOT slung over shoulder or arm.`);
+          } else if (isWallet) {
+            constraints.push(`SIZE: This is a small wallet - palm-sized accessory that fits in a pocket. Do NOT render as a bag or handbag. Show it held in one hand, NOT carried like a purse.`);
+          } else {
+            const sizeHint = p.dna_meta?.size_hint || 'palm-sized small accessory, NOT a bag';
+            constraints.push(`SIZE: ${sizeHint} - this is a SMALL accessory held in hand, NOT a large bag`);
+          }
         }
         
         if (constraints.length > 0) {
