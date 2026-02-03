@@ -590,6 +590,8 @@ const Landing = () => {
                     <div className="text-xs sm:text-sm text-muted-foreground">
                       {tier.minAmount === 0 
                         ? '가입 즉시' 
+                        : isBronze 
+                        ? '첫 제품 구매시'
                         : `누적 ${formatAmountKo(tier.minAmount)}+`}
                     </div>
                   </div>
