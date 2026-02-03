@@ -8,7 +8,7 @@ import { useFamilyProfiles, FamilyProfile } from '@/hooks/useFamilyProfiles';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Crown, User, ChevronDown, Check, Users, Lock } from 'lucide-react';
+import { Crown, User, ChevronDown, Check, Users, Lock, Loader2 } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -44,6 +44,7 @@ interface ProfileSelectorProps {
   canUseFamilyProfiles: boolean;
   selectedProfile: SelectedProfile | null;
   onProfileSelect: (profile: SelectedProfile) => void;
+  isProfileLoading?: boolean; // 프로필 데이터 로딩 상태
 }
 
 export const ProfileSelector = ({
@@ -53,6 +54,7 @@ export const ProfileSelector = ({
   canUseFamilyProfiles,
   selectedProfile,
   onProfileSelect,
+  isProfileLoading = false,
 }: ProfileSelectorProps) => {
   const { profiles: familyProfiles, isLoading } = useFamilyProfiles(userId, 5);
   const [isOpen, setIsOpen] = useState(false);
@@ -145,27 +147,40 @@ export const ProfileSelector = ({
     return (
       <div className="space-y-3">
         {/* 본인 프로필 표시 (무료 회원도 표시) */}
-        <div className="p-3 sm:p-4 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5">
+        <div className={`p-3 sm:p-4 rounded-xl border-2 ${isProfileLoading ? 'border-border' : 'border-accent/30'} bg-gradient-to-br from-accent/5 to-primary/5`}>
           <div className="flex items-center gap-2 sm:gap-3">
-            <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-accent/30">
-              <AvatarImage src={userProfile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-accent/20">
-                <User className="w-5 h-5 text-accent" />
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-accent/30">
+                <AvatarImage src={userProfile?.avatar_url || undefined} />
+                <AvatarFallback className="bg-accent/20">
+                  <User className="w-5 h-5 text-accent" />
+                </AvatarFallback>
+              </Avatar>
+              {isProfileLoading && (
+                <div className="absolute inset-0 rounded-full bg-background/70 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                </div>
+              )}
+            </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                  {userProfile?.full_name || '내 프로필'}
+                  {isProfileLoading ? '프로필 로딩 중...' : (userProfile?.full_name || '내 프로필')}
                 </p>
-                <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent">
-                  나
-                </Badge>
+                {!isProfileLoading && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent">
+                    나
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-muted-foreground font-korean truncate">
-                {userProfile?.height ? `${userProfile.height}cm` : ''} 
-                {userProfile?.weight ? ` · ${userProfile.weight}kg` : ''}
-                {userProfile?.gender ? ` · ${userProfile.gender === 'male' || userProfile.gender === '남성' ? '남성' : userProfile.gender === 'female' || userProfile.gender === '여성' ? '여성' : userProfile.gender}` : ''}
+                {isProfileLoading ? '사진과 체형 정보를 불러오는 중...' : (
+                  <>
+                    {userProfile?.height ? `${userProfile.height}cm` : ''} 
+                    {userProfile?.weight ? ` · ${userProfile.weight}kg` : ''}
+                    {userProfile?.gender ? ` · ${userProfile.gender === 'male' || userProfile.gender === '남성' ? '남성' : userProfile.gender === 'female' || userProfile.gender === '여성' ? '여성' : userProfile.gender}` : ''}
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -209,10 +224,13 @@ export const ProfileSelector = ({
   };
 
   return (
-    <div className="p-3 sm:p-4 rounded-xl border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5">
+    <div className={`p-3 sm:p-4 rounded-xl border-2 ${isProfileLoading ? 'border-border' : 'border-accent/30'} bg-gradient-to-br from-accent/5 to-primary/5`}>
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
-          <button className="w-full flex items-center justify-between gap-2 hover:bg-accent/10 rounded-lg p-1 transition-colors">
+          <button 
+            className="w-full flex items-center justify-between gap-2 hover:bg-accent/10 rounded-lg p-1 transition-colors"
+            disabled={isProfileLoading}
+          >
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <div className="relative">
                 <Avatar className="w-10 h-10 sm:w-12 sm:h-12 border-2 border-accent/30">
@@ -221,34 +239,43 @@ export const ProfileSelector = ({
                     <User className="w-5 h-5 text-accent" />
                   </AvatarFallback>
                 </Avatar>
-                {currentDisplayProfile.type === 'family' && (
+                {isProfileLoading && (
+                  <div className="absolute inset-0 rounded-full bg-background/70 flex items-center justify-center">
+                    <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                  </div>
+                )}
+                {!isProfileLoading && currentDisplayProfile.type === 'family' && (
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-primary flex items-center justify-center border-2 border-background">
-                    <Users className="w-3 h-3 text-white" />
+                    <Users className="w-3 h-3 text-primary-foreground" />
                   </div>
                 )}
               </div>
               <div className="min-w-0 text-left">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                    {currentDisplayProfile.full_name || '프로필 선택'}
+                    {isProfileLoading ? '프로필 로딩 중...' : (currentDisplayProfile.full_name || '프로필 선택')}
                   </p>
-                <Badge 
-                    variant="secondary" 
-                    className={`text-[10px] px-1.5 py-0.5 ${
-                      currentDisplayProfile.type === 'self' 
-                        ? 'bg-accent/20 text-accent' 
-                        : 'bg-primary/20 text-primary'
-                    }`}
-                  >
-                    {currentDisplayProfile.type === 'self' ? '나' : '모델'}
-                  </Badge>
+                  {!isProfileLoading && (
+                    <Badge 
+                      variant="secondary" 
+                      className={`text-[10px] px-1.5 py-0.5 ${
+                        currentDisplayProfile.type === 'self' 
+                          ? 'bg-accent/20 text-accent' 
+                          : 'bg-primary/20 text-primary'
+                      }`}
+                    >
+                      {currentDisplayProfile.type === 'self' ? '나' : '모델'}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground font-korean truncate">
-                  누구를 위한 스타일을 생성할까요?
+                  {isProfileLoading ? '사진과 체형 정보를 불러오는 중...' : '누구를 위한 스타일을 생성할까요?'}
                 </p>
               </div>
             </div>
-            <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            {!isProfileLoading && (
+              <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            )}
           </button>
         </PopoverTrigger>
         

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreloadedData } from '@/contexts/DataPreloaderContext';
@@ -2531,6 +2531,35 @@ const StyleGenerator = () => {
   
   // 선택된 프로필 (나 또는 가족/친구)
   const [selectedGenerationProfile, setSelectedGenerationProfile] = useState<SelectedProfile | null>(null);
+  
+  // 프로필 데이터 준비 상태 (사진, 체형, 나이 등이 모두 로드되었는지)
+  const isProfileDataReady = useMemo(() => {
+    // 프로필 데이터가 로딩 중이면 false
+    if (isPreloadingProfile) return false;
+    
+    // 선택된 프로필이 없으면 기본 사용자 프로필 체크
+    const profileToCheck = selectedGenerationProfile || (userProfile ? {
+      id: 'self',
+      type: 'self' as const,
+      full_name: userProfile.full_name,
+      avatar_url: userProfile.avatar_url,
+      height: userProfile.height,
+      weight: userProfile.weight,
+      body_type: userProfile.body_type,
+      gender: userProfile.gender,
+      age_group: userProfile.age_group,
+      style_preferences: userProfile.style_preferences,
+    } : null);
+    
+    // 프로필이 아예 없으면 false
+    if (!profileToCheck) return false;
+    
+    // 최소 필수 정보가 있는지 확인 (성별 또는 연령대 중 하나라도 있으면 OK)
+    // 사진이 있는 경우 URL이 유효한지도 확인
+    const hasMinimalData = profileToCheck.gender || profileToCheck.age_group;
+    
+    return !!hasMinimalData;
+  }, [isPreloadingProfile, selectedGenerationProfile, userProfile]);
   
   // 트렌드 기반 실시간 검색된 상품들
   const [trendProducts, setTrendProducts] = useState<CachedProduct[]>([]);
@@ -5125,6 +5154,7 @@ const StyleGenerator = () => {
                 isPremium={isPremium}
                 canUseFamilyProfiles={subscription.canUseFamilyProfiles}
                 selectedProfile={selectedGenerationProfile}
+                isProfileLoading={isPreloadingProfile}
                 onProfileSelect={(profile) => {
                   setSelectedGenerationProfile(profile);
                   // 선택된 프로필의 성별을 customGender에 자동 반영
@@ -5203,12 +5233,17 @@ const StyleGenerator = () => {
                 size="xl"
                 className="w-full font-korean hidden lg:flex"
                 onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
-                disabled={isGenerating || isCustomSearching || !canGenerate || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
+                disabled={isGenerating || isCustomSearching || !canGenerate || !isProfileDataReady || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
               >
                 {isGenerating || isCustomSearching ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
                     {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '생성 중...'}
+                  </>
+                ) : !isProfileDataReady ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    프로필 로딩 중...
                   </>
                 ) : !canGenerate ? (
                   <>
@@ -5926,12 +5961,17 @@ const StyleGenerator = () => {
             size="lg"
             className="w-full font-korean shadow-lg shadow-accent/20"
             onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
-            disabled={isGenerating || isCustomSearching || !canGenerate || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
+            disabled={isGenerating || isCustomSearching || !canGenerate || !isProfileDataReady || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
           >
             {isGenerating || isCustomSearching ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
                 {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '생성 중...'}
+              </>
+            ) : !isProfileDataReady ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                프로필 로딩 중...
               </>
             ) : !canGenerate ? (
               <>
@@ -5948,9 +5988,11 @@ const StyleGenerator = () => {
           {/* 남은 횟수 표시 */}
           {!isPremium && (
             <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
-              {bonusCredits > 0 
-                ? `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회` 
-                : `오늘 ${remainingCount}회 남음`}
+              {!isProfileDataReady 
+                ? '프로필 정보를 불러오는 중...'
+                : bonusCredits > 0 
+                  ? `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회` 
+                  : `오늘 ${remainingCount}회 남음`}
             </p>
           )}
         </div>
