@@ -16,6 +16,7 @@ export interface TierConfig {
   hdDownload: boolean;
   historyDays: number; // -1 = 영구 보관
   modelProfiles: number; // 0 = 본인만, -1 = 동적 계산
+  canPreviewRecommendations: boolean; // 상품 추천만 먼저보기
   badgeColor: string; // Tailwind 색상 클래스
   features: string[];
   highlightFeatures?: string[];
@@ -33,6 +34,7 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     hdDownload: false,
     historyDays: 7,
     modelProfiles: 0,
+    canPreviewRecommendations: false,
     badgeColor: 'bg-gray-500',
     features: [
       '일일 스타일 생성 5회',
@@ -52,6 +54,7 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     hdDownload: true,
     historyDays: 30,
     modelProfiles: 0,
+    canPreviewRecommendations: false,
     badgeColor: 'bg-amber-700',
     features: [
       '일일 스타일 생성 5회',
@@ -74,16 +77,18 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     hdDownload: true,
     historyDays: 90,
     modelProfiles: 0,
+    canPreviewRecommendations: true,
     badgeColor: 'bg-gray-400',
     features: [
       '일일 스타일 생성 10회',
       '월간 스타일 생성 무제한',
+      '상품 추천만 먼저보기 ✨',
       '워터마크 없는 이미지',
       '고화질 다운로드',
       '갤러리 저장 50장',
       '스타일 히스토리 90일 보관',
     ],
-    highlightFeatures: ['일일 10회'],
+    highlightFeatures: ['일일 10회', '상품 추천만 먼저보기 ✨'],
   },
   gold: {
     name: 'Gold',
@@ -96,10 +101,12 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     hdDownload: true,
     historyDays: -1, // 영구 보관
     modelProfiles: 0,
+    canPreviewRecommendations: true,
     badgeColor: 'bg-yellow-500',
     features: [
       '일일 스타일 생성 20회',
       '월간 스타일 생성 무제한',
+      '상품 추천만 먼저보기 ✨',
       '워터마크 없는 이미지',
       '고화질 다운로드',
       '갤러리 저장 100장',
@@ -118,10 +125,12 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     hdDownload: true,
     historyDays: -1,
     modelProfiles: -1, // 동적 계산: 100만원당 1명
+    canPreviewRecommendations: true,
     badgeColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
     features: [
       '무제한 스타일 생성',
       '모든 기능 무제한',
+      '상품 추천만 먼저보기 ✨',
       '워터마크 없는 이미지',
       '고화질 다운로드',
       '갤러리 무제한 저장',
@@ -192,7 +201,7 @@ export const getTierBenefitsSummary = (tier: TierType): string[] => {
     case 'bronze':
       return ['월간 생성 무제한', '워터마크 제거', '고화질 다운로드'];
     case 'silver':
-      return ['일일 생성 10회로 증가', '갤러리 50장', '히스토리 90일'];
+      return ['일일 생성 10회로 증가', '상품 추천만 먼저보기', '갤러리 50장'];
     case 'gold':
       return ['일일 생성 20회로 증가', '갤러리 100장', '히스토리 영구 보관'];
     case 'platinum':
