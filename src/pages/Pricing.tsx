@@ -227,6 +227,11 @@ const Pricing = () => {
                   <li className="font-korean">
                     {config.hasWatermark ? '워터마크 있음' : '워터마크 없음'}
                   </li>
+                  {config.canPreviewRecommendations && (
+                    <li className="font-korean text-primary font-medium">
+                      상품 추천 먼저보기 ✨
+                    </li>
+                  )}
                   {tier === 'platinum' && (
                     <li className="font-korean text-primary font-medium">
                       모델 프로필 추가 가능
@@ -271,6 +276,7 @@ const Pricing = () => {
                   { feature: '월간 생성', free: '25회', bronze: '무제한', silver: '무제한', gold: '무제한', platinum: '무제한' },
                   { feature: '워터마크', free: '있음', bronze: '없음', silver: '없음', gold: '없음', platinum: '없음' },
                   { feature: '고화질 다운로드', free: false, bronze: true, silver: true, gold: true, platinum: true },
+                  { feature: '상품 추천 먼저보기', free: false, bronze: false, silver: true, gold: true, platinum: true },
                   { feature: '갤러리 저장', free: '10장', bronze: '30장', silver: '50장', gold: '100장', platinum: '무제한' },
                   { feature: '히스토리 보관', free: '7일', bronze: '30일', silver: '90일', gold: '영구', platinum: '영구' },
                   { feature: '모델 프로필', free: '본인만', bronze: '본인만', silver: '본인만', gold: '본인만', platinum: '+1명/100만원' },
