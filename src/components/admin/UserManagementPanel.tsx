@@ -1,6 +1,7 @@
 /**
  * UserManagementPanel - 관리자용 사용자 관리 패널
- * 사용자 검색, 플랜 변경, 역할 부여, 결제 알림 대기자 관리
+ * 사용자 검색, 등급 확인, 역할 부여, 결제 알림 대기자 관리
+ * 구매 기반 5단계 등급제 (Free, Bronze, Silver, Gold, Platinum)
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -12,19 +13,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TierBadge } from '@/components/ui/tier-badge';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Users, Crown, Shield, User, RefreshCw, ChevronLeft, ChevronRight, Bell, Mail, Trash2, Copy, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { TierType, formatAmountKo } from '@/lib/tierConfig';
 
 interface UserData {
   id: string;
   email: string;
   full_name: string | null;
   created_at: string;
-  plan: string;
+  current_tier: TierType;
+  total_purchased_amount: number;
+  total_purchases: number;
   role: string | null;
-  daily_limit: number;
+  gender: string | null;
+  age_group: string | null;
 }
 
 interface PaymentNotifyRequest {
@@ -54,53 +60,46 @@ export const UserManagementPanel = () => {
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
-      // 프로필 + 구독 정보 조인
-      let query = supabase
-        .from('profiles')
-        .select(`
-          id,
-          user_id,
-          full_name,
-          created_at
-        `, { count: 'exact' });
-
-      if (searchTerm) {
-        query = query.ilike('full_name', `%${searchTerm}%`);
+      // Edge Function을 통해 auth.users 이메일 + 구매 통계 조회
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      
+      if (!accessToken) {
+        throw new Error('인증이 필요합니다');
       }
 
-      const { data: profiles, count, error } = await query
-        .order('created_at', { ascending: false })
-        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
+      const response = await supabase.functions.invoke('admin-get-users', {
+        body: {},
+        headers: {},
+      });
 
-      if (error) throw error;
+      if (response.error) {
+        throw response.error;
+      }
 
-      // 사용자별 구독/역할 정보 조회
-      const userIds = profiles?.map(p => p.user_id) || [];
+      const { users: fetchedUsers, total } = response.data;
       
-      const [subsResult, rolesResult] = await Promise.all([
-        supabase.from('user_subscriptions').select('*').in('user_id', userIds),
-        supabase.from('user_roles').select('*').in('user_id', userIds),
-      ]);
+      // Filter by search term client-side for now
+      let filteredUsers = fetchedUsers as UserData[];
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        filteredUsers = filteredUsers.filter((u: UserData) => 
+          u.email.toLowerCase().includes(searchLower) ||
+          (u.full_name && u.full_name.toLowerCase().includes(searchLower))
+        );
+      }
 
-      const subsMap = new Map(subsResult.data?.map(s => [s.user_id, s]) || []);
-      const rolesMap = new Map(rolesResult.data?.map(r => [r.user_id, r]) || []);
+      // Paginate
+      const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+      const paginatedUsers = filteredUsers.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
-      const usersData: UserData[] = profiles?.map(p => ({
-        id: p.user_id,
-        email: '', // 이메일은 auth.users에서 가져올 수 없음
-        full_name: p.full_name,
-        created_at: p.created_at,
-        plan: subsMap.get(p.user_id)?.plan || 'free',
-        role: rolesMap.get(p.user_id)?.role || null,
-        daily_limit: subsMap.get(p.user_id)?.daily_limit || 5,
-      })) || [];
-
-      setUsers(usersData);
-      setTotalCount(count || 0);
+      setUsers(paginatedUsers);
+      setTotalCount(filteredUsers.length);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
         title: '사용자 목록 로드 실패',
+        description: '관리자 권한이 필요합니다.',
         variant: 'destructive',
       });
     } finally {
@@ -148,36 +147,8 @@ export const UserManagementPanel = () => {
     fetchNotifyRequests();
   }, [fetchUsers, fetchNotifyRequests]);
 
-  const handlePlanChange = async (userId: string, newPlan: string) => {
-    try {
-      // 구독 정보 업데이트 또는 생성
-      const { error } = await supabase
-        .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
-          plan: newPlan,
-          daily_limit: newPlan === 'free' ? 5 : newPlan === 'pro' ? 20 : -1,
-          gallery_limit: newPlan === 'free' ? 10 : newPlan === 'pro' ? 50 : -1,
-          max_profiles: newPlan === 'premium' ? 6 : 1,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
-
-      toast({
-        title: '플랜 변경 완료',
-        description: `${newPlan} 플랜으로 변경되었습니다.`,
-      });
-      
-      fetchUsers();
-    } catch (error) {
-      console.error('Error changing plan:', error);
-      toast({
-        title: '플랜 변경 실패',
-        variant: 'destructive',
-      });
-    }
-  };
+  // 등급은 구매 기반으로 자동 결정되므로 플랜 변경 기능 제거
+  // 역할(admin/moderator) 변경만 유지
 
   const handleRoleChange = async (userId: string, newRole: string | null) => {
     try {
@@ -244,16 +215,7 @@ export const UserManagementPanel = () => {
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
-  const getPlanBadge = (plan: string) => {
-    switch (plan) {
-      case 'premium':
-        return <Badge className="bg-gradient-to-r from-amber-400 to-orange-500 text-white">Premium</Badge>;
-      case 'pro':
-        return <Badge className="bg-gradient-to-r from-primary to-accent text-white">Pro</Badge>;
-      default:
-        return <Badge variant="secondary">Free</Badge>;
-    }
-  };
+  // 등급 배지는 TierBadge 컴포넌트 사용
 
   const getRoleBadge = (role: string | null) => {
     switch (role) {
@@ -348,10 +310,10 @@ export const UserManagementPanel = () => {
                 users.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center gap-4 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
+                    className="flex items-center gap-3 p-4 rounded-xl border border-border hover:bg-muted/50 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary" />
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-muted-foreground" />
                     </div>
                     
                     <div className="flex-1 min-w-0">
@@ -359,29 +321,26 @@ export const UserManagementPanel = () => {
                         <span className="font-semibold font-korean truncate">
                           {user.full_name || '(이름 없음)'}
                         </span>
-                        {getPlanBadge(user.plan)}
+                        <TierBadge tier={user.current_tier} size="sm" />
                         {getRoleBadge(user.role)}
                       </div>
-                      <div className="text-sm text-muted-foreground font-korean">
-                        가입: {format(new Date(user.created_at), 'yyyy년 M월 d일', { locale: ko })}
+                      <div className="text-xs text-muted-foreground font-korean truncate">
+                        {user.email}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground font-korean mt-0.5">
+                        <span>가입: {format(new Date(user.created_at), 'yyyy.M.d', { locale: ko })}</span>
+                        {user.total_purchases > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="text-primary font-medium">
+                              {formatAmountKo(user.total_purchased_amount)} ({user.total_purchases}건)
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                     
-                    <div className="flex gap-2">
-                      <Select
-                        value={user.plan}
-                        onValueChange={(value) => handlePlanChange(user.id, value)}
-                      >
-                        <SelectTrigger className="w-[100px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="free">Free</SelectItem>
-                          <SelectItem value="pro">Pro</SelectItem>
-                          <SelectItem value="premium">Premium</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
+                    <div className="flex-shrink-0">
                       <Select
                         value={user.role || 'user'}
                         onValueChange={(value) => handleRoleChange(user.id, value === 'user' ? null : value)}
