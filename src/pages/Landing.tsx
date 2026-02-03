@@ -543,7 +543,7 @@ const Landing = () => {
               나에게 맞는 플랜 선택
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              무료로 시작하고, 필요할 때 업그레이드하세요
+              무료로 체험, 구매로 성장하는 나만의 등급
             </p>
           </div>
 
