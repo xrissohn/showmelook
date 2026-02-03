@@ -594,9 +594,9 @@ const Landing = () => {
                     </div>
                   </div>
                   
-                  {/* Key features - show top 3 */}
+                  {/* Key features - show top 3 (4 for platinum) */}
                   <ul className="space-y-1.5 mb-4">
-                    {tier.features.slice(0, 3).map((feature, j) => (
+                    {tier.features.slice(0, isPlatinum ? 4 : 3).map((feature, j) => (
                       <li key={j} className="flex items-start gap-1.5 text-xs sm:text-sm">
                         <Check className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
                           tier.highlightFeatures?.some(h => feature.includes(h.replace('일일 ', '').replace('회', '')))
@@ -608,6 +608,15 @@ const Landing = () => {
                         </span>
                       </li>
                     ))}
+                    {/* Platinum exclusive: Model profile addition */}
+                    {isPlatinum && (
+                      <li className="flex items-start gap-1.5 text-xs sm:text-sm">
+                        <Check className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-accent" />
+                        <span className="font-korean text-muted-foreground">
+                          +100만원당 모델 1명 추가
+                        </span>
+                      </li>
+                    )}
                   </ul>
                   
                   <Button 
