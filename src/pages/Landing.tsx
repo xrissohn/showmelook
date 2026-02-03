@@ -592,7 +592,7 @@ const Landing = () => {
                         ? '가입 즉시' 
                         : isBronze 
                         ? '첫 제품 구매시'
-                        : `누적 ${formatAmountKo(tier.minAmount)}+`}
+                        : `구매누적 ${formatAmountKo(tier.minAmount)}+`}
                     </div>
                   </div>
                   
