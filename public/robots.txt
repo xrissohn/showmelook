@@ -56,5 +56,8 @@ Disallow: /
 # Sitemap location
 Sitemap: https://showmelook.com/sitemap.xml
 
+# RSS Feed
+RSS: https://showmelook.com/rss.xml
+
 # Host
 Host: https://showmelook.com
