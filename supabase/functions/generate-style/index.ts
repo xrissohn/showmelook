@@ -700,8 +700,102 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
 
     console.log('[generate-style] Image generated, length:', generatedImage.length);
 
+    // Check if user needs watermark (free plan)
+    let shouldAddWatermark = true;
+    if (userId) {
+      try {
+        // Check user subscription
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('plan')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        // Check if admin (admins don't get watermark)
+        const { data: adminRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        const userPlan = subscription?.plan || 'free';
+        const isAdmin = !!adminRole;
+        
+        // Only free plan gets watermark (pro and premium don't)
+        shouldAddWatermark = userPlan === 'free' && !isAdmin;
+        console.log(`[generate-style] User plan: ${userPlan}, isAdmin: ${isAdmin}, shouldAddWatermark: ${shouldAddWatermark}`);
+      } catch (err) {
+        console.error('[generate-style] Error checking subscription:', err);
+        // Default to watermark if we can't determine plan
+      }
+    }
+
+    // Add watermark to image if needed
+    let finalGeneratedImage = generatedImage;
+    if (shouldAddWatermark) {
+      try {
+        console.log('[generate-style] Adding watermark for free tier user...');
+        
+        // Call AI to add watermark (composite the logo onto the image)
+        const watermarkPrompt = `Add a subtle semi-transparent watermark logo to the bottom-right corner of this image.
+        
+The watermark should say "ShowMeLook" in a modern, clean sans-serif font.
+        
+REQUIREMENTS:
+- Position: bottom-right corner with ~20px margin from edges
+- Size: small, about 10-15% of image width
+- Style: semi-transparent white text with subtle drop shadow
+- The watermark should be professional and not obstruct the main fashion content
+- Font: clean, modern sans-serif (like Montserrat or similar)
+- Opacity: around 60-70% so it's visible but not distracting
+
+Keep the original image exactly as is, only add the text watermark.`;
+
+        const watermarkResponse = await fetchWithRetry(
+          'https://ai.gateway.lovable.dev/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash-image',
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'text', text: watermarkPrompt },
+                  { type: 'image_url', image_url: { url: generatedImage } }
+                ]
+              }],
+              modalities: ['image', 'text']
+            }),
+          },
+          2 // Max retries for watermark
+        );
+
+        if (watermarkResponse.ok) {
+          const watermarkResult = await watermarkResponse.json();
+          const watermarkedImage = watermarkResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+          
+          if (watermarkedImage) {
+            finalGeneratedImage = watermarkedImage;
+            console.log('[generate-style] Watermark added successfully');
+          } else {
+            console.log('[generate-style] Watermark response had no image, using original');
+          }
+        } else {
+          console.log('[generate-style] Watermark request failed, using original image');
+        }
+      } catch (watermarkError) {
+        console.error('[generate-style] Error adding watermark:', watermarkError);
+        // Continue with original image if watermark fails
+      }
+    }
+
     // Upload to Supabase Storage
-    const imageData = generatedImage.replace(/^data:image\/\w+;base64,/, '');
+    const imageData = finalGeneratedImage.replace(/^data:image\/\w+;base64,/, '');
     const imageBytes = Uint8Array.from(atob(imageData), c => c.charCodeAt(0));
     
     // Use user folder structure for proper RLS enforcement
