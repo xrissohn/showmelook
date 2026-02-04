@@ -351,6 +351,42 @@ serve(async (req) => {
 
     const bodyProportionHint = getBodyProportionHint(ageInfo.category, bodyDescription);
     
+    // Check if user needs watermark BEFORE generating the image (free plan users)
+    let shouldAddWatermarkToPrompt = true;
+    if (userId) {
+      try {
+        // Check user subscription
+        const { data: subscription } = await supabase
+          .from('user_subscriptions')
+          .select('plan')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        // Check if admin (admins don't get watermark)
+        const { data: adminRole } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'admin')
+          .maybeSingle();
+        
+        const userPlan = subscription?.plan || 'free';
+        const isAdmin = !!adminRole;
+        
+        // Only free plan gets watermark (pro and premium don't)
+        shouldAddWatermarkToPrompt = userPlan === 'free' && !isAdmin;
+        console.log(`[generate-style] User plan: ${userPlan}, isAdmin: ${isAdmin}, shouldAddWatermark: ${shouldAddWatermarkToPrompt}`);
+      } catch (err) {
+        console.error('[generate-style] Error checking subscription for watermark:', err);
+        // Default to watermark if we can't determine plan
+      }
+    }
+    
+    // Watermark instruction to add to prompt for free users
+    const watermarkInstruction = shouldAddWatermarkToPrompt 
+      ? `\n\nWATERMARK: Add a small, semi-transparent "ShowMeLook" text watermark in the bottom-right corner of the image. The text should be small (about 5% of image width), subtle, and positioned 20px from the right and bottom edges.`
+      : '';
+    
     // 성인 연령대 프롬프트 강화 - 중장년(40-50대)은 젊고 활기차게
     const getAgeEmphasis = (category: string, gender: string): string => {
       if (category === 'adult_60s') {
@@ -391,7 +427,7 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors. If an item says "(MUST be white or black color ONLY)", you MUST use white or black, not red, yellow, or any other color.
 
-IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
 
     // 얼굴 합성 프롬프트 추가
     if (useFaceComposite && userAvatarUrl) {
@@ -409,7 +445,7 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
-IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
       } else {
         // 성인 얼굴 합성 - 연령대와 체형 반영
         const getAdultFaceCompositeAgeHint = (category: string, gender: string): string => {
@@ -450,7 +486,7 @@ COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT 
 
 IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, age appearance, and overall look. The body should reflect the specified build (${bodyDescription}). Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
-CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
       }
     }
 
@@ -700,134 +736,8 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
 
     console.log('[generate-style] Image generated, length:', generatedImage.length);
 
-    // Check if user needs watermark (free plan)
-    let shouldAddWatermark = true;
-    if (userId) {
-      try {
-        // Check user subscription
-        const { data: subscription } = await supabase
-          .from('user_subscriptions')
-          .select('plan')
-          .eq('user_id', userId)
-          .maybeSingle();
-        
-        // Check if admin (admins don't get watermark)
-        const { data: adminRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .eq('role', 'admin')
-          .maybeSingle();
-        
-        const userPlan = subscription?.plan || 'free';
-        const isAdmin = !!adminRole;
-        
-        // Only free plan gets watermark (pro and premium don't)
-        shouldAddWatermark = userPlan === 'free' && !isAdmin;
-        console.log(`[generate-style] User plan: ${userPlan}, isAdmin: ${isAdmin}, shouldAddWatermark: ${shouldAddWatermark}`);
-      } catch (err) {
-        console.error('[generate-style] Error checking subscription:', err);
-        // Default to watermark if we can't determine plan
-      }
-    }
-
-    // Add watermark to image if needed
-    let finalGeneratedImage = generatedImage;
-    if (shouldAddWatermark) {
-      try {
-        console.log('[generate-style] Adding watermark for free tier user...');
-        
-        // Fetch the watermark logo from storage
-        const watermarkUrl = 'https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/product-images/watermark%2Fshowmelook-watermark.png';
-        
-        let watermarkDataUrl = '';
-        try {
-          const watermarkResponse = await fetch(watermarkUrl);
-          if (watermarkResponse.ok) {
-            const watermarkBuffer = await watermarkResponse.arrayBuffer();
-            const base64Watermark = btoa(
-              new Uint8Array(watermarkBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-            );
-            watermarkDataUrl = `data:image/png;base64,${base64Watermark}`;
-            console.log('[generate-style] Watermark logo fetched, length:', watermarkDataUrl.length);
-          }
-        } catch (fetchErr) {
-          console.error('[generate-style] Failed to fetch watermark logo:', fetchErr);
-        }
-        
-        if (watermarkDataUrl) {
-          // Call AI to composite the logo onto the image
-          const watermarkPrompt = `TASK: Add a small watermark logo to a fashion photo.
-
-INPUT:
-- Image 1: Fashion photo (MAIN IMAGE - keep exactly as-is)
-- Image 2: ShowMeLook logo (WATERMARK - to be overlaid)
-
-STRICT OUTPUT REQUIREMENTS:
-1. OUTPUT DIMENSIONS: The output image MUST be EXACTLY the same width and height as the FIRST image (fashion photo). Do NOT expand, add borders, or change the canvas size in any way.
-
-2. WATERMARK PLACEMENT: Place the logo in the bottom-right corner of the fashion photo, with:
-   - Approximately 5-8% of image width as size
-   - 20-30 pixels margin from right edge
-   - 20-30 pixels margin from bottom edge
-   - 50% opacity/transparency
-
-3. DO NOT:
-   - Add any white borders or extra space around the image
-   - Change the dimensions of the original fashion photo
-   - Place watermark outside the original image bounds
-   - Modify the fashion photo content in any way
-   - Add text like URLs or website names
-
-4. The final image should look exactly like the original fashion photo with a small, subtle logo overlaid in the corner.
-
-Return ONLY the composited image with the same exact dimensions as the input fashion photo.`;
-
-          const watermarkResponse = await fetchWithRetry(
-            'https://ai.gateway.lovable.dev/v1/chat/completions',
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: 'google/gemini-2.5-flash-image',
-                messages: [{
-                  role: 'user',
-                  content: [
-                    { type: 'text', text: watermarkPrompt },
-                    { type: 'image_url', image_url: { url: generatedImage } },
-                    { type: 'image_url', image_url: { url: watermarkDataUrl } }
-                  ]
-                }],
-                modalities: ['image', 'text']
-              }),
-            },
-            2 // Max retries for watermark
-          );
-
-          if (watermarkResponse.ok) {
-            const watermarkResult = await watermarkResponse.json();
-            const watermarkedImage = watermarkResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-            
-            if (watermarkedImage) {
-              finalGeneratedImage = watermarkedImage;
-              console.log('[generate-style] Watermark logo added successfully');
-            } else {
-              console.log('[generate-style] Watermark response had no image, using original');
-            }
-          } else {
-            console.log('[generate-style] Watermark request failed, using original image');
-          }
-        } else {
-          console.log('[generate-style] Could not fetch watermark logo, using original image');
-        }
-      } catch (watermarkError) {
-        console.error('[generate-style] Error adding watermark:', watermarkError);
-        // Continue with original image if watermark fails
-      }
-    }
+    // Watermark is now added via prompt, no post-processing needed
+    const finalGeneratedImage = generatedImage;
 
     // Upload to Supabase Storage
     const imageData = finalGeneratedImage.replace(/^data:image\/\w+;base64,/, '');
