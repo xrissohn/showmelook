@@ -36,6 +36,7 @@ import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 import { GenerationProgress } from '@/components/style/GenerationProgress';
 import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarousel';
+import { WatermarkOverlay, GalleryWatermarkOverlay } from '@/components/style/WatermarkOverlay';
 interface StyleTrend {
   id: string;
   name: string;
@@ -1098,6 +1099,8 @@ const GeneratedStyleImage = ({
                 : 'blur-0 scale-100 opacity-100'
             }`}
           />
+          {/* 무료 플랜 워터마크 오버레이 */}
+          {!isLoading && <WatermarkOverlay show={hasWatermark} size="medium" />}
           {/* 인터랙티브 상품 태그 */}
           {!isLoading && products.length > 0 && onProductPurchase && (
             <InteractiveProductTags
@@ -1760,6 +1763,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="w-full h-full object-cover"
                 fallbackClassName="w-full h-full"
               />
+              
+              {/* 무료 플랜 워터마크 오버레이 */}
+              <GalleryWatermarkOverlay show={hasWatermark} />
               
               {/* 다중 선택 체크박스 */}
               {isSelectMode && (

@@ -351,65 +351,9 @@ serve(async (req) => {
 
     const bodyProportionHint = getBodyProportionHint(ageInfo.category, bodyDescription);
     
-    // Check if user needs watermark BEFORE generating the image (free plan users)
-    let shouldAddWatermark = true;
-    if (userId) {
-      try {
-        // Check user subscription
-        const { data: subscription } = await supabase
-          .from('user_subscriptions')
-          .select('plan')
-          .eq('user_id', userId)
-          .maybeSingle();
-        
-        // Check if admin (admins don't get watermark)
-        const { data: adminRole } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', userId)
-          .eq('role', 'admin')
-          .maybeSingle();
-        
-        const userPlan = subscription?.plan || 'free';
-        const isAdmin = !!adminRole;
-        
-        // Only free plan gets watermark (pro and premium don't)
-        shouldAddWatermark = userPlan === 'free' && !isAdmin;
-        console.log(`[generate-style] User plan: ${userPlan}, isAdmin: ${isAdmin}, shouldAddWatermark: ${shouldAddWatermark}`);
-      } catch (err) {
-        console.error('[generate-style] Error checking subscription for watermark:', err);
-        // Default to watermark if we can't determine plan
-      }
-    }
-    
-    // Fetch watermark logo for free users - will be included in generation request
-    let watermarkDataUrl = '';
-    if (shouldAddWatermark) {
-      try {
-        const watermarkUrl = 'https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/product-images/watermark%2Fshowmelook-watermark.png';
-        const watermarkResponse = await fetch(watermarkUrl);
-        if (watermarkResponse.ok) {
-          const watermarkBuffer = await watermarkResponse.arrayBuffer();
-          const base64Watermark = btoa(
-            new Uint8Array(watermarkBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
-          );
-          watermarkDataUrl = `data:image/png;base64,${base64Watermark}`;
-          console.log('[generate-style] Watermark logo fetched for generation, length:', watermarkDataUrl.length);
-        }
-      } catch (fetchErr) {
-        console.error('[generate-style] Failed to fetch watermark logo:', fetchErr);
-      }
-    }
-    
-    // Watermark instruction to add to prompt for free users (only if we have the logo)
-    const watermarkInstruction = shouldAddWatermark && watermarkDataUrl
-      ? `\n\nWATERMARK LOGO: I am providing a "ShowMeLook" logo image. Add this logo as a small, semi-transparent watermark in the bottom-right corner of the generated fashion photo. The logo should be:
-- Size: approximately 8-10% of image width (small but readable)
-- Position: inside the image bounds, 15-20 pixels from the right edge, 15-20 pixels from the bottom edge
-- Opacity: 60-70% transparent
-- DO NOT place the watermark outside the image boundaries
-- DO NOT add any white borders or expand the canvas`
-      : '';
+    // Watermark is now handled in the frontend UI overlay
+    // No longer adding watermark via AI prompt to avoid canvas expansion issues
+    console.log('[generate-style] Watermark will be handled by frontend UI overlay');
     
     // 성인 연령대 프롬프트 강화 - 중장년(40-50대)은 젊고 활기차게
     const getAgeEmphasis = (category: string, gender: string): string => {
@@ -451,7 +395,7 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors. If an item says "(MUST be white or black color ONLY)", you MUST use white or black, not red, yellow, or any other color.
 
-IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
+IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
     // 얼굴 합성 프롬프트 추가
     if (useFaceComposite && userAvatarUrl) {
@@ -469,7 +413,7 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
-IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
+IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
         // 성인 얼굴 합성 - 연령대와 체형 반영
         const getAdultFaceCompositeAgeHint = (category: string, gender: string): string => {
@@ -510,7 +454,7 @@ COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT 
 
 IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, age appearance, and overall look. The body should reflect the specified build (${bodyDescription}). Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
-CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
+CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       }
     }
 
@@ -518,25 +462,12 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     console.log('[generate-style] Is child profile:', isChildProfile);
 
     // Prepare messages for Nano Banana (Gemini image generation)
-    // Include watermark logo if needed (for free users)
     const messages: any[] = [];
     
-    if (watermarkDataUrl) {
-      // Include watermark logo in the request
-      messages.push({
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: watermarkDataUrl } }
-        ]
-      });
-      console.log('[generate-style] Watermark logo included in generation request');
-    } else {
-      messages.push({
-        role: 'user',
-        content: prompt
-      });
-    }
+    messages.push({
+      role: 'user',
+      content: prompt
+    });
 
     // If face composite is enabled, include the avatar image
     let avatarFetchSuccess = false;
@@ -608,19 +539,13 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
       
       // Only include avatar in messages if we successfully fetched it
       if (avatarFetchSuccess) {
-        // Build content array with avatar and optionally watermark
+        // Build content array with avatar
         const contentArray: any[] = [
           { type: 'text', text: prompt },
           { type: 'image_url', image_url: { url: avatarDataUrl } }
         ];
         
-        // Add watermark logo if needed
-        if (watermarkDataUrl) {
-          contentArray.push({ type: 'image_url', image_url: { url: watermarkDataUrl } });
-          console.log('[generate-style] Avatar + Watermark logo included in request');
-        } else {
-          console.log('[generate-style] Avatar included in request (no watermark)');
-        }
+        console.log('[generate-style] Avatar included in request');
         
         messages[0] = {
           role: 'user',
@@ -641,22 +566,12 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
-IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
+IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
         
-        if (watermarkDataUrl) {
-          messages[0] = {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: watermarkDataUrl } }
-            ]
-          };
-        } else {
-          messages[0] = {
-            role: 'user',
-            content: prompt
-          };
-        }
+        messages[0] = {
+          role: 'user',
+          content: prompt
+        };
       }
     }
 
