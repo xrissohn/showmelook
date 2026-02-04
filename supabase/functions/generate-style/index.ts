@@ -352,7 +352,7 @@ serve(async (req) => {
     const bodyProportionHint = getBodyProportionHint(ageInfo.category, bodyDescription);
     
     // Check if user needs watermark BEFORE generating the image (free plan users)
-    let shouldAddWatermarkToPrompt = true;
+    let shouldAddWatermark = true;
     if (userId) {
       try {
         // Check user subscription
@@ -374,17 +374,41 @@ serve(async (req) => {
         const isAdmin = !!adminRole;
         
         // Only free plan gets watermark (pro and premium don't)
-        shouldAddWatermarkToPrompt = userPlan === 'free' && !isAdmin;
-        console.log(`[generate-style] User plan: ${userPlan}, isAdmin: ${isAdmin}, shouldAddWatermark: ${shouldAddWatermarkToPrompt}`);
+        shouldAddWatermark = userPlan === 'free' && !isAdmin;
+        console.log(`[generate-style] User plan: ${userPlan}, isAdmin: ${isAdmin}, shouldAddWatermark: ${shouldAddWatermark}`);
       } catch (err) {
         console.error('[generate-style] Error checking subscription for watermark:', err);
         // Default to watermark if we can't determine plan
       }
     }
     
-    // Watermark instruction to add to prompt for free users
-    const watermarkInstruction = shouldAddWatermarkToPrompt 
-      ? `\n\nWATERMARK: Add a small, semi-transparent "ShowMeLook" text watermark in the bottom-right corner of the image. The text should be small (about 5% of image width), subtle, and positioned 20px from the right and bottom edges.`
+    // Fetch watermark logo for free users - will be included in generation request
+    let watermarkDataUrl = '';
+    if (shouldAddWatermark) {
+      try {
+        const watermarkUrl = 'https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/product-images/watermark%2Fshowmelook-watermark.png';
+        const watermarkResponse = await fetch(watermarkUrl);
+        if (watermarkResponse.ok) {
+          const watermarkBuffer = await watermarkResponse.arrayBuffer();
+          const base64Watermark = btoa(
+            new Uint8Array(watermarkBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+          );
+          watermarkDataUrl = `data:image/png;base64,${base64Watermark}`;
+          console.log('[generate-style] Watermark logo fetched for generation, length:', watermarkDataUrl.length);
+        }
+      } catch (fetchErr) {
+        console.error('[generate-style] Failed to fetch watermark logo:', fetchErr);
+      }
+    }
+    
+    // Watermark instruction to add to prompt for free users (only if we have the logo)
+    const watermarkInstruction = shouldAddWatermark && watermarkDataUrl
+      ? `\n\nWATERMARK LOGO: I am providing a "ShowMeLook" logo image. Add this logo as a small, semi-transparent watermark in the bottom-right corner of the generated fashion photo. The logo should be:
+- Size: approximately 8-10% of image width (small but readable)
+- Position: inside the image bounds, 15-20 pixels from the right edge, 15-20 pixels from the bottom edge
+- Opacity: 60-70% transparent
+- DO NOT place the watermark outside the image boundaries
+- DO NOT add any white borders or expand the canvas`
       : '';
     
     // 성인 연령대 프롬프트 강화 - 중장년(40-50대)은 젊고 활기차게
@@ -494,12 +518,25 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     console.log('[generate-style] Is child profile:', isChildProfile);
 
     // Prepare messages for Nano Banana (Gemini image generation)
-    const messages: any[] = [
-      {
+    // Include watermark logo if needed (for free users)
+    const messages: any[] = [];
+    
+    if (watermarkDataUrl) {
+      // Include watermark logo in the request
+      messages.push({
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: watermarkDataUrl } }
+        ]
+      });
+      console.log('[generate-style] Watermark logo included in generation request');
+    } else {
+      messages.push({
         role: 'user',
         content: prompt
-      }
-    ];
+      });
+    }
 
     // If face composite is enabled, include the avatar image
     let avatarFetchSuccess = false;
@@ -571,22 +608,24 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
       
       // Only include avatar in messages if we successfully fetched it
       if (avatarFetchSuccess) {
+        // Build content array with avatar and optionally watermark
+        const contentArray: any[] = [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: avatarDataUrl } }
+        ];
+        
+        // Add watermark logo if needed
+        if (watermarkDataUrl) {
+          contentArray.push({ type: 'image_url', image_url: { url: watermarkDataUrl } });
+          console.log('[generate-style] Avatar + Watermark logo included in request');
+        } else {
+          console.log('[generate-style] Avatar included in request (no watermark)');
+        }
+        
         messages[0] = {
           role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: prompt
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: avatarDataUrl
-              }
-            }
-          ]
+          content: contentArray
         };
-        console.log('[generate-style] Avatar included in request');
       } else {
         // If avatar fetch failed, proceed without face composite
         console.log('[generate-style] Avatar fetch failed, proceeding without face composite');
@@ -602,12 +641,22 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
 
-IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.${watermarkInstruction}`;
         
-        messages[0] = {
-          role: 'user',
-          content: prompt
-        };
+        if (watermarkDataUrl) {
+          messages[0] = {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              { type: 'image_url', image_url: { url: watermarkDataUrl } }
+            ]
+          };
+        } else {
+          messages[0] = {
+            role: 'user',
+            content: prompt
+          };
+        }
       }
     }
 
