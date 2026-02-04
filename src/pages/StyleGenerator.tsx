@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
+import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle } from 'lucide-react';
@@ -772,7 +773,7 @@ const ShareButtons = ({
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    Pro 회원은 워터마크 없이 저장
+                    첫 구매 시 워터마크 없이 저장
                   </p>
                 </div>
               )}
@@ -854,7 +855,7 @@ const ShareButtons = ({
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    Pro 회원은 워터마크 없이 저장
+                    첫 구매 시 워터마크 없이 저장
                   </p>
                 </div>
               )}
@@ -2488,6 +2489,8 @@ const StyleGenerator = () => {
   const { toast } = useToast();
   // 구독 상태 (스타일 추천 먼저 받기 제한용)
   const subscription = useSubscription(user?.id);
+  // 구매 기반 등급 정보
+  const { stats: purchaseStats } = usePurchaseStats(user?.id);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<'recommend-first' | 'gallery-limit' | 'daily-limit'>('recommend-first');
 
@@ -3889,7 +3892,7 @@ const StyleGenerator = () => {
     if (!canGenerate) {
       toast({
         title: '일일 생성 횟수 초과',
-        description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+        description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
         variant: 'destructive',
       });
       return;
@@ -4113,7 +4116,7 @@ const StyleGenerator = () => {
       if (genData?.limitExceeded) {
         toast({
           title: '일일 생성 횟수 초과',
-          description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+          description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
           variant: 'destructive',
         });
         refetchLimit();
@@ -4249,7 +4252,7 @@ const StyleGenerator = () => {
     if (!canGenerate) {
       toast({
         title: '일일 생성 횟수 초과',
-        description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+        description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
         variant: 'destructive',
       });
       return;
@@ -4360,7 +4363,7 @@ const StyleGenerator = () => {
       if (data?.limitExceeded) {
         toast({
           title: '일일 생성 횟수 초과',
-          description: '프리미엄으로 업그레이드하면 무제한 생성이 가능합니다.',
+          description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
           variant: 'destructive',
         });
         refetchLimit();
@@ -5288,7 +5291,7 @@ const StyleGenerator = () => {
                 ) : !canGenerate ? (
                   <>
                     <Crown className="w-5 h-5" />
-                    프리미엄으로 업그레이드
+                    한도 도달 - 쇼핑으로 등급 UP!
                   </>
                 ) : (
                   <>
@@ -5298,15 +5301,15 @@ const StyleGenerator = () => {
                 )}
               </Button>
 
-              {/* Upgrade Prompt for non-premium users with low remaining */}
-              {!isPremium && remainingCount <= 2 && (
-                <div className="p-4 rounded-xl bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30">
+              {/* Upgrade Prompt for users with low remaining */}
+              {remainingCount <= 2 && remainingCount > 0 && (
+                <div className="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/30">
                   <div className="flex items-start gap-3">
-                    <Crown className="w-5 h-5 text-yellow-500 mt-0.5" />
+                    <Crown className="w-5 h-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-medium text-foreground text-sm font-korean">프리미엄으로 업그레이드</p>
+                      <p className="font-medium text-foreground text-sm font-korean">등급이 높아지면 더 많이!</p>
                       <p className="text-xs text-muted-foreground mt-1 font-korean">
-                        무제한 스타일 생성, 고화질 이미지, 우선 처리 혜택을 누려보세요.
+                        쇼미룩에서 상품을 구매하면 등급이 올라가고 일일 한도가 늘어나요.
                       </p>
                     </div>
                   </div>
@@ -6016,7 +6019,7 @@ const StyleGenerator = () => {
             ) : !canGenerate ? (
               <>
                 <Crown className="w-5 h-5" />
-                프리미엄으로 업그레이드
+                한도 도달 - 쇼핑으로 등급 UP!
               </>
             ) : (
               <>
@@ -6043,7 +6046,7 @@ const StyleGenerator = () => {
         open={showUpgradeModal}
         onOpenChange={setShowUpgradeModal}
         reason={upgradeReason}
-        currentPlan={subscription.plan}
+        currentTier={purchaseStats?.currentTier || 'free'}
       />
     </div>
   );

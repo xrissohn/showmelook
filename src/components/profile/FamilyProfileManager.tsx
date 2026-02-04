@@ -1,6 +1,6 @@
 /**
  * FamilyProfileManager - 모델 프로필 관리 UI
- * Premium 전용: 최대 5명 추가 가능
+ * 플래티넘 등급 전용: 누적 구매 100만원당 1명 추가 가능
  */
 
 import { useState, useRef, useEffect } from 'react';
