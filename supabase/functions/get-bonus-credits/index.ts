@@ -26,23 +26,39 @@ serve(async (req) => {
       );
     }
 
-    // Verify the token using getClaims (proper way for Edge Functions)
+    // Verify the token using getUser (most reliable for Edge Functions)
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
     
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    // Try getUser first (validates against server)
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
     
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error('Auth error:', claimsError);
-      return new Response(
-        JSON.stringify({ success: false, error: '유효하지 않은 인증 토큰입니다.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (userError || !user) {
+      // Fallback: try getClaims for offline token validation
+      const token = authHeader.replace('Bearer ', '');
+      try {
+        const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+        if (claimsError || !claimsData?.claims?.sub) {
+          console.log('Auth failed - both getUser and getClaims failed');
+          // Return empty result instead of 401 for graceful handling
+          return new Response(
+            JSON.stringify({ success: true, total: 0, details: [] }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        // Use claims sub as userId
+        var userId = claimsData.claims.sub as string;
+      } catch (e) {
+        console.log('Auth token expired or invalid, returning empty result');
+        return new Response(
+          JSON.stringify({ success: true, total: 0, details: [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      var userId = user.id;
     }
-
-    const userId = claimsData.claims.sub as string;
     
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
