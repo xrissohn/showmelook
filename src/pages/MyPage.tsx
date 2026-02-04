@@ -650,35 +650,38 @@ const MyPage = () => {
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-muted-foreground" />
                     <CardTitle className="font-korean text-base">추가 모델</CardTitle>
-                    <Badge variant="outline" className="text-amber-500 border-amber-500">
+                    <Badge variant="outline" className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
                       <Crown className="w-3 h-3 mr-1" />
-                      Premium
+                      플래티넘
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="text-center py-8">
                   <p className="text-muted-foreground mb-4 font-korean text-sm">
-                    Premium 플랜에서 최대 5명의 추가 모델을 등록하고,<br />
+                    플래티넘 등급에서 추가 모델을 등록하고,<br />
                     그들을 위한 스타일 룩을 생성할 수 있어요.
                   </p>
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Crown className="w-4 h-4 text-amber-500" />
-                        최대 5명
+                        100만원당 +1명
                       </span>
                       <span className="flex items-center gap-1">
                         <Sparkles className="w-4 h-4 text-primary" />
                         얼굴 합성
                       </span>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      누적 구매 100만원 이상 시 플래티넘 등급 달성!
+                    </p>
                     <Button
                       variant="hero"
                       onClick={() => navigate('/pricing')}
                       className="font-korean"
                     >
                       <Crown className="w-4 h-4 mr-2" />
-                      Premium으로 업그레이드
+                      등급 혜택 보기
                     </Button>
                   </div>
                 </CardContent>
