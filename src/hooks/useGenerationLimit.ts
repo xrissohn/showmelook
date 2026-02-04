@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { TierType, TIER_CONFIG } from '@/lib/tierConfig';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -14,7 +15,8 @@ const getTodayKST = (): string => {
 };
 
 interface GenerationLimit {
-  isPremium: boolean;
+  isPremium: boolean; // 플래티넘 여부 (무제한)
+  currentTier: TierType;
   dailyLimit: number;
   currentCount: number;
   remainingCount: number;
@@ -27,6 +29,7 @@ interface GenerationLimit {
 export const useGenerationLimit = (userId: string | undefined) => {
   const [limit, setLimit] = useState<GenerationLimit>({
     isPremium: false,
+    currentTier: 'free',
     dailyLimit: 5,
     currentCount: 0,
     remainingCount: 5,
@@ -46,15 +49,19 @@ export const useGenerationLimit = (userId: string | undefined) => {
       // 한국시간 기준 오늘 날짜
       const today = getTodayKST();
 
-      // Fetch subscription
-      const { data: subscription } = await supabase
-        .from('user_subscriptions')
-        .select('*')
+      // Fetch purchase stats for tier-based limits
+      const { data: purchaseStats } = await supabase
+        .from('user_purchase_stats')
+        .select('current_tier')
         .eq('user_id', userId)
         .single();
 
-      const isPremium = subscription?.plan === 'premium';
-      const dailyLimit = isPremium ? Infinity : (subscription?.daily_limit || 5);
+      const currentTier = (purchaseStats?.current_tier || 'free') as TierType;
+      const tierConfig = TIER_CONFIG[currentTier];
+      
+      // 플래티넘은 무제한
+      const isPremium = currentTier === 'platinum';
+      const dailyLimit = tierConfig.dailyLimit === -1 ? Infinity : tierConfig.dailyLimit;
 
       // Fetch today's usage
       const { data: usage } = await supabase
@@ -95,6 +102,7 @@ export const useGenerationLimit = (userId: string | undefined) => {
 
       setLimit({
         isPremium,
+        currentTier,
         dailyLimit: isPremium ? -1 : dailyLimit,
         currentCount,
         remainingCount: baseRemaining,
@@ -108,6 +116,7 @@ export const useGenerationLimit = (userId: string | undefined) => {
       // Default to allowing generation if there's an error
       setLimit({
         isPremium: false,
+        currentTier: 'free',
         dailyLimit: 5,
         currentCount: 0,
         remainingCount: 5,
