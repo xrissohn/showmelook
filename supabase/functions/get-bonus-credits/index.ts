@@ -31,17 +31,17 @@ serve(async (req) => {
       global: { headers: { Authorization: authHeader } }
     });
     
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
+    const { data: { user }, error: userError } = await authClient.auth.getUser();
     
-    if (claimsError || !claimsData?.claims?.sub) {
+    if (userError || !user) {
+      console.error('Auth error:', userError);
       return new Response(
         JSON.stringify({ success: false, error: '유효하지 않은 인증 토큰입니다.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
     
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
