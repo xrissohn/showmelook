@@ -38,6 +38,7 @@ import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 import { GenerationProgress } from '@/components/style/GenerationProgress';
 import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarousel';
 import { WatermarkOverlay, GalleryWatermarkOverlay, ModalWatermarkOverlay } from '@/components/style/WatermarkOverlay';
+import { SEOHead } from '@/components/SEOHead';
 interface StyleTrend {
   id: string;
   name: string;
@@ -4540,6 +4541,7 @@ const StyleGenerator = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="style" />
       {/* 비동기 큐 진행률 UI */}
       <GenerationProgress 
         isVisible={isQueued || isProcessing}

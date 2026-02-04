@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,7 +8,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DataPreloaderProvider } from "@/contexts/DataPreloaderContext";
 import { Loader2 } from "lucide-react";
-
 // Lazy load pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -46,40 +46,41 @@ const PageLoader = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <DataPreloaderProvider>
-        <TooltipProvider>
-          
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/profile-setup" element={<ProfileSetup />} />
-                <Route path="/profile-edit" element={<ProfileEdit />} />
-                <Route path="/style" element={<StyleGenerator />} />
-                <Route path="/cart" element={<Cart />} />
-                <Route path="/install" element={<Install />} />
-                <Route path="/admin" element={<Admin />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/pitch" element={<Pitch />} />
-                <Route path="/mypage" element={<MyPage />} />
-                <Route path="/look/:lookId" element={<SharedLook />} />
-                <Route path="/privacy" element={<Privacy />} />
-                <Route path="/terms" element={<Terms />} />
-                <Route path="/cafe24-fitting" element={<Cafe24Fitting />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </TooltipProvider>
-      </DataPreloaderProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+  <HelmetProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <DataPreloaderProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  <Route path="/" element={<Landing />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/profile-setup" element={<ProfileSetup />} />
+                  <Route path="/profile-edit" element={<ProfileEdit />} />
+                  <Route path="/style" element={<StyleGenerator />} />
+                  <Route path="/cart" element={<Cart />} />
+                  <Route path="/install" element={<Install />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/pitch" element={<Pitch />} />
+                  <Route path="/mypage" element={<MyPage />} />
+                  <Route path="/look/:lookId" element={<SharedLook />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/cafe24-fitting" element={<Cafe24Fitting />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </TooltipProvider>
+        </DataPreloaderProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </HelmetProvider>
 );
 
 export default App;

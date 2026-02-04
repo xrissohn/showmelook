@@ -8,6 +8,7 @@ import { Trash2, ShoppingBag, ExternalLink, Loader2, LogIn } from 'lucide-react'
 import MainNavigation from '@/components/MainNavigation';
 import { useGuestCart, GuestCartItem } from '@/hooks/useGuestCart';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
+import { SEOHead } from '@/components/SEOHead';
 
 interface CartItem {
   id: string;
@@ -296,6 +297,7 @@ const Cart = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="cart" />
       <MainNavigation showBackButton title="장바구니" />
 
       <div className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-3xl">
