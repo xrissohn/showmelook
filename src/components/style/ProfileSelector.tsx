@@ -1,6 +1,6 @@
 /**
  * ProfileSelector - 스타일 생성 시 프로필 선택 컴포넌트
- * Premium 사용자만 가족 프로필 선택 가능
+ * 플래티넘 등급 사용자만 추가 모델 프로필 선택 가능
  */
 
 import { useState, useEffect } from 'react';
@@ -196,13 +196,13 @@ export const ProfileSelector = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">추가 모델</p>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5">
-                    <Crown className="w-3 h-3 mr-0.5 text-amber-500" />
-                    Premium
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-600 dark:text-purple-400">
+                    <Crown className="w-3 h-3 mr-0.5" />
+                    플래티넘
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground font-korean truncate">
-                  프리미엄으로 업그레이드하면 다른 분을 위한 스타일도 생성할 수 있어요
+                  누적 구매 100만원 이상 시 모델 프로필 추가 가능
                 </p>
               </div>
             </div>

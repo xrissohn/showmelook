@@ -1,6 +1,10 @@
 /**
  * 쇼미룩 구독 플랜 설정
- * 모든 플랜별 기능 제한 및 가격 정보
+ * 기존 플랜 (호환성 유지) + 구매 기반 등급 시스템과 통합
+ * 
+ * 등급 시스템: Free → Bronze → Silver → Gold → Platinum
+ * - 구매 금액 기반으로 등급 상승
+ * - 플래티넘 등급만 모델 프로필 추가 가능 (100만원당 1명)
  */
 
 export type PlanType = 'free' | 'pro' | 'premium';
@@ -25,6 +29,7 @@ export interface PlanConfig {
   highlightFeatures?: string[];
 }
 
+// 기존 플랜 설정 (호환성 유지 - 결제 시스템 준비 전까지)
 export const PLAN_CONFIG: Record<PlanType, PlanConfig> = {
   free: {
     name: 'Free',
@@ -96,15 +101,15 @@ export const PLAN_CONFIG: Record<PlanType, PlanConfig> = {
       '워터마크 없는 이미지',
       '고화질 다운로드',
       '스타일 히스토리 영구 보관',
-      '가족/애인 프로필 최대 5명',
-      '가족 얼굴 합성 기능',
+      '모델 프로필 최대 5명',
+      '얼굴 합성 기능',
       '우선 생성 대기열',
     ],
-    highlightFeatures: ['무제한 스타일 생성', '가족/애인 프로필 최대 5명'],
+    highlightFeatures: ['무제한 스타일 생성', '모델 프로필 최대 5명'],
   },
 };
 
-// 업그레이드 유도 메시지
+// 업그레이드 유도 메시지 (구매 기반 등급 시스템 반영)
 export type UpgradeReason = 
   | 'recommend-first' 
   | 'daily-limit' 
@@ -113,36 +118,42 @@ export type UpgradeReason =
   | 'family-profile'
   | 'family-limit';
 
-export const UPGRADE_MESSAGES: Record<UpgradeReason, { title: string; description: string; recommendedPlan: PlanType }> = {
+export const UPGRADE_MESSAGES: Record<UpgradeReason, { title: string; description: string; recommendedPlan: PlanType; tierMessage: string }> = {
   'recommend-first': {
-    title: '스타일 추천 먼저 받기',
-    description: 'Pro 멤버만 스타일 추천을 먼저 받을 수 있어요! 생성 전에 트렌디한 스타일을 미리 탐색해보세요.',
+    title: '상품 추천만 먼저보기',
+    description: '실버 등급 이상이면 생성 전에 AI가 추천하는 상품을 먼저 확인할 수 있어요!',
     recommendedPlan: 'pro',
+    tierMessage: '쇼미룩에서 상품을 구매하면 등급이 올라가요!',
   },
   'daily-limit': {
-    title: '일일 생성 한도 초과',
-    description: '오늘의 무료 생성을 모두 사용했어요! Pro로 업그레이드하면 매일 20회까지 생성할 수 있어요.',
+    title: '일일 생성 한도 도달',
+    description: '오늘의 생성 횟수를 모두 사용했어요. 등급이 높아지면 더 많이 생성할 수 있어요!',
     recommendedPlan: 'pro',
+    tierMessage: '브론즈: 5회 → 실버: 10회 → 골드: 20회 → 플래티넘: 무제한',
   },
   'gallery-limit': {
-    title: '갤러리 저장 한도 초과',
-    description: '갤러리가 꽉 찼어요! Pro로 업그레이드하면 50장까지 저장할 수 있어요.',
+    title: '갤러리 저장 한도 도달',
+    description: '갤러리가 꽉 찼어요! 등급이 높아지면 더 많이 저장할 수 있어요.',
     recommendedPlan: 'pro',
+    tierMessage: '무료: 10장 → 브론즈: 30장 → 실버: 50장 → 골드: 100장',
   },
   'hd-download': {
     title: '고화질 다운로드',
-    description: '고화질 다운로드는 Pro 전용이에요. 워터마크 없는 원본 이미지를 저장해보세요!',
+    description: '첫 구매 시 브론즈 등급부터 워터마크 없는 고화질 이미지를 다운로드할 수 있어요!',
     recommendedPlan: 'pro',
+    tierMessage: '쇼미룩에서 상품을 구매하면 브론즈 등급이 됩니다.',
   },
   'family-profile': {
-    title: '가족 프로필 추가',
-    description: '가족/애인의 얼굴로 스타일 생성은 Premium 전용이에요! 소중한 사람 최대 5명까지 추가할 수 있어요.',
+    title: '모델 프로필 추가',
+    description: '소중한 사람을 위한 스타일 생성은 플래티넘 등급 전용이에요! 100만원당 1명씩 추가 가능해요.',
     recommendedPlan: 'premium',
+    tierMessage: '누적 구매 100만원 이상 → 플래티넘 등급 (모델 프로필 추가 가능)',
   },
   'family-limit': {
-    title: '가족 프로필 한도 초과',
-    description: '가족 프로필은 최대 5명까지 추가할 수 있어요. (본인 포함 총 6명)',
+    title: '모델 프로필 한도 도달',
+    description: '100만원당 모델 프로필 1명을 추가할 수 있어요. 더 많은 구매로 슬롯을 늘려보세요!',
     recommendedPlan: 'premium',
+    tierMessage: '누적 구매 금액이 높아질수록 더 많은 모델을 등록할 수 있어요.',
   },
 };
 

@@ -347,8 +347,8 @@ const MyPage = () => {
 
                 {/* 리워드 안내 */}
                 <div className="text-sm text-muted-foreground font-korean space-y-1">
-                  <p>• Free/Pro: 추천 시 보너스 5회 (30일간 유효)</p>
-                  <p>• Premium: 추천 시 프로필 슬롯 +1 (영구)</p>
+                  <p>• 추천 성공 시 보너스 5회 (30일간 유효)</p>
+                  <p>• 플래티넘 등급: 추천 시 모델 슬롯 +1 (영구)</p>
                 </div>
               </CardContent>
             </Card>
