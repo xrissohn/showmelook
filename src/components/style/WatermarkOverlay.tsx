@@ -21,9 +21,9 @@ export function WatermarkOverlay({
   if (!show) return null;
 
   const sizeClasses = {
-    small: 'w-16 h-auto',
-    medium: 'w-24 h-auto',
-    large: 'w-32 h-auto',
+    small: 'w-8 h-auto',
+    medium: 'w-12 h-auto',
+    large: 'w-16 h-auto',
   };
 
   const positionClasses = {
@@ -59,7 +59,26 @@ export function GalleryWatermarkOverlay({ show }: { show: boolean }) {
       <img 
         src={showmelookWatermark} 
         alt="ShowMeLook" 
-        className="w-12 h-auto drop-shadow-md"
+        className="w-6 h-auto drop-shadow-md"
+        draggable={false}
+      />
+    </div>
+  );
+}
+
+// 모달/상세보기용 워터마크
+export function ModalWatermarkOverlay({ show }: { show: boolean }) {
+  if (!show) return null;
+
+  return (
+    <div 
+      className="absolute bottom-3 right-3 z-20 pointer-events-none select-none"
+      style={{ opacity: 0.7 }}
+    >
+      <img 
+        src={showmelookWatermark} 
+        alt="ShowMeLook" 
+        className="w-10 h-auto drop-shadow-lg"
         draggable={false}
       />
     </div>
