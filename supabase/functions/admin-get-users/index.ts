@@ -58,21 +58,48 @@ Deno.serve(async (req) => {
 
     // Parse query params
     const url = new URL(req.url);
-    const page = parseInt(url.searchParams.get('page') || '1');
-    const limit = parseInt(url.searchParams.get('limit') || '20');
     const search = url.searchParams.get('search') || '';
 
-    // Get all auth users via admin API
-    const { data: authData, error: listError } = await adminClient.auth.admin.listUsers({
-      page,
-      perPage: limit,
-    });
+    // Get ALL auth users via admin API by paginating through all pages
+    const allUsers: Array<{
+      id: string;
+      email?: string;
+      created_at: string;
+    }> = [];
+    
+    let currentPage = 1;
+    const perPage = 50; // Max per page for efficiency
+    let hasMore = true;
+    
+    while (hasMore) {
+      const { data: authData, error: listError } = await adminClient.auth.admin.listUsers({
+        page: currentPage,
+        perPage: perPage,
+      });
 
-    if (listError) {
-      throw listError;
+      if (listError) {
+        throw listError;
+      }
+
+      if (authData.users && authData.users.length > 0) {
+        allUsers.push(...authData.users.map(u => ({
+          id: u.id,
+          email: u.email,
+          created_at: u.created_at,
+        })));
+        
+        // Check if there are more pages
+        if (authData.users.length < perPage) {
+          hasMore = false;
+        } else {
+          currentPage++;
+        }
+      } else {
+        hasMore = false;
+      }
     }
 
-    const userIds = authData.users.map(u => u.id);
+    const userIds = allUsers.map(u => u.id);
 
     // Fetch profiles, purchase stats, and roles in parallel
     const [profilesResult, statsResult, rolesResult] = await Promise.all([
@@ -86,7 +113,7 @@ Deno.serve(async (req) => {
     const rolesMap = new Map(rolesResult.data?.map(r => [r.user_id, r]) || []);
 
     // Combine data
-    let users = authData.users.map(authUser => {
+    let users = allUsers.map(authUser => {
       const profile = profilesMap.get(authUser.id);
       const stats = statsMap.get(authUser.id);
       const role = rolesMap.get(authUser.id);
@@ -119,9 +146,7 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({
       users,
-      total: authData.total || users.length,
-      page,
-      limit,
+      total: allUsers.length,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
