@@ -36,7 +36,7 @@ import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 import { GenerationProgress } from '@/components/style/GenerationProgress';
 import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarousel';
-import { WatermarkOverlay, GalleryWatermarkOverlay } from '@/components/style/WatermarkOverlay';
+import { WatermarkOverlay, GalleryWatermarkOverlay, ModalWatermarkOverlay } from '@/components/style/WatermarkOverlay';
 interface StyleTrend {
   id: string;
   name: string;
@@ -1994,6 +1994,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
                     draggable={false}
                   />
+                  
+                  {/* 모달 워터마크 (무료 플랜) */}
+                  <ModalWatermarkOverlay show={hasWatermark} />
                   
                   {/* 상품 태그 (product_ids가 있고 상품이 로드된 경우) */}
                   {lookProducts.length > 0 && !isEditingMemo && !isFlipped && (

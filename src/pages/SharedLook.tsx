@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useGuestCart } from "@/hooks/useGuestCart";
 import MainNavigation from "@/components/MainNavigation";
 import { getProductAffiliateDisclosure } from "@/lib/affiliateDisclosure";
+import { WatermarkOverlay } from "@/components/style/WatermarkOverlay";
 
 // 카카오톡 인앱 브라우저 감지
 const isKakaoInAppBrowser = (): boolean => {
@@ -422,12 +423,14 @@ const SharedLook = () => {
 
       <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-6 max-w-4xl">
         {/* Style Image - 전신이 다 보이도록 */}
-        <div className="rounded-2xl overflow-hidden shadow-xl mb-4">
+        <div className="rounded-2xl overflow-hidden shadow-xl mb-4 relative">
           <img
             src={look.image_url}
             alt="AI Generated Style"
             className="w-full object-contain bg-muted"
           />
+          {/* 무료 플랜 워터마크 - 공유 페이지에서는 항상 표시 */}
+          <WatermarkOverlay show={true} size="medium" />
         </div>
 
         {/* AI 추천 요약 - 이미지와 상품 사이에 배치 */}
