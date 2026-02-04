@@ -421,39 +421,39 @@ const SharedLook = () => {
       />
 
       <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-6 max-w-4xl">
-        {/* Style Image */}
-        <div className="relative rounded-2xl overflow-hidden shadow-xl mb-6">
+        {/* Style Image - 전신이 다 보이도록 */}
+        <div className="rounded-2xl overflow-hidden shadow-xl mb-4">
           <img
             src={look.image_url}
             alt="AI Generated Style"
-            className="w-full object-cover"
+            className="w-full object-contain bg-muted"
           />
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="bg-background/90 backdrop-blur-sm rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge variant="secondary" className="bg-accent/20 text-accent">
-                  AI 스타일
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(look.created_at).toLocaleDateString("ko-KR")}
-                </span>
-              </div>
-              {look.prompt_used && (
-                <p className="text-sm text-foreground line-clamp-2">
-                  {look.prompt_used}
-                </p>
-              )}
-              {look.tags && look.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {look.tags.map((tag, i) => (
-                    <Badge key={i} variant="outline" className="text-xs">
-                      #{tag}
-                    </Badge>
-                  ))}
-                </div>
-              )}
-            </div>
+        </div>
+
+        {/* AI 추천 요약 - 이미지와 상품 사이에 배치 */}
+        <div className="bg-card/80 backdrop-blur-sm rounded-xl p-4 mb-6 border border-border/50">
+          <div className="flex items-center gap-2 mb-2">
+            <Badge variant="secondary" className="bg-accent/20 text-accent">
+              AI 스타일
+            </Badge>
+            <span className="text-xs text-muted-foreground">
+              {new Date(look.created_at).toLocaleDateString("ko-KR")}
+            </span>
           </div>
+          {look.prompt_used && (
+            <p className="text-sm text-foreground">
+              {look.prompt_used}
+            </p>
+          )}
+          {look.tags && look.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {look.tags.map((tag, i) => (
+                <Badge key={i} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Products */}
