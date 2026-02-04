@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, Camera, ArrowRight, Check, Sparkles } from 'lucide-react';
 import MainNavigation from '@/components/MainNavigation';
+import { SEOHead } from '@/components/SEOHead';
 
 const styleOptions = [
   { id: 'minimal', label: '미니멀', emoji: '🤍' },
@@ -237,8 +238,9 @@ const ProfileSetup = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      <SEOHead pageKey="profileSetup" />
       {/* Header - using shared navigation with progress dots */}
-      <MainNavigation 
+      <MainNavigation
         rightContent={
           <div className="flex items-center gap-2">
             {[1, 2, 3].map((s) => (

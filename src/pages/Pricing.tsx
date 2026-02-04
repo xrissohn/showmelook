@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
 import { TIER_CONFIG, TierType, TIER_ORDER, formatAmountKo } from '@/lib/tierConfig';
 import { CheckCircle2, HelpCircle, ShoppingBag, TrendingUp, Crown, Sparkles } from 'lucide-react';
+import { SEOHead } from '@/components/SEOHead';
 import { 
   Accordion, 
   AccordionContent, 
@@ -52,6 +53,7 @@ const Pricing = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="pricing" />
       <MainNavigation />
       
       <main className="container mx-auto px-4 pt-24 pb-16">

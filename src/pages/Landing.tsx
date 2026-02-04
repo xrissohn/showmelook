@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown } from 'lucide-react';
 import { TIER_CONFIG, formatAmountKo } from '@/lib/tierConfig';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
+import { SEOHead } from '@/components/SEOHead';
 
 // Use public path for Korean logo to enable preloading and improve LCP
 const showmelookKoreanLogo = '/showmelook-korean-logo.png';
@@ -338,6 +339,7 @@ const Landing = () => {
     }
   };
   return <div className="min-h-screen bg-background">
+      <SEOHead pageKey="landing" />
       {/* Navigation - using shared component */}
       <MainNavigation />
 

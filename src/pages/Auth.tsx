@@ -11,6 +11,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { detectInAppBrowser, getExternalBrowserUrl, copyToClipboard } from '@/lib/inAppBrowserDetector';
+import { SEOHead } from '@/components/SEOHead';
 
 // Google icon component
 const GoogleIcon = () => (
@@ -366,6 +367,7 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero flex">
+      <SEOHead pageKey="auth" />
       {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-dark items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNiIgc3Ryb2tlPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIiBzdHJva2Utd2lkdGg9IjIiLz48L2c+PC9zdmc+')] opacity-30" />

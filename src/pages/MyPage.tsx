@@ -20,6 +20,7 @@ import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
 import { TierHistorySection } from "@/components/mypage/TierHistorySection";
 import { TIER_CONFIG, TierType } from "@/lib/tierConfig";
+import { SEOHead } from "@/components/SEOHead";
 import { 
   useRecommendationHistory, 
   useLikedProducts, 
@@ -204,6 +205,7 @@ const MyPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="mypage" />
       {/* Header - using shared navigation */}
       <MainNavigation showBackButton />
 

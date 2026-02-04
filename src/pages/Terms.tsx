@@ -1,8 +1,10 @@
 import MainNavigation from '@/components/MainNavigation';
+import { SEOHead } from '@/components/SEOHead';
 
 const Terms = () => {
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="terms" />
       <MainNavigation showBackButton />
       
       <main className="container max-w-4xl mx-auto px-4 py-12">

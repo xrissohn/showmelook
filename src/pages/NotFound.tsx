@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import MainNavigation from "@/components/MainNavigation";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
+import { SEOHead } from "@/components/SEOHead";
 
 const NotFound = () => {
   const location = useLocation();
@@ -13,6 +14,7 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="notFound" />
       <MainNavigation />
       
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center pt-16">
