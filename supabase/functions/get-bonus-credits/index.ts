@@ -26,22 +26,23 @@ serve(async (req) => {
       );
     }
 
-    // Verify the token and get user
+    // Verify the token using getClaims (proper way for Edge Functions)
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
     });
     
-    const { data: { user }, error: userError } = await authClient.auth.getUser();
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await authClient.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.error('Auth error:', userError);
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error('Auth error:', claimsError);
       return new Response(
         JSON.stringify({ success: false, error: '유효하지 않은 인증 토큰입니다.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
     
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
