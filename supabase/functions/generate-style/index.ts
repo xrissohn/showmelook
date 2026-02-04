@@ -757,19 +757,20 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         
         if (watermarkDataUrl) {
           // Call AI to composite the logo onto the image
-          const watermarkPrompt = `Overlay the second image (the ShowMeLook logo) onto the first image (the fashion photo).
+          const watermarkPrompt = `Add the ShowMeLook logo (second image) as a small watermark on the fashion photo (first image).
 
-CRITICAL REQUIREMENTS:
-- Position the logo in the BOTTOM-RIGHT CORNER of the fashion image
-- The logo should have margin of about 20-30 pixels from the edges
-- Scale the logo to be approximately 15-20% of the image width (small but readable)
-- Apply 60-70% opacity to make it semi-transparent
-- The logo should be subtle and professional, NOT obstruct the fashion content
-- Keep the fashion image EXACTLY as is, only overlay the logo
-- Do NOT crop or modify the fashion image in any way
-- Do NOT change colors or style of the logo
+ABSOLUTE REQUIREMENTS - FOLLOW EXACTLY:
+1. POSITION: Place the logo INSIDE the image boundaries, in the BOTTOM-RIGHT CORNER
+2. MARGIN: Keep at least 30-40 pixels margin from both the right edge AND the bottom edge of the image
+3. SIZE: Make the logo VERY SMALL - only about 8-10% of the image width (much smaller than the original logo size)
+4. OPACITY: Apply 50-60% transparency so it's subtle
+5. DO NOT modify the fashion photo AT ALL - no changes to the person, clothing, or background
+6. DO NOT add the logo anywhere else (not on clothing, not in center, not outside bounds)
+7. DO NOT add any text like "showmelook.com" - just the logo image
+8. The watermark must be COMPLETELY INSIDE the image, not extending beyond any edge
+9. The fashion image dimensions and content must remain exactly the same
 
-This is a watermark for brand attribution. Output only the combined image.`;
+OUTPUT: Return only the fashion image with the small logo watermark in the bottom-right corner.`;
 
           const watermarkResponse = await fetchWithRetry(
             'https://ai.gateway.lovable.dev/v1/chat/completions',
