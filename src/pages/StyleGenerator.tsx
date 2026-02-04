@@ -483,6 +483,18 @@ const shareToSNS = async (
     ? `${baseUrl}/look/${lookId}` 
     : baseUrl;
 
+  // 공유 시 is_public을 true로 설정하여 다른 사람도 볼 수 있게 함
+  if (lookId) {
+    try {
+      await supabase
+        .from('generated_looks')
+        .update({ is_public: true })
+        .eq('id', lookId);
+    } catch (e) {
+      console.error('Failed to make look public:', e);
+    }
+  }
+
   switch (platform) {
     case 'instagram':
       // 모바일 감지
