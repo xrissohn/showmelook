@@ -757,20 +757,31 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         
         if (watermarkDataUrl) {
           // Call AI to composite the logo onto the image
-          const watermarkPrompt = `Add the ShowMeLook logo (second image) as a small watermark on the fashion photo (first image).
+          const watermarkPrompt = `TASK: Add a small watermark logo to a fashion photo.
 
-ABSOLUTE REQUIREMENTS - FOLLOW EXACTLY:
-1. POSITION: Place the logo INSIDE the image boundaries, in the BOTTOM-RIGHT CORNER
-2. MARGIN: Keep at least 30-40 pixels margin from both the right edge AND the bottom edge of the image
-3. SIZE: Make the logo VERY SMALL - only about 8-10% of the image width (much smaller than the original logo size)
-4. OPACITY: Apply 50-60% transparency so it's subtle
-5. DO NOT modify the fashion photo AT ALL - no changes to the person, clothing, or background
-6. DO NOT add the logo anywhere else (not on clothing, not in center, not outside bounds)
-7. DO NOT add any text like "showmelook.com" - just the logo image
-8. The watermark must be COMPLETELY INSIDE the image, not extending beyond any edge
-9. The fashion image dimensions and content must remain exactly the same
+INPUT:
+- Image 1: Fashion photo (MAIN IMAGE - keep exactly as-is)
+- Image 2: ShowMeLook logo (WATERMARK - to be overlaid)
 
-OUTPUT: Return only the fashion image with the small logo watermark in the bottom-right corner.`;
+STRICT OUTPUT REQUIREMENTS:
+1. OUTPUT DIMENSIONS: The output image MUST be EXACTLY the same width and height as the FIRST image (fashion photo). Do NOT expand, add borders, or change the canvas size in any way.
+
+2. WATERMARK PLACEMENT: Place the logo in the bottom-right corner of the fashion photo, with:
+   - Approximately 5-8% of image width as size
+   - 20-30 pixels margin from right edge
+   - 20-30 pixels margin from bottom edge
+   - 50% opacity/transparency
+
+3. DO NOT:
+   - Add any white borders or extra space around the image
+   - Change the dimensions of the original fashion photo
+   - Place watermark outside the original image bounds
+   - Modify the fashion photo content in any way
+   - Add text like URLs or website names
+
+4. The final image should look exactly like the original fashion photo with a small, subtle logo overlaid in the corner.
+
+Return ONLY the composited image with the same exact dimensions as the input fashion photo.`;
 
           const watermarkResponse = await fetchWithRetry(
             'https://ai.gateway.lovable.dev/v1/chat/completions',
