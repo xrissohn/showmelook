@@ -737,56 +737,79 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
       try {
         console.log('[generate-style] Adding watermark for free tier user...');
         
-        // Call AI to add watermark (composite the logo onto the image)
-        const watermarkPrompt = `Add a subtle semi-transparent watermark logo to the bottom-right corner of this image.
+        // Fetch the watermark logo from storage
+        const watermarkUrl = 'https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/product-images/watermark%2Fshowmelook-watermark.png';
         
-The watermark should say "ShowMeLook" in a modern, clean sans-serif font.
+        let watermarkDataUrl = '';
+        try {
+          const watermarkResponse = await fetch(watermarkUrl);
+          if (watermarkResponse.ok) {
+            const watermarkBuffer = await watermarkResponse.arrayBuffer();
+            const base64Watermark = btoa(
+              new Uint8Array(watermarkBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+            watermarkDataUrl = `data:image/png;base64,${base64Watermark}`;
+            console.log('[generate-style] Watermark logo fetched, length:', watermarkDataUrl.length);
+          }
+        } catch (fetchErr) {
+          console.error('[generate-style] Failed to fetch watermark logo:', fetchErr);
+        }
         
-REQUIREMENTS:
-- Position: bottom-right corner with ~20px margin from edges
-- Size: small, about 10-15% of image width
-- Style: semi-transparent white text with subtle drop shadow
-- The watermark should be professional and not obstruct the main fashion content
-- Font: clean, modern sans-serif (like Montserrat or similar)
-- Opacity: around 60-70% so it's visible but not distracting
+        if (watermarkDataUrl) {
+          // Call AI to composite the logo onto the image
+          const watermarkPrompt = `Overlay the second image (the ShowMeLook logo) onto the first image (the fashion photo).
 
-Keep the original image exactly as is, only add the text watermark.`;
+CRITICAL REQUIREMENTS:
+- Position the logo in the BOTTOM-RIGHT CORNER of the fashion image
+- The logo should have margin of about 20-30 pixels from the edges
+- Scale the logo to be approximately 15-20% of the image width (small but readable)
+- Apply 60-70% opacity to make it semi-transparent
+- The logo should be subtle and professional, NOT obstruct the fashion content
+- Keep the fashion image EXACTLY as is, only overlay the logo
+- Do NOT crop or modify the fashion image in any way
+- Do NOT change colors or style of the logo
 
-        const watermarkResponse = await fetchWithRetry(
-          'https://ai.gateway.lovable.dev/v1/chat/completions',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'Content-Type': 'application/json',
+This is a watermark for brand attribution. Output only the combined image.`;
+
+          const watermarkResponse = await fetchWithRetry(
+            'https://ai.gateway.lovable.dev/v1/chat/completions',
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'google/gemini-2.5-flash-image',
+                messages: [{
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: watermarkPrompt },
+                    { type: 'image_url', image_url: { url: generatedImage } },
+                    { type: 'image_url', image_url: { url: watermarkDataUrl } }
+                  ]
+                }],
+                modalities: ['image', 'text']
+              }),
             },
-            body: JSON.stringify({
-              model: 'google/gemini-2.5-flash-image',
-              messages: [{
-                role: 'user',
-                content: [
-                  { type: 'text', text: watermarkPrompt },
-                  { type: 'image_url', image_url: { url: generatedImage } }
-                ]
-              }],
-              modalities: ['image', 'text']
-            }),
-          },
-          2 // Max retries for watermark
-        );
+            2 // Max retries for watermark
+          );
 
-        if (watermarkResponse.ok) {
-          const watermarkResult = await watermarkResponse.json();
-          const watermarkedImage = watermarkResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-          
-          if (watermarkedImage) {
-            finalGeneratedImage = watermarkedImage;
-            console.log('[generate-style] Watermark added successfully');
+          if (watermarkResponse.ok) {
+            const watermarkResult = await watermarkResponse.json();
+            const watermarkedImage = watermarkResult.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+            
+            if (watermarkedImage) {
+              finalGeneratedImage = watermarkedImage;
+              console.log('[generate-style] Watermark logo added successfully');
+            } else {
+              console.log('[generate-style] Watermark response had no image, using original');
+            }
           } else {
-            console.log('[generate-style] Watermark response had no image, using original');
+            console.log('[generate-style] Watermark request failed, using original image');
           }
         } else {
-          console.log('[generate-style] Watermark request failed, using original image');
+          console.log('[generate-style] Could not fetch watermark logo, using original image');
         }
       } catch (watermarkError) {
         console.error('[generate-style] Error adding watermark:', watermarkError);
