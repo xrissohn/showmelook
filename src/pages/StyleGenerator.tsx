@@ -15,6 +15,8 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle } from 'lucide-react';
+import { TierBadge } from '@/components/ui/tier-badge';
+import { TIER_CONFIG } from '@/lib/tierConfig';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
@@ -2469,7 +2471,8 @@ const StyleGenerator = () => {
   const [upgradeReason, setUpgradeReason] = useState<'recommend-first' | 'gallery-limit' | 'daily-limit'>('recommend-first');
 
   const { 
-    isPremium, 
+    isPremium,
+    currentTier,
     remainingCount,
     bonusCredits,
     totalRemaining,
@@ -5182,8 +5185,21 @@ const StyleGenerator = () => {
               <div className="p-3 sm:p-4 rounded-xl border-2 border-border bg-secondary/50">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                    {isPremium ? (
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 flex items-center justify-center flex-shrink-0">
+                    {/* 등급별 아이콘 */}
+                    {currentTier === 'platinum' ? (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                        <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
+                    ) : currentTier === 'gold' ? (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0">
+                        <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-black" />
+                      </div>
+                    ) : currentTier === 'silver' ? (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-400 flex items-center justify-center flex-shrink-0">
+                        <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
+                    ) : currentTier === 'bronze' ? (
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-amber-700 flex items-center justify-center flex-shrink-0">
                         <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                       </div>
                     ) : (
@@ -5192,18 +5208,21 @@ const StyleGenerator = () => {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                        {isPremium ? '프리미엄 회원' : '오늘 남은 생성 횟수'}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <TierBadge tier={currentTier} size="sm" showTooltip={true} />
+                        <span className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
+                          {isPremium ? '무제한 생성' : '오늘 남은 횟수'}
+                        </span>
+                      </div>
                       <p className="text-xs sm:text-sm text-muted-foreground font-korean truncate">
                         {limitLoading ? (
                           '로딩 중...'
                         ) : isPremium ? (
-                          '무제한 스타일 생성'
+                          '모든 기능 무제한'
                         ) : bonusCredits > 0 ? (
                           `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회`
                         ) : (
-                          `${remainingCount}회 남음 (일일 ${subscription?.dailyLimit || 5}회)`
+                          `${remainingCount}회 남음 (일일 ${TIER_CONFIG[currentTier]?.dailyLimit || 5}회)`
                         )}
                       </p>
                     </div>
