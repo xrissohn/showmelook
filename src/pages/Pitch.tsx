@@ -289,8 +289,8 @@ const slides = [
                 <span className="font-semibold">3%</span>
               </div>
               <div className="p-2 bg-primary/10 rounded font-korean">
-                <div>MAU × 구매전환 25%</div>
-                <div>× 평균주문 7만원 × 수수료 3%</div>
+                <div>구매전환율 25% × 평균주문 7만원</div>
+                <div>× 수수료 3%</div>
                 <div className="text-primary font-bold mt-1">ARPU = ₩525/사용자/월</div>
               </div>
             </div>
