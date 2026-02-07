@@ -38,7 +38,7 @@ serve(async (req) => {
         JSON.stringify({
           title: "쇼미룩 - AI 패션 스타일링",
           description: "AI가 추천하는 나만의 스타일을 확인해보세요!",
-          image: "https://showmelook.com/og-image.png",
+          image: "https://showmelook.com/og-image.png?v=20260207",
           url: `https://showmelook.com/look/${lookId}`,
         }),
         {
@@ -48,7 +48,7 @@ serve(async (req) => {
     }
 
     // Get signed URL for the image
-    let imageUrl = "https://showmelook.com/og-image.png";
+    let imageUrl = "https://showmelook.com/og-image.png?v=20260207";
     if (look.image_url && look.image_url.includes("generated-looks/")) {
       const path = look.image_url.split("generated-looks/").pop();
       if (path) {
@@ -92,7 +92,7 @@ serve(async (req) => {
       JSON.stringify({
         title: "쇼미룩 - AI 패션 스타일링",
         description: "AI가 추천하는 나만의 스타일을 확인해보세요!",
-        image: "https://showmelook.com/og-image.png",
+        image: "https://showmelook.com/og-image.png?v=20260207",
         url: "https://showmelook.com",
       }),
       {
