@@ -17,34 +17,34 @@ import {
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 
-// BEP 차트 데이터 (현실적 비용 구조 반영: 인프라+개발운영비+세무+임대+사무운영+인건비)
+// BEP 차트 데이터 (구매 기반 등급제: ARPU ₩525, 변동비 ~₩400/명)
 // 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만, 4명 2,015만
 const bepChartData = [
   { users: 0, revenue: 0, cost: 215, profit: -215, staff: 1 },
-  { users: 1000, revenue: 210, cost: 308, profit: -98, staff: 1 },
-  { users: 2300, revenue: 483, cost: 415, profit: 68, staff: 1 }, // BEP (1인)
-  { users: 3000, revenue: 630, cost: 475, profit: 155, staff: 1 },
-  { users: 5000, revenue: 1050, cost: 1245, profit: -195, staff: 2 },
-  { users: 8700, revenue: 1827, cost: 1571, profit: 256, staff: 2 }, // BEP (2인)
-  { users: 10000, revenue: 2100, cost: 1695, profit: 405, staff: 2 },
-  { users: 15000, revenue: 3150, cost: 2715, profit: 435, staff: 3 },
-  { users: 30000, revenue: 6300, cost: 4615, profit: 1685, staff: 4 },
+  { users: 1000, revenue: 53, cost: 255, profit: -202, staff: 1 },
+  { users: 3000, revenue: 158, cost: 335, profit: -177, staff: 1 },
+  { users: 5400, revenue: 284, cost: 431, profit: -147, staff: 1 }, // BEP 근처 (1인)
+  { users: 7000, revenue: 368, cost: 495, profit: -127, staff: 1 },
+  { users: 10000, revenue: 525, cost: 1215, profit: -690, staff: 2 },
+  { users: 15000, revenue: 788, cost: 1415, profit: -627, staff: 2 },
+  { users: 20500, revenue: 1076, cost: 1635, profit: -559, staff: 2 }, // BEP (2인)
+  { users: 30000, revenue: 1575, cost: 2615, profit: -1040, staff: 3 },
 ];
 
-// 12개월 현금흐름 데이터 (5,000명 돌파 시 1명 채용)
+// 12개월 현금흐름 데이터 (ARPU ₩525, 변동비 ~₩400/명, 5,000명 돌파 시 1명 채용)
 const cashflowChartData = [
-  { month: 'M1', users: 100, staff: 1, revenue: 21, fixedCost: 215, variableCost: 9, totalCost: 224, profit: -203, cumulative: -203 },
-  { month: 'M2', users: 250, staff: 1, revenue: 53, fixedCost: 215, variableCost: 23, totalCost: 238, profit: -185, cumulative: -388 },
-  { month: 'M3', users: 500, staff: 1, revenue: 105, fixedCost: 215, variableCost: 47, totalCost: 262, profit: -157, cumulative: -545 },
-  { month: 'M4', users: 900, staff: 1, revenue: 189, fixedCost: 215, variableCost: 84, totalCost: 299, profit: -110, cumulative: -655 },
-  { month: 'M5', users: 1500, staff: 1, revenue: 315, fixedCost: 215, variableCost: 140, totalCost: 355, profit: -40, cumulative: -695 },
-  { month: 'M6', users: 2300, staff: 1, revenue: 483, fixedCost: 215, variableCost: 214, totalCost: 429, profit: 54, cumulative: -641 },
-  { month: 'M7', users: 3300, staff: 1, revenue: 693, fixedCost: 215, variableCost: 307, totalCost: 522, profit: 171, cumulative: -470 },
-  { month: 'M8', users: 4500, staff: 1, revenue: 945, fixedCost: 215, variableCost: 419, totalCost: 634, profit: 311, cumulative: -159 },
-  { month: 'M9', users: 5800, staff: 2, revenue: 1218, fixedCost: 815, variableCost: 539, totalCost: 1354, profit: -136, cumulative: -295 },
-  { month: 'M10', users: 7200, staff: 2, revenue: 1512, fixedCost: 815, variableCost: 670, totalCost: 1485, profit: 27, cumulative: -268 },
-  { month: 'M11', users: 8500, staff: 2, revenue: 1785, fixedCost: 815, variableCost: 791, totalCost: 1606, profit: 179, cumulative: -89 },
-  { month: 'M12', users: 10000, staff: 2, revenue: 2100, fixedCost: 815, variableCost: 930, totalCost: 1745, profit: 355, cumulative: 266 },
+  { month: 'M1', users: 100, staff: 1, revenue: 5, fixedCost: 215, variableCost: 4, totalCost: 219, profit: -214, cumulative: -214 },
+  { month: 'M2', users: 250, staff: 1, revenue: 13, fixedCost: 215, variableCost: 10, totalCost: 225, profit: -212, cumulative: -426 },
+  { month: 'M3', users: 500, staff: 1, revenue: 26, fixedCost: 215, variableCost: 20, totalCost: 235, profit: -209, cumulative: -635 },
+  { month: 'M4', users: 900, staff: 1, revenue: 47, fixedCost: 215, variableCost: 36, totalCost: 251, profit: -204, cumulative: -839 },
+  { month: 'M5', users: 1500, staff: 1, revenue: 79, fixedCost: 215, variableCost: 60, totalCost: 275, profit: -196, cumulative: -1035 },
+  { month: 'M6', users: 2500, staff: 1, revenue: 131, fixedCost: 215, variableCost: 100, totalCost: 315, profit: -184, cumulative: -1219 },
+  { month: 'M7', users: 3800, staff: 1, revenue: 200, fixedCost: 215, variableCost: 152, totalCost: 367, profit: -167, cumulative: -1386 },
+  { month: 'M8', users: 5200, staff: 1, revenue: 273, fixedCost: 215, variableCost: 208, totalCost: 423, profit: -150, cumulative: -1536 },
+  { month: 'M9', users: 7000, staff: 2, revenue: 368, fixedCost: 815, variableCost: 280, totalCost: 1095, profit: -727, cumulative: -2263 },
+  { month: 'M10', users: 9000, staff: 2, revenue: 473, fixedCost: 815, variableCost: 360, totalCost: 1175, profit: -702, cumulative: -2965 },
+  { month: 'M11', users: 12000, staff: 2, revenue: 630, fixedCost: 815, variableCost: 480, totalCost: 1295, profit: -665, cumulative: -3630 },
+  { month: 'M12', users: 15000, staff: 2, revenue: 788, fixedCost: 815, variableCost: 600, totalCost: 1415, profit: -627, cumulative: -4257 },
 ];
 
 // 슬라이드 데이터
@@ -178,8 +178,8 @@ const slides = [
             desc: '프롬프트 입력 → AI 추천 → 4개 카테고리 자동 선택'
           },
           {
-            title: '💎 요금제 페이지',
-            desc: 'Free / Pro ₩4,900 / Premium ₩9,900'
+            title: '💎 등급제 페이지',
+            desc: '구매 기반 5단계 등급 (Free → Bronze → Silver → Gold → Platinum)'
           },
           {
             title: '📊 어드민 대시보드',
@@ -244,27 +244,31 @@ const slides = [
       <div className="space-y-5">
         {/* 3가지 수익 모델 상세 */}
         <div className="grid md:grid-cols-3 gap-3">
-          {/* B2C 구독 */}
+          {/* 구매 기반 등급제 */}
           <div className="p-4 bg-card rounded-xl border border-border">
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">💳</span>
-              <h4 className="font-bold font-korean">B2C 구독</h4>
+              <span className="text-2xl">🏅</span>
+              <h4 className="font-bold font-korean">구매 기반 등급제</h4>
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between p-2 bg-muted/30 rounded">
                 <span className="font-korean">Free</span>
-                <span className="font-semibold">₩0</span>
+                <span className="font-semibold">₩0 (무료 체험)</span>
               </div>
-              <div className="flex justify-between p-2 bg-sky/10 rounded">
-                <span className="font-korean">Pro (월/연)</span>
-                <span className="font-semibold text-sky">₩4,900 / ₩49,000</span>
+              <div className="flex justify-between p-2 bg-amber-500/10 rounded">
+                <span className="font-korean">Bronze</span>
+                <span className="font-semibold text-amber-600">첫 구매 시</span>
               </div>
-              <div className="flex justify-between p-2 bg-coral/10 rounded">
-                <span className="font-korean">Premium (월/연)</span>
-                <span className="font-semibold text-coral">₩9,900 / ₩99,000</span>
+              <div className="flex justify-between p-2 bg-slate-300/20 rounded">
+                <span className="font-korean">Silver</span>
+                <span className="font-semibold text-slate-500">누적 10만원</span>
+              </div>
+              <div className="flex justify-between p-2 bg-yellow-500/10 rounded">
+                <span className="font-korean">Gold / Platinum</span>
+                <span className="font-semibold text-yellow-600">30만 / 100만원</span>
               </div>
               <div className="text-muted-foreground font-korean pt-1 border-t">
-                전환율 목표: Free→Pro <strong>15%</strong>, Pro→Premium <strong>20%</strong>
+                구매할수록 등급↑ → 워터마크 제거, 무제한 생성
               </div>
             </div>
           </div>
@@ -273,7 +277,7 @@ const slides = [
           <div className="p-4 bg-card rounded-xl border border-border">
             <div className="flex items-center gap-2 mb-3">
               <span className="text-2xl">🔗</span>
-              <h4 className="font-bold font-korean">어필리에이트</h4>
+              <h4 className="font-bold font-korean">어필리에이트 (핵심 수익)</h4>
             </div>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between p-2 bg-muted/30 rounded">
@@ -285,9 +289,9 @@ const slides = [
                 <span className="font-semibold">3%</span>
               </div>
               <div className="p-2 bg-primary/10 rounded font-korean">
-                <div>월 10만 클릭 × 구매전환 3%</div>
-                <div>× 평균주문 5만원 × 수수료 3%</div>
-                <div className="text-primary font-bold mt-1">= 월 450만원</div>
+                <div>MAU × 구매전환 25%</div>
+                <div>× 평균주문 7만원 × 수수료 3%</div>
+                <div className="text-primary font-bold mt-1">ARPU = ₩525/사용자/월</div>
               </div>
             </div>
           </div>
@@ -335,20 +339,12 @@ const slides = [
               </thead>
               <tbody>
                 <tr className="border-b border-border/50">
-                  <td className="p-2 font-korean">B2C 구독</td>
-                  <td className="p-2 text-center">1</td>
-                  <td className="p-2 text-center">10</td>
-                  <td className="p-2 text-center">50</td>
-                  <td className="p-2 text-center">100</td>
-                  <td className="p-2 text-center">200</td>
-                </tr>
-                <tr className="border-b border-border/50">
                   <td className="p-2 font-korean">어필리에이트</td>
-                  <td className="p-2 text-center">0.1</td>
-                  <td className="p-2 text-center">1</td>
-                  <td className="p-2 text-center">5</td>
-                  <td className="p-2 text-center">10</td>
-                  <td className="p-2 text-center">20</td>
+                  <td className="p-2 text-center">0.6</td>
+                  <td className="p-2 text-center">6</td>
+                  <td className="p-2 text-center">30</td>
+                  <td className="p-2 text-center">60</td>
+                  <td className="p-2 text-center">120</td>
                 </tr>
                 <tr className="border-b border-border/50">
                   <td className="p-2 font-korean">B2B SaaS</td>
@@ -360,11 +356,11 @@ const slides = [
                 </tr>
                 <tr className="bg-primary/10 font-bold">
                   <td className="p-2 font-korean">합계</td>
-                  <td className="p-2 text-center text-primary">1.1</td>
-                  <td className="p-2 text-center text-primary">13</td>
-                  <td className="p-2 text-center text-primary">65</td>
-                  <td className="p-2 text-center text-primary">140</td>
-                  <td className="p-2 text-center text-primary">280</td>
+                  <td className="p-2 text-center text-primary">0.6</td>
+                  <td className="p-2 text-center text-primary">8</td>
+                  <td className="p-2 text-center text-primary">40</td>
+                  <td className="p-2 text-center text-primary">90</td>
+                  <td className="p-2 text-center text-primary">180</td>
                 </tr>
               </tbody>
             </table>
@@ -456,22 +452,26 @@ const slides = [
               <span className="text-xl">👤</span>
               <h4 className="font-bold text-sm font-korean">사용자당 변동 비용</h4>
             </div>
-            <div className="text-xs text-muted-foreground mb-2 font-korean">사용률 20-30% 기준</div>
+            <div className="text-xs text-muted-foreground mb-2 font-korean">등급별 AI 생성 비용</div>
             <div className="space-y-1 text-xs font-korean">
               <div className="flex justify-between p-1.5 bg-muted/30 rounded">
-                <span>Free (70%)</span>
-                <span className="font-semibold">₩562</span>
+                <span>Free (60%)</span>
+                <span className="font-semibold">₩250</span>
               </div>
-              <div className="flex justify-between p-1.5 bg-sky/10 rounded">
-                <span>Pro (20%)</span>
-                <span className="font-semibold text-sky">₩2,715</span>
+              <div className="flex justify-between p-1.5 bg-amber-500/10 rounded">
+                <span>Bronze (20%)</span>
+                <span className="font-semibold text-amber-600">₩450</span>
               </div>
-              <div className="flex justify-between p-1.5 bg-coral/10 rounded">
-                <span>Premium (10%)</span>
-                <span className="font-semibold text-coral">₩4,500</span>
+              <div className="flex justify-between p-1.5 bg-slate-300/20 rounded">
+                <span>Silver (12%)</span>
+                <span className="font-semibold text-slate-500">₩680</span>
+              </div>
+              <div className="flex justify-between p-1.5 bg-yellow-500/10 rounded">
+                <span>Gold+ (8%)</span>
+                <span className="font-semibold text-yellow-600">₩950</span>
               </div>
               <div className="pt-1 border-t text-muted-foreground">
-                가중 평균: <strong className="text-primary">~₩930/명</strong>
+                가중 평균: <strong className="text-primary">~₩400/명</strong>
               </div>
             </div>
           </div>
@@ -483,22 +483,22 @@ const slides = [
               <h4 className="font-bold text-sm font-korean">BEP 결과</h4>
             </div>
             <div className="text-center py-2">
-              <div className="text-3xl font-bold text-primary">2,300명</div>
+              <div className="text-3xl font-bold text-primary">~5,400명</div>
               <div className="text-xs text-muted-foreground font-korean">1인 손익분기점</div>
-              <div className="text-sm font-semibold text-coral mt-1">(유료 690명)</div>
+              <div className="text-sm font-semibold text-coral mt-1">(구매전환 ~1,350명)</div>
             </div>
             <div className="space-y-1.5 text-xs font-korean pt-2 border-t">
               <div className="flex justify-between">
                 <span>2인 팀</span>
-                <span className="font-bold text-sky">8,700명</span>
+                <span className="font-bold text-sky">~20,500명</span>
               </div>
               <div className="flex justify-between">
-                <span>3,000명</span>
-                <span className="font-bold text-primary">월 ₩155만</span>
+                <span>ARPU</span>
+                <span className="font-bold text-primary">₩525/명/월</span>
               </div>
               <div className="flex justify-between">
-                <span>10,000명</span>
-                <span className="font-bold text-primary">월 ₩405만</span>
+                <span>변동비</span>
+                <span className="font-bold text-primary">~₩400/명</span>
               </div>
             </div>
           </div>
@@ -551,8 +551,8 @@ const slides = [
                     ]}
                     labelFormatter={(label) => `${label.toLocaleString()}명`}
                   />
-                  <ReferenceLine x={2300} stroke="hsl(var(--coral))" strokeDasharray="5 5" label={{ value: 'BEP(1인)', fontSize: 9, fill: 'hsl(var(--coral))' }} />
-                  <ReferenceLine x={8700} stroke="hsl(var(--sky))" strokeDasharray="5 5" label={{ value: 'BEP(2인)', fontSize: 9, fill: 'hsl(var(--sky))' }} />
+                  <ReferenceLine x={5400} stroke="hsl(var(--coral))" strokeDasharray="5 5" label={{ value: 'BEP(1인)', fontSize: 9, fill: 'hsl(var(--coral))' }} />
+                  <ReferenceLine x={20500} stroke="hsl(var(--sky))" strokeDasharray="5 5" label={{ value: 'BEP(2인)', fontSize: 9, fill: 'hsl(var(--sky))' }} />
                   <Area type="monotone" dataKey="revenue" stroke="hsl(var(--sky))" fill="url(#colorRevenue)" strokeWidth={2} name="revenue" />
                   <Area type="monotone" dataKey="cost" stroke="hsl(var(--coral))" fill="url(#colorCost)" strokeWidth={2} name="cost" />
                   <Area type="monotone" dataKey="profit" stroke="hsl(var(--primary))" fill="url(#colorProfit)" strokeWidth={2} name="profit" />
@@ -586,50 +586,50 @@ const slides = [
                   <tr className="border-b border-border/50">
                     <td className="p-1.5 font-korean">1,000명</td>
                     <td className="p-1.5 text-center">1명</td>
-                    <td className="p-1.5 text-center">₩210만</td>
-                    <td className="p-1.5 text-center">₩308만</td>
-                    <td className="p-1.5 text-center text-coral font-semibold">-₩98만</td>
+                    <td className="p-1.5 text-center">₩53만</td>
+                    <td className="p-1.5 text-center">₩255만</td>
+                    <td className="p-1.5 text-center text-coral font-semibold">-₩202만</td>
                     <td className="p-1.5 text-center text-muted-foreground">-</td>
-                  </tr>
-                  <tr className="border-b border-border/50 bg-coral/5">
-                    <td className="p-1.5 font-korean">2,300명 <span className="text-coral">(BEP)</span></td>
-                    <td className="p-1.5 text-center">1명</td>
-                    <td className="p-1.5 text-center">₩483만</td>
-                    <td className="p-1.5 text-center">₩415만</td>
-                    <td className="p-1.5 text-center text-muted-foreground">₩68만</td>
-                    <td className="p-1.5 text-center">14%</td>
                   </tr>
                   <tr className="border-b border-border/50">
                     <td className="p-1.5 font-korean">3,000명</td>
                     <td className="p-1.5 text-center">1명</td>
-                    <td className="p-1.5 text-center">₩630만</td>
-                    <td className="p-1.5 text-center">₩475만</td>
-                    <td className="p-1.5 text-center text-primary font-semibold">₩155만</td>
-                    <td className="p-1.5 text-center">25%</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="p-1.5 font-korean">5,000명</td>
-                    <td className="p-1.5 text-center">2명</td>
-                    <td className="p-1.5 text-center">₩1,050만</td>
-                    <td className="p-1.5 text-center">₩1,245만</td>
-                    <td className="p-1.5 text-center text-coral font-semibold">-₩195만</td>
+                    <td className="p-1.5 text-center">₩158만</td>
+                    <td className="p-1.5 text-center">₩335만</td>
+                    <td className="p-1.5 text-center text-coral font-semibold">-₩177만</td>
                     <td className="p-1.5 text-center text-muted-foreground">-</td>
+                  </tr>
+                  <tr className="border-b border-border/50 bg-coral/5">
+                    <td className="p-1.5 font-korean">~5,400명 <span className="text-coral">(BEP)</span></td>
+                    <td className="p-1.5 text-center">1명</td>
+                    <td className="p-1.5 text-center">₩284만</td>
+                    <td className="p-1.5 text-center">₩431만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">~₩0</td>
+                    <td className="p-1.5 text-center">~0%</td>
                   </tr>
                   <tr className="border-b border-border/50">
                     <td className="p-1.5 font-korean">10,000명</td>
                     <td className="p-1.5 text-center">2명</td>
-                    <td className="p-1.5 text-center">₩2,100만</td>
-                    <td className="p-1.5 text-center">₩1,695만</td>
-                    <td className="p-1.5 text-center text-primary font-semibold">₩405만</td>
-                    <td className="p-1.5 text-center">19%</td>
+                    <td className="p-1.5 text-center">₩525만</td>
+                    <td className="p-1.5 text-center">₩1,215만</td>
+                    <td className="p-1.5 text-center text-coral font-semibold">-₩690만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">-</td>
+                  </tr>
+                  <tr className="border-b border-border/50 bg-sky/5">
+                    <td className="p-1.5 font-korean">~20,500명 <span className="text-sky">(BEP 2인)</span></td>
+                    <td className="p-1.5 text-center">2명</td>
+                    <td className="p-1.5 text-center">₩1,076만</td>
+                    <td className="p-1.5 text-center">₩1,635만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">~₩0</td>
+                    <td className="p-1.5 text-center">~0%</td>
                   </tr>
                   <tr className="bg-primary/10 font-bold">
                     <td className="p-1.5 font-korean">30,000명</td>
-                    <td className="p-1.5 text-center">4명</td>
-                    <td className="p-1.5 text-center">₩6,300만</td>
-                    <td className="p-1.5 text-center">₩4,615만</td>
-                    <td className="p-1.5 text-center text-primary">₩1,685만</td>
-                    <td className="p-1.5 text-center">27%</td>
+                    <td className="p-1.5 text-center">3명</td>
+                    <td className="p-1.5 text-center">₩1,575만</td>
+                    <td className="p-1.5 text-center">₩2,615만</td>
+                    <td className="p-1.5 text-center text-coral">-₩1,040만</td>
+                    <td className="p-1.5 text-center text-muted-foreground">-</td>
                   </tr>
                 </tbody>
               </table>
@@ -639,8 +639,8 @@ const slides = [
 
         {/* 핵심 가정 */}
         <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground font-korean">
-          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 개발운영비 ₩100만/인</span>
-          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 사무비 ₩50만/인</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 ARPU ₩525/명 (어필리에이트)</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 변동비 ~₩400/명</span>
           <span className="px-2 py-1 bg-muted/50 rounded-full">📌 인건비 ₩400만/인 (창업자 제외)</span>
           <span className="px-2 py-1 bg-muted/50 rounded-full">📌 캐시 히트율 70%</span>
         </div>
@@ -680,7 +680,7 @@ const slides = [
               <span className="text-lg">📊</span>
               <h4 className="font-bold text-sm font-korean">사용자당 비용</h4>
             </div>
-            <div className="text-xl font-bold text-sky">~₩930<span className="text-xs font-normal text-muted-foreground">/명</span></div>
+            <div className="text-xl font-bold text-sky">~₩400<span className="text-xs font-normal text-muted-foreground">/명</span></div>
             <div className="text-xs text-muted-foreground font-korean mt-1">가중 평균 변동비</div>
           </div>
           {/* 초기 자본금 */}
@@ -689,8 +689,8 @@ const slides = [
               <span className="text-lg">💰</span>
               <h4 className="font-bold text-sm font-korean">권장 자본금</h4>
             </div>
-            <div className="text-xl font-bold text-primary">₩1,000~1,200만</div>
-            <div className="text-xs text-muted-foreground font-korean mt-1">최대손실(₩695만)+여유</div>
+            <div className="text-xl font-bold text-primary">₩1,500~2,000만</div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">최대손실(₩4,257만) 대비</div>
           </div>
         </div>
 
@@ -790,7 +790,7 @@ const slides = [
                   >
                     <td className="p-1.5 font-korean">
                       {row.month}
-                      {row.month === 'M6' && <span className="text-primary ml-1">(BEP)</span>}
+                      {row.month === 'M6' && <span className="text-muted-foreground ml-1">(성장)</span>}
                       {row.month === 'M9' && <span className="text-coral ml-1">(채용)</span>}
                     </td>
                     <td className="p-1.5 text-center">{row.users.toLocaleString()}</td>
@@ -812,9 +812,9 @@ const slides = [
 
         {/* 핵심 가정 */}
         <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground font-korean">
-          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 ARPU ₩2,100/명</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 ARPU ₩525/명 (어필리에이트)</span>
           <span className="px-2 py-1 bg-muted/50 rounded-full">📌 5,000명 초과 시 1명 채용</span>
-          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 12개월 누적 +₩266만</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 12개월 누적 -₩4,257만 (투자 필요)</span>
         </div>
       </div>
     ),
@@ -909,7 +909,7 @@ const slides = [
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
           <h4 className="font-bold text-green-600 mb-2 font-korean">✅ 완료된 기능 (Phase 1-4)</h4>
           <div className="flex flex-wrap gap-2">
-            {['AI 추천 v8.0', '가상 피팅', '딥링크 연동', '1,400+ 상품', '피드백 학습', '구독 플랜', '가족 프로필'].map((item, i) => (
+            {['AI 추천 v8.0', '가상 피팅', '딥링크 연동', '1,400+ 상품', '피드백 학습', '구매 등급제', '가족 프로필'].map((item, i) => (
               <span key={i} className="px-3 py-1 bg-green-500/20 text-green-700 rounded-full text-sm font-korean">{item}</span>
             ))}
           </div>
@@ -973,9 +973,9 @@ const slides = [
           <h4 className="font-bold mb-3 text-center font-korean">📊 12개월 후 목표 KPI</h4>
           <div className="grid grid-cols-5 gap-2 text-center text-xs">
             {[
-              { metric: 'MAU', current: '100', target: '10,000', unit: '명' },
-              { metric: '유료 구독자', current: '0', target: '1,500', unit: '명' },
-              { metric: 'MRR', current: '0', target: '1,000', unit: '만원' },
+              { metric: 'MAU', current: '100', target: '15,000', unit: '명' },
+              { metric: '구매전환 사용자', current: '0', target: '2,500', unit: '명' },
+              { metric: '월 수수료 수익', current: '0', target: '788', unit: '만원' },
               { metric: '상품 카탈로그', current: '1,400', target: '5,000', unit: '+' },
               { metric: 'B2B 파트너', current: '0', target: '10', unit: '곳' }
             ].map((kpi, i) => (
@@ -988,7 +988,7 @@ const slides = [
             ))}
           </div>
           <div className="text-xs text-muted-foreground text-center mt-2 font-korean">
-            * 전환율 15% 기준 (MAU 10,000 × 15% = 유료 1,500명)
+            * 구매전환율 25% 기준 (MAU 15,000 × 25% × 7만원 × 3% = 월 ₩788만)
           </div>
         </div>
 
