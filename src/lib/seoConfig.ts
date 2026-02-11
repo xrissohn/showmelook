@@ -12,7 +12,7 @@ export interface PageSEO {
 }
 
 const BASE_URL = 'https://showmelook.com';
-const DEFAULT_OG_IMAGE = 'https://showmelook.com/og-image.png?v=20260207';
+const DEFAULT_OG_IMAGE = undefined;
 
 export const SEO_CONFIG: Record<string, PageSEO> = {
   landing: {
