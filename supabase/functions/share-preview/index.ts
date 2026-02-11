@@ -60,7 +60,7 @@ serve(async (req) => {
     // Default metadata
     let title = "쇼미룩 AI 스타일 추천";
     let description = "AI가 추천하는 나만의 스타일을 확인해보세요!";
-    let imageUrl = "https://showmelook.com/og-image.png?v=20260207";
+    let imageUrl = "";
     const pageUrl = `https://showmelook.com/look/${lookId}`;
 
     if (look && !error) {
@@ -107,7 +107,7 @@ serve(async (req) => {
   <meta property="og:url" content="${pageUrl}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${imageUrl}">
+  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">` : ''}
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -328,9 +328,9 @@ serve(async (req) => {
   <meta property="og:url" content="${pageUrl}">
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
-  <meta property="og:image" content="${imageUrl}">
+  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">
   <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
+  <meta property="og:image:height" content="630">` : ''}
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="쇼미룩 ShowMeLook">
   
@@ -339,7 +339,7 @@ serve(async (req) => {
   <meta name="twitter:url" content="${pageUrl}">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
-  <meta name="twitter:image" content="${imageUrl}">
+  ${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ''}
   
   <!-- Redirect to actual page after a short delay (for crawlers that execute JS) -->
   <meta http-equiv="refresh" content="0;url=${pageUrl}">
