@@ -51,6 +51,7 @@ interface DataPreloaderContextType {
   refreshProfile: () => Promise<UserProfile | null>;
   refreshLooks: () => Promise<GeneratedLook[]>;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  setProfileDirect: (profile: UserProfile) => void;
   addLook: (look: GeneratedLook) => void;
   removeLook: (lookId: string) => void;
   invalidateAll: () => void;
@@ -207,6 +208,17 @@ export function DataPreloaderProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // 프로필 직접 세팅 (ProfileSetup에서 저장 후 즉시 캐시에 주입)
+  const setProfileDirect = useCallback((newProfile: UserProfile) => {
+    setProfile(newProfile);
+    globalCache.profile = { data: newProfile, timestamp: Date.now() };
+    setIsProfileLoading(false);
+    // 아바타 이미지 프리로드
+    if (newProfile.avatar_url) {
+      preloadImages([newProfile.avatar_url]).catch(() => {});
+    }
+  }, []);
+
   // 룩 추가
   const addLook = useCallback((newLook: GeneratedLook) => {
     setLooks(prev => {
@@ -271,6 +283,7 @@ export function DataPreloaderProvider({ children }: { children: ReactNode }) {
         refreshProfile: () => fetchProfile(true),
         refreshLooks: () => fetchLooks(true),
         updateProfile,
+        setProfileDirect,
         addLook,
         removeLook,
         invalidateAll,
