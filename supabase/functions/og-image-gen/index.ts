@@ -48,13 +48,17 @@ serve(async (req) => {
       .createSignedUrl(ogPath, 86400);
 
     if (cached?.signedUrl) {
-      // Verify it actually exists by fetching HEAD
-      const headResp = await fetch(cached.signedUrl, { method: "HEAD" });
-      if (headResp.ok) {
+      // Fetch and return the image directly (Facebook crawlers don't follow 302 redirects for og:image)
+      const cachedResp = await fetch(cached.signedUrl);
+      if (cachedResp.ok) {
         console.log(`[og-image-gen] Cache hit for ${lookId}`);
-        return new Response(null, {
-          status: 302,
-          headers: { ...corsHeaders, Location: cached.signedUrl },
+        const body = await cachedResp.arrayBuffer();
+        return new Response(body, {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=86400",
+          },
         });
       }
     }
