@@ -20,6 +20,10 @@ const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 const BG_COLOR = 0xF0F0F0FF; // light gray, RGBA
 
+// 카카오톡 안전 영역: 중앙 크롭 시에도 전신이 보이도록
+const SAFE_WIDTH = 1000;
+const SAFE_HEIGHT = 400;
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,7 +42,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Check cache first
-    const ogPath = `og/${lookId}.png`;
+    const ogPath = `og/v2/${lookId}.png`;
     const { data: cached } = await supabase.storage
       .from("generated-looks")
       .createSignedUrl(ogPath, 86400);
@@ -99,15 +103,15 @@ serve(async (req) => {
     const canvas = new Image(OG_WIDTH, OG_HEIGHT);
     canvas.fill(BG_COLOR);
 
-    // Calculate contain-fit dimensions
-    const scale = Math.min(OG_WIDTH / original.width, OG_HEIGHT / original.height);
+    // 안전 영역(1000x400) 기준 contain-fit → 카카오톡 중앙 크롭에도 전신 보임
+    const scale = Math.min(SAFE_WIDTH / original.width, SAFE_HEIGHT / original.height);
     const newW = Math.round(original.width * scale);
     const newH = Math.round(original.height * scale);
     const resized = original.resize(newW, newH);
 
-    // Top-aligned horizontally centered (카카오톡 크롭 시 머리가 잘리지 않도록)
+    // 캔버스 중앙 배치 (안전 영역 안에 전신이 들어감)
     const offsetX = Math.round((OG_WIDTH - newW) / 2);
-    const offsetY = 0;
+    const offsetY = Math.round((OG_HEIGHT - newH) / 2);
     canvas.composite(resized, offsetX, offsetY);
 
     // 6. Encode as PNG
