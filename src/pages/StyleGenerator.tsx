@@ -636,10 +636,8 @@ const shareToSNS = async (
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
         
-        // 카카오톡 이미지: OG 이미지(1200x630)를 사용하여 전신이 잘리지 않도록
-        const kakaoImageUrl = lookId 
-          ? `${supabaseUrl}/functions/v1/og-image-gen?lookId=${lookId}`
-          : imageUrl;
+        // 카카오톡 이미지: 원본 세로 이미지 그대로 사용 (카카오가 자체 크롭하지만 해상도가 높아 전신이 더 잘 보임)
+        let kakaoImageUrl = imageUrl;
         
         // 카카오톡 공유 URL - share-preview Edge Function 사용하여 크롤러가 OG 태그를 읽을 수 있도록
         const kakaoShareUrl = lookId 
