@@ -60,7 +60,7 @@ serve(async (req) => {
     // Default metadata
     let title = "쇼미룩 AI 스타일 추천";
     let description = "AI가 추천하는 나만의 스타일을 확인해보세요!";
-    let imageUrl = "";
+    let imageUrl = "https://showmelook.com/og-image.png";
     const pageUrl = `https://showmelook.com/look/${lookId}`;
 
     if (look && !error) {
