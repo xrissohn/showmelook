@@ -105,9 +105,9 @@ serve(async (req) => {
     const newH = Math.round(original.height * scale);
     const resized = original.resize(newW, newH);
 
-    // Center on canvas
+    // Top-aligned horizontally centered (카카오톡 크롭 시 머리가 잘리지 않도록)
     const offsetX = Math.round((OG_WIDTH - newW) / 2);
-    const offsetY = Math.round((OG_HEIGHT - newH) / 2);
+    const offsetY = 0;
     canvas.composite(resized, offsetX, offsetY);
 
     // 6. Encode as PNG
