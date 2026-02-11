@@ -66,25 +66,12 @@ serve(async (req) => {
     const pageUrl = `https://showmelook.com/look/${lookId}`;
 
     if (look && !error) {
-      // Use the original image URL directly for OG sharing
-      // This avoids AI costs and SVG compatibility issues
+      // Use og-image-gen to create a proper 1200x630 PNG
+      // This prevents KakaoTalk from cropping the portrait image
       if (look.image_url) {
-        let resolvedUrl = look.image_url;
-        // Get a long-lived signed URL for storage images
-        if (look.image_url.includes("generated-looks/")) {
-          const path = look.image_url.split("generated-looks/").pop();
-          if (path) {
-            const { data: signed } = await supabase.storage
-              .from("generated-looks")
-              .createSignedUrl(path, 604800); // 7 days
-            if (signed?.signedUrl) resolvedUrl = signed.signedUrl;
-          }
-        }
-        imageUrl = resolvedUrl;
-        // Portrait images: set actual dimensions so SNS can decide how to crop
-        // Most generated looks are ~768x1024 portrait
-        imageWidth = 768;
-        imageHeight = 1024;
+        imageUrl = `${supabaseUrl}/functions/v1/og-image-gen?lookId=${lookId}`;
+        imageWidth = 1200;
+        imageHeight = 630;
       }
 
       // Build description

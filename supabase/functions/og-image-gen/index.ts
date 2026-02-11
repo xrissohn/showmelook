@@ -1,16 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
 
 /**
  * og-image-gen Edge Function
  * 
- * Generates a 1200x630 OG image by embedding the original portrait image
- * inside an SVG with a light gray background (contain fit).
- * Returns PNG-like result via SVG rasterization workaround.
- * 
- * Since KakaoTalk doesn't support SVG og:image, we use a direct approach:
- * fetch original image → encode as base64 → embed in SVG → return as SVG
- * with a fallback to redirect to the original image URL.
+ * Generates a 1200x630 PNG OG image by compositing the original portrait image
+ * onto a light gray background (contain fit, centered).
+ * No AI costs - pure image manipulation via imagescript.
+ * Caches result in storage for subsequent requests.
  */
 
 const corsHeaders = {
@@ -20,6 +18,7 @@ const corsHeaders = {
 
 const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
+const BG_COLOR = 0xF0F0F0FF; // light gray, RGBA
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -38,7 +37,25 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // 1. Get original look image URL
+    // 1. Check cache first
+    const ogPath = `og/${lookId}.png`;
+    const { data: cached } = await supabase.storage
+      .from("generated-looks")
+      .createSignedUrl(ogPath, 86400);
+
+    if (cached?.signedUrl) {
+      // Verify it actually exists by fetching HEAD
+      const headResp = await fetch(cached.signedUrl, { method: "HEAD" });
+      if (headResp.ok) {
+        console.log(`[og-image-gen] Cache hit for ${lookId}`);
+        return new Response(null, {
+          status: 302,
+          headers: { ...corsHeaders, Location: cached.signedUrl },
+        });
+      }
+    }
+
+    // 2. Get original look image URL
     const { data: look, error } = await supabase
       .from("generated_looks")
       .select("image_url")
@@ -52,7 +69,7 @@ serve(async (req) => {
       });
     }
 
-    // 2. Resolve signed URL
+    // 3. Resolve signed URL
     let originalUrl = look.image_url;
     if (look.image_url.includes("generated-looks/")) {
       const path = look.image_url.split("generated-looks/").pop();
@@ -64,41 +81,56 @@ serve(async (req) => {
       }
     }
 
-    // 3. Download original image and convert to base64
+    // 4. Download original image
     console.log(`[og-image-gen] Fetching original for ${lookId}`);
     const imgResp = await fetch(originalUrl);
     if (!imgResp.ok) {
       console.error(`[og-image-gen] Fetch failed: ${imgResp.status}`);
       return new Response(null, {
         status: 302,
-        headers: { ...corsHeaders, Location: originalUrl },
+        headers: { ...corsHeaders, Location: "https://showmelook.com/og-image.png" },
       });
     }
 
-    const contentType = imgResp.headers.get("content-type") || "image/png";
     const imgBuffer = await imgResp.arrayBuffer();
-    const imgBytes = new Uint8Array(imgBuffer);
-    
-    // Convert to base64
-    let binary = "";
-    for (let i = 0; i < imgBytes.length; i++) {
-      binary += String.fromCharCode(imgBytes[i]);
-    }
-    const base64 = btoa(binary);
-    const dataUri = `data:${contentType};base64,${base64}`;
 
-    // 4. Build SVG with the image centered (contain fit)
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${OG_WIDTH}" height="${OG_HEIGHT}" viewBox="0 0 ${OG_WIDTH} ${OG_HEIGHT}">
-  <rect width="${OG_WIDTH}" height="${OG_HEIGHT}" fill="#F0F0F0"/>
-  <image href="${dataUri}" x="0" y="0" width="${OG_WIDTH}" height="${OG_HEIGHT}" preserveAspectRatio="xMidYMid meet"/>
-</svg>`;
+    // 5. Decode and composite
+    const original = await Image.decode(new Uint8Array(imgBuffer));
+    const canvas = new Image(OG_WIDTH, OG_HEIGHT);
+    canvas.fill(BG_COLOR);
 
-    console.log(`[og-image-gen] Generated SVG for ${lookId}`);
+    // Calculate contain-fit dimensions
+    const scale = Math.min(OG_WIDTH / original.width, OG_HEIGHT / original.height);
+    const newW = Math.round(original.width * scale);
+    const newH = Math.round(original.height * scale);
+    const resized = original.resize(newW, newH);
 
-    return new Response(svg, {
+    // Center on canvas
+    const offsetX = Math.round((OG_WIDTH - newW) / 2);
+    const offsetY = Math.round((OG_HEIGHT - newH) / 2);
+    canvas.composite(resized, offsetX, offsetY);
+
+    // 6. Encode as PNG
+    const pngBytes = await canvas.encode(1); // PNG format
+
+    // 7. Cache to storage (fire-and-forget)
+    supabase.storage
+      .from("generated-looks")
+      .upload(ogPath, pngBytes, {
+        contentType: "image/png",
+        upsert: true,
+      })
+      .then(({ error: uploadErr }) => {
+        if (uploadErr) console.error(`[og-image-gen] Cache upload failed:`, uploadErr);
+        else console.log(`[og-image-gen] Cached OG image for ${lookId}`);
+      });
+
+    console.log(`[og-image-gen] Generated PNG ${OG_WIDTH}x${OG_HEIGHT} for ${lookId}`);
+
+    return new Response(pngBytes, {
       headers: {
         ...corsHeaders,
-        "Content-Type": "image/svg+xml",
+        "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400",
       },
     });
