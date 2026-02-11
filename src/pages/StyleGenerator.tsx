@@ -485,6 +485,12 @@ const shareToSNS = async (
   const shareUrl = lookId 
     ? `${baseUrl}/look/${lookId}` 
     : baseUrl;
+  
+  // Facebook/Twitter 크롤러용 URL: share-preview Edge Function이 OG 메타 태그를 서버사이드로 렌더링
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const crawlerShareUrl = lookId 
+    ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
+    : baseUrl;
 
   // 공유 시 is_public을 true로 설정하여 다른 사람도 볼 수 있게 함
   if (lookId) {
@@ -587,7 +593,7 @@ const shareToSNS = async (
 
     case 'twitter':
       window.open(
-        `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`,
+        `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(crawlerShareUrl)}`,
         '_blank',
         'width=600,height=400'
       );
@@ -595,7 +601,7 @@ const shareToSNS = async (
 
     case 'facebook':
       window.open(
-        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`,
+        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(crawlerShareUrl)}&quote=${encodeURIComponent(shareText)}`,
         '_blank',
         'width=600,height=400'
       );
