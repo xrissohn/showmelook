@@ -1,16 +1,35 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-};
+// 허용 도메인 목록
+const ALLOWED_ORIGINS = [
+  'https://showmelook.lovable.app',
+  'https://id-preview--3a817bf4-1535-4b1d-98d6-75ea63d8e05b.lovable.app',
+];
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || '';
+  const isAllowed = ALLOWED_ORIGINS.some(o => origin === o) ||
+    /\.cafe24\.com$/.test(new URL(origin || 'https://x').hostname) ||
+    /\.cafe24api\.com$/.test(new URL(origin || 'https://x').hostname);
+
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  };
+}
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// 공개 위젯 베이스 URL (내부 인프라 URL 대신 사용)
+const WIDGET_API_BASE = `${SUPABASE_URL}/functions/v1/cafe24-widget`;
+const APP_BASE_URL = 'https://showmelook.lovable.app';
+
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -34,46 +53,26 @@ const sdkCode = `
   
   window.ShowMeLook = window.ShowMeLook || {};
   
-  const APP_BASE_URL = 'https://showmelook.lovable.app';
-  const WIDGET_BASE_URL = '${SUPABASE_URL}/functions/v1/cafe24-widget';
-  const MALL_ID = '${mallId || ''}';
+  var APP_BASE_URL = '${APP_BASE_URL}';
+  var MALL_ID = '${mallId || ''}';
   
-  // 가상피팅 위젯 초기화
   ShowMeLook.init = function(options) {
-    console.log('ShowMeLook widget initialized', options);
     this.options = options || {};
     this.mallId = options.mallId || MALL_ID;
   };
   
-  // 가상피팅 버튼 생성
   ShowMeLook.createButton = function(productNo, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-      console.error('Container not found:', containerId);
-      return;
-    }
+    var container = document.getElementById(containerId);
+    if (!container) return;
     
-    const button = document.createElement('button');
+    var button = document.createElement('button');
     button.className = 'showmelook-fitting-btn';
     button.innerHTML = '<span style="margin-right:6px">👗</span> 가상 피팅해보기';
-    button.style.cssText = \`
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px 24px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.2s, box-shadow 0.2s;
-    \`;
+    button.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;padding:12px 24px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;';
     
     button.onmouseover = function() {
       this.style.transform = 'translateY(-2px)';
-      this.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+      this.style.boxShadow = '0 4px 12px rgba(102,126,234,0.4)';
     };
     button.onmouseout = function() {
       this.style.transform = 'translateY(0)';
@@ -87,62 +86,34 @@ const sdkCode = `
     container.appendChild(button);
   };
   
-  // 가상피팅 모달 열기 (프론트엔드 앱으로 연결)
   ShowMeLook.openFitting = function(productNo) {
-    const modal = document.createElement('div');
+    var modal = document.createElement('div');
     modal.id = 'showmelook-modal';
-    modal.style.cssText = \`
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 999999;
-    \`;
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:999999;';
     
-    const iframe = document.createElement('iframe');
-    // 프론트엔드 앱 라우트로 연결
+    var iframe = document.createElement('iframe');
     iframe.src = APP_BASE_URL + '/cafe24-fitting?mall_id=' + encodeURIComponent(this.mallId) + '&product_no=' + productNo;
-    iframe.style.cssText = \`
-      width: 90%;
-      max-width: 500px;
-      height: 85vh;
-      border: none;
-      border-radius: 16px;
-      background: white;
-    \`;
+    iframe.style.cssText = 'width:90%;max-width:500px;height:85vh;border:none;border-radius:16px;background:white;';
     
     modal.appendChild(iframe);
     
     modal.onclick = function(e) {
-      if (e.target === modal) {
-        modal.remove();
-      }
+      if (e.target === modal) modal.remove();
     };
     
-    // postMessage 리스너 (iframe에서 닫기 요청 수신)
     window.addEventListener('message', function(e) {
-      if (e.data && e.data.type === 'showmelook-close') {
-        modal.remove();
-      }
+      if (e.data && e.data.type === 'showmelook-close') modal.remove();
     });
     
     document.body.appendChild(modal);
   };
   
-  // 피팅 모달 닫기
   ShowMeLook.closeFitting = function() {
-    const modal = document.getElementById('showmelook-modal');
+    var modal = document.getElementById('showmelook-modal');
     if (modal) modal.remove();
   };
-  
-  console.log('ShowMeLook SDK loaded');
 })();
-      `;
+`;
 
       return new Response(sdkCode, {
         status: 200,
@@ -150,8 +121,6 @@ const sdkCode = `
           ...corsHeaders, 
           'Content-Type': 'application/javascript; charset=utf-8',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
         },
       });
     }
@@ -169,7 +138,6 @@ const sdkCode = `
         );
       }
 
-      // 테넌트 확인 및 사용량 체크
       const { data: tenant, error: tenantError } = await supabase
         .from('cafe24_tenants')
         .select('*')
@@ -184,22 +152,15 @@ const sdkCode = `
         );
       }
 
-      // 월간 사용량 체크
       if (tenant.monthly_generation_used >= tenant.monthly_generation_limit) {
         return new Response(
-          JSON.stringify({ 
-            error: 'Monthly generation limit exceeded',
-            limit: tenant.monthly_generation_limit,
-            used: tenant.monthly_generation_used,
-          }),
+          JSON.stringify({ error: 'Monthly generation limit exceeded' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      // 세션 토큰 생성
       const sessionToken = crypto.randomUUID();
 
-      // 세션 저장
       const { data: session, error: sessionError } = await supabase
         .from('cafe24_fitting_sessions')
         .insert({
@@ -222,7 +183,7 @@ const sdkCode = `
         JSON.stringify({ 
           success: true, 
           session_token: sessionToken,
-          fitting_url: `${SUPABASE_URL}/functions/v1/cafe24-widget/fitting-page?session=${sessionToken}`,
+          fitting_url: `${WIDGET_API_BASE}/fitting-page?session=${sessionToken}`,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -234,7 +195,10 @@ const sdkCode = `
     if (endpoint === 'fitting-page') {
       const mallId = url.searchParams.get('mall_id');
       const productNo = url.searchParams.get('product_no');
-      const sessionToken = url.searchParams.get('session');
+
+      // HTML 이스케이프
+      const safeMallId = (mallId || 'N/A').replace(/[<>&"']/g, '');
+      const safeProductNo = (productNo || 'N/A').replace(/[<>&"']/g, '');
 
       const fittingPageHtml = `
 <!DOCTYPE html>
@@ -291,10 +255,7 @@ const sdkCode = `
       max-width: 500px;
       width: 100%;
     }
-    .upload-icon {
-      font-size: 64px;
-      margin-bottom: 20px;
-    }
+    .upload-icon { font-size: 64px; margin-bottom: 20px; }
     h2 { color: #333; margin-bottom: 10px; }
     p { color: #666; margin-bottom: 20px; }
     .upload-btn {
@@ -318,21 +279,14 @@ const sdkCode = `
       color: #888;
     }
     input[type="file"] { display: none; }
-    .preview-area {
-      display: none;
-      margin-top: 20px;
-    }
-    .preview-area img {
-      max-width: 100%;
-      max-height: 300px;
-      border-radius: 8px;
-    }
+    .preview-area { display: none; margin-top: 20px; }
+    .preview-area img { max-width: 100%; max-height: 300px; border-radius: 8px; }
   </style>
 </head>
 <body>
   <div class="header">
     <div class="logo">ShowMeLook</div>
-    <button class="close-btn" onclick="parent.ShowMeLook && parent.ShowMeLook.closeFitting()">×</button>
+    <button class="close-btn" onclick="parent.postMessage({type:'showmelook-close'},'*')">×</button>
   </div>
   
   <div class="main">
@@ -351,45 +305,34 @@ const sdkCode = `
       </div>
       
       <div class="product-info">
-        상품번호: ${productNo || 'N/A'}<br>
-        쇼핑몰: ${mallId || 'N/A'}
+        상품번호: ${safeProductNo}<br>
+        쇼핑몰: ${safeMallId}
       </div>
     </div>
   </div>
 
   <script>
-    const photoInput = document.getElementById('photo-input');
-    const previewArea = document.getElementById('preview-area');
-    const previewImage = document.getElementById('preview-image');
+    var photoInput = document.getElementById('photo-input');
+    var previewArea = document.getElementById('preview-area');
+    var previewImage = document.getElementById('preview-image');
     
-    const generateBtn = document.createElement('button');
+    var generateBtn = document.createElement('button');
     generateBtn.id = 'generate-btn';
     generateBtn.textContent = '가상 피팅 시작';
-    generateBtn.style.cssText = \`
-      display: none;
-      margin-top: 20px;
-      padding: 14px 32px;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-    \`;
+    generateBtn.style.cssText = 'display:none;margin-top:20px;padding:14px 32px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;';
     document.querySelector('.upload-area').appendChild(generateBtn);
     
-    const resultArea = document.createElement('div');
+    var resultArea = document.createElement('div');
     resultArea.id = 'result-area';
-    resultArea.style.cssText = 'display: none; margin-top: 20px; text-align: center;';
+    resultArea.style.cssText = 'display:none;margin-top:20px;text-align:center;';
     document.querySelector('.upload-area').appendChild(resultArea);
 
-    let uploadedImageBase64 = null;
+    var uploadedImageBase64 = null;
 
     photoInput.addEventListener('change', function(e) {
-      const file = e.target.files[0];
+      var file = e.target.files[0];
       if (file) {
-        const reader = new FileReader();
+        var reader = new FileReader();
         reader.onload = function(e) {
           previewImage.src = e.target.result;
           previewArea.style.display = 'block';
@@ -402,58 +345,35 @@ const sdkCode = `
 
     generateBtn.addEventListener('click', async function() {
       if (!uploadedImageBase64) return;
-      
       generateBtn.disabled = true;
       generateBtn.textContent = '생성 중...';
       
       try {
-        // generate-style API 호출
-        const response = await fetch('${SUPABASE_URL}/functions/v1/generate-style', {
+        var response = await fetch('${APP_BASE_URL}/api/generate-style', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             style: 'casual',
             products: 'virtual fitting with cafe24 product',
-            userProfile: {
-              gender: 'female',
-              height: 165,
-              body_type: 'average',
-            },
+            userProfile: { gender: 'female', height: 165, body_type: 'average' },
             userAvatarUrl: uploadedImageBase64,
             useFaceComposite: true,
           }),
         });
         
-        const data = await response.json();
+        var data = await response.json();
         
         if (data.imageUrl) {
-          resultArea.innerHTML = \`
-            <h3 style="color:#333;margin-bottom:10px;">🎉 피팅 완료!</h3>
-            <img src="\${data.imageUrl}" style="max-width:100%;max-height:400px;border-radius:8px;margin-bottom:10px;">
-            <p style="color:#666;font-size:14px;">이미지를 저장하려면 우클릭하세요</p>
-          \`;
+          resultArea.innerHTML = '<h3 style="color:#333;margin-bottom:10px;">🎉 피팅 완료!</h3>' +
+            '<img src="' + data.imageUrl + '" style="max-width:100%;max-height:400px;border-radius:8px;margin-bottom:10px;">' +
+            '<p style="color:#666;font-size:14px;">이미지를 저장하려면 우클릭하세요</p>';
           resultArea.style.display = 'block';
-          
-          // 결과 저장 (세션 토큰이 있는 경우)
-          const sessionToken = new URLSearchParams(window.location.search).get('session');
-          if (sessionToken) {
-            await fetch('${SUPABASE_URL}/functions/v1/cafe24-widget/save-result', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                session_token: sessionToken,
-                fitting_result_url: data.imageUrl,
-              }),
-            });
-          }
         } else {
-          resultArea.innerHTML = '<p style="color:red;">피팅 생성에 실패했습니다: ' + (data.error || '알 수 없는 오류') + '</p>';
+          resultArea.innerHTML = '<p style="color:red;">피팅 생성에 실패했습니다.</p>';
           resultArea.style.display = 'block';
         }
       } catch (error) {
-        resultArea.innerHTML = '<p style="color:red;">오류: ' + error.message + '</p>';
+        resultArea.innerHTML = '<p style="color:red;">오류가 발생했습니다. 잠시 후 다시 시도해주세요.</p>';
         resultArea.style.display = 'block';
       } finally {
         generateBtn.disabled = false;
@@ -488,7 +408,6 @@ const sdkCode = `
         );
       }
 
-      // 세션 업데이트
       const { data: session, error: sessionError } = await supabase
         .from('cafe24_fitting_sessions')
         .update({
@@ -506,7 +425,6 @@ const sdkCode = `
         );
       }
 
-      // 테넌트 사용량 증가
       await supabase.rpc('increment_cafe24_usage', { tenant_id: session.tenant_id });
 
       return new Response(
@@ -515,25 +433,16 @@ const sdkCode = `
       );
     }
 
-    // 기본 응답
+    // 기본 응답 - 404
     return new Response(
-      JSON.stringify({
-        service: 'ShowMeLook Cafe24 Widget',
-        endpoints: {
-          'sdk.js': 'GET - 위젯 SDK 스크립트',
-          'create-session': 'POST - 피팅 세션 생성',
-          'fitting-page': 'GET - 피팅 페이지 (iframe)',
-          'save-result': 'POST - 피팅 결과 저장',
-        }
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: 'Not Found' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Cafe24 widget error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Cafe24 widget error');
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ error: 'Internal Server Error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
