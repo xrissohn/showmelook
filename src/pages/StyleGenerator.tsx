@@ -636,13 +636,15 @@ const shareToSNS = async (
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
         
-        // 이미지 URL을 공개 URL로 변환 (signed URL이 아닌 직접 접근 가능한 URL 필요)
-        // 카카오톡은 서버에서 이미지를 가져오므로 signed URL이 필요
-        let kakaoImageUrl = imageUrl;
+        // 카카오톡 이미지: OG 이미지(1200x630)를 사용하여 전신이 잘리지 않도록
+        const kakaoImageUrl = lookId 
+          ? `${supabaseUrl}/functions/v1/og-image-gen?lookId=${lookId}`
+          : imageUrl;
         
-        // 카카오톡 공유 URL - index.html의 인라인 스크립트가 카카오톡 인앱 브라우저 감지 및 리다이렉트 UI 표시
-        // 앱 직접 URL 사용 (showmelook.com/look/xxx)
-        const kakaoShareUrl = shareUrl;
+        // 카카오톡 공유 URL - share-preview Edge Function 사용하여 크롤러가 OG 태그를 읽을 수 있도록
+        const kakaoShareUrl = lookId 
+          ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
+          : shareUrl;
         
         // 카카오톡 공유하기
         Kakao.Share.sendDefault({
