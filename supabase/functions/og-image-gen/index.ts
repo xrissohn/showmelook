@@ -20,9 +20,9 @@ const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 const BG_COLOR = 0xF0F0F0FF; // light gray, RGBA
 
-// 카카오톡 안전 영역: 중앙 크롭 시에도 전신이 보이도록
-const SAFE_WIDTH = 1000;
-const SAFE_HEIGHT = 400;
+// 세로를 최대한 활용하여 전신이 크게 보이도록
+const SAFE_WIDTH = 800;
+const SAFE_HEIGHT = 600;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -42,7 +42,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Check cache first
-    const ogPath = `og/v2/${lookId}.png`;
+    const ogPath = `og/v3/${lookId}.png`;
     const { data: cached } = await supabase.storage
       .from("generated-looks")
       .createSignedUrl(ogPath, 86400);
