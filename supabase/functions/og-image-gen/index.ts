@@ -20,9 +20,9 @@ const OG_WIDTH = 1200;
 const OG_HEIGHT = 630;
 const BG_COLOR = 0xF0F0F0FF; // light gray, RGBA
 
-// 세로를 최대한 활용하여 전신이 크게 보이도록
-const SAFE_WIDTH = 800;
-const SAFE_HEIGHT = 600;
+// 세로를 캔버스 거의 전체로 활용하여 전신이 최대한 크게 보이도록
+const SAFE_WIDTH = 1180;
+const SAFE_HEIGHT = 620;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -42,7 +42,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // 1. Check cache first
-    const ogPath = `og/v3/${lookId}.png`;
+    const ogPath = `og/v4/${lookId}.png`;
     const { data: cached } = await supabase.storage
       .from("generated-looks")
       .createSignedUrl(ogPath, 86400);
