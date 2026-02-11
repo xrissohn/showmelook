@@ -61,13 +61,30 @@ serve(async (req) => {
     let title = "쇼미룩 AI 스타일 추천";
     let description = "AI가 추천하는 나만의 스타일을 확인해보세요!";
     let imageUrl = "https://showmelook.com/og-image.png";
+    let imageWidth = 1200;
+    let imageHeight = 630;
     const pageUrl = `https://showmelook.com/look/${lookId}`;
 
     if (look && !error) {
-      // Use OG-optimized 1200x630 landscape image for social sharing
-      // This prevents portrait images from being cropped in KakaoTalk/Facebook previews
+      // Use the original image URL directly for OG sharing
+      // This avoids AI costs and SVG compatibility issues
       if (look.image_url) {
-        imageUrl = `${supabaseUrl}/functions/v1/og-image-gen?lookId=${lookId}`;
+        let resolvedUrl = look.image_url;
+        // Get a long-lived signed URL for storage images
+        if (look.image_url.includes("generated-looks/")) {
+          const path = look.image_url.split("generated-looks/").pop();
+          if (path) {
+            const { data: signed } = await supabase.storage
+              .from("generated-looks")
+              .createSignedUrl(path, 604800); // 7 days
+            if (signed?.signedUrl) resolvedUrl = signed.signedUrl;
+          }
+        }
+        imageUrl = resolvedUrl;
+        // Portrait images: set actual dimensions so SNS can decide how to crop
+        // Most generated looks are ~768x1024 portrait
+        imageWidth = 768;
+        imageHeight = 1024;
       }
 
       // Build description
@@ -322,8 +339,8 @@ serve(async (req) => {
   <meta property="og:title" content="${title}">
   <meta property="og:description" content="${description}">
   ${imageUrl ? `<meta property="og:image" content="${imageUrl}">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">` : ''}
+  <meta property="og:image:width" content="${imageWidth}">
+  <meta property="og:image:height" content="${imageHeight}">` : ''}
   <meta property="og:locale" content="ko_KR">
   <meta property="og:site_name" content="쇼미룩 ShowMeLook">
   
