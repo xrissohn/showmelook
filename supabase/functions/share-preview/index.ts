@@ -338,11 +338,9 @@ serve(async (req) => {
   <meta name="twitter:description" content="${description}">
   ${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ''}
   
-  <!-- Redirect to actual page after a short delay (for crawlers that execute JS) -->
-  <meta http-equiv="refresh" content="0;url=${pageUrl}">
 </head>
 <body>
-  <p>Redirecting to <a href="${pageUrl}">${title}</a>...</p>
+  <p><a href="${pageUrl}">${title}</a></p>
 </body>
 </html>`;
 
