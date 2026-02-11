@@ -28,11 +28,13 @@ const CAFE24_CLIENT_SECRET = Deno.env.get('CAFE24_CLIENT_SECRET')!;
 
 const FRONTEND_URL = 'https://showmelook.lovable.app';
 
-// 카페24 OAuth 스코프 - 최소 권한만 요청
+// 카페24 OAuth 스코프 - 가상피팅 + 구매등급제 연동에 필요한 권한
 const CAFE24_SCOPES = [
-  'mall.read_store',
-  'mall.read_product',
-  'mall.read_category',
+  'mall.read_store',       // 쇼핑몰 기본 정보
+  'mall.read_product',     // 상품 정보 (피팅 대상)
+  'mall.read_category',    // 카테고리 조회
+  'mall.read_customer',    // 회원 정보 (구매등급 매칭)
+  'mall.read_order',       // 주문/구매 이력 (등급 산정)
 ].join(',');
 
 function encodeBase64(str: string): string {
