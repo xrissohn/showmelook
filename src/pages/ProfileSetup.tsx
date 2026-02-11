@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { usePreloadedData } from '@/contexts/DataPreloaderContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,6 +48,7 @@ const ProfileSetup = () => {
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { toast } = useToast();
+  const { setProfileDirect } = usePreloadedData();
 
   const [step, setStep] = useState(1);
   const [height, setHeight] = useState('');
@@ -200,6 +202,29 @@ const ProfileSetup = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      // 프로필 데이터를 글로벌 캐시에 직접 주입 (StyleGenerator에서 즉시 사용)
+      let avatarDisplayUrl = avatarPreview; // 이미 로컬에 있는 미리보기 URL 사용
+      if (avatarPath && !avatarPreview?.startsWith('http') && !avatarPreview?.startsWith('data:')) {
+        // 새로 업로드된 경우 signed URL 생성
+        const { data: signedData } = await supabase.storage
+          .from('avatars')
+          .createSignedUrl(avatarPath, 3600);
+        if (signedData?.signedUrl) {
+          avatarDisplayUrl = signedData.signedUrl;
+        }
+      }
+
+      setProfileDirect({
+        height: height ? parseInt(height) : null,
+        weight: weight ? parseInt(weight) : null,
+        body_type: bodyType || null,
+        style_preferences: selectedStyles.length > 0 ? selectedStyles : null,
+        avatar_url: avatarDisplayUrl || null,
+        full_name: null,
+        gender: gender || null,
+        age_group: ageGroup || null,
+      });
 
       toast({
         title: '프로필 설정 완료!',
