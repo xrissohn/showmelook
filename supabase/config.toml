@@ -135,3 +135,21 @@ verify_jwt = false
 
 [functions.linkprice-postback]
 verify_jwt = false
+
+[functions.og-image-gen]
+verify_jwt = false
+
+[functions.share-preview]
+verify_jwt = false
+
+[functions.og-image]
+verify_jwt = false
+
+[functions.admin-get-users]
+verify_jwt = false
+
+[functions.analyze-image-positions]
+verify_jwt = false
+
+[functions.brightdata-fetch]
+verify_jwt = false
