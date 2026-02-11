@@ -64,17 +64,10 @@ serve(async (req) => {
     const pageUrl = `https://showmelook.com/look/${lookId}`;
 
     if (look && !error) {
-      // Get signed URL for the image
-      if (look.image_url && look.image_url.includes("generated-looks/")) {
-        const path = look.image_url.split("generated-looks/").pop();
-        if (path) {
-          const { data: signedData } = await supabase.storage
-            .from("generated-looks")
-            .createSignedUrl(path, 86400); // 24 hours
-          if (signedData?.signedUrl) {
-            imageUrl = signedData.signedUrl;
-          }
-        }
+      // Use OG-optimized 1200x630 landscape image for social sharing
+      // This prevents portrait images from being cropped in KakaoTalk/Facebook previews
+      if (look.image_url) {
+        imageUrl = `${supabaseUrl}/functions/v1/og-image-gen?lookId=${lookId}`;
       }
 
       // Build description
