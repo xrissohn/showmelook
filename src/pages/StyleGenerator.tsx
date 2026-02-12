@@ -639,9 +639,9 @@ const shareToSNS = async (
         // 카카오톡 이미지: 원본 세로 이미지 그대로 사용 (카카오가 자체 크롭하지만 해상도가 높아 전신이 더 잘 보임)
         let kakaoImageUrl = imageUrl;
         
-        // 카카오톡 공유 URL - share-preview Edge Function 사용하여 크롤러가 OG 태그를 읽을 수 있도록
+        // 카카오톡 공유 URL - 실제 페이지 URL 사용 (SDK에서 이미지/제목을 직접 전달하므로 Edge Function 불필요)
         const kakaoShareUrl = lookId 
-          ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
+          ? `https://showmelook.com/look/${lookId}`
           : shareUrl;
         
         // 카카오톡 공유하기
