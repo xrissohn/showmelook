@@ -639,11 +639,9 @@ const shareToSNS = async (
         // 카카오톡 이미지: 원본 세로 이미지 그대로 사용 (카카오가 자체 크롭하지만 해상도가 높아 전신이 더 잘 보임)
         let kakaoImageUrl = imageUrl;
         
-        // 카카오톡 공유 URL - share-preview Edge Function 사용 (카카오 SDK에서 직접 경로 URL이 홈으로 리다이렉트되는 이슈 방지)
-        // Edge Function이 일반 유저를 /look/:lookId 페이지로 302 리다이렉트해줌
-        const kakaoShareUrl = lookId 
-          ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
-          : shareUrl;
+        // 카카오톡 공유 URL - 카카오 SDK는 등록된 도메인(showmelook.com)만 허용
+        // Edge Function URL(supabase.co 도메인)을 넣으면 홈페이지로 리다이렉트됨
+        const kakaoShareUrl = shareUrl; // shareUrl = showmelook.com/look/${lookId}
         
         // 카카오톡 공유하기
         Kakao.Share.sendDefault({
