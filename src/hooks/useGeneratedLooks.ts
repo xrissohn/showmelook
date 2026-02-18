@@ -7,12 +7,15 @@ interface GeneratedLook {
   image_url: string;
   prompt_used: string | null;
   is_favorite: boolean;
+  is_public: boolean;
   created_at: string;
   style_trend_id: string | null;
   product_ids: string[] | null;
   memo?: string | null;
   tags?: string[] | null;
   style_reasoning?: string | null;
+  like_count?: number;
+  caption?: string | null;
 }
 
 export function useGeneratedLooks() {
@@ -47,7 +50,7 @@ export function useGeneratedLooks() {
       // 1. Fetch all looks
       const { data: looksData, error: looksError } = await supabase
         .from('generated_looks')
-        .select('id, image_url, prompt_used, is_favorite, created_at, style_trend_id, product_ids, memo, tags')
+        .select('id, image_url, prompt_used, is_favorite, is_public, created_at, style_trend_id, product_ids, memo, tags, like_count, caption')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
