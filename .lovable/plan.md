@@ -1,73 +1,114 @@
 
 
-# 카카오톡 OG 이미지 크롭 문제 최종 해결
+# 경량 갤러리 (Strategy B) 구현 계획
 
-## 문제 원인
-카카오톡은 OG 이미지(1200x630)를 그대로 보여주지 않고, **중앙 기준으로 약 2:1 비율(~1200x400 영역)로 다시 크롭**합니다. 현재 세로형 인물 이미지가 캔버스 높이(630px)를 꽉 채우고 있어서, 크롭 후 위아래 약 115px씩 잘립니다.
+## 개요
+사용자가 자신의 AI 스타일링을 공개/비공개로 설정하고, 공개된 룩을 모든 사람이 탐색할 수 있는 경량 스타일 갤러리를 구현합니다. 댓글/팔로우 없이 **좋아요 + 구매 버튼**만 있는 심플한 구조입니다.
 
+**현재 상태:** `generated_looks` 테이블에 `is_public` 필드가 이미 존재하며, 265개 룩 중 225개가 이미 공개 상태입니다 (SNS 공유 시 자동 공개).
+
+---
+
+## 구현 항목
+
+### 1. DB 마이그레이션
+
+**새 테이블: `look_likes`**
+- `id` (uuid, PK)
+- `user_id` (uuid, NOT NULL)
+- `look_id` (uuid, NOT NULL, FK -> generated_looks)
+- `created_at` (timestamptz, default now())
+- UNIQUE(user_id, look_id) -- 중복 좋아요 방지
+
+**`generated_looks` 컬럼 추가:**
+- `like_count` (integer, default 0) -- 비정규화 카운트로 정렬 성능 확보
+- `view_count` (integer, default 0)
+- `caption` (text, nullable) -- 사용자 한마디
+
+**RLS 정책 (look_likes):**
+- SELECT: 모든 인증 사용자 허용
+- INSERT: `auth.uid() = user_id` (본인만)
+- DELETE: `auth.uid() = user_id` (좋아요 취소)
+
+---
+
+### 2. 새 파일 생성
+
+| 파일 | 역할 |
+|------|------|
+| `src/pages/Community.tsx` | 메인 피드 페이지 (/community) |
+| `src/components/community/LookCard.tsx` | 피드 카드 컴포넌트 |
+| `src/components/community/CommunityFilters.tsx` | 필터 바 (성별/스타일/정렬) |
+| `src/hooks/useCommunityFeed.ts` | 피드 데이터 fetching + 무한스크롤 |
+| `src/hooks/useLookLikes.ts` | 좋아요 토글 훅 |
+
+---
+
+### 3. /community 피드 페이지
+
+**레이아웃:**
+- 상단: 필터 바 (인기순/최신순 + 성별 필터)
+- 본문: 카드 그리드 (모바일 2열, 데스크톱 3~4열)
+- 무한 스크롤 (기존 `useInfiniteScroll` 훅 재활용)
+
+**LookCard 구성:**
+- AI 스타일 이미지 (aspect-ratio 3:4)
+- 좋아요 버튼 + 카운트 (하트 아이콘)
+- 스타일 태그 뱃지 (최대 3개)
+- 캡션 (있을 경우)
+- 클릭 시 `/look/:lookId` 상세 페이지로 이동 (기존 SharedLook 재활용)
+
+**데이터 쿼리:**
 ```text
-현재 (잘림 발생):
-+--------------------------------------------------+  1200x630
-|  ████████████  ← 카카오톡이 자르는 영역 (~115px)    |
-|  ██ 머리 ████                                      |
-|  ██████████████████████████████████████████████████ |
-|  ██  몸통  ██  ← 카카오톡이 보여주는 영역 (~400px)   |
-|  ██████████████████████████████████████████████████ |
-|  ██  발  ████                                      |
-|  ████████████  ← 카카오톡이 자르는 영역 (~115px)    |
-+--------------------------------------------------+
-
-개선 후 (전신 보임):
-+--------------------------------------------------+  1200x630
-|  배경 (여백)                                       |
-|  ████████████  ← 이미지가 안전 영역 안에 들어감      |
-|  ██ 전신  ██  ← 카카오톡 표시 영역 (~400px)         |
-|  ██ 이미지 ██                                      |
-|  ████████████                                      |
-|  배경 (여백)                                       |
-+--------------------------------------------------+
+generated_looks WHERE is_public = true
+ORDER BY like_count DESC (인기순) 또는 created_at DESC (최신순)
 ```
 
-## 해결 방법
+---
 
-### 1. `og-image-gen` Edge Function 수정
-- 이미지를 캔버스 전체(630px)가 아닌 **안전 영역(400px 높이)** 기준으로 축소
-- 안전 영역 안에서 수직 중앙 배치
-- 기존 캐시 무효화를 위해 캐시 경로에 버전 추가 (`og/v2/{lookId}.png`)
+### 4. StyleGenerator 공개/비공개 토글
 
-### 2. 캐시 무효화
-- 이전에 생성된 잘못된 OG 이미지 캐시가 남아있을 수 있으므로, 캐시 경로를 `og/v2/`로 변경하여 자동 무효화
+**갤러리 카드에 추가:**
+- 각 룩 카드에 공개/비공개 토글 아이콘 (잠금/지구 아이콘)
+- 토글 시 `is_public` 필드 업데이트
 
-## 기술 상세
+**생성 직후:**
+- 결과 화면에 "커뮤니티에 공개" 스위치 추가
+- 캡션 입력 필드 (선택사항)
 
-### og-image-gen 핵심 변경
+---
 
-```typescript
-const OG_WIDTH = 1200;
-const OG_HEIGHT = 630;
+### 5. 좋아요 기능 (useLookLikes 훅)
 
-// 카카오톡 안전 영역: 중앙 기준 약 400px 높이, 좌우 여백 고려
-const SAFE_WIDTH = 1000;
-const SAFE_HEIGHT = 400;
+**기능:**
+- 좋아요 토글 (INSERT/DELETE on look_likes)
+- 토글 시 `generated_looks.like_count` 동시 업데이트 (+1/-1)
+- 낙관적 업데이트 (즉시 UI 반영)
+- 로그인 안 된 경우 로그인 유도 토스트
 
-// 안전 영역 기준으로 contain-fit 계산
-const scale = Math.min(SAFE_WIDTH / original.width, SAFE_HEIGHT / original.height);
-const newW = Math.round(original.width * scale);
-const newH = Math.round(original.height * scale);
-const resized = original.resize(newW, newH);
+---
 
-// 캔버스 중앙에 배치 (안전 영역 안에 들어감)
-const offsetX = Math.round((OG_WIDTH - newW) / 2);
-const offsetY = Math.round((OG_HEIGHT - newH) / 2);
-canvas.composite(resized, offsetX, offsetY);
-```
+### 6. 네비게이션 메뉴 추가
 
-### 수정 파일
-| 파일 | 변경 내용 |
-|------|----------|
-| `supabase/functions/og-image-gen/index.ts` | 안전 영역(1000x400) 기준 축소 + 캐시 경로 v2로 변경 |
+- **데스크톱:** "스타일 갤러리" 버튼 추가 (요금제 옆)
+- **모바일 햄버거 메뉴:** "스타일 갤러리" 항목 추가 (스타일 만들기 아래)
 
-### 결과 예상
-- 세로형(3:4) 인물 사진이 400px 높이로 축소되어 배경 여백과 함께 배치
-- 카카오톡이 중앙 크롭해도 전신이 안전 영역 안에 있으므로 잘리지 않음
-- 이미지가 약간 작아지지만, 전신이 온전히 보이는 것이 더 중요
+---
+
+### 7. 라우팅 추가
+
+`App.tsx`에 `/community` 라우트 추가 (lazy import)
+
+---
+
+## 구현 순서
+
+1. DB 마이그레이션 (look_likes 테이블 + generated_looks 컬럼 추가 + RLS)
+2. `useLookLikes.ts` 훅 생성
+3. `useCommunityFeed.ts` 훅 생성
+4. `LookCard.tsx` + `CommunityFilters.tsx` 컴포넌트 생성
+5. `Community.tsx` 페이지 생성
+6. `App.tsx` 라우트 추가
+7. `MainNavigation.tsx` 메뉴 추가
+8. `StyleGenerator.tsx`에 공개/비공개 토글 + 캡션 입력 추가
+
