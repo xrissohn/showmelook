@@ -1,14 +1,19 @@
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, useState } from 'react';
 import { useCommunityFeed } from '@/hooks/useCommunityFeed';
+import { useGalleryUsers } from '@/hooks/useGalleryUsers';
 import { useLookLikes } from '@/hooks/useLookLikes';
 import LookCard from '@/components/community/LookCard';
+import GalleryUserCard from '@/components/community/GalleryUserCard';
 import CommunityFilters from '@/components/community/CommunityFilters';
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
-import { Loader2, Images } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Loader2, Images, LayoutGrid } from 'lucide-react';
 
 const Community = () => {
+  const [activeTab, setActiveTab] = useState('photos');
   const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount } = useCommunityFeed();
+  const { users, isLoading: galleryLoading } = useGalleryUsers();
   const lookIds = useMemo(() => looks.map(l => l.id), [looks]);
   const { likedLookIds, toggleLike } = useLookLikes(lookIds);
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -16,7 +21,7 @@ const Community = () => {
   // Intersection observer for infinite scroll
   useEffect(() => {
     const el = loadMoreRef.current;
-    if (!el || !hasMore) return;
+    if (!el || !hasMore || activeTab !== 'photos') return;
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -26,7 +31,7 @@ const Community = () => {
     );
     observer.observe(el);
     return () => observer.unobserve(el);
-  }, [hasMore, loadMore]);
+  }, [hasMore, loadMore, activeTab]);
 
   const handleToggleLike = async (lookId: string, currentCount: number) => {
     const result = await toggleLike(lookId, currentCount);
@@ -48,7 +53,7 @@ const Community = () => {
       <main className="min-h-screen bg-background pt-16 sm:pt-20">
         <div className="container mx-auto px-3 sm:px-6 py-6">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground flex items-center gap-2">
                 <Images className="w-6 h-6 text-primary" />
@@ -58,48 +63,87 @@ const Community = () => {
                 다른 사람들의 AI 스타일을 구경해보세요
               </p>
             </div>
-            <CommunityFilters sortBy={sortBy} onSortChange={setSortBy} />
+            {activeTab === 'photos' && (
+              <CommunityFilters sortBy={sortBy} onSortChange={setSortBy} />
+            )}
           </div>
 
-          {/* Grid */}
-          {isLoading && looks.length === 0 ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : looks.length === 0 ? (
-            <div className="text-center py-20">
-              <Images className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
-              <p className="text-lg text-muted-foreground font-korean">
-                아직 공개된 스타일이 없습니다
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {looks.map((look) => (
-                <LookCard
-                  key={look.id}
-                  look={look}
-                  isLiked={likedLookIds.has(look.id)}
-                  onToggleLike={handleToggleLike}
-                />
-              ))}
-            </div>
-          )}
+          {/* Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+            <TabsList>
+              <TabsTrigger value="photos" className="font-korean text-xs sm:text-sm gap-1.5">
+                <Images className="w-4 h-4" />
+                사진별
+              </TabsTrigger>
+              <TabsTrigger value="galleries" className="font-korean text-xs sm:text-sm gap-1.5">
+                <LayoutGrid className="w-4 h-4" />
+                갤러리별
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Load more trigger */}
-          {hasMore && (
-            <div ref={loadMoreRef} className="flex justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
+            {/* Photos tab */}
+            <TabsContent value="photos">
+              {isLoading && looks.length === 0 ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : looks.length === 0 ? (
+                <div className="text-center py-20">
+                  <Images className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+                  <p className="text-lg text-muted-foreground font-korean">
+                    아직 공개된 스타일이 없습니다
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                  {looks.map((look) => (
+                    <LookCard
+                      key={look.id}
+                      look={look}
+                      isLiked={likedLookIds.has(look.id)}
+                      onToggleLike={handleToggleLike}
+                    />
+                  ))}
+                </div>
+              )}
 
-          {!hasMore && looks.length > 0 && (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground font-korean">
-                모든 스타일을 불러왔습니다 ✨
-              </p>
-            </div>
-          )}
+              {hasMore && (
+                <div ref={loadMoreRef} className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+
+              {!hasMore && looks.length > 0 && (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground font-korean">
+                    모든 스타일을 불러왔습니다 ✨
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Galleries tab */}
+            <TabsContent value="galleries">
+              {galleryLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : users.length === 0 ? (
+                <div className="text-center py-20">
+                  <LayoutGrid className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
+                  <p className="text-lg text-muted-foreground font-korean">
+                    아직 갤러리가 없습니다
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {users.map((user) => (
+                    <GalleryUserCard key={user.user_id} user={user} />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </>

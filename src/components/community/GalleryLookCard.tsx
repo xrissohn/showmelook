@@ -1,64 +1,71 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Heart, Globe, Lock } from 'lucide-react';
 import { LazyImage } from '@/components/LazyImage';
-import type { CommunityLook } from '@/hooks/useCommunityFeed';
+import type { GalleryLook } from '@/hooks/useUserGallery';
 
-interface LookCardProps {
-  look: CommunityLook;
-  isLiked: boolean;
-  onToggleLike: (lookId: string, currentCount: number) => void;
+interface GalleryLookCardProps {
+  look: GalleryLook;
+  isOwner: boolean;
+  isLiked?: boolean;
+  onToggleLike?: (lookId: string, currentCount: number) => void;
+  onTogglePublic?: (lookId: string, currentPublic: boolean) => void;
 }
 
-const LookCard = ({ look, isLiked, onToggleLike }: LookCardProps) => {
+const GalleryLookCard = ({
+  look,
+  isOwner,
+  isLiked = false,
+  onToggleLike,
+  onTogglePublic,
+}: GalleryLookCardProps) => {
   const navigate = useNavigate();
   const [animating, setAnimating] = useState(false);
 
   const handleLike = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!onToggleLike) return;
     setAnimating(true);
     onToggleLike(look.id, look.like_count);
     setTimeout(() => setAnimating(false), 300);
   };
 
-  const handleUserClick = (e: React.MouseEvent) => {
+  const handleTogglePublic = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/gallery/${look.user_id}`);
+    onTogglePublic?.(look.id, look.is_public);
   };
-
-  const displayName = look.user_name || '스타일리스트';
 
   return (
     <div
-      className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+      className={`group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+        !look.is_public && isOwner ? 'opacity-60' : ''
+      }`}
       onClick={() => navigate(`/look/${look.id}`)}
     >
       <LazyImage
         src={look.image_url}
-        alt="Community look"
+        alt="Gallery look"
         className="w-full h-full object-cover"
         fallbackClassName="w-full h-full"
       />
 
-      {/* User info overlay - top left */}
-      <button
-        onClick={handleUserClick}
-        className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 transition-colors hover:bg-black/60 z-10"
-      >
-        <Avatar className="w-5 h-5">
-          <AvatarImage src={look.user_avatar || undefined} alt={displayName} />
-          <AvatarFallback className="text-[8px] bg-primary/20 text-primary-foreground">
-            {displayName.charAt(0)}
-          </AvatarFallback>
-        </Avatar>
-        <span className="text-white text-[10px] sm:text-xs font-medium truncate max-w-[80px]">
-          {displayName}
-        </span>
-      </button>
-
-      {/* Bottom gradient overlay */}
+      {/* Bottom gradient */}
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+
+      {/* Public/Private toggle (owner only) */}
+      {isOwner && (
+        <button
+          onClick={handleTogglePublic}
+          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/40 backdrop-blur-sm transition-colors hover:bg-black/60"
+          title={look.is_public ? '공개 중' : '비공개'}
+        >
+          {look.is_public ? (
+            <Globe className="w-4 h-4 text-emerald-400" />
+          ) : (
+            <Lock className="w-4 h-4 text-amber-400" />
+          )}
+        </button>
+      )}
 
       {/* Like button */}
       <button
@@ -88,15 +95,8 @@ const LookCard = ({ look, isLiked, onToggleLike }: LookCardProps) => {
           ))}
         </div>
       )}
-
-      {/* Caption on hover */}
-      {look.caption && (
-        <div className="absolute inset-x-0 bottom-0 p-3 pb-10 opacity-0 group-hover:opacity-100 transition-opacity">
-          <p className="text-white text-xs font-korean line-clamp-2">{look.caption}</p>
-        </div>
-      )}
     </div>
   );
 };
 
-export default LookCard;
+export default GalleryLookCard;

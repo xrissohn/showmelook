@@ -14,6 +14,8 @@ export interface CommunityLook {
   created_at: string;
   user_id: string;
   prompt_used: string | null;
+  user_name?: string | null;
+  user_avatar?: string | null;
 }
 
 const PAGE_SIZE = 20;
@@ -24,6 +26,32 @@ export function useCommunityFeed() {
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+
+  const enrichWithProfiles = useCallback(async (rawLooks: CommunityLook[]): Promise<CommunityLook[]> => {
+    const uniqueIds = [...new Set(rawLooks.map((l) => l.user_id))];
+    if (uniqueIds.length === 0) return rawLooks;
+
+    const { data: profiles } = await supabase
+      .from('profiles_public' as any)
+      .select('user_id, full_name, avatar_url')
+      .in('user_id', uniqueIds);
+
+    const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
+    if (profiles) {
+      for (const p of profiles as any[]) {
+        profileMap.set(p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url });
+      }
+    }
+
+    return rawLooks.map((look) => {
+      const profile = profileMap.get(look.user_id);
+      return {
+        ...look,
+        user_name: profile?.full_name ?? null,
+        user_avatar: profile?.avatar_url ?? null,
+      };
+    });
+  }, []);
 
   const fetchLooks = useCallback(async (reset = false) => {
     const currentPage = reset ? 0 : page;
@@ -47,20 +75,20 @@ export function useCommunityFeed() {
     }
 
     if (data) {
+      const enriched = await enrichWithProfiles(data as CommunityLook[]);
       if (reset) {
-        setLooks(data as CommunityLook[]);
+        setLooks(enriched);
         setPage(1);
       } else {
-        setLooks(prev => [...prev, ...(data as CommunityLook[])]);
+        setLooks(prev => [...prev, ...enriched]);
         setPage(prev => prev + 1);
       }
       setHasMore(data.length === PAGE_SIZE);
     }
 
     setIsLoading(false);
-  }, [sortBy, page]);
+  }, [sortBy, page, enrichWithProfiles]);
 
-  // Initial load & sort change
   useEffect(() => {
     fetchLooks(true);
   }, [sortBy]);

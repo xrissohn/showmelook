@@ -1633,6 +1633,24 @@ export type Database = {
       }
     }
     Views: {
+      profiles_public: {
+        Row: {
+          avatar_url: string | null
+          full_name: string | null
+          user_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          full_name?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          full_name?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       referral_codes_public: {
         Row: {
           code: string | null
