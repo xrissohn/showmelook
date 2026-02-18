@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/ui/tier-badge';
-import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown } from 'lucide-react';
+import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown, Images } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
@@ -111,6 +111,17 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
             <>
               {/* Desktop Navigation - Only on lg (1024px+) */}
               <div className="hidden lg:flex items-center gap-3">
+                {/* 스타일 갤러리 */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/community')} 
+                  className="font-korean text-sm px-3"
+                >
+                  <Images className="w-4 h-4 mr-1" />
+                  스타일 갤러리
+                </Button>
+                
                 {/* 요금제 */}
                 <Button 
                   variant="ghost" 
@@ -238,11 +249,11 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               내 스타일 만들기
                             </button>
                             <button
-                              onClick={() => handleNavigate('/style')}
-                              className={getMenuItemClass('/style')}
+                              onClick={() => handleNavigate('/community')}
+                              className={getMenuItemClass('/community')}
                             >
-                              <ImageIcon className={`w-5 h-5 ${isActive('/style') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              내 룩 갤러리
+                              <Images className={`w-5 h-5 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
+                              스타일 갤러리
                             </button>
                             <button
                               onClick={() => handleNavigate('/cart')}

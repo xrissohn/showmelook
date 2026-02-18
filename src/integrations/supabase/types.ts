@@ -466,11 +466,13 @@ export type Database = {
       }
       generated_looks: {
         Row: {
+          caption: string | null
           created_at: string
           id: string
           image_url: string
           is_favorite: boolean | null
           is_public: boolean | null
+          like_count: number
           memo: string | null
           product_ids: string[] | null
           prompt_used: string | null
@@ -478,13 +480,16 @@ export type Database = {
           style_trend_id: string | null
           tags: string[] | null
           user_id: string
+          view_count: number
         }
         Insert: {
+          caption?: string | null
           created_at?: string
           id?: string
           image_url: string
           is_favorite?: boolean | null
           is_public?: boolean | null
+          like_count?: number
           memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
@@ -492,13 +497,16 @@ export type Database = {
           style_trend_id?: string | null
           tags?: string[] | null
           user_id: string
+          view_count?: number
         }
         Update: {
+          caption?: string | null
           created_at?: string
           id?: string
           image_url?: string
           is_favorite?: boolean | null
           is_public?: boolean | null
+          like_count?: number
           memo?: string | null
           product_ids?: string[] | null
           prompt_used?: string | null
@@ -506,6 +514,7 @@ export type Database = {
           style_trend_id?: string | null
           tags?: string[] | null
           user_id?: string
+          view_count?: number
         }
         Relationships: [
           {
@@ -663,6 +672,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      look_likes: {
+        Row: {
+          created_at: string
+          id: string
+          look_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          look_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          look_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "look_likes_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "generated_looks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       merchants: {
         Row: {

@@ -15,7 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
-import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle } from 'lucide-react';
+import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { TIER_CONFIG } from '@/lib/tierConfig';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
@@ -81,6 +81,7 @@ interface GeneratedLook {
   id: string;
   image_url: string;
   is_favorite: boolean;
+  is_public?: boolean;
   created_at: string;
   memo?: string | null;
   tags?: string[] | null;
@@ -88,6 +89,8 @@ interface GeneratedLook {
   style_trend_id?: string | null;
   product_ids?: string[] | null;
   style_reasoning?: string | null;
+  like_count?: number;
+  caption?: string | null;
 }
 
 interface UserProfile {
@@ -1637,6 +1640,29 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     }
   };
 
+  // 공개/비공개 토글
+  const togglePublic = async (look: GeneratedLook, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const newPublic = !look.is_public;
+    const { error } = await supabase
+      .from('generated_looks')
+      .update({ is_public: newPublic })
+      .eq('id', look.id);
+    
+    if (!error) {
+      setMyLooks(prev => prev.map(l => 
+        l.id === look.id ? { ...l, is_public: newPublic } : l
+      ));
+      if (selectedLook?.id === look.id) {
+        setSelectedLook({ ...look, is_public: newPublic });
+      }
+      toast({
+        title: newPublic ? '갤러리에 공개됨' : '비공개로 전환',
+        description: newPublic ? '이 룩이 스타일 갤러리에 공개됩니다.' : '이 룩이 비공개로 전환되었습니다.',
+      });
+    }
+  };
+
   if (myLooks.length === 0) {
     return (
       <div className="text-center py-20">
@@ -1792,6 +1818,22 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 <div className="absolute top-3 left-3">
                   <Heart className="w-5 h-5 fill-accent text-accent drop-shadow-md" />
                 </div>
+              )}
+              
+              {/* 공개/비공개 표시 */}
+              {!isSelectMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePublic(look);
+                  }}
+                  className={`absolute top-3 ${look.is_favorite ? 'left-10' : 'left-3'} w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                    look.is_public ? 'bg-primary/80 text-primary-foreground' : 'bg-black/40 text-white/70'
+                  } backdrop-blur-sm`}
+                  title={look.is_public ? '공개 중 (클릭하여 비공개로 변경)' : '비공개 (클릭하여 공개로 변경)'}
+                >
+                  {look.is_public ? <Globe className="w-3.5 h-3.5" /> : <LockKeyhole className="w-3.5 h-3.5" />}
+                </button>
               )}
               
               {/* 태그 표시 */}
