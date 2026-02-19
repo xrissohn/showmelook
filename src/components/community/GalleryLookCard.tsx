@@ -56,7 +56,7 @@ const GalleryLookCard = ({
       {isOwner && (
         <button
           onClick={handleTogglePublic}
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-black/40 backdrop-blur-sm transition-colors hover:bg-black/60"
+          className="absolute top-2 right-2 z-20 p-1.5 rounded-full bg-black/40 backdrop-blur-sm transition-colors hover:bg-black/60"
           title={look.is_public ? '공개 중' : '비공개'}
         >
           {look.is_public ? (
