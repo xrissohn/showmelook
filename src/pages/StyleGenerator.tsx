@@ -2584,6 +2584,7 @@ const StyleGenerator = () => {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedLookId, setGeneratedLookId] = useState<string | null>(null);
+  const [generatedLookIsPublic, setGeneratedLookIsPublic] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
@@ -5582,9 +5583,41 @@ const StyleGenerator = () => {
                   )}
                 </div>
                 
-                {/* 다른 스타일 시도하기 버튼 - 생성 완료 후 표시 */}
+                {/* 커뮤니티 공개 토글 + 다른 스타일 시도하기 버튼 */}
                 {generatedImage && !isGenerating && (
-                  <div className="mt-4 flex justify-center">
+                  <div className="mt-4 flex flex-col items-center gap-3">
+                    {/* 커뮤니티 공개 토글 */}
+                    {generatedLookId && (
+                      <button
+                        onClick={async () => {
+                          const newPublic = !generatedLookIsPublic;
+                          setGeneratedLookIsPublic(newPublic);
+                          const { error } = await supabase
+                            .from('generated_looks')
+                            .update({ is_public: newPublic })
+                            .eq('id', generatedLookId);
+                          if (error) {
+                            setGeneratedLookIsPublic(!newPublic);
+                            toast({ title: '변경 실패', description: '다시 시도해주세요.', variant: 'destructive' });
+                          } else {
+                            // 로컬 myLooks 동기화
+                            setMyLooks(prev => prev.map(l => l.id === generatedLookId ? { ...l, is_public: newPublic } : l));
+                            toast({
+                              title: newPublic ? '커뮤니티에 공개됨 🌐' : '비공개로 전환됨 🔒',
+                              description: newPublic ? '스타일 갤러리에서 다른 사람들이 볼 수 있어요.' : '나만 볼 수 있는 비공개 상태입니다.',
+                            });
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-korean transition-all ${
+                          generatedLookIsPublic
+                            ? 'bg-primary/10 text-primary border border-primary/30'
+                            : 'bg-secondary text-muted-foreground border border-border'
+                        }`}
+                      >
+                        {generatedLookIsPublic ? <Globe className="w-4 h-4" /> : <LockKeyhole className="w-4 h-4" />}
+                        {generatedLookIsPublic ? '커뮤니티 공개 중' : '비공개 (커뮤니티에 공개하기)'}
+                      </button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -5596,6 +5629,7 @@ const StyleGenerator = () => {
                         setFeedbackGiven(null);
                         setGeneratedImage('');
                         setGeneratedLookId(null);
+                        setGeneratedLookIsPublic(false);
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
