@@ -626,6 +626,9 @@ const Landing = () => {
         </div>
       </ScrollSection>
 
+      {/* Style Gallery Preview */}
+      <GalleryPreviewSection />
+
       {/* Pricing Section */}
       <ScrollSection className="py-16 sm:py-24 px-4 sm:px-6 bg-muted/30 relative overflow-hidden" delay={100}>
         <div id="pricing" className="absolute -top-20" />
@@ -755,8 +758,6 @@ const Landing = () => {
         </div>
       </ScrollSection>
 
-      {/* Style Gallery Preview */}
-      <GalleryPreviewSection />
 
       {/* CTA Section */}
       <CTASection handleGetStarted={handleGetStarted} />
