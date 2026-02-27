@@ -50,6 +50,8 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
   const [processResults, setProcessResults] = useState<{ success: number; failed: number; skipped: number; errors: string[] }>({ success: 0, failed: 0, skipped: 0, errors: [] });
   const [isBatchReprocessing, setIsBatchReprocessing] = useState(false);
   const [batchReprocessProgress, setBatchReprocessProgress] = useState({ current: 0, total: 0, success: 0, failed: 0, skipped: 0 });
+  const [sourcePages, setSourcePages] = useState<Record<string, number>>({});
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     loadData();
@@ -590,89 +592,134 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
               </div>
             </div>
             
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[250px]">상품명</TableHead>
-                    <TableHead className="w-[100px]">에러 타입</TableHead>
-                    <TableHead className="w-[150px]">머천트 수정</TableHead>
-                    <TableHead className="w-[100px]">가격</TableHead>
-                    <TableHead className="w-[120px]">액션</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sourceProducts.slice(0, 20).map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">
-                        <div className="truncate max-w-[230px]" title={product.raw_data.name}>
-                          {product.raw_data.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate max-w-[230px]">
-                          {product.error_message}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={product.error_type === 'invalid_merchant' ? 'destructive' : 'secondary'}
-                          className="text-xs"
+            {(() => {
+              const currentPage = sourcePages[source] || 0;
+              const totalPages = Math.ceil(sourceProducts.length / PAGE_SIZE);
+              const pagedProducts = sourceProducts.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+              
+              return (
+                <>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[250px]">상품명</TableHead>
+                          <TableHead className="w-[100px]">에러 타입</TableHead>
+                          <TableHead className="w-[150px]">머천트 수정</TableHead>
+                          <TableHead className="w-[100px]">가격</TableHead>
+                          <TableHead className="w-[120px]">액션</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {pagedProducts.map((product) => (
+                          <TableRow key={product.id}>
+                            <TableCell className="font-medium">
+                              <div className="truncate max-w-[230px]" title={product.raw_data.name}>
+                                {product.raw_data.name}
+                              </div>
+                              <div className="text-xs text-muted-foreground truncate max-w-[230px]">
+                                {product.error_message}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={product.error_type === 'invalid_merchant' ? 'destructive' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {product.error_type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Select 
+                                value={selectedMerchantFix[product.id] || ''} 
+                                onValueChange={(value) => handleMerchantChange(product.id, value)}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue placeholder="머천트 선택" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {merchants.map(m => (
+                                    <SelectItem key={m.id} value={m.id}>
+                                      {m.name_ko} ({m.id})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              ₩{product.raw_data.price?.toLocaleString() || 0}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(product.raw_data.product_url, '_blank')}
+                                  title="상품 페이지 열기"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deletePendingItem(product.id)}
+                                  className="text-destructive hover:text-destructive"
+                                  title="삭제"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-sm text-muted-foreground">
+                        {currentPage * PAGE_SIZE + 1}-{Math.min((currentPage + 1) * PAGE_SIZE, sourceProducts.length)} / {sourceProducts.length}개
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage === 0}
+                          onClick={() => setSourcePages(prev => ({ ...prev, [source]: currentPage - 1 }))}
                         >
-                          {product.error_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Select 
-                          value={selectedMerchantFix[product.id] || ''} 
-                          onValueChange={(value) => handleMerchantChange(product.id, value)}
+                          이전
+                        </Button>
+                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                          const startPage = Math.max(0, Math.min(currentPage - 2, totalPages - 5));
+                          const page = startPage + i;
+                          if (page >= totalPages) return null;
+                          return (
+                            <Button
+                              key={page}
+                              variant={page === currentPage ? "default" : "outline"}
+                              size="sm"
+                              className="w-8 h-8 p-0"
+                              onClick={() => setSourcePages(prev => ({ ...prev, [source]: page }))}
+                            >
+                              {page + 1}
+                            </Button>
+                          );
+                        })}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={currentPage >= totalPages - 1}
+                          onClick={() => setSourcePages(prev => ({ ...prev, [source]: currentPage + 1 }))}
                         >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue placeholder="머천트 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {merchants.map(m => (
-                              <SelectItem key={m.id} value={m.id}>
-                                {m.name_ko} ({m.id})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-sm">
-                        ₩{product.raw_data.price?.toLocaleString() || 0}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(product.raw_data.product_url, '_blank')}
-                            title="상품 페이지 열기"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deletePendingItem(product.id)}
-                            className="text-destructive hover:text-destructive"
-                            title="삭제"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {sourceProducts.length > 20 && (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-2">
-                        ... 외 {sourceProducts.length - 20}개 더 있음
-                      </TableCell>
-                    </TableRow>
+                          다음
+                        </Button>
+                      </div>
+                    </div>
                   )}
-                </TableBody>
-              </Table>
-            </div>
+                </>
+              );
+            })()}
           </div>
         ))}
 
