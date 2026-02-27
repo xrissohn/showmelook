@@ -327,15 +327,59 @@ serve(async (req) => {
       });
     }
 
+    // 중복 사전 필터링: 이미 products_cache에 있는 URL 제거
+    // Supabase .in()은 최대 100개까지이므로 배치 처리
+    const existingUrlSet = new Set<string>();
+    const allUrls = transformedProducts.map(p => p.product_url);
+    
+    for (let i = 0; i < allUrls.length; i += 100) {
+      const urlBatch = allUrls.slice(i, i + 100);
+      const { data: existingProducts } = await supabase
+        .from('products_cache')
+        .select('product_url')
+        .in('product_url', urlBatch);
+      
+      if (existingProducts) {
+        for (const p of existingProducts) {
+          existingUrlSet.add(p.product_url);
+        }
+      }
+    }
+    
+    const newProducts: ProductInput[] = [];
+    let duplicateSkipped = 0;
+
+    for (const product of transformedProducts) {
+      if (existingUrlSet.has(product.product_url)) {
+        duplicateSkipped++;
+      } else {
+        newProducts.push(product);
+      }
+    }
+
+    console.log('New products:', newProducts.length, 'Duplicate skipped:', duplicateSkipped);
+
+    if (newProducts.length === 0) {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'All products already registered or invalid',
+        received: products.length,
+        skipped,
+        duplicateSkipped,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // register-product Edge Function 호출 (배치 처리)
     const BATCH_SIZE = 10;
     let successCount = 0;
     let failedCount = 0;
     const failedProducts: Array<{ product: ProductInput; error: string }> = [];
 
-    for (let i = 0; i < transformedProducts.length; i += BATCH_SIZE) {
-      const batch = transformedProducts.slice(i, i + BATCH_SIZE);
-      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(transformedProducts.length / BATCH_SIZE)}`);
+    for (let i = 0; i < newProducts.length; i += BATCH_SIZE) {
+      const batch = newProducts.slice(i, i + BATCH_SIZE);
+      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(newProducts.length / BATCH_SIZE)}`);
 
       try {
         const response = await fetch(`${supabaseUrl}/functions/v1/register-product`, {
@@ -386,16 +430,20 @@ serve(async (req) => {
       }
 
       // 배치 간 딜레이 (rate limit 방지)
-      if (i + BATCH_SIZE < transformedProducts.length) {
+      if (i + BATCH_SIZE < newProducts.length) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
 
-    // 실패한 제품들을 pending_products에 저장
-    if (failedProducts.length > 0) {
-      console.log(`Saving ${failedProducts.length} failed products to pending_products`);
+    // 실패한 제품들 중 중복이 아닌 것만 pending_products에 저장
+    const nonDuplicateFailures = failedProducts.filter(fp => 
+      !fp.error.includes('중복') && !fp.error.includes('duplicate') && !fp.error.includes('이미 등록')
+    );
+    
+    if (nonDuplicateFailures.length > 0) {
+      console.log(`Saving ${nonDuplicateFailures.length} non-duplicate failed products to pending_products`);
       
-      const pendingRecords = failedProducts.map(fp => ({
+      const pendingRecords = nonDuplicateFailures.map(fp => ({
         source: 'brightdata',
         raw_data: fp.product,
         error_type: fp.error.includes('image') ? 'image_failed' : 
@@ -417,9 +465,11 @@ serve(async (req) => {
       received: products.length,
       transformed: transformedProducts.length,
       skipped,
+      duplicateSkipped,
+      newProcessed: newProducts.length,
       registered: successCount,
       failed: failedCount,
-      pendingSaved: failedProducts.length,
+      pendingSaved: nonDuplicateFailures.length,
       timestamp: new Date().toISOString(),
     };
 

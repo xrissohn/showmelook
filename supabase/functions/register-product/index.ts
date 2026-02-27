@@ -675,6 +675,8 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
         dna_generated: false,
         error: `이미 등록된 제품입니다 (URL 중복): ${existingByUrl.name}`,
         step_failed: 'upsert',
+        duplicate: true,
+        product_url: product.product_url,
       };
     }
     
@@ -695,6 +697,8 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
           dna_generated: false,
           error: `이미 등록된 제품입니다 (ID 중복): ${existingByExtId.name}`,
           step_failed: 'upsert',
+          duplicate: true,
+          product_url: product.product_url,
         };
       }
     }
@@ -741,6 +745,8 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
         dna_generated: false,
         error: `이미 등록된 제품입니다 (제약조건 위반)`,
         step_failed: 'upsert',
+        duplicate: true,
+        product_url: product.product_url,
       };
     }
     
