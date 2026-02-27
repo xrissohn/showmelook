@@ -1827,9 +1827,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     e.stopPropagation();
                     togglePublic(look);
                   }}
-                  className={`absolute top-3 ${look.is_favorite ? 'left-10' : 'left-3'} w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                  className={`absolute top-3 ${look.is_favorite ? 'left-10' : 'left-3'} z-10 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                     look.is_public ? 'bg-primary/80 text-primary-foreground' : 'bg-black/40 text-white/70'
-                  } backdrop-blur-sm`}
+                  } backdrop-blur-sm hover:scale-110`}
                   title={look.is_public ? '공개 중 (클릭하여 비공개로 변경)' : '비공개 (클릭하여 공개로 변경)'}
                 >
                   {look.is_public ? <Globe className="w-3.5 h-3.5" /> : <LockKeyhole className="w-3.5 h-3.5" />}
