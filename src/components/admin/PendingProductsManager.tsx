@@ -35,7 +35,11 @@ interface Merchant {
   name_ko: string;
 }
 
-const PendingProductsManager = () => {
+interface PendingProductsManagerProps {
+  onStatsUpdate?: () => void;
+}
+
+const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) => {
   const { toast } = useToast();
   const [pendingProducts, setPendingProducts] = useState<PendingProduct[]>([]);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
@@ -201,6 +205,7 @@ const PendingProductsManager = () => {
     // Reload list
     if (success > 0) {
       loadData();
+      onStatsUpdate?.();
     }
   };
 
@@ -400,6 +405,7 @@ const PendingProductsManager = () => {
       });
 
       loadData();
+      onStatsUpdate?.();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({ title: "배치 재처리 실패", description: errorMessage, variant: "destructive" });

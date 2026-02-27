@@ -1650,7 +1650,7 @@ const Admin = () => {
 
           {/* Pending Products Tab (머천트/기타 에러) */}
           <TabsContent value="pending" className="space-y-4">
-            <PendingProductsManager />
+            <PendingProductsManager onStatsUpdate={() => { loadProductStats(); loadPendingCount(); }} />
           </TabsContent>
 
           {/* DNA Management Tab */}
