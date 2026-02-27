@@ -539,6 +539,28 @@ const Admin = () => {
     }
   };
 
+  const handleDownloadProductTemplate = () => {
+    try {
+      const csvContent = `\uFEFFname,product_url,price,category,merchant_id,image_url,brand,original_price,gender,color,sub_category,style_tags,sizes,external_id\n"나이키 에어포스 1 '07","https://www.musinsa.com/app/goods/example1",139000,"신발","musinsa","https://image.musinsa.com/example1.jpg","Nike",159000,"unisex","white","스니커즈","캐주얼,스트릿","250,260,270,280","NIKE-AF1-07"`;
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = "product-upload-template.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(blobUrl);
+      toast({ title: "다운로드 시작", description: "엑셀 템플릿 저장 창이 열렸습니다." });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast({ title: "다운로드 실패", description: errorMessage, variant: "destructive" });
+    }
+  };
+
   const handleExcelUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -1451,14 +1473,15 @@ const Admin = () => {
                       onChange={handleExcelUpload}
                       className="max-w-md"
                     />
-                    <a
-                      href="/templates/product-upload-template.csv"
-                      download="product-upload-template.csv"
-                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors whitespace-nowrap"
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleDownloadProductTemplate}
+                      className="whitespace-nowrap"
                     >
                       <FileSpreadsheet className="w-4 h-4" />
                       템플릿 다운로드
-                    </a>
+                    </Button>
                   </div>
                   {excelFileNames.length > 0 && (
                     <div className="text-sm text-muted-foreground space-y-1">
