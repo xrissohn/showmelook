@@ -12,6 +12,8 @@ export interface GalleryLook {
   created_at: string;
   is_public: boolean;
   prompt_used: string | null;
+  product_ids: string[] | null;
+  style_reasoning: string | null;
 }
 
 export interface UserGalleryData {
@@ -46,7 +48,7 @@ export function useUserGallery(userId: string | undefined) {
     // Fetch looks - RLS handles visibility (public OR own)
     const { data: looks, error } = await supabase
       .from('generated_looks')
-      .select('id, image_url, like_count, view_count, caption, tags, created_at, is_public, prompt_used')
+      .select('id, image_url, like_count, view_count, caption, tags, created_at, is_public, prompt_used, product_ids, style_reasoning')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 

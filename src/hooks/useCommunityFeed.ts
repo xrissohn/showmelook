@@ -14,6 +14,8 @@ export interface CommunityLook {
   created_at: string;
   user_id: string;
   prompt_used: string | null;
+  product_ids: string[] | null;
+  style_reasoning: string | null;
   user_name?: string | null;
   user_avatar?: string | null;
 }
@@ -63,7 +65,7 @@ export function useCommunityFeed() {
 
     const { data, error } = await supabase
       .from('generated_looks')
-      .select('id, image_url, like_count, view_count, caption, tags, created_at, user_id, prompt_used')
+      .select('id, image_url, like_count, view_count, caption, tags, created_at, user_id, prompt_used, product_ids, style_reasoning')
       .eq('is_public', true)
       .order(orderColumn, { ascending: false })
       .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
