@@ -169,14 +169,12 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
 
         // Check if first result in array succeeded
         const result = data?.results?.[0];
-        if (result?.success) {
-          // Mark as resolved
+        const isDuplicate = result?.duplicate || (result?.error && (result.error.includes('중복') || result.error.includes('duplicate') || result.error.includes('이미 등록')));
+        if (result?.success || isDuplicate) {
+          // 성공 또는 중복 → 대기열에서 삭제
           await supabase
             .from('pending_products')
-            .update({ 
-              resolved_at: new Date().toISOString(),
-              resolved_by: 'admin_manual'
-            })
+            .delete()
             .eq('id', pending.id);
           
           success++;
@@ -363,7 +361,8 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
             if (data?.results) {
               for (let j = 0; j < data.results.length; j++) {
                 const r = data.results[j];
-                if (r.success || r.duplicate) {
+                const isDuplicate = r.duplicate || (r.error && (r.error.includes('중복') || r.error.includes('duplicate') || r.error.includes('이미 등록')));
+                if (r.success || isDuplicate) {
                   success++;
                   // 중복이면 아예 삭제, 성공이면 resolved 마킹
                   if (r.duplicate) {
