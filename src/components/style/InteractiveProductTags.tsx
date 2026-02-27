@@ -31,19 +31,21 @@ interface AIAnalyzedPosition {
 
 // 카테고리별 기본 위치 (이미지 내 상대 위치 %)
 const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
-  'top': { x: 50, y: 25, category: 'top' },
-  '상의': { x: 50, y: 25, category: '상의' },
-  'outer': { x: 50, y: 20, category: 'outer' },
-  '아우터': { x: 50, y: 20, category: '아우터' },
-  'bottom': { x: 50, y: 60, category: 'bottom' },
-  '하의': { x: 50, y: 60, category: '하의' },
+  'top': { x: 50, y: 30, category: 'top' },
+  '상의': { x: 50, y: 30, category: '상의' },
+  'outer': { x: 50, y: 28, category: 'outer' },
+  '아우터': { x: 50, y: 28, category: '아우터' },
+  'bottom': { x: 50, y: 62, category: 'bottom' },
+  '하의': { x: 50, y: 62, category: '하의' },
   '원피스': { x: 50, y: 45, category: '원피스' },
-  'shoes': { x: 50, y: 90, category: 'shoes' },
-  '신발': { x: 50, y: 90, category: '신발' },
-  'accessory': { x: 20, y: 30, category: 'accessory' },
-  '액세서리': { x: 20, y: 30, category: '액세서리' },
-  'bag': { x: 80, y: 50, category: 'bag' },
-  '가방': { x: 80, y: 50, category: '가방' },
+  'shoes': { x: 50, y: 88, category: 'shoes' },
+  '신발': { x: 50, y: 88, category: '신발' },
+  'accessory': { x: 30, y: 20, category: 'accessory' },
+  '액세서리': { x: 30, y: 20, category: '액세서리' },
+  'bag': { x: 75, y: 50, category: 'bag' },
+  '가방': { x: 75, y: 50, category: '가방' },
+  '모자': { x: 50, y: 8, category: '모자' },
+  'hat': { x: 50, y: 8, category: 'hat' },
 };
 
 // 카테고리 매핑 (다양한 표현을 통일)
@@ -60,7 +62,7 @@ const normalizeCategory = (category: string): string => {
 };
 
 // 최소 태그 간 거리 (%)
-const MIN_TAG_DISTANCE = 12;
+const MIN_TAG_DISTANCE = 10;
 
 // 두 위치 간 거리 계산
 const getDistance = (p1: { x: number; y: number }, p2: { x: number; y: number }): number => {
@@ -187,12 +189,17 @@ export function InteractiveProductTags({
       const categoryIndex = categoryCount[normalizedCategory] || 0;
       categoryCount[normalizedCategory] = categoryIndex + 1;
       
-      // AI 분석 위치가 있으면 우선 사용
+      // AI 분석 위치가 있으면 우선 사용 (낮은 threshold로 AI 결과 적극 활용)
       const aiPos = aiPositions.find(p => normalizeCategory(p.category) === normalizedCategory);
       let basePosition: ProductTagPosition;
       
-      if (aiPos && aiPos.confidence > 0.3) {
-        basePosition = { x: aiPos.x, y: aiPos.y, category: normalizedCategory };
+      if (aiPos && aiPos.confidence > 0.2) {
+        // AI 위치를 안전 범위 내로 클램핑
+        basePosition = { 
+          x: Math.min(90, Math.max(10, aiPos.x)), 
+          y: Math.min(92, Math.max(8, aiPos.y)), 
+          category: normalizedCategory 
+        };
       } else {
         basePosition = DEFAULT_POSITIONS[normalizedCategory] || 
                        DEFAULT_POSITIONS[product.category] || 
