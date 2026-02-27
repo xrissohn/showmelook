@@ -44,7 +44,7 @@ serve(async (req) => {
 
     const categoryList = categories && categories.length > 0 
       ? categories.join(', ') 
-      : '상의, 하의, 아우터, 신발, 가방, 액세서리';
+      : '상의, 하의, 아우터, 신발, 가방, 숄더백, 크로스백, 쇼퍼백, 지갑, 액세서리, 귀걸이, 펜던트, 모자, 장갑, 원피스, 점프수트';
 
     const prompt = `You are a fashion image analysis expert. Analyze this fashion/outfit image and locate each clothing item or accessory.
 
@@ -56,13 +56,17 @@ Find the CENTER POINT of where that item appears in the image. Return coordinate
 
 POSITIONING GUIDELINES:
 - 상의/top: Usually around y=25-35 (upper torso area), x=45-55 (center)
-- 아우터/outer: Overlaps with top but slightly wider, y=20-35, x=45-55
+- 아우터/outer/재킷: Overlaps with top but slightly wider, y=20-35, x=45-55
 - 하의/bottom: Usually around y=55-70 (hip to knee area), x=45-55
-- 원피스/dress: Spans from y=30 to y=65, x=45-55
-- 신발/shoes: Near bottom y=85-95, x=45-55
-- 가방/bag: Often to the side y=40-60, x=20-35 or x=65-80
-- 액세서리/accessory: Varies - watches on wrist, necklaces near neck y=15-25
-- 모자/hat: Top of image y=5-15, x=45-55
+- 원피스/점프수트/dress: Spans from y=30 to y=65, x=45-55
+- 신발/shoes/운동화: Near bottom y=85-95, x=45-55
+- 가방/숄더백/크로스백/쇼퍼백: Often to the side y=40-60, x=20-35 (left side usually)
+- 지갑/wallet: Small item, usually near hand y=50-65, x=65-80
+- 귀걸이/earring: Near ears y=8-15, x=30-40 or x=60-70
+- 펜던트/necklace: Near neck/chest y=15-25, x=45-55
+- 장갑/gloves: Near hands y=55-70, x=15-30 or x=70-85
+- 액세서리/accessory: Varies - watches on wrist, bracelets y=50-65
+- 모자/hat/헤어: Top of image y=5-15, x=45-55
 
 IMPORTANT: 
 - Only include items that are CLEARLY VISIBLE in the image
@@ -172,19 +176,34 @@ Respond with ONLY a JSON array, no other text:
 // 기본 위치 (AI 분석 실패 시 fallback)
 function getDefaultPositions(categories: string[]): ClothingPosition[] {
   const defaults: Record<string, ClothingPosition> = {
-    '상의': { category: '상의', x: 50, y: 25, confidence: 0.5 },
-    'top': { category: 'top', x: 50, y: 25, confidence: 0.5 },
-    '아우터': { category: '아우터', x: 50, y: 20, confidence: 0.5 },
-    'outer': { category: 'outer', x: 50, y: 20, confidence: 0.5 },
-    '하의': { category: '하의', x: 50, y: 60, confidence: 0.5 },
-    'bottom': { category: 'bottom', x: 50, y: 60, confidence: 0.5 },
+    '상의': { category: '상의', x: 50, y: 30, confidence: 0.5 },
+    'top': { category: 'top', x: 50, y: 30, confidence: 0.5 },
+    '아우터': { category: '아우터', x: 50, y: 28, confidence: 0.5 },
+    'outer': { category: 'outer', x: 50, y: 28, confidence: 0.5 },
+    '재킷': { category: '재킷', x: 50, y: 28, confidence: 0.5 },
+    '하의': { category: '하의', x: 50, y: 62, confidence: 0.5 },
+    'bottom': { category: 'bottom', x: 50, y: 62, confidence: 0.5 },
     '원피스': { category: '원피스', x: 50, y: 45, confidence: 0.5 },
-    '신발': { category: '신발', x: 50, y: 90, confidence: 0.5 },
-    'shoes': { category: 'shoes', x: 50, y: 90, confidence: 0.5 },
-    '가방': { category: '가방', x: 80, y: 50, confidence: 0.5 },
-    'bag': { category: 'bag', x: 80, y: 50, confidence: 0.5 },
-    '액세서리': { category: '액세서리', x: 20, y: 30, confidence: 0.5 },
-    'accessory': { category: 'accessory', x: 20, y: 30, confidence: 0.5 },
+    '점프수트': { category: '점프수트', x: 50, y: 45, confidence: 0.5 },
+    '신발': { category: '신발', x: 50, y: 88, confidence: 0.5 },
+    'shoes': { category: 'shoes', x: 50, y: 88, confidence: 0.5 },
+    '운동화/스니커즈/슬립온': { category: '운동화/스니커즈/슬립온', x: 50, y: 88, confidence: 0.5 },
+    '가방': { category: '가방', x: 25, y: 55, confidence: 0.5 },
+    'bag': { category: 'bag', x: 25, y: 55, confidence: 0.5 },
+    '숄더백': { category: '숄더백', x: 25, y: 45, confidence: 0.5 },
+    '크로스백': { category: '크로스백', x: 25, y: 50, confidence: 0.5 },
+    '쇼퍼백': { category: '쇼퍼백', x: 25, y: 50, confidence: 0.5 },
+    '지갑': { category: '지갑', x: 75, y: 55, confidence: 0.5 },
+    '액세서리': { category: '액세서리', x: 30, y: 20, confidence: 0.5 },
+    'accessory': { category: 'accessory', x: 30, y: 20, confidence: 0.5 },
+    '귀걸이': { category: '귀걸이', x: 35, y: 12, confidence: 0.5 },
+    '펜던트': { category: '펜던트', x: 50, y: 18, confidence: 0.5 },
+    '피어싱': { category: '피어싱', x: 38, y: 12, confidence: 0.5 },
+    '장갑': { category: '장갑', x: 20, y: 65, confidence: 0.5 },
+    '모자': { category: '모자', x: 50, y: 8, confidence: 0.5 },
+    'hat': { category: 'hat', x: 50, y: 8, confidence: 0.5 },
+    '헤어': { category: '헤어', x: 50, y: 8, confidence: 0.5 },
+    '패션잡화': { category: '패션잡화', x: 70, y: 50, confidence: 0.5 },
   };
 
   if (categories.length === 0) {
