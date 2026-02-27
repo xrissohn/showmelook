@@ -2068,17 +2068,21 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         imageUrl={selectedLook.image_url}
                         enableAIPositioning={true}
                         cachedPositions={selectedLook.tag_positions as any[] || undefined}
+                        isEditable={true}
+                        lookId={selectedLook.id}
                         onPositionsAnalyzed={async (positions) => {
                           try {
                             await supabase
                               .from('generated_looks')
                               .update({ tag_positions: positions as any })
                               .eq('id', selectedLook.id);
-                            // Update local state too
                             setSelectedLook(prev => prev ? { ...prev, tag_positions: positions } : null);
                           } catch (e) {
                             console.error('Failed to cache tag positions:', e);
                           }
+                        }}
+                        onTagPositionsSaved={(positions) => {
+                          setSelectedLook(prev => prev ? { ...prev, tag_positions: positions } : null);
                         }}
                       />
                     </div>

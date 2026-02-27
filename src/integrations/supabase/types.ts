@@ -1487,6 +1487,53 @@ export type Database = {
         }
         Relationships: []
       }
+      tag_corrections: {
+        Row: {
+          ai_x: number
+          ai_y: number
+          category: string
+          created_at: string
+          id: string
+          image_url: string | null
+          look_id: string
+          manual_x: number
+          manual_y: number
+          user_id: string
+        }
+        Insert: {
+          ai_x: number
+          ai_y: number
+          category: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          look_id: string
+          manual_x: number
+          manual_y: number
+          user_id: string
+        }
+        Update: {
+          ai_x?: number
+          ai_y?: number
+          category?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          look_id?: string
+          manual_x?: number
+          manual_y?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tag_corrections_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "generated_looks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tier_change_history: {
         Row: {
           amount_change: number

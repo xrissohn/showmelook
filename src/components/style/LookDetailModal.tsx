@@ -340,8 +340,9 @@ export const LookDetailModal = ({
                   imageUrl={look.image_url}
                   enableAIPositioning={true}
                   cachedPositions={look.tag_positions as any[] || undefined}
+                  isEditable={isOwner}
+                  lookId={look.id}
                   onPositionsAnalyzed={async (positions) => {
-                    // 분석 결과를 DB에 캐싱
                     try {
                       await supabase
                         .from('generated_looks')
@@ -350,6 +351,9 @@ export const LookDetailModal = ({
                     } catch (e) {
                       console.error('Failed to cache tag positions:', e);
                     }
+                  }}
+                  onTagPositionsSaved={(positions) => {
+                    // Update parent state if needed
                   }}
                 />
               )}
