@@ -360,11 +360,18 @@ const PendingProductsManager = () => {
                 const r = data.results[j];
                 if (r.success || r.duplicate) {
                   success++;
-                  // Mark resolved
-                  await supabase
-                    .from('pending_products')
-                    .update({ resolved_at: new Date().toISOString(), resolved_by: 'batch_reprocess' })
-                    .eq('id', pendingIds[j]);
+                  // 중복이면 아예 삭제, 성공이면 resolved 마킹
+                  if (r.duplicate) {
+                    await supabase
+                      .from('pending_products')
+                      .delete()
+                      .eq('id', pendingIds[j]);
+                  } else {
+                    await supabase
+                      .from('pending_products')
+                      .update({ resolved_at: new Date().toISOString(), resolved_by: 'batch_reprocess' })
+                      .eq('id', pendingIds[j]);
+                  }
                 } else {
                   failed++;
                 }
