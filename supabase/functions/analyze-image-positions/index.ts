@@ -67,6 +67,7 @@ POSITIONING GUIDELINES (coordinates are percentage of image dimensions):
 - 장갑/gloves: Near hands, y=55-70, x=15-30 or x=70-85
 - 액세서리/시계/팔찌/반지: Varies, watches on wrist y=50-65
 - 모자/hat/cap/버킷햇/비니/헤어: VERY TOP of image, y=2-10, x=45-55. Hats are ALWAYS at the very top of the person's head.
+- 마스크/mask/바라클라바/넥워머: Below the face/chin area, y=15-22, x=45-55. Masks cover the lower face.
 
 IMPORTANT: 
 - Only include items that are CLEARLY VISIBLE in the image
@@ -200,6 +201,7 @@ function getDefaultPositions(categories: string[]): ClothingPosition[] {
     '펜던트': { category: '펜던트', x: 50, y: 18, confidence: 0.5 },
     '피어싱': { category: '피어싱', x: 38, y: 12, confidence: 0.5 },
     '장갑': { category: '장갑', x: 20, y: 65, confidence: 0.5 },
+    '마스크': { category: '마스크', x: 50, y: 18, confidence: 0.5 },
     '모자': { category: '모자', x: 50, y: 5, confidence: 0.5 },
     'hat': { category: 'hat', x: 50, y: 5, confidence: 0.5 },
     '헤어': { category: '헤어', x: 50, y: 5, confidence: 0.5 },
