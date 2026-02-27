@@ -2,12 +2,13 @@
  * LookDetailModal - Reusable 3D flip card modal for viewing look details
  * Used in: Landing gallery, Community, UserGallery, MyLooksGallery
  * Owner can edit memo/tags, delete, toggle favorite/public
- * Non-owners can only view
+ * Non-owners can view, like, and share
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -18,7 +19,10 @@ import {
   Globe, LockKeyhole
 } from 'lucide-react';
 import { ModalWatermarkOverlay } from '@/components/style/WatermarkOverlay';
+import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
+import { ShareButtons } from '@/components/style/ShareButtons';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
+import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 
 export interface LookDetailData {
   id: string;
@@ -53,19 +57,18 @@ interface CachedProduct {
 interface LookDetailModalProps {
   look: LookDetailData;
   onClose: () => void;
-  // Navigation
   onPrevious?: () => void;
   onNext?: () => void;
   hasPrevious?: boolean;
   hasNext?: boolean;
   currentIndex?: number;
   totalCount?: number;
-  // Owner actions
   onDelete?: (lookId: string) => void;
   onToggleFavorite?: (lookId: string, newValue: boolean) => void;
   onTogglePublic?: (lookId: string, newValue: boolean) => void;
   onUpdateMemoTags?: (lookId: string, memo: string | null, tags: string[] | null) => void;
-  // Display
+  onToggleLike?: (lookId: string, currentCount: number) => Promise<{ liked: boolean; newCount: number } | null>;
+  isLiked?: boolean;
   hasWatermark?: boolean;
 }
 
@@ -84,42 +87,40 @@ export const LookDetailModal = ({
   onToggleFavorite,
   onTogglePublic,
   onUpdateMemoTags,
+  onToggleLike,
+  isLiked = false,
   hasWatermark = false,
 }: LookDetailModalProps) => {
   const { user } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const isOwner = user?.id === look.user_id;
 
-  // Flip state
   const [isFlipped, setIsFlipped] = useState(false);
-
-  // Products
   const [lookProducts, setLookProducts] = useState<CachedProduct[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [purchasingProductId, setPurchasingProductId] = useState<string | null>(null);
-
-  // Memo/tag editing (owner only)
   const [isEditingMemo, setIsEditingMemo] = useState(false);
   const [editMemo, setEditMemo] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [isSavingMemo, setIsSavingMemo] = useState(false);
-
-  // Delete confirm
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Touch gestures
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const minSwipeDistance = 50;
+  const [localLiked, setLocalLiked] = useState(isLiked);
+  const [localLikeCount, setLocalLikeCount] = useState(look.like_count ?? 0);
+  const [likeAnimating, setLikeAnimating] = useState(false);
+
+  // Sync external like state
+  useEffect(() => { setLocalLiked(isLiked); }, [isLiked]);
+  useEffect(() => { setLocalLikeCount(look.like_count ?? 0); }, [look.like_count]);
 
   // Load products
   useEffect(() => {
-    if (!look.product_ids?.length) {
-      setLookProducts([]);
-      return;
-    }
+    if (!look.product_ids?.length) { setLookProducts([]); return; }
     const load = async () => {
       setIsLoadingProducts(true);
       try {
@@ -141,10 +142,9 @@ export const LookDetailModal = ({
     load();
   }, [look.id, look.product_ids]);
 
-  // Reset flip when look changes
   useEffect(() => { setIsFlipped(false); setIsEditingMemo(false); }, [look.id]);
 
-  // Keyboard navigation
+  // Keyboard
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (isEditingMemo) return;
@@ -159,7 +159,7 @@ export const LookDetailModal = ({
     return () => window.removeEventListener('keydown', handler);
   }, [hasPrevious, hasNext, onPrevious, onNext, onClose, isEditingMemo, showDeleteConfirm]);
 
-  // Touch handlers
+  // Touch
   const onTouchStart = (e: React.TouchEvent) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
   const onTouchMove = (e: React.TouchEvent) => { setTouchEnd(e.targetTouches[0].clientX); };
   const onTouchEnd = () => {
@@ -171,7 +171,7 @@ export const LookDetailModal = ({
   };
 
   // Product purchase
-  const handleProductPurchase = async (product: CachedProduct) => {
+  const handleProductPurchase = async (product: CachedProduct | { id: string; name: string; brand: string | null; price: number; image_url: string | null; product_url: string; category: string; affiliate_url?: string; merchant_id?: string | null }) => {
     if (!product.product_url) return;
     setPurchasingProductId(product.id);
     try {
@@ -185,26 +185,32 @@ export const LookDetailModal = ({
     finally { setPurchasingProductId(null); }
   };
 
+  // Like handler
+  const handleLike = async () => {
+    if (!onToggleLike) return;
+    setLikeAnimating(true);
+    setTimeout(() => setLikeAnimating(false), 300);
+    const result = await onToggleLike(look.id, localLikeCount);
+    if (result) {
+      setLocalLiked(result.liked);
+      setLocalLikeCount(result.newCount);
+    }
+  };
+
   // Memo/tag editing
   const startEditingMemo = () => {
     setEditMemo(look.memo || '');
     setEditTags(look.tags || []);
     setIsEditingMemo(true);
   };
-
   const addTag = (tag: string) => {
     const t = tag.trim();
-    if (t && !editTags.includes(t) && editTags.length < 5) {
-      setEditTags([...editTags, t]);
-      setNewTag('');
-    }
+    if (t && !editTags.includes(t) && editTags.length < 5) { setEditTags([...editTags, t]); setNewTag(''); }
   };
-
   const saveMemoAndTags = async () => {
     setIsSavingMemo(true);
     try {
-      const { error } = await supabase
-        .from('generated_looks')
+      const { error } = await supabase.from('generated_looks')
         .update({ memo: editMemo.trim() || null, tags: editTags.length > 0 ? editTags : null })
         .eq('id', look.id);
       if (error) throw error;
@@ -246,7 +252,25 @@ export const LookDetailModal = ({
     } catch {}
   };
 
+  const handleShareResult = (_platform: string, result: { success: boolean; message?: string }) => {
+    if (result.message) {
+      toast({ title: result.success ? '공유' : '오류', description: result.message, variant: result.success ? 'default' : 'destructive' });
+    }
+  };
+
   const displayName = look.user_name || '스타일리스트';
+
+  // Map products for InteractiveProductTags
+  const taggedProducts = lookProducts.map(p => ({
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    price: p.price,
+    image_url: p.image_url,
+    product_url: p.product_url,
+    category: p.category,
+    merchant_id: p.merchant_id,
+  }));
 
   return (
     <div 
@@ -254,37 +278,28 @@ export const LookDetailModal = ({
       onClick={() => !showDeleteConfirm && !isEditingMemo && onClose()}
     >
       {/* Close button */}
-      <button 
-        className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors"
-        onClick={onClose}
-      >
+      <button className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors" onClick={onClose}>
         <X className="w-6 h-6 text-white" />
       </button>
 
       {/* Delete button - owner only */}
       {isOwner && onDelete && (
-        <button 
-          className="absolute top-4 left-4 z-10 w-12 h-12 rounded-full bg-red-500/20 backdrop-blur-sm flex items-center justify-center hover:bg-red-500/40 transition-colors"
-          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}
-        >
+        <button className="absolute top-4 left-4 z-10 w-12 h-12 rounded-full bg-red-500/20 backdrop-blur-sm flex items-center justify-center hover:bg-red-500/40 transition-colors"
+          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}>
           <Trash2 className="w-5 h-5 text-red-400" />
         </button>
       )}
 
       {/* Nav buttons - desktop */}
       {hasPrevious && (
-        <button 
-          className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
-          onClick={(e) => { e.stopPropagation(); onPrevious?.(); }}
-        >
+        <button className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
+          onClick={(e) => { e.stopPropagation(); onPrevious?.(); }}>
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
       )}
       {hasNext && (
-        <button 
-          className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
-          onClick={(e) => { e.stopPropagation(); onNext?.(); }}
-        >
+        <button className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
+          onClick={(e) => { e.stopPropagation(); onNext?.(); }}>
           <ChevronRight className="w-6 h-6 text-white" />
         </button>
       )}
@@ -307,60 +322,52 @@ export const LookDetailModal = ({
             setIsFlipped(!isFlipped);
           }}
         >
-          <div 
-            className={`relative transform-style-3d transition-transform duration-600 ${isFlipped ? 'rotate-y-180' : ''}`}
-            style={{ transitionDuration: '0.6s' }}
-          >
-            {/* Front - Image */}
+          <div className={`relative transform-style-3d transition-transform duration-600 ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transitionDuration: '0.6s' }}>
+            {/* Front - Image with product tags */}
             <div className="backface-hidden relative">
-              <img 
-                src={look.image_url} 
-                alt="Look" 
-                className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none"
-                draggable={false}
-              />
+              <img src={look.image_url} alt="Look" className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none" draggable={false} />
               <ModalWatermarkOverlay show={hasWatermark} />
+
+              {/* Interactive product tags on image */}
+              {!isFlipped && taggedProducts.length > 0 && (
+                <InteractiveProductTags
+                  products={taggedProducts}
+                  onPurchase={handleProductPurchase}
+                  purchasingProductId={purchasingProductId}
+                  imageUrl={look.image_url}
+                  enableAIPositioning={true}
+                />
+              )}
 
               {/* User info overlay - non-owner */}
               {!isOwner && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigate(`/gallery/${look.user_id}`); }}
-                  className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 hover:bg-black/60 z-10"
-                >
+                <button onClick={(e) => { e.stopPropagation(); navigate(`/gallery/${look.user_id}`); }}
+                  className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 hover:bg-black/60 z-10">
                   <Avatar className="w-5 h-5">
                     <AvatarImage src={look.user_avatar || undefined} alt={displayName} />
-                    <AvatarFallback className="text-[8px] bg-primary/20 text-primary-foreground">
-                      {displayName.charAt(0)}
-                    </AvatarFallback>
+                    <AvatarFallback className="text-[8px] bg-primary/20 text-primary-foreground">{displayName.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <span className="text-white text-[10px] sm:text-xs font-medium truncate max-w-[80px]">
-                    {displayName}
-                  </span>
+                  <span className="text-white text-[10px] sm:text-xs font-medium truncate max-w-[80px]">{displayName}</span>
                 </button>
               )}
 
               {/* Product loading indicator */}
               {isLoadingProducts && look.product_ids?.length && (
                 <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-foreground text-xs rounded-full flex items-center gap-1.5">
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                  상품 정보 로딩 중...
+                  <Loader2 className="w-3 h-3 animate-spin" />상품 정보 로딩 중...
                 </div>
               )}
 
               {/* Flip hint */}
               {!isFlipped && (
                 <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean backface-hidden">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  탭하여 상세 정보 보기
+                  <RotateCcw className="w-3.5 h-3.5" />탭하여 상세 정보 보기
                 </div>
               )}
             </div>
 
             {/* Back - Info card */}
-            <div 
-              className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col"
-              style={{ minHeight: '300px', maxHeight: '55vh' }}
-            >
+            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col" style={{ minHeight: '300px', maxHeight: '55vh' }}>
               <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/80 to-slate-900" />
               <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/10" />
               
@@ -423,13 +430,10 @@ export const LookDetailModal = ({
                               {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
                             </span>
                           </div>
-                          <Button
-                            variant="outline" size="sm"
+                          <Button variant="outline" size="sm"
                             className="flex-shrink-0 h-8 px-2.5 text-xs bg-accent/20 border-accent/50 text-white hover:bg-accent hover:text-white transition-all opacity-80 group-hover:opacity-100"
-                            onClick={(e) => { e.stopPropagation(); handleProductPurchase(product); }}
-                          >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            구매
+                            onClick={(e) => { e.stopPropagation(); handleProductPurchase(product); }}>
+                            <ExternalLink className="w-3 h-3 mr-1" />구매
                           </Button>
                         </div>
                       ))}
@@ -451,9 +455,7 @@ export const LookDetailModal = ({
                     <h4 className="text-sm font-semibold text-white font-korean mb-2">태그</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {look.tags.map((tag, i) => (
-                        <span key={i} className="text-xs bg-gradient-to-r from-accent/30 to-primary/30 text-white border border-accent/40 px-2.5 py-1 rounded-full font-korean">
-                          #{tag}
-                        </span>
+                        <span key={i} className="text-xs bg-gradient-to-r from-accent/30 to-primary/30 text-white border border-accent/40 px-2.5 py-1 rounded-full font-korean">#{tag}</span>
                       ))}
                     </div>
                   </div>
@@ -463,8 +465,7 @@ export const LookDetailModal = ({
                 {look.memo && (
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                     <h4 className="text-sm font-semibold text-white font-korean mb-1.5 flex items-center gap-1.5">
-                      <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                      메모
+                      <MessageCircle className="w-4 h-4 text-muted-foreground" />메모
                     </h4>
                     <p className="text-sm text-white/70 font-korean italic">"{look.memo}"</p>
                   </div>
@@ -474,8 +475,7 @@ export const LookDetailModal = ({
               {/* Bottom info */}
               <div className="relative border-t border-white/10 px-5 py-3 flex items-center justify-between bg-black/30 backdrop-blur-sm">
                 <div className="flex items-center gap-1.5 text-xs text-white/60 font-korean cursor-pointer hover:text-white/80 transition-colors">
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  탭하여 이미지로
+                  <RotateCcw className="w-3.5 h-3.5" />탭하여 이미지로
                 </div>
                 <span className="text-xs text-white/60 font-korean">
                   {new Date(look.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -506,9 +506,7 @@ export const LookDetailModal = ({
                     ))}
                   </div>
                 )}
-                {look.memo && (
-                  <p className="text-white/70 text-sm font-korean line-clamp-2">"{look.memo}"</p>
-                )}
+                {look.memo && <p className="text-white/70 text-sm font-korean line-clamp-2">"{look.memo}"</p>}
               </div>
             )}
 
@@ -529,61 +527,65 @@ export const LookDetailModal = ({
                 <>
                   <span className="text-white/40 hidden sm:inline">•</span>
                   
-                  {/* Edit memo/tags */}
                   {onUpdateMemoTags && (
-                    <button 
-                      onClick={startEditingMemo}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                    >
+                    <button onClick={startEditingMemo} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                       <Tag className="w-4 h-4 text-white" />
-                      <span className="text-white text-sm font-korean hidden sm:inline">
-                        {look.memo || look.tags?.length ? '편집' : '메모/태그'}
-                      </span>
+                      <span className="text-white text-sm font-korean hidden sm:inline">{look.memo || look.tags?.length ? '편집' : '메모/태그'}</span>
                     </button>
                   )}
                   
-                  {/* Favorite */}
                   {onToggleFavorite && (
-                    <button 
-                      onClick={() => onToggleFavorite(look.id, !look.is_favorite)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                    >
+                    <button onClick={() => onToggleFavorite(look.id, !look.is_favorite)} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                       <Heart className={`w-4 h-4 ${look.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
-                      <span className="text-white text-sm font-korean hidden sm:inline">
-                        {look.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
-                      </span>
+                      <span className="text-white text-sm font-korean hidden sm:inline">{look.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}</span>
                     </button>
                   )}
 
-                  {/* Public toggle */}
                   {onTogglePublic && (
-                    <button 
-                      onClick={() => onTogglePublic(look.id, !look.is_public)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-                    >
-                      {look.is_public ? (
-                        <Globe className="w-4 h-4 text-green-400" />
-                      ) : (
-                        <LockKeyhole className="w-4 h-4 text-white" />
-                      )}
-                      <span className="text-white text-sm font-korean hidden sm:inline">
-                        {look.is_public ? '공개' : '비공개'}
-                      </span>
+                    <button onClick={() => onTogglePublic(look.id, !look.is_public)} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                      {look.is_public ? <Globe className="w-4 h-4 text-green-400" /> : <LockKeyhole className="w-4 h-4 text-white" />}
+                      <span className="text-white text-sm font-korean hidden sm:inline">{look.is_public ? '공개' : '비공개'}</span>
                     </button>
                   )}
                 </>
               )}
 
-              {/* Like count - non-owner */}
-              {!isOwner && look.like_count !== undefined && look.like_count > 0 && (
+              {/* Like button - non-owner (replaces favorite) */}
+              {!isOwner && onToggleLike && (
+                <>
+                  <span className="text-white/40">•</span>
+                  <button onClick={handleLike} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
+                    <Heart className={`w-4 h-4 transition-transform duration-300 ${localLiked ? 'fill-red-500 text-red-500' : 'text-white'} ${likeAnimating ? 'scale-125' : 'scale-100'}`} />
+                    <span className="text-white text-sm">{localLikeCount > 0 ? localLikeCount : ''}</span>
+                  </button>
+                </>
+              )}
+
+              {/* Like count display only (when no toggle handler) */}
+              {!isOwner && !onToggleLike && localLikeCount > 0 && (
                 <>
                   <span className="text-white/40">•</span>
                   <div className="flex items-center gap-1 text-white/60">
                     <Heart className="w-3.5 h-3.5" />
-                    <span className="text-sm">{look.like_count}</span>
+                    <span className="text-sm">{localLikeCount}</span>
                   </div>
                 </>
               )}
+
+              {/* SNS Share buttons */}
+              <span className="text-white/40">•</span>
+              <div onClick={(e) => e.stopPropagation()}>
+                <ShareButtons
+                  imageUrl={look.image_url}
+                  onShare={handleShareResult}
+                  compact
+                  hasWatermark={hasWatermark}
+                  logoUrl={showmelookWatermarkFull}
+                  lookId={look.id}
+                  prompt={look.prompt_used || undefined}
+                  tags={look.tags || undefined}
+                />
+              </div>
             </div>
           </>
         )}
@@ -591,10 +593,7 @@ export const LookDetailModal = ({
 
       {/* Memo/tag edit modal - owner only */}
       {isEditingMemo && isOwner && (
-        <div 
-          className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-4"
-          onClick={(e) => { e.stopPropagation(); setIsEditingMemo(false); }}
-        >
+        <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-4" onClick={(e) => { e.stopPropagation(); setIsEditingMemo(false); }}>
           <div className="bg-card rounded-2xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-foreground font-korean mb-4">메모/태그 편집</h3>
             <div className="space-y-4">
