@@ -31,33 +31,65 @@ interface AIAnalyzedPosition {
 
 // 카테고리별 기본 위치 (이미지 내 상대 위치 %)
 const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
+  // 상의 계열
   'top': { x: 50, y: 30, category: 'top' },
   '상의': { x: 50, y: 30, category: '상의' },
+  '여성의류': { x: 50, y: 30, category: '여성의류' },
+  '패션의류': { x: 50, y: 30, category: '패션의류' },
+  // 아우터 계열
   'outer': { x: 50, y: 28, category: 'outer' },
   '아우터': { x: 50, y: 28, category: '아우터' },
+  '재킷': { x: 50, y: 28, category: '재킷' },
+  // 하의 계열
   'bottom': { x: 50, y: 62, category: 'bottom' },
   '하의': { x: 50, y: 62, category: '하의' },
+  // 원피스/점프수트 계열
   '원피스': { x: 50, y: 45, category: '원피스' },
+  '점프수트': { x: 50, y: 45, category: '점프수트' },
+  // 신발 계열
   'shoes': { x: 50, y: 88, category: 'shoes' },
   '신발': { x: 50, y: 88, category: '신발' },
+  '운동화/스니커즈/슬립온': { x: 50, y: 88, category: '운동화/스니커즈/슬립온' },
+  // 가방 계열
+  'bag': { x: 25, y: 55, category: 'bag' },
+  '가방': { x: 25, y: 55, category: '가방' },
+  '숄더백': { x: 25, y: 45, category: '숄더백' },
+  '크로스백': { x: 25, y: 50, category: '크로스백' },
+  '쇼퍼백': { x: 25, y: 50, category: '쇼퍼백' },
+  '지갑': { x: 75, y: 55, category: '지갑' },
+  // 액세서리 계열
   'accessory': { x: 30, y: 20, category: 'accessory' },
   '액세서리': { x: 30, y: 20, category: '액세서리' },
-  'bag': { x: 75, y: 50, category: 'bag' },
-  '가방': { x: 75, y: 50, category: '가방' },
+  '귀걸이': { x: 35, y: 12, category: '귀걸이' },
+  '펜던트': { x: 50, y: 18, category: '펜던트' },
+  '피어싱': { x: 38, y: 12, category: '피어싱' },
+  '장갑': { x: 20, y: 65, category: '장갑' },
+  // 모자/헤어 계열
   '모자': { x: 50, y: 8, category: '모자' },
   'hat': { x: 50, y: 8, category: 'hat' },
+  '헤어': { x: 50, y: 8, category: '헤어' },
+  // 패션잡화/기타
+  '패션잡화': { x: 70, y: 50, category: '패션잡화' },
+  '기타': { x: 70, y: 45, category: '기타' },
+  '홈웨어': { x: 50, y: 40, category: '홈웨어' },
 };
 
 // 카테고리 매핑 (다양한 표현을 통일)
 const normalizeCategory = (category: string): string => {
   const lower = category.toLowerCase();
-  if (['top', '상의', 'shirt', 'blouse', 'sweater'].some(k => lower.includes(k))) return '상의';
-  if (['outer', '아우터', 'jacket', 'coat'].some(k => lower.includes(k))) return '아우터';
+  if (['top', '상의', 'shirt', 'blouse', 'sweater', '여성의류', '패션의류'].some(k => lower.includes(k))) return '상의';
+  if (['outer', '아우터', 'jacket', 'coat', '재킷'].some(k => lower.includes(k))) return '아우터';
   if (['bottom', '하의', 'pants', 'skirt', 'jeans'].some(k => lower.includes(k))) return '하의';
-  if (['dress', '원피스'].some(k => lower.includes(k))) return '원피스';
-  if (['shoes', '신발', 'sneaker', 'boot'].some(k => lower.includes(k))) return '신발';
-  if (['bag', '가방', 'backpack', 'clutch'].some(k => lower.includes(k))) return '가방';
-  if (['accessory', '액세서리', 'jewelry', 'watch', 'necklace'].some(k => lower.includes(k))) return '액세서리';
+  if (['dress', '원피스', '점프수트', 'jumpsuit'].some(k => lower.includes(k))) return '원피스';
+  if (['shoes', '신발', 'sneaker', 'boot', '운동화', '스니커즈', '슬립온'].some(k => lower.includes(k))) return '신발';
+  if (['숄더백', '크로스백', '쇼퍼백', 'bag', '가방', 'backpack', 'clutch', 'tote'].some(k => lower.includes(k))) return '가방';
+  if (['지갑', 'wallet'].some(k => lower.includes(k))) return '지갑';
+  if (['모자', 'hat', 'cap', '헤어'].some(k => lower.includes(k))) return '모자';
+  if (['귀걸이', 'earring'].some(k => lower.includes(k))) return '귀걸이';
+  if (['펜던트', 'pendant', 'necklace', '목걸이'].some(k => lower.includes(k))) return '펜던트';
+  if (['피어싱', 'piercing'].some(k => lower.includes(k))) return '피어싱';
+  if (['장갑', 'glove'].some(k => lower.includes(k))) return '장갑';
+  if (['accessory', '액세서리', 'jewelry', 'watch', '패션잡화'].some(k => lower.includes(k))) return '액세서리';
   return category;
 };
 
