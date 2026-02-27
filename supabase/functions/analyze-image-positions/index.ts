@@ -1,6 +1,7 @@
-// analyze-image-positions - AI를 통한 이미지 내 의류 위치 분석
+// analyze-image-positions - AI를 통한 이미지 내 의류 위치 분석 (Few-shot 학습 포함)
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,9 +10,52 @@ const corsHeaders = {
 
 interface ClothingPosition {
   category: string;
-  x: number; // percentage 0-100
-  y: number; // percentage 0-100
-  confidence: number; // 0-1
+  x: number;
+  y: number;
+  confidence: number;
+}
+
+interface TagCorrection {
+  category: string;
+  ai_x: number;
+  ai_y: number;
+  manual_x: number;
+  manual_y: number;
+}
+
+// 카테고리별 보정 통계를 집계
+function aggregateCorrections(corrections: TagCorrection[]): Map<string, { count: number; avg_offset_x: number; avg_offset_y: number; examples: string[] }> {
+  const byCategory = new Map<string, TagCorrection[]>();
+  for (const c of corrections) {
+    const list = byCategory.get(c.category) || [];
+    list.push(c);
+    byCategory.set(c.category, list);
+  }
+
+  const result = new Map<string, { count: number; avg_offset_x: number; avg_offset_y: number; examples: string[] }>();
+  for (const [cat, items] of byCategory) {
+    const avg_offset_x = items.reduce((s, i) => s + (i.manual_x - i.ai_x), 0) / items.length;
+    const avg_offset_y = items.reduce((s, i) => s + (i.manual_y - i.ai_y), 0) / items.length;
+    const examples = items.slice(0, 3).map(i =>
+      `AI(${Math.round(i.ai_x)},${Math.round(i.ai_y)})→유저(${Math.round(i.manual_x)},${Math.round(i.manual_y)})`
+    );
+    result.set(cat, { count: items.length, avg_offset_x: Math.round(avg_offset_x * 10) / 10, avg_offset_y: Math.round(avg_offset_y * 10) / 10, examples });
+  }
+  return result;
+}
+
+// Few-shot 프롬프트 생성
+function buildFewShotPrompt(stats: Map<string, { count: number; avg_offset_x: number; avg_offset_y: number; examples: string[] }>): string {
+  if (stats.size === 0) return '';
+
+  let prompt = `\n\nIMPORTANT CALIBRATION DATA from user corrections (apply these offsets to improve accuracy):\n`;
+  for (const [cat, stat] of stats) {
+    const direction_x = stat.avg_offset_x > 0 ? '오른쪽' : '왼쪽';
+    const direction_y = stat.avg_offset_y > 0 ? '아래' : '위';
+    prompt += `- ${cat}: Users corrected AI positions by avg (${stat.avg_offset_x > 0 ? '+' : ''}${stat.avg_offset_x}%, ${stat.avg_offset_y > 0 ? '+' : ''}${stat.avg_offset_y}%) → shift ${Math.abs(stat.avg_offset_x)}% ${direction_x}, ${Math.abs(stat.avg_offset_y)}% ${direction_y} (${stat.count}건, e.g. ${stat.examples[0]})\n`;
+  }
+  prompt += `Use these corrections to place tags more accurately.\n`;
+  return prompt;
 }
 
 serve(async (req) => {
@@ -42,6 +86,30 @@ serve(async (req) => {
       });
     }
 
+    // Few-shot: tag_corrections에서 최근 보정 데이터 조회
+    let fewShotPrompt = '';
+    try {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data: corrections, error } = await supabase
+        .from('tag_corrections')
+        .select('category, ai_x, ai_y, manual_x, manual_y')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (!error && corrections && corrections.length > 0) {
+        const stats = aggregateCorrections(corrections as TagCorrection[]);
+        fewShotPrompt = buildFewShotPrompt(stats);
+        console.log(`[analyze-image-positions] Few-shot: ${corrections.length} corrections across ${stats.size} categories`);
+      } else {
+        console.log(`[analyze-image-positions] No correction data yet, using base prompt`);
+      }
+    } catch (e) {
+      console.warn('[analyze-image-positions] Failed to fetch corrections, continuing without few-shot:', e);
+    }
+
     const categoryList = categories && categories.length > 0 
       ? categories.join(', ') 
       : '상의, 하의, 아우터, 신발, 가방, 숄더백, 크로스백, 쇼퍼백, 지갑, 액세서리, 귀걸이, 펜던트, 모자, 장갑, 원피스, 점프수트';
@@ -66,9 +134,9 @@ POSITIONING GUIDELINES (coordinates are percentage of image dimensions):
 - 펜던트/necklace/목걸이: Near neck/chest, y=15-25, x=45-55
 - 장갑/gloves: Near hands, y=55-70, x=15-30 or x=70-85
 - 액세서리/시계/팔찌/반지: Varies, watches on wrist y=50-65
-- 모자/hat/cap/버킷햇/비니/헤어: VERY TOP of image, y=2-10, x=45-55. Hats are ALWAYS at the very top of the person's head.
-- 마스크/mask/바라클라바/넥워머: Below the face/chin area, y=15-22, x=45-55. Masks cover the lower face.
-
+- 모자/hat/cap/버킷햇/비니/헤어: VERY TOP of image, y=2-10, x=45-55
+- 마스크/mask/바라클라바/넥워머: Below the face/chin area, y=15-22, x=45-55
+${fewShotPrompt}
 IMPORTANT: 
 - Only include items that are CLEARLY VISIBLE in the image
 - Be precise - aim for the exact center of each visible item
@@ -122,15 +190,11 @@ Respond with ONLY a JSON array, no other text:
     
     console.log(`[analyze-image-positions] AI response: ${content.substring(0, 200)}`);
 
-    // JSON 파싱
     let positions: ClothingPosition[] = [];
     try {
-      // JSON 블록 추출 (```json ... ``` 또는 순수 JSON)
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         positions = JSON.parse(jsonMatch[0]);
-        
-        // 유효성 검증
         positions = positions.filter(p => 
           p.category && 
           typeof p.x === 'number' && 
@@ -146,7 +210,6 @@ Respond with ONLY a JSON array, no other text:
       console.error('[analyze-image-positions] JSON parse error:', parseError);
     }
 
-    // 결과가 없으면 기본 위치 사용
     if (positions.length === 0) {
       positions = getDefaultPositions(categories || []);
     }
@@ -174,7 +237,6 @@ Respond with ONLY a JSON array, no other text:
   }
 });
 
-// 기본 위치 (AI 분석 실패 시 fallback)
 function getDefaultPositions(categories: string[]): ClothingPosition[] {
   const defaults: Record<string, ClothingPosition> = {
     '상의': { category: '상의', x: 50, y: 30, confidence: 0.5 },
@@ -209,16 +271,10 @@ function getDefaultPositions(categories: string[]): ClothingPosition[] {
   };
 
   if (categories.length === 0) {
-    return [
-      defaults['상의'],
-      defaults['하의'],
-      defaults['신발'],
-    ];
+    return [defaults['상의'], defaults['하의'], defaults['신발']];
   }
 
   return categories
     .map(cat => defaults[cat] || { category: cat, x: 50, y: 50, confidence: 0.3 })
-    .filter((pos, index, self) => 
-      index === self.findIndex(p => p.category === pos.category)
-    );
+    .filter((pos, index, self) => index === self.findIndex(p => p.category === pos.category));
 }
