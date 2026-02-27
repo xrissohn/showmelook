@@ -56,7 +56,7 @@ interface ProductInput {
 function extractMerchantId(url: string): string {
   const urlLower = url.toLowerCase();
   if (urlLower.includes('wconcept')) return 'wconcept';
-  if (urlLower.includes('hfashionmall')) return 'hfashionmall';
+  if (urlLower.includes('hfashionmall')) return 'hfashion';
   if (urlLower.includes('paulsmith')) return 'paulsmith';
   if (urlLower.includes('ssfshop')) return 'ssfshop';
   if (urlLower.includes('sivillage')) return 'sivillage';
@@ -65,6 +65,10 @@ function extractMerchantId(url: string): string {
   if (urlLower.includes('stories')) return 'stories';
   if (urlLower.includes('posty')) return 'posty';
   if (urlLower.includes('lfmall')) return 'lfmall';
+  if (urlLower.includes('benettonmall')) return 'benetton1';
+  if (urlLower.includes('stockx')) return 'stockx';
+  if (urlLower.includes('arket')) return 'arket';
+  if (urlLower.includes('jestina') || urlLower.includes('j-estina')) return 'jestina';
   return 'unknown';
 }
 
