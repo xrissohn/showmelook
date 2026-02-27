@@ -378,6 +378,14 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
                       .eq('id', pendingIds[j]);
                   }
                 } else {
+                  // 이미지 관련 실패면 error_type을 missing_image로 변경 → 이미지 관리로 이동
+                  const isImageError = r.error && (r.error.includes('image') || r.error.includes('이미지') || r.error.includes('Image'));
+                  if (isImageError && pendingIds[j]) {
+                    await supabase
+                      .from('pending_products')
+                      .update({ error_type: 'missing_image', error_message: r.error })
+                      .eq('id', pendingIds[j]);
+                  }
                   failed++;
                 }
               }
