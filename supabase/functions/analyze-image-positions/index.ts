@@ -54,19 +54,19 @@ Find the CENTER POINT of where that item appears in the image. Return coordinate
 - x: 0 = left edge, 100 = right edge
 - y: 0 = top edge, 100 = bottom edge
 
-POSITIONING GUIDELINES:
-- 상의/top: Usually around y=25-35 (upper torso area), x=45-55 (center)
-- 아우터/outer/재킷: Overlaps with top but slightly wider, y=20-35, x=45-55
-- 하의/bottom: Usually around y=55-70 (hip to knee area), x=45-55
-- 원피스/점프수트/dress: Spans from y=30 to y=65, x=45-55
-- 신발/shoes/운동화: Near bottom y=85-95, x=45-55
-- 가방/숄더백/크로스백/쇼퍼백: Often to the side y=40-60, x=20-35 (left side usually)
-- 지갑/wallet: Small item, usually near hand y=50-65, x=65-80
-- 귀걸이/earring: Near ears y=8-15, x=30-40 or x=60-70
-- 펜던트/necklace: Near neck/chest y=15-25, x=45-55
-- 장갑/gloves: Near hands y=55-70, x=15-30 or x=70-85
-- 액세서리/accessory: Varies - watches on wrist, bracelets y=50-65
-- 모자/hat/헤어: Top of image y=5-15, x=45-55
+POSITIONING GUIDELINES (coordinates are percentage of image dimensions):
+- 상의/top/티셔츠/니트: Upper torso area, y=25-35, x=45-55 (center)
+- 아우터/outer/재킷/코트/점퍼/패딩: Overlaps with top, y=20-35, x=45-55
+- 하의/bottom/바지/스커트: Hip to knee area, y=55-70, x=45-55
+- 원피스/점프수트/dress: Full body garment, y=35-50, x=45-55
+- 신발/shoes/운동화/스니커즈/샌들/로퍼/부츠: Near bottom of image, y=85-95, x=45-55
+- 가방/숄더백/크로스백/쇼퍼백/백팩: Usually to the side, y=40-60, x=20-35
+- 지갑/wallet: Small item near hand, y=50-65, x=65-80
+- 귀걸이/earring: Near ears, y=8-15, x=30-40 or x=60-70
+- 펜던트/necklace/목걸이: Near neck/chest, y=15-25, x=45-55
+- 장갑/gloves: Near hands, y=55-70, x=15-30 or x=70-85
+- 액세서리/시계/팔찌/반지: Varies, watches on wrist y=50-65
+- 모자/hat/cap/버킷햇/비니/헤어: VERY TOP of image, y=2-10, x=45-55. Hats are ALWAYS at the very top of the person's head.
 
 IMPORTANT: 
 - Only include items that are CLEARLY VISIBLE in the image
@@ -200,9 +200,9 @@ function getDefaultPositions(categories: string[]): ClothingPosition[] {
     '펜던트': { category: '펜던트', x: 50, y: 18, confidence: 0.5 },
     '피어싱': { category: '피어싱', x: 38, y: 12, confidence: 0.5 },
     '장갑': { category: '장갑', x: 20, y: 65, confidence: 0.5 },
-    '모자': { category: '모자', x: 50, y: 8, confidence: 0.5 },
-    'hat': { category: 'hat', x: 50, y: 8, confidence: 0.5 },
-    '헤어': { category: '헤어', x: 50, y: 8, confidence: 0.5 },
+    '모자': { category: '모자', x: 50, y: 5, confidence: 0.5 },
+    'hat': { category: 'hat', x: 50, y: 5, confidence: 0.5 },
+    '헤어': { category: '헤어', x: 50, y: 5, confidence: 0.5 },
     '패션잡화': { category: '패션잡화', x: 70, y: 50, confidence: 0.5 },
   };
 

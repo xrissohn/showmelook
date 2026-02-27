@@ -51,6 +51,7 @@ interface CachedProduct {
   image_url: string | null;
   product_url: string;
   category: string;
+  sub_category?: string | null;
   style_tags: string[] | null;
   merchant_id?: string | null;
 }
@@ -134,7 +135,7 @@ export const LookDetailModal = ({
           setLookProducts(data.map(p => ({
             id: p.id, name: p.name, brand: p.brand, price: p.price,
             image_url: p.image_url, product_url: p.product_url,
-            category: p.category, style_tags: p.style_tags, merchant_id: p.merchant_id,
+            category: p.category, sub_category: p.sub_category, style_tags: p.style_tags, merchant_id: p.merchant_id,
           })));
         }
       } catch { setLookProducts([]); }
@@ -270,6 +271,7 @@ export const LookDetailModal = ({
     image_url: p.image_url,
     product_url: p.product_url,
     category: p.category,
+    sub_category: p.sub_category,
     merchant_id: p.merchant_id,
   }));
 
