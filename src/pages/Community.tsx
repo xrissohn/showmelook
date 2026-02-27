@@ -7,6 +7,7 @@ import GalleryUserCard from '@/components/community/GalleryUserCard';
 import CommunityFilters from '@/components/community/CommunityFilters';
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
+import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Images, LayoutGrid } from 'lucide-react';
 
@@ -17,6 +18,10 @@ const Community = () => {
   const lookIds = useMemo(() => looks.map(l => l.id), [looks]);
   const { likedLookIds, toggleLike } = useLookLikes(lookIds);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Modal state
+  const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Intersection observer for infinite scroll
   useEffect(() => {
@@ -38,6 +43,17 @@ const Community = () => {
     if (result) {
       updateLookLikeCount(lookId, result.newCount);
     }
+  };
+
+  const handleLookClick = (look: typeof looks[0], index: number) => {
+    setSelectedLook({
+      ...look,
+      is_favorite: false,
+      is_public: true,
+      user_name: look.user_name,
+      user_avatar: look.user_avatar,
+    });
+    setSelectedIndex(index);
   };
 
   return (
@@ -96,12 +112,13 @@ const Community = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                  {looks.map((look) => (
+                  {looks.map((look, index) => (
                     <LookCard
                       key={look.id}
                       look={look}
                       isLiked={likedLookIds.has(look.id)}
                       onToggleLike={handleToggleLike}
+                      onClick={() => handleLookClick(look, index)}
                     />
                   ))}
                 </div>
@@ -146,6 +163,30 @@ const Community = () => {
           </Tabs>
         </div>
       </main>
+
+      {/* Look Detail Modal */}
+      {selectedLook && (
+        <LookDetailModal
+          look={selectedLook}
+          onClose={() => setSelectedLook(null)}
+          onPrevious={() => {
+            if (selectedIndex > 0) {
+              const prev = looks[selectedIndex - 1];
+              handleLookClick(prev, selectedIndex - 1);
+            }
+          }}
+          onNext={() => {
+            if (selectedIndex < looks.length - 1) {
+              const next = looks[selectedIndex + 1];
+              handleLookClick(next, selectedIndex + 1);
+            }
+          }}
+          hasPrevious={selectedIndex > 0}
+          hasNext={selectedIndex < looks.length - 1}
+          currentIndex={selectedIndex}
+          totalCount={looks.length}
+        />
+      )}
     </>
   );
 };

@@ -9,9 +9,10 @@ interface LookCardProps {
   look: CommunityLook;
   isLiked: boolean;
   onToggleLike: (lookId: string, currentCount: number) => void;
+  onClick?: () => void;
 }
 
-const LookCard = ({ look, isLiked, onToggleLike }: LookCardProps) => {
+const LookCard = ({ look, isLiked, onToggleLike, onClick }: LookCardProps) => {
   const navigate = useNavigate();
   const [animating, setAnimating] = useState(false);
 
@@ -32,7 +33,7 @@ const LookCard = ({ look, isLiked, onToggleLike }: LookCardProps) => {
   return (
     <div
       className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
-      onClick={() => navigate(`/look/${look.id}`)}
+      onClick={onClick || (() => navigate(`/look/${look.id}`))}
     >
       <LazyImage
         src={look.image_url}
