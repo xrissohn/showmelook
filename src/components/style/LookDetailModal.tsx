@@ -40,6 +40,7 @@ export interface LookDetailData {
   user_id: string;
   user_name?: string | null;
   user_avatar?: string | null;
+  tag_positions?: any[] | null;
 }
 
 interface CachedProduct {
@@ -336,6 +337,18 @@ export const LookDetailModal = ({
                   purchasingProductId={purchasingProductId}
                   imageUrl={look.image_url}
                   enableAIPositioning={true}
+                  cachedPositions={look.tag_positions as any[] || undefined}
+                  onPositionsAnalyzed={async (positions) => {
+                    // 분석 결과를 DB에 캐싱
+                    try {
+                      await supabase
+                        .from('generated_looks')
+                        .update({ tag_positions: positions as any })
+                        .eq('id', look.id);
+                    } catch (e) {
+                      console.error('Failed to cache tag positions:', e);
+                    }
+                  }}
                 />
               )}
 

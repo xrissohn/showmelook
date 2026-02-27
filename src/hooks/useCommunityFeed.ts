@@ -65,7 +65,7 @@ export function useCommunityFeed() {
 
     const { data, error } = await supabase
       .from('generated_looks')
-      .select('id, image_url, like_count, view_count, caption, tags, created_at, user_id, prompt_used, product_ids, style_reasoning')
+      .select('id, image_url, like_count, view_count, caption, tags, created_at, user_id, prompt_used, product_ids, style_reasoning, tag_positions')
       .eq('is_public', true)
       .order(orderColumn, { ascending: false })
       .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);

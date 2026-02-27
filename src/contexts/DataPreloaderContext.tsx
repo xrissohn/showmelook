@@ -152,7 +152,7 @@ export function DataPreloaderProvider({ children }: { children: ReactNode }) {
     try {
       const { data: looksData, error: looksError } = await supabase
         .from('generated_looks')
-        .select('id, image_url, prompt_used, is_favorite, created_at, style_trend_id, product_ids, memo, tags')
+        .select('id, image_url, prompt_used, is_favorite, created_at, style_trend_id, product_ids, memo, tags, tag_positions')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
