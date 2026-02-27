@@ -46,20 +46,31 @@ serve(async (req) => {
       ? categories.join(', ') 
       : '상의, 하의, 아우터, 신발, 가방, 액세서리';
 
-    const prompt = `이 패션 이미지를 분석해주세요. 다음 카테고리의 의류/액세서리가 이미지 내 어느 위치에 있는지 찾아주세요: ${categoryList}
+    const prompt = `You are a fashion image analysis expert. Analyze this fashion/outfit image and locate each clothing item or accessory.
 
-각 아이템의 중심 위치를 이미지의 퍼센트 좌표로 반환해주세요.
-- x: 왼쪽(0)에서 오른쪽(100)까지의 위치
-- y: 위쪽(0)에서 아래쪽(100)까지의 위치
+For each of these categories: ${categoryList}
 
-JSON 배열 형식으로만 응답해주세요:
-[
-  {"category": "상의", "x": 50, "y": 25, "confidence": 0.9},
-  {"category": "하의", "x": 50, "y": 65, "confidence": 0.85}
-]
+Find the CENTER POINT of where that item appears in the image. Return coordinates as percentages:
+- x: 0 = left edge, 100 = right edge
+- y: 0 = top edge, 100 = bottom edge
 
-이미지에서 해당 카테고리의 아이템이 보이지 않으면 해당 항목은 포함하지 마세요.
-텍스트 설명 없이 JSON 배열만 반환해주세요.`;
+POSITIONING GUIDELINES:
+- 상의/top: Usually around y=25-35 (upper torso area), x=45-55 (center)
+- 아우터/outer: Overlaps with top but slightly wider, y=20-35, x=45-55
+- 하의/bottom: Usually around y=55-70 (hip to knee area), x=45-55
+- 원피스/dress: Spans from y=30 to y=65, x=45-55
+- 신발/shoes: Near bottom y=85-95, x=45-55
+- 가방/bag: Often to the side y=40-60, x=20-35 or x=65-80
+- 액세서리/accessory: Varies - watches on wrist, necklaces near neck y=15-25
+- 모자/hat: Top of image y=5-15, x=45-55
+
+IMPORTANT: 
+- Only include items that are CLEARLY VISIBLE in the image
+- Be precise - aim for the exact center of each visible item
+- confidence should be 0.9+ if clearly visible, 0.5-0.8 if partially visible
+
+Respond with ONLY a JSON array, no other text:
+[{"category": "상의", "x": 50, "y": 30, "confidence": 0.95}]`;
 
     console.log(`[analyze-image-positions] Analyzing image: ${image_url.substring(0, 50)}...`);
 
@@ -73,6 +84,10 @@ JSON 배열 형식으로만 응답해주세요:
         model: 'google/gemini-2.5-flash',
         messages: [
           {
+            role: 'system',
+            content: 'You are an expert at analyzing fashion images and identifying the precise pixel locations of clothing items. Always respond with only valid JSON arrays.'
+          },
+          {
             role: 'user',
             content: [
               { type: 'text', text: prompt },
@@ -80,7 +95,8 @@ JSON 배열 형식으로만 응답해주세요:
             ]
           }
         ],
-        max_tokens: 500,
+        max_tokens: 800,
+        temperature: 0.1,
       }),
     });
 
