@@ -1,14 +1,15 @@
+import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useUserGallery, type VisibilityFilter } from '@/hooks/useUserGallery';
 import { useLookLikes } from '@/hooks/useLookLikes';
 import GalleryLookCard from '@/components/community/GalleryLookCard';
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
+import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Images, Heart, Globe, Lock } from 'lucide-react';
-import { useMemo } from 'react';
 
 const UserGallery = () => {
   const { userId } = useParams<{ userId: string }>();
@@ -26,10 +27,30 @@ const UserGallery = () => {
   const lookIds = useMemo(() => filteredLooks.map((l) => l.id), [filteredLooks]);
   const { likedLookIds, toggleLike } = useLookLikes(lookIds);
 
+  // Modal state
+  const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+
   const displayName = data?.profile.full_name || '스타일리스트';
 
   const handleToggleLike = async (lookId: string, currentCount: number) => {
-    await toggleLike(lookId, currentCount);
+    const result = await toggleLike(lookId, currentCount);
+    if (result) {
+      // Update local look data if needed
+      setSelectedLook(prev => prev?.id === lookId ? { ...prev, like_count: result.newCount } : prev);
+    }
+  };
+
+  const handleLookClick = (look: typeof filteredLooks[0], index: number) => {
+    setSelectedLook({
+      ...look,
+      is_favorite: false,
+      is_public: look.is_public,
+      user_id: userId || '',
+      user_name: data?.profile.full_name || undefined,
+      user_avatar: data?.profile.avatar_url || undefined,
+    });
+    setSelectedIndex(index);
   };
 
   if (isLoading) {
@@ -139,7 +160,7 @@ const UserGallery = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {filteredLooks.map((look) => (
+              {filteredLooks.map((look, index) => (
                 <GalleryLookCard
                   key={look.id}
                   look={look}
@@ -147,12 +168,43 @@ const UserGallery = () => {
                   isLiked={likedLookIds.has(look.id)}
                   onToggleLike={handleToggleLike}
                   onTogglePublic={togglePublic}
+                  onClick={() => handleLookClick(look, index)}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      {/* Look Detail Modal */}
+      {selectedLook && (
+        <LookDetailModal
+          look={selectedLook}
+          onClose={() => setSelectedLook(null)}
+          onPrevious={() => {
+            if (selectedIndex > 0) {
+              handleLookClick(filteredLooks[selectedIndex - 1], selectedIndex - 1);
+            }
+          }}
+          onNext={() => {
+            if (selectedIndex < filteredLooks.length - 1) {
+              handleLookClick(filteredLooks[selectedIndex + 1], selectedIndex + 1);
+            }
+          }}
+          hasPrevious={selectedIndex > 0}
+          hasNext={selectedIndex < filteredLooks.length - 1}
+          currentIndex={selectedIndex}
+          totalCount={filteredLooks.length}
+          onToggleLike={async (lookId, currentCount) => {
+            const result = await toggleLike(lookId, currentCount);
+            if (result) {
+              setSelectedLook(prev => prev ? { ...prev, like_count: result.newCount } : null);
+            }
+            return result;
+          }}
+          isLiked={likedLookIds.has(selectedLook.id)}
+        />
+      )}
     </>
   );
 };
