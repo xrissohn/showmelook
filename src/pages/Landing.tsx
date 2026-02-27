@@ -8,13 +8,14 @@ import { SEOHead } from '@/components/SEOHead';
 
 // Use public path for Korean logo to enable preloading and improve LCP
 const showmelookKoreanLogo = '/showmelook-korean-logo.png';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import StyleCarousel from '@/components/StyleCarousel';
 import MainNavigation from '@/components/MainNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { LazyImage } from '@/components/LazyImage';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
+import { useLookLikes } from '@/hooks/useLookLikes';
 
 // Scroll animated section wrapper
 const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -335,6 +336,8 @@ const GalleryPreviewSection = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const lookIds = useMemo(() => previewLooks.map(l => l.id), [previewLooks]);
+  const { likedLookIds, toggleLike } = useLookLikes(lookIds);
 
   useEffect(() => {
     const fetchPreview = async () => {
@@ -458,6 +461,14 @@ const GalleryPreviewSection = () => {
           hasNext={selectedIndex < previewLooks.length - 1}
           currentIndex={selectedIndex}
           totalCount={previewLooks.length}
+          onToggleLike={async (lookId, currentCount) => {
+            const result = await toggleLike(lookId, currentCount);
+            if (result) {
+              setSelectedLook(prev => prev ? { ...prev, like_count: result.newCount } : null);
+            }
+            return result;
+          }}
+          isLiked={likedLookIds.has(selectedLook.id)}
         />
       )}
     </>

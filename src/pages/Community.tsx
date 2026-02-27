@@ -185,6 +185,15 @@ const Community = () => {
           hasNext={selectedIndex < looks.length - 1}
           currentIndex={selectedIndex}
           totalCount={looks.length}
+          onToggleLike={async (lookId, currentCount) => {
+            const result = await toggleLike(lookId, currentCount);
+            if (result) {
+              updateLookLikeCount(lookId, result.newCount);
+              setSelectedLook(prev => prev ? { ...prev, like_count: result.newCount } : null);
+            }
+            return result;
+          }}
+          isLiked={likedLookIds.has(selectedLook.id)}
         />
       )}
     </>
