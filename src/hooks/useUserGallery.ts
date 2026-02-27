@@ -48,7 +48,7 @@ export function useUserGallery(userId: string | undefined) {
     // Fetch looks - RLS handles visibility (public OR own)
     const { data: looks, error } = await supabase
       .from('generated_looks')
-      .select('id, image_url, like_count, view_count, caption, tags, created_at, is_public, prompt_used, product_ids, style_reasoning')
+      .select('id, image_url, like_count, view_count, caption, tags, created_at, is_public, prompt_used, product_ids, style_reasoning, tag_positions')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 

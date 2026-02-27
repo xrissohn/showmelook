@@ -155,6 +155,13 @@ export function InteractiveProductTags({
     }
   }, [enableAIPositioning, imageUrl, products.length, cachedPositions]);
 
+  // 캐시된 위치가 있으면 즉시 적용
+  useEffect(() => {
+    if (cachedPositions?.length && aiPositions.length === 0) {
+      setAiPositions(cachedPositions);
+    }
+  }, [cachedPositions]);
+
   const analyzeImagePositions = async () => {
     if (!imageUrl || products.length === 0) return;
 

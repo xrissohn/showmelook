@@ -478,6 +478,7 @@ export type Database = {
           prompt_used: string | null
           style_reasoning: string | null
           style_trend_id: string | null
+          tag_positions: Json | null
           tags: string[] | null
           user_id: string
           view_count: number
@@ -495,6 +496,7 @@ export type Database = {
           prompt_used?: string | null
           style_reasoning?: string | null
           style_trend_id?: string | null
+          tag_positions?: Json | null
           tags?: string[] | null
           user_id: string
           view_count?: number
@@ -512,6 +514,7 @@ export type Database = {
           prompt_used?: string | null
           style_reasoning?: string | null
           style_trend_id?: string | null
+          tag_positions?: Json | null
           tags?: string[] | null
           user_id?: string
           view_count?: number

@@ -91,6 +91,7 @@ interface GeneratedLook {
   style_reasoning?: string | null;
   like_count?: number;
   caption?: string | null;
+  tag_positions?: any;
 }
 
 interface UserProfile {
@@ -929,7 +930,7 @@ const GeneratedStyleImage = ({
   alt,
   logoSrc,
   onShare,
-  hasWatermark = true, // Pro 이상이면 false
+  hasWatermark = true,
   products = [],
   onProductPurchase,
   onProductAddToCart,
@@ -939,6 +940,8 @@ const GeneratedStyleImage = ({
   lookId,
   prompt,
   tags,
+  cachedTagPositions,
+  onTagPositionsAnalyzed,
 }: { 
   src: string; 
   alt: string;
@@ -954,6 +957,8 @@ const GeneratedStyleImage = ({
   lookId?: string;
   prompt?: string;
   tags?: string[];
+  cachedTagPositions?: any[];
+  onTagPositionsAnalyzed?: (positions: any[]) => void;
 }) => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -1122,6 +1127,8 @@ const GeneratedStyleImage = ({
               purchasingProductId={purchasingProductId}
               imageUrl={src}
               enableAIPositioning={true}
+              cachedPositions={cachedTagPositions}
+              onPositionsAnalyzed={onTagPositionsAnalyzed}
             />
           )}
           {/* 저장/공유 버튼 오버레이 */}
@@ -2058,6 +2065,19 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         purchasingProductId={purchasingProductId}
                         imageUrl={selectedLook.image_url}
                         enableAIPositioning={true}
+                        cachedPositions={selectedLook.tag_positions as any[] || undefined}
+                        onPositionsAnalyzed={async (positions) => {
+                          try {
+                            await supabase
+                              .from('generated_looks')
+                              .update({ tag_positions: positions as any })
+                              .eq('id', selectedLook.id);
+                            // Update local state too
+                            setSelectedLook(prev => prev ? { ...prev, tag_positions: positions } : null);
+                          } catch (e) {
+                            console.error('Failed to cache tag positions:', e);
+                          }
+                        }}
                       />
                     </div>
                   )}
@@ -5591,6 +5611,18 @@ const StyleGenerator = () => {
                       lookId={generatedLookId || undefined}
                       prompt={customStylePrompt}
                       tags={selectedTrendProducts.map(p => p.category)}
+                      onTagPositionsAnalyzed={async (positions) => {
+                        if (generatedLookId) {
+                          try {
+                            await supabase
+                              .from('generated_looks')
+                              .update({ tag_positions: positions as any })
+                              .eq('id', generatedLookId);
+                          } catch (e) {
+                            console.error('Failed to cache tag positions:', e);
+                          }
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">

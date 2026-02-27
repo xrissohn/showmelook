@@ -343,7 +343,7 @@ const GalleryPreviewSection = () => {
     const fetchPreview = async () => {
       const { data } = await supabase
         .from('generated_looks')
-        .select('id, image_url, like_count, tags, user_id, prompt_used, style_reasoning, product_ids, created_at, memo, caption')
+        .select('id, image_url, like_count, tags, user_id, prompt_used, style_reasoning, product_ids, created_at, memo, caption, tag_positions')
         .eq('is_public', true)
         .order('like_count', { ascending: false })
         .limit(8);
