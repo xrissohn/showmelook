@@ -446,7 +446,7 @@ serve(async (req) => {
       const pendingRecords = nonDuplicateFailures.map(fp => ({
         source: 'brightdata',
         raw_data: fp.product,
-        error_type: fp.error.includes('image') ? 'image_failed' : 
+        error_type: fp.error.includes('image') ? 'missing_image' : 
                     fp.error.includes('dna') ? 'dna_failed' : 'both_failed',
         error_message: fp.error,
       }));
