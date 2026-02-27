@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, AlertCircle, CheckCircle2, XCircle, RefreshCw, Trash2, ExternalLink, Play } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, XCircle, RefreshCw, Trash2, ExternalLink, Play, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
@@ -43,7 +43,9 @@ const PendingProductsManager = () => {
   const [selectedMerchantFix, setSelectedMerchantFix] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState({ current: 0, total: 0 });
-  const [processResults, setProcessResults] = useState<{ success: number; failed: number; errors: string[] }>({ success: 0, failed: 0, errors: [] });
+  const [processResults, setProcessResults] = useState<{ success: number; failed: number; skipped: number; errors: string[] }>({ success: 0, failed: 0, skipped: 0, errors: [] });
+  const [isBatchReprocessing, setIsBatchReprocessing] = useState(false);
+  const [batchReprocessProgress, setBatchReprocessProgress] = useState({ current: 0, total: 0, success: 0, failed: 0, skipped: 0 });
 
   useEffect(() => {
     loadData();
@@ -130,7 +132,7 @@ const PendingProductsManager = () => {
 
     setIsProcessing(true);
     setProcessProgress({ current: 0, total: productsToProcess.length });
-    setProcessResults({ success: 0, failed: 0, errors: [] });
+    setProcessResults({ success: 0, failed: 0, skipped: 0, errors: [] });
 
     let success = 0;
     let failed = 0;
@@ -185,7 +187,7 @@ const PendingProductsManager = () => {
       }
 
       setProcessProgress({ current: i + 1, total: productsToProcess.length });
-      setProcessResults({ success, failed, errors });
+      setProcessResults({ success, failed, skipped: 0, errors });
     }
 
     setIsProcessing(false);
@@ -246,6 +248,158 @@ const PendingProductsManager = () => {
     }
   };
 
+  // URL에서 merchant_id 추론
+  const inferMerchantFromUrl = (url: string): string | null => {
+    const urlLower = url.toLowerCase();
+    if (urlLower.includes('wconcept')) return 'wconcept';
+    if (urlLower.includes('hfashionmall')) return 'hfashion';
+    if (urlLower.includes('paulsmith')) return 'paulsmith';
+    if (urlLower.includes('stories')) return 'stories';
+    if (urlLower.includes('posty')) return 'posty';
+    if (urlLower.includes('benettonmall')) return 'benetton1';
+    if (urlLower.includes('stockx')) return 'stockx';
+    if (urlLower.includes('arket')) return 'arket';
+    if (urlLower.includes('jestina') || urlLower.includes('j-estina')) return 'jestina';
+    if (urlLower.includes('29cm')) return '29cm';
+    if (urlLower.includes('musinsa')) return 'musinsa';
+    if (urlLower.includes('lfmall')) return 'lfmall';
+    if (urlLower.includes('ssfshop')) return 'ssfshop';
+    if (urlLower.includes('sivillage')) return 'sivillage';
+    return null;
+  };
+
+  // 배치 실패(both_failed) 일괄 재처리
+  const batchReprocessAll = async () => {
+    setIsBatchReprocessing(true);
+    setBatchReprocessProgress({ current: 0, total: 0, success: 0, failed: 0, skipped: 0 });
+
+    try {
+      // 모든 both_failed 항목 가져오기 (1000개 단위)
+      let allPending: PendingProduct[] = [];
+      let offset = 0;
+      const pageSize = 1000;
+      
+      while (true) {
+        const { data, error } = await supabase
+          .from('pending_products')
+          .select('*')
+          .is('resolved_at', null)
+          .eq('error_type', 'both_failed')
+          .range(offset, offset + pageSize - 1);
+        
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        
+        const typed = data.map(p => ({
+          id: p.id,
+          source: p.source,
+          error_type: p.error_type,
+          error_message: p.error_message,
+          raw_data: p.raw_data as RawProductData,
+          created_at: p.created_at,
+          retry_count: p.retry_count,
+        }));
+        allPending = [...allPending, ...typed];
+        offset += pageSize;
+        if (data.length < pageSize) break;
+      }
+
+      const total = allPending.length;
+      setBatchReprocessProgress(prev => ({ ...prev, total }));
+
+      if (total === 0) {
+        toast({ title: "재처리할 항목 없음", description: "both_failed 대기열이 비어 있습니다." });
+        setIsBatchReprocessing(false);
+        return;
+      }
+
+      let success = 0;
+      let failed = 0;
+      let skipped = 0;
+      const BATCH_SIZE = 10;
+
+      for (let i = 0; i < allPending.length; i += BATCH_SIZE) {
+        const batch = allPending.slice(i, i + BATCH_SIZE);
+        const productsToRegister = [];
+        const pendingIds: string[] = [];
+        const skippedIds: string[] = [];
+
+        for (const p of batch) {
+          const url = p.raw_data.product_url || '';
+          const currentMerchant = p.raw_data.merchant_id || '';
+          const inferredMerchant = inferMerchantFromUrl(url);
+          
+          // merchant_id가 unknown이거나 없으면 URL에서 추론
+          const finalMerchant = (currentMerchant === 'unknown' || !currentMerchant) 
+            ? inferredMerchant 
+            : currentMerchant;
+          
+          if (!finalMerchant) {
+            skipped++;
+            skippedIds.push(p.id);
+            continue;
+          }
+
+          productsToRegister.push({
+            ...p.raw_data,
+            merchant_id: finalMerchant,
+          });
+          pendingIds.push(p.id);
+        }
+
+        if (productsToRegister.length > 0) {
+          try {
+            const { data, error } = await supabase.functions.invoke('register-product', {
+              body: { products: productsToRegister },
+            });
+
+            if (error) throw error;
+
+            if (data?.results) {
+              for (let j = 0; j < data.results.length; j++) {
+                const r = data.results[j];
+                if (r.success || r.duplicate) {
+                  success++;
+                  // Mark resolved
+                  await supabase
+                    .from('pending_products')
+                    .update({ resolved_at: new Date().toISOString(), resolved_by: 'batch_reprocess' })
+                    .eq('id', pendingIds[j]);
+                } else {
+                  failed++;
+                }
+              }
+            } else {
+              failed += productsToRegister.length;
+            }
+          } catch {
+            failed += productsToRegister.length;
+          }
+        }
+
+        setBatchReprocessProgress({ current: Math.min(i + BATCH_SIZE, total), total, success, failed, skipped });
+
+        // Rate limit
+        if (i + BATCH_SIZE < allPending.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      toast({
+        title: "배치 재처리 완료",
+        description: `성공: ${success}개, 실패: ${failed}개, 스킵: ${skipped}개`,
+        variant: failed > success ? "destructive" : "default",
+      });
+
+      loadData();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ title: "배치 재처리 실패", description: errorMessage, variant: "destructive" });
+    } finally {
+      setIsBatchReprocessing(false);
+    }
+  };
+
   // Group by source
   const groupedProducts = pendingProducts.reduce((acc, product) => {
     const source = product.source || 'unknown';
@@ -289,7 +443,55 @@ const PendingProductsManager = () => {
           </div>
         </div>
 
-        {/* Processing Progress */}
+        {/* Batch Reprocess both_failed */}
+        <div className="p-4 border-2 border-orange-500/30 rounded-lg space-y-3 bg-orange-500/5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="font-medium flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                배치 실패(both_failed) 일괄 재처리
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                URL에서 올바른 머천트를 자동 추론하여 register-product로 재등록합니다.
+              </p>
+            </div>
+            <Button 
+              onClick={batchReprocessAll} 
+              disabled={isBatchReprocessing || isProcessing}
+              variant="default"
+            >
+              {isBatchReprocessing ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Play className="w-4 h-4 mr-2" />
+              )}
+              전체 재처리 시작
+            </Button>
+          </div>
+
+          {isBatchReprocessing && batchReprocessProgress.total > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span>재처리 중...</span>
+                <span>{batchReprocessProgress.current} / {batchReprocessProgress.total}</span>
+              </div>
+              <Progress value={(batchReprocessProgress.current / batchReprocessProgress.total) * 100} />
+              <div className="flex gap-4 text-sm">
+                <span className="text-primary">✅ 성공: {batchReprocessProgress.success}</span>
+                <span className="text-destructive">❌ 실패: {batchReprocessProgress.failed}</span>
+                <span className="text-muted-foreground">⏭️ 스킵: {batchReprocessProgress.skipped}</span>
+              </div>
+            </div>
+          )}
+
+          {!isBatchReprocessing && batchReprocessProgress.total > 0 && batchReprocessProgress.current === batchReprocessProgress.total && (
+            <div className="p-3 bg-card rounded-lg text-sm">
+              <p className="font-medium">재처리 완료!</p>
+              <p>성공: {batchReprocessProgress.success}개 / 실패: {batchReprocessProgress.failed}개 / 스킵(머천트 불명): {batchReprocessProgress.skipped}개</p>
+            </div>
+          )}
+        </div>
+
         {isProcessing && (
           <div className="p-4 border rounded-lg space-y-2 bg-background">
             <div className="flex items-center justify-between text-sm">
