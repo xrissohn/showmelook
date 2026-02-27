@@ -367,9 +367,10 @@ const PendingProductsManager = () => {
                       .delete()
                       .eq('id', pendingIds[j]);
                   } else {
+                    // 성공도 삭제
                     await supabase
                       .from('pending_products')
-                      .update({ resolved_at: new Date().toISOString(), resolved_by: 'batch_reprocess' })
+                      .delete()
                       .eq('id', pendingIds[j]);
                   }
                 } else {
