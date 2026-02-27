@@ -242,7 +242,8 @@ const Admin = () => {
     success: number;
     failed: number;
     skipped?: number;
-    pending?: number;  // 수동 처리 대기열로 이동한 수
+    pending?: number;
+    imageFailed?: number;
     errors: string[];
   } | null>(null);
 
@@ -704,7 +705,8 @@ const Admin = () => {
     let success = 0;
     let failed = 0;
     let skipped = 0;
-    let pending = 0;  // 수동 처리 대기열로 이동한 수
+    let pending = 0;
+    let imageFailed = 0;
     const errors: string[] = [];
 
     for (let i = 0; i < excelProducts.length; i += BATCH_SIZE) {
@@ -728,11 +730,12 @@ const Admin = () => {
           for (const r of data.results) {
             if (r.success) {
               success++;
-            } else if (r.error?.includes('이미 등록된 제품')) {
+            } else if (r.duplicate || r.error?.includes('이미 등록된 제품')) {
               skipped++;
+            } else if (r.step_failed === 'image' || r.error?.includes('이미지')) {
+              imageFailed++;
             } else if (r.pending || r.error?.includes('수동 처리 대기열')) {
               pending++;
-              // pending은 에러 목록에 추가하지 않음 (정상 흐름)
             } else {
               failed++;
               errors.push(`${r.product_url?.slice(0, 50) || r.error?.slice(0, 50)}...: ${r.error}`);
@@ -750,7 +753,7 @@ const Admin = () => {
     setExcelUploadProgress(prev => ({ ...prev!, current: excelProducts.length }));
     
     // 결과 저장
-    const resultWithAll = { success, failed, skipped, pending, errors: errors.slice(0, 10) };
+    const resultWithAll = { success, failed, skipped, pending, imageFailed, errors: errors.slice(0, 10) };
     setExcelUploadResult(resultWithAll);
     setIsExcelUploading(false);
     
@@ -761,6 +764,7 @@ const Admin = () => {
     const parts = [];
     if (success > 0) parts.push(`${success}개 성공`);
     if (skipped > 0) parts.push(`${skipped}개 중복 스킵`);
+    if (imageFailed > 0) parts.push(`${imageFailed}개 이미지 실패`);
     if (pending > 0) parts.push(`${pending}개 대기열`);
     if (failed > 0) parts.push(`${failed}개 실패`);
     
@@ -1610,16 +1614,22 @@ const Admin = () => {
                       <span className="font-medium">
                         등록 결과: {excelUploadResult.success}개 성공
                         {excelUploadResult.skipped && excelUploadResult.skipped > 0 && `, ${excelUploadResult.skipped}개 중복 스킵`}
+                        {excelUploadResult.imageFailed && excelUploadResult.imageFailed > 0 && `, ${excelUploadResult.imageFailed}개 이미지 실패`}
                         {excelUploadResult.pending && excelUploadResult.pending > 0 && `, ${excelUploadResult.pending}개 대기열`}
                         {excelUploadResult.failed > 0 && `, ${excelUploadResult.failed}개 실패`}
                       </span>
                     </div>
-                    {excelUploadResult.pending && excelUploadResult.pending > 0 && (
+                    {(excelUploadResult.imageFailed && excelUploadResult.imageFailed > 0) && (
                       <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
-                        🔸 이미지 누락/실패 상품은 "등록 대기 제품" 탭에서 수동 처리해주세요.
+                        🖼️ 이미지 다운로드 실패 {excelUploadResult.imageFailed}개 → "이미지 누락 제품" 탭에서 수동 업로드 가능
                       </p>
                     )}
-                    {excelUploadResult.skipped && excelUploadResult.skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && !excelUploadResult.pending && (
+                    {excelUploadResult.pending && excelUploadResult.pending > 0 && (
+                      <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
+                        🔸 머천트 오류 등 {excelUploadResult.pending}개 → "등록 대기 제품" 탭에서 수동 처리
+                      </p>
+                    )}
+                    {excelUploadResult.skipped && excelUploadResult.skipped > 0 && excelUploadResult.success === 0 && excelUploadResult.failed === 0 && !excelUploadResult.pending && !excelUploadResult.imageFailed && (
                       <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
                         ℹ️ 모든 제품이 이미 등록되어 있습니다.
                       </p>
