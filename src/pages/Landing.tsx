@@ -14,6 +14,7 @@ import StyleCarousel from '@/components/StyleCarousel';
 import MainNavigation from '@/components/MainNavigation';
 import { supabase } from '@/integrations/supabase/client';
 import { LazyImage } from '@/components/LazyImage';
+import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 
 // Scroll animated section wrapper
 const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -330,14 +331,16 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
 // Gallery preview section for landing page
 const GalleryPreviewSection = () => {
   const navigate = useNavigate();
-  const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null }[]>([]);
+  const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
     const fetchPreview = async () => {
       const { data } = await supabase
         .from('generated_looks')
-        .select('id, image_url, like_count, tags')
+        .select('id, image_url, like_count, tags, user_id, prompt_used, style_reasoning, product_ids, created_at, memo, caption')
         .eq('is_public', true)
         .order('like_count', { ascending: false })
         .limit(8);
@@ -347,86 +350,117 @@ const GalleryPreviewSection = () => {
     fetchPreview();
   }, []);
 
+  const handleLookClick = (look: typeof previewLooks[0], index: number) => {
+    setSelectedLook({
+      ...look,
+      is_favorite: false,
+      is_public: true,
+      user_name: null,
+      user_avatar: null,
+    });
+    setSelectedIndex(index);
+  };
+
   if (isLoading || previewLooks.length === 0) return null;
 
   return (
-    <ScrollSection className="py-16 sm:py-24 px-4 sm:px-6 bg-background relative overflow-hidden" delay={100}>
-      {/* Background effects */}
-      <FloatingOrb className="top-10 left-[10%] w-48 h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
-      <FloatingOrb className="bottom-10 right-[10%] w-64 h-64 opacity-10" gradient="bg-gradient-brand" delay={1.5} />
-      
-      <SparklesStar className="top-16 right-[12%]" delay={0} />
-      <SparklesStar className="bottom-20 left-[8%]" delay={0.5} />
+    <>
+      <ScrollSection className="py-16 sm:py-24 px-4 sm:px-6 bg-background relative overflow-hidden" delay={100}>
+        {/* Background effects */}
+        <FloatingOrb className="top-10 left-[10%] w-48 h-48 opacity-10" gradient="bg-gradient-coral" delay={0} />
+        <FloatingOrb className="bottom-10 right-[10%] w-64 h-64 opacity-10" gradient="bg-gradient-brand" delay={1.5} />
+        
+        <SparklesStar className="top-16 right-[12%]" delay={0} />
+        <SparklesStar className="bottom-20 left-[8%]" delay={0.5} />
 
-      <div className="container mx-auto max-w-6xl relative z-10">
-        <div className="text-center mb-10 sm:mb-14">
-          <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
-            <Images className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-twinkle" />
-            <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Style Gallery</span>
-            <Images className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-twinkle" style={{ animationDelay: '0.5s' }} />
-          </div>
-          <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-            다른 사람들의 스타일 구경하기
-          </h2>
-          <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-            AI가 만든 다양한 스타일에서 영감을 얻어보세요
-          </p>
-        </div>
-
-        {/* Gallery Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
-          {previewLooks.map((look) => (
-            <div
-              key={look.id}
-              className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
-              onClick={() => navigate(`/look/${look.id}`)}
-            >
-              <LazyImage
-                src={look.image_url}
-                alt="스타일 룩"
-                className="w-full h-full object-cover"
-                fallbackClassName="w-full h-full"
-              />
-              {/* Bottom gradient */}
-              <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
-              
-              {/* Like count */}
-              {look.like_count > 0 && (
-                <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
-                  <Heart className="w-3.5 h-3.5 text-white" />
-                  <span className="text-white text-xs">{look.like_count}</span>
-                </div>
-              )}
-
-              {/* Tags */}
-              {look.tags && look.tags.length > 0 && (
-                <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 max-w-[60%]">
-                  {look.tags.slice(0, 2).map((tag, i) => (
-                    <span key={i} className="text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+        <div className="container mx-auto max-w-6xl relative z-10">
+          <div className="text-center mb-10 sm:mb-14">
+            <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
+              <Images className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-twinkle" />
+              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Style Gallery</span>
+              <Images className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
-          ))}
-        </div>
+            <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
+              다른 사람들의 스타일 구경하기
+            </h2>
+            <p className="text-sm sm:text-lg font-korean text-muted-foreground">
+              AI가 만든 다양한 스타일에서 영감을 얻어보세요
+            </p>
+          </div>
 
-        {/* CTA to gallery */}
-        <div className="text-center">
-          <Button 
-            variant="hero-outline" 
-            size="lg"
-            onClick={() => navigate('/community')}
-            className="font-korean group"
-          >
-            <Images className="w-5 h-5 mr-2" />
-            스타일 갤러리 더 보기
-            <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          {/* Gallery Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
+            {previewLooks.map((look, index) => (
+              <div
+                key={look.id}
+                className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+                onClick={() => handleLookClick(look, index)}
+              >
+                <LazyImage
+                  src={look.image_url}
+                  alt="스타일 룩"
+                  className="w-full h-full object-cover"
+                  fallbackClassName="w-full h-full"
+                />
+                {/* Bottom gradient */}
+                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+                
+                {/* Like count */}
+                {look.like_count > 0 && (
+                  <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
+                    <Heart className="w-3.5 h-3.5 text-white" />
+                    <span className="text-white text-xs">{look.like_count}</span>
+                  </div>
+                )}
+
+                {/* Tags */}
+                {look.tags && look.tags.length > 0 && (
+                  <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 max-w-[60%]">
+                    {look.tags.slice(0, 2).map((tag, i) => (
+                      <span key={i} className="text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* CTA to gallery */}
+          <div className="text-center">
+            <Button 
+              variant="hero-outline" 
+              size="lg"
+              onClick={() => navigate('/community')}
+              className="font-korean group"
+            >
+              <Images className="w-5 h-5 mr-2" />
+              스타일 갤러리 더 보기
+              <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </ScrollSection>
+      </ScrollSection>
+
+      {/* Look Detail Modal */}
+      {selectedLook && (
+        <LookDetailModal
+          look={selectedLook}
+          onClose={() => setSelectedLook(null)}
+          onPrevious={() => {
+            if (selectedIndex > 0) handleLookClick(previewLooks[selectedIndex - 1], selectedIndex - 1);
+          }}
+          onNext={() => {
+            if (selectedIndex < previewLooks.length - 1) handleLookClick(previewLooks[selectedIndex + 1], selectedIndex + 1);
+          }}
+          hasPrevious={selectedIndex > 0}
+          hasNext={selectedIndex < previewLooks.length - 1}
+          currentIndex={selectedIndex}
+          totalCount={previewLooks.length}
+        />
+      )}
+    </>
   );
 };
 
