@@ -71,6 +71,7 @@ interface CachedProduct {
   image_url: string | null;
   product_url: string;
   category: string;
+  sub_category?: string | null;
   style_tags: string[] | null;
   affiliate_url?: string;
   isAutoSelected?: boolean;
@@ -1450,6 +1451,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             image_url: p.image_url,
             product_url: p.product_url,
             category: p.category,
+            sub_category: p.sub_category,
             style_tags: p.style_tags,
           }));
           setLookProducts(products);

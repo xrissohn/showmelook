@@ -12,6 +12,7 @@ interface TaggedProduct {
   image_url: string | null;
   product_url: string;
   category: string;
+  sub_category?: string | null;
   affiliate_url?: string;
   merchant_id?: string | null;
 }
@@ -65,31 +66,34 @@ const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
   '피어싱': { x: 38, y: 12, category: '피어싱' },
   '장갑': { x: 20, y: 65, category: '장갑' },
   // 모자/헤어 계열
-  '모자': { x: 50, y: 8, category: '모자' },
-  'hat': { x: 50, y: 8, category: 'hat' },
-  '헤어': { x: 50, y: 8, category: '헤어' },
+  '모자': { x: 50, y: 5, category: '모자' },
+  'hat': { x: 50, y: 5, category: 'hat' },
+  '헤어': { x: 50, y: 5, category: '헤어' },
   // 패션잡화/기타
   '패션잡화': { x: 70, y: 50, category: '패션잡화' },
   '기타': { x: 70, y: 45, category: '기타' },
   '홈웨어': { x: 50, y: 40, category: '홈웨어' },
 };
 
-// 카테고리 매핑 (다양한 표현을 통일)
-const normalizeCategory = (category: string): string => {
+// 카테고리 매핑 (다양한 표현을 통일, sub_category도 지원)
+const normalizeCategory = (category: string, subCategory?: string | null): string => {
   const lower = category.toLowerCase();
-  if (['top', '상의', 'shirt', 'blouse', 'sweater', '여성의류', '패션의류'].some(k => lower.includes(k))) return '상의';
-  if (['outer', '아우터', 'jacket', 'coat', '재킷'].some(k => lower.includes(k))) return '아우터';
-  if (['bottom', '하의', 'pants', 'skirt', 'jeans'].some(k => lower.includes(k))) return '하의';
+  const subLower = (subCategory || '').toLowerCase();
+  
+  // sub_category가 더 구체적이면 우선 사용 (예: category=기타, sub_category=모자)
+  if (['모자', 'hat', 'cap', 'beanie', '버킷햇', '비니', '헤어'].some(k => subLower.includes(k) || lower.includes(k))) return '모자';
+  if (['top', '상의', 'shirt', 'blouse', 'sweater', '여성의류', '패션의류', '티셔츠', '니트'].some(k => lower.includes(k))) return '상의';
+  if (['outer', '아우터', 'jacket', 'coat', '재킷', '점퍼', '패딩'].some(k => lower.includes(k))) return '아우터';
+  if (['bottom', '하의', 'pants', 'skirt', 'jeans', '바지', '스커트'].some(k => lower.includes(k))) return '하의';
   if (['dress', '원피스', '점프수트', 'jumpsuit'].some(k => lower.includes(k))) return '원피스';
-  if (['shoes', '신발', 'sneaker', 'boot', '운동화', '스니커즈', '슬립온'].some(k => lower.includes(k))) return '신발';
-  if (['숄더백', '크로스백', '쇼퍼백', 'bag', '가방', 'backpack', 'clutch', 'tote'].some(k => lower.includes(k))) return '가방';
-  if (['지갑', 'wallet'].some(k => lower.includes(k))) return '지갑';
-  if (['모자', 'hat', 'cap', '헤어'].some(k => lower.includes(k))) return '모자';
-  if (['귀걸이', 'earring'].some(k => lower.includes(k))) return '귀걸이';
-  if (['펜던트', 'pendant', 'necklace', '목걸이'].some(k => lower.includes(k))) return '펜던트';
-  if (['피어싱', 'piercing'].some(k => lower.includes(k))) return '피어싱';
-  if (['장갑', 'glove'].some(k => lower.includes(k))) return '장갑';
-  if (['accessory', '액세서리', 'jewelry', 'watch', '패션잡화'].some(k => lower.includes(k))) return '액세서리';
+  if (['shoes', '신발', 'sneaker', 'boot', '운동화', '스니커즈', '슬립온', '샌들', '로퍼'].some(k => lower.includes(k) || subLower.includes(k))) return '신발';
+  if (['숄더백', '크로스백', '쇼퍼백', 'bag', '가방', 'backpack', 'clutch', 'tote', '백팩', '토트'].some(k => lower.includes(k) || subLower.includes(k))) return '가방';
+  if (['지갑', 'wallet'].some(k => lower.includes(k) || subLower.includes(k))) return '지갑';
+  if (['귀걸이', 'earring'].some(k => lower.includes(k) || subLower.includes(k))) return '귀걸이';
+  if (['펜던트', 'pendant', 'necklace', '목걸이'].some(k => lower.includes(k) || subLower.includes(k))) return '펜던트';
+  if (['피어싱', 'piercing'].some(k => lower.includes(k) || subLower.includes(k))) return '피어싱';
+  if (['장갑', 'glove'].some(k => lower.includes(k) || subLower.includes(k))) return '장갑';
+  if (['accessory', '액세서리', 'jewelry', 'watch', '패션잡화', '시계', '팔찌', '반지'].some(k => lower.includes(k) || subLower.includes(k))) return '액세서리';
   return category;
 };
 
@@ -134,7 +138,7 @@ const adjustPositionToAvoidCollision = (
   const newPosition: ProductTagPosition = {
     ...position,
     x: Math.min(88, Math.max(12, position.x + offset.x)),
-    y: Math.min(92, Math.max(8, position.y + offset.y)),
+    y: Math.min(92, Math.max(4, position.y + offset.y)),
   };
 
   // 재귀적으로 다시 충돌 확인
@@ -199,7 +203,7 @@ export function InteractiveProductTags({
 
     setIsAnalyzing(true);
     try {
-      const categories = [...new Set(products.map(p => normalizeCategory(p.category)))];
+      const categories = [...new Set(products.map(p => normalizeCategory(p.category, p.sub_category)))];
       
       const { data, error } = await supabase.functions.invoke('analyze-image-positions', {
         body: { image_url: imageUrl, categories }
@@ -224,7 +228,7 @@ export function InteractiveProductTags({
     const categoryCount: Record<string, number> = {};
     
     return products.map((product) => {
-      const normalizedCategory = normalizeCategory(product.category);
+      const normalizedCategory = normalizeCategory(product.category, product.sub_category);
       const categoryIndex = categoryCount[normalizedCategory] || 0;
       categoryCount[normalizedCategory] = categoryIndex + 1;
       
@@ -236,7 +240,7 @@ export function InteractiveProductTags({
         // AI 위치를 안전 범위 내로 클램핑
         basePosition = { 
           x: Math.min(90, Math.max(10, aiPos.x)), 
-          y: Math.min(92, Math.max(8, aiPos.y)), 
+          y: Math.min(92, Math.max(4, aiPos.y)), 
           category: normalizedCategory 
         };
       } else {
@@ -257,7 +261,7 @@ export function InteractiveProductTags({
       const offsetPosition: ProductTagPosition = {
         ...basePosition,
         x: Math.min(88, Math.max(12, basePosition.x + categoryOffset.x)),
-        y: Math.min(92, Math.max(8, basePosition.y + categoryOffset.y)),
+        y: Math.min(92, Math.max(4, basePosition.y + categoryOffset.y)),
       };
       
       // 충돌 방지: 기존 위치들과 겹치지 않도록 조정
