@@ -65,6 +65,7 @@ const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
   '펜던트': { x: 50, y: 18, category: '펜던트' },
   '피어싱': { x: 38, y: 12, category: '피어싱' },
   '장갑': { x: 20, y: 65, category: '장갑' },
+  '마스크': { x: 50, y: 18, category: '마스크' },
   // 모자/헤어 계열
   '모자': { x: 50, y: 5, category: '모자' },
   'hat': { x: 50, y: 5, category: 'hat' },
@@ -75,11 +76,14 @@ const DEFAULT_POSITIONS: Record<string, ProductTagPosition> = {
   '홈웨어': { x: 50, y: 40, category: '홈웨어' },
 };
 
-// 카테고리 매핑 (다양한 표현을 통일, sub_category도 지원)
-const normalizeCategory = (category: string, subCategory?: string | null): string => {
+// 카테고리 매핑 (다양한 표현을 통일, sub_category와 상품명도 지원)
+const normalizeCategory = (category: string, subCategory?: string | null, productName?: string | null): string => {
   const lower = category.toLowerCase();
   const subLower = (subCategory || '').toLowerCase();
+  const nameLower = (productName || '').toLowerCase();
   
+  // 상품명에 마스크가 포함된 경우 우선 처리 (얼굴 아래 위치)
+  if (['마스크', 'mask', '바라클라바', '넥워머'].some(k => nameLower.includes(k) || subLower.includes(k) || lower.includes(k))) return '마스크';
   // sub_category가 더 구체적이면 우선 사용 (예: category=기타, sub_category=모자)
   if (['모자', 'hat', 'cap', 'beanie', '버킷햇', '비니', '헤어'].some(k => subLower.includes(k) || lower.includes(k))) return '모자';
   if (['top', '상의', 'shirt', 'blouse', 'sweater', '여성의류', '패션의류', '티셔츠', '니트'].some(k => lower.includes(k))) return '상의';
@@ -203,7 +207,7 @@ export function InteractiveProductTags({
 
     setIsAnalyzing(true);
     try {
-      const categories = [...new Set(products.map(p => normalizeCategory(p.category, p.sub_category)))];
+      const categories = [...new Set(products.map(p => normalizeCategory(p.category, p.sub_category, p.name)))];
       
       const { data, error } = await supabase.functions.invoke('analyze-image-positions', {
         body: { image_url: imageUrl, categories }
@@ -228,7 +232,7 @@ export function InteractiveProductTags({
     const categoryCount: Record<string, number> = {};
     
     return products.map((product) => {
-      const normalizedCategory = normalizeCategory(product.category, product.sub_category);
+      const normalizedCategory = normalizeCategory(product.category, product.sub_category, product.name);
       const categoryIndex = categoryCount[normalizedCategory] || 0;
       categoryCount[normalizedCategory] = categoryIndex + 1;
       
