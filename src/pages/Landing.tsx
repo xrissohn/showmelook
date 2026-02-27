@@ -409,12 +409,10 @@ const GalleryPreviewSection = () => {
                 <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
                 
                 {/* Like count */}
-                {look.like_count > 0 && (
-                  <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
-                    <Heart className="w-3.5 h-3.5 text-white" />
-                    <span className="text-white text-xs">{look.like_count}</span>
-                  </div>
-                )}
+                <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
+                  <Heart className={`w-3.5 h-3.5 ${likedLookIds.has(look.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                  <span className="text-white text-xs">{look.like_count}</span>
+                </div>
 
                 {/* Tags */}
                 {look.tags && look.tags.length > 0 && (

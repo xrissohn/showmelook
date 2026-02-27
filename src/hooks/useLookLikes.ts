@@ -57,7 +57,7 @@ export function useLookLikes(lookIds: string[]) {
       if (newLiked) {
         const { error } = await supabase
           .from('look_likes')
-          .insert({ user_id: user.id, look_id: lookId });
+          .upsert({ user_id: user.id, look_id: lookId }, { onConflict: 'user_id,look_id', ignoreDuplicates: true });
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -68,13 +68,20 @@ export function useLookLikes(lookIds: string[]) {
         if (error) throw error;
       }
 
-      // Update denormalized count
+      // Recalculate actual count from look_likes table
+      const { count } = await supabase
+        .from('look_likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('look_id', lookId);
+
+      const actualCount = count ?? Math.max(0, newCount);
+
       await supabase
         .from('generated_looks')
-        .update({ like_count: Math.max(0, newCount) })
+        .update({ like_count: actualCount })
         .eq('id', lookId);
 
-      return { liked: newLiked, newCount: Math.max(0, newCount) };
+      return { liked: newLiked, newCount: actualCount };
     } catch (error) {
       // Rollback
       setLikedLookIds(prev => {
