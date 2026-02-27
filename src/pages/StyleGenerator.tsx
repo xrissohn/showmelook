@@ -2395,6 +2395,24 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     </span>
                   </button>
                   
+                  {/* 공개/비공개 토글 버튼 */}
+                  <button 
+                    onClick={() => togglePublic(selectedLook)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-full transition-colors ${
+                      selectedLook.is_public 
+                        ? 'bg-primary/30 hover:bg-primary/40' 
+                        : 'bg-white/10 hover:bg-white/20'
+                    }`}
+                  >
+                    {selectedLook.is_public 
+                      ? <Globe className="w-4 h-4 text-primary" /> 
+                      : <LockKeyhole className="w-4 h-4 text-white" />
+                    }
+                    <span className="text-white text-sm font-korean hidden sm:inline">
+                      {selectedLook.is_public ? '공개 중' : '비공개'}
+                    </span>
+                  </button>
+                  
                   {/* 즐겨찾기 버튼 */}
                   <button 
                     onClick={() => toggleFavorite(selectedLook)}
