@@ -584,6 +584,7 @@ export const LookDetailModal = ({
                   lookId={look.id}
                   prompt={look.prompt_used || undefined}
                   tags={look.tags || undefined}
+                  showDownload={isOwner}
                 />
               </div>
             </div>

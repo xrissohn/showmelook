@@ -227,6 +227,7 @@ interface ShareButtonsProps {
   lookId?: string;
   prompt?: string;
   tags?: string[];
+  showDownload?: boolean;
 }
 
 export const ShareButtons = ({
@@ -239,6 +240,7 @@ export const ShareButtons = ({
   lookId,
   prompt,
   tags,
+  showDownload = true,
 }: ShareButtonsProps) => {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -263,14 +265,16 @@ export const ShareButtons = ({
   if (compact) {
     return (
       <div className={`flex gap-2 ${className}`}>
-        <button
-          onClick={handleDownload}
-          disabled={isDownloading}
-          className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-          title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
-        >
-          {isDownloading ? <Loader2 className="w-5 h-5 animate-spin text-foreground" /> : <Download className="w-5 h-5 text-foreground" />}
-        </button>
+        {showDownload && (
+          <button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
+            title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+          >
+            {isDownloading ? <Loader2 className="w-5 h-5 animate-spin text-foreground" /> : <Download className="w-5 h-5 text-foreground" />}
+          </button>
+        )}
         <div className="relative">
           <button
             onClick={() => setIsShareOpen(!isShareOpen)}
@@ -306,11 +310,13 @@ export const ShareButtons = ({
 
   return (
     <div className={`flex gap-2 ${className}`}>
-      <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading} className="font-korean"
-        title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}>
-        {isDownloading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Download className="w-4 h-4 mr-1.5" />}
-        저장{shouldAddWatermark && ' 🏷️'}
-      </Button>
+      {showDownload && (
+        <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading} className="font-korean"
+          title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}>
+          {isDownloading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Download className="w-4 h-4 mr-1.5" />}
+          저장{shouldAddWatermark && ' 🏷️'}
+        </Button>
+      )}
       <div className="relative">
         <Button variant="outline" size="sm" onClick={() => setIsShareOpen(!isShareOpen)} className="font-korean">
           <Share2 className="w-4 h-4 mr-1.5" />공유
