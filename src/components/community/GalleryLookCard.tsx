@@ -10,6 +10,7 @@ interface GalleryLookCardProps {
   isLiked?: boolean;
   onToggleLike?: (lookId: string, currentCount: number) => void;
   onTogglePublic?: (lookId: string, currentPublic: boolean) => void;
+  onClick?: () => void;
 }
 
 const GalleryLookCard = ({
@@ -18,6 +19,7 @@ const GalleryLookCard = ({
   isLiked = false,
   onToggleLike,
   onTogglePublic,
+  onClick,
 }: GalleryLookCardProps) => {
   const navigate = useNavigate();
   const [animating, setAnimating] = useState(false);
@@ -40,7 +42,7 @@ const GalleryLookCard = ({
       className={`group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
         !look.is_public && isOwner ? 'opacity-60' : ''
       }`}
-      onClick={() => navigate(`/look/${look.id}`)}
+      onClick={() => onClick ? onClick() : navigate(`/look/${look.id}`)}
     >
       <LazyImage
         src={look.image_url}
