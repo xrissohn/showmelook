@@ -1451,6 +1451,14 @@ const Admin = () => {
                       onChange={handleExcelUpload}
                       className="max-w-md"
                     />
+                    <a
+                      href="/templates/product-upload-template.csv"
+                      download="product-upload-template.csv"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors whitespace-nowrap"
+                    >
+                      <FileSpreadsheet className="w-4 h-4" />
+                      템플릿 다운로드
+                    </a>
                   </div>
                   {excelFileNames.length > 0 && (
                     <div className="text-sm text-muted-foreground space-y-1">
