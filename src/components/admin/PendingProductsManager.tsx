@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, AlertCircle, CheckCircle2, XCircle, RefreshCw, Trash2, ExternalLink, Play, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +52,7 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
   const [isBatchReprocessing, setIsBatchReprocessing] = useState(false);
   const [batchReprocessProgress, setBatchReprocessProgress] = useState({ current: 0, total: 0, success: 0, failed: 0, skipped: 0 });
   const [sourcePages, setSourcePages] = useState<Record<string, number>>({});
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const PAGE_SIZE = 20;
 
   useEffect(() => {
@@ -556,12 +558,23 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
               <Badge variant="outline" className="font-mono">{source}</Badge>
               <span className="text-sm text-muted-foreground">{sourceProducts.length}개</span>
               
+              {/* Selection info */}
+              {(() => {
+                const selectedInSource = sourceProducts.filter(p => selectedIds.has(p.id)).length;
+                return selectedInSource > 0 ? (
+                  <Badge variant="secondary">{selectedInSource}개 선택됨</Badge>
+                ) : null;
+              })()}
+              
               {/* Bulk action for this source */}
               <div className="ml-auto flex items-center gap-2">
                 <Select 
                   onValueChange={(value) => {
+                    // 선택된 항목이 있으면 선택된 것만, 없으면 전체에 적용
+                    const selectedInSource = sourceProducts.filter(p => selectedIds.has(p.id));
+                    const targets = selectedInSource.length > 0 ? selectedInSource : sourceProducts;
                     const updates: Record<string, string> = {};
-                    sourceProducts.forEach(p => {
+                    targets.forEach(p => {
                       updates[p.id] = value;
                     });
                     setSelectedMerchantFix(prev => ({ ...prev, ...updates }));
@@ -581,13 +594,19 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
                 <Button
                   size="sm"
                   onClick={() => {
-                    const ids = sourceProducts.map(p => p.id);
+                    const selectedInSource = sourceProducts.filter(p => selectedIds.has(p.id));
+                    const ids = selectedInSource.length > 0 
+                      ? selectedInSource.map(p => p.id) 
+                      : sourceProducts.map(p => p.id);
                     processSelectedProducts(ids);
                   }}
                   disabled={isProcessing || !sourceProducts.some(p => selectedMerchantFix[p.id])}
                 >
                   <Play className="w-4 h-4 mr-1" />
-                  {sourceProducts.length}개 일괄 등록
+                  {(() => {
+                    const selectedInSource = sourceProducts.filter(p => selectedIds.has(p.id)).length;
+                    return selectedInSource > 0 ? `${selectedInSource}개 선택 등록` : `${sourceProducts.length}개 일괄 등록`;
+                  })()}
                 </Button>
               </div>
             </div>
@@ -603,6 +622,21 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox
+                              checked={pagedProducts.length > 0 && pagedProducts.every(p => selectedIds.has(p.id))}
+                              onCheckedChange={(checked) => {
+                                setSelectedIds(prev => {
+                                  const next = new Set(prev);
+                                  pagedProducts.forEach(p => {
+                                    if (checked) next.add(p.id);
+                                    else next.delete(p.id);
+                                  });
+                                  return next;
+                                });
+                              }}
+                            />
+                          </TableHead>
                           <TableHead className="w-[250px]">상품명</TableHead>
                           <TableHead className="w-[100px]">에러 타입</TableHead>
                           <TableHead className="w-[150px]">머천트 수정</TableHead>
@@ -612,7 +646,20 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
                       </TableHeader>
                       <TableBody>
                         {pagedProducts.map((product) => (
-                          <TableRow key={product.id}>
+                          <TableRow key={product.id} data-state={selectedIds.has(product.id) ? "selected" : undefined}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedIds.has(product.id)}
+                                onCheckedChange={(checked) => {
+                                  setSelectedIds(prev => {
+                                    const next = new Set(prev);
+                                    if (checked) next.add(product.id);
+                                    else next.delete(product.id);
+                                    return next;
+                                  });
+                                }}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium">
                               <div className="truncate max-w-[230px]" title={product.raw_data.name}>
                                 {product.raw_data.name}
