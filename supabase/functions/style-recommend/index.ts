@@ -206,8 +206,55 @@ interface CachedProduct {
   dna_text: string | null;
   dna_meta: DNAMeta | null;
   dna_generated_at: string | null;
+  collected_at: string | null;
   feedback_score?: number;
   style_weights?: Record<string, number>;
+}
+
+// ============= 페이지네이션 헬퍼 (1000행 제한 우회) =============
+async function fetchAllProducts(supabase: any): Promise<any[]> {
+  const PAGE_SIZE = 1000;
+  const allData: any[] = [];
+  let from = 0;
+
+  while (from < 10000) { // 최대 10,000개 안전장치
+    const { data, error } = await supabase
+      .from('products_cache')
+      .select('*, dna_text, dna_meta, dna_generated_at, collected_at')
+      .eq('is_active', true)
+      .eq('is_in_stock', true)
+      .not('image_url', 'is', null)
+      .not('dna_meta', 'is', null)
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error) {
+      console.error(`[style-recommend] Pagination error at offset ${from}:`, error);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    allData.push(...data);
+    if (data.length < PAGE_SIZE) break; // 마지막 페이지
+    from += PAGE_SIZE;
+  }
+
+  console.log(`[style-recommend] Paginated fetch: ${allData.length} products in ${Math.ceil(from / PAGE_SIZE) + (allData.length > 0 ? 0 : -1) + 1} pages`);
+  return allData;
+}
+
+// ============= Freshness Boost (신상품 가산점) =============
+function calculateFreshnessBoost(collectedAt: string | null): number {
+  if (!collectedAt) return 0;
+  const daysOld = (Date.now() - new Date(collectedAt).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysOld <= 3) return 0.15;
+  if (daysOld <= 7) return 0.10;
+  if (daysOld <= 14) return 0.05;
+  return 0;
+}
+
+function isNewProduct(collectedAt: string | null): boolean {
+  if (!collectedAt) return false;
+  const daysOld = (Date.now() - new Date(collectedAt).getTime()) / (1000 * 60 * 60 * 24);
+  return daysOld <= 14;
 }
 
 interface LookItem {
@@ -1047,6 +1094,9 @@ ${availableBrands.join(', ')}
 상품 목록 (이미 조건에 맞게 필터링됨):
 ${productListContext}
 
+💡 [NEW] 태그가 붙은 상품은 최근 입고된 신상품입니다.
+동일한 스타일 적합도라면 신상품을 우선 선택하세요.
+
 ${isFormalOccasion 
   ? `[필수] 상의(top) 1개 + 하의(bottom) 1개 + 신발(shoes) 1개`
   : `[필수] 상의(top) 1개 + 하의(bottom) 1개`}
@@ -1417,20 +1467,8 @@ serve(async (req) => {
       'unknown': []
     };
 
-    // DB 쿼리 - 다양성을 위해 limit 제거하고 전체 상품 가져오기
-    let query = supabase
-      .from('products_cache')
-      .select('*, dna_text, dna_meta, dna_generated_at')
-      .eq('is_active', true)
-      .eq('is_in_stock', true)
-      .not('image_url', 'is', null)
-      .not('dna_meta', 'is', null);
-
-    const { data: allProductsRaw, error: productError } = await query;
-    
-    if (productError) {
-      console.error('[style-recommend] Product fetch error:', productError);
-    }
+    // DB 쿼리 - 페이지네이션으로 전체 상품 가져오기 (1000행 제한 우회)
+    const allProductsRaw = await fetchAllProducts(supabase);
     
     // 피드백 점수 조회
     const { data: feedbackScores } = await supabase
@@ -1597,12 +1635,15 @@ serve(async (req) => {
         formalityScore = Math.max(0, 1 - diff * 0.15);
       }
       
+      // 🆕 Freshness Boost: 신상품 가산점
+      const freshnessBonus = calculateFreshnessBoost(p.collected_at);
+      
       // 🎲 랜덤 다양성 요소 추가 (0~0.15 범위의 랜덤 보너스)
-      // 상품 ID와 시드를 조합하여 일관되면서도 요청마다 다른 랜덤값 생성
       const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const diversityBonus = ((idHash + randomSeed) % 100) / 666;  // 0 ~ 0.15 범위
       
-      const totalScore = (feedbackScore * 0.25) + (conceptScore * 0.35) + (formalityScore * 0.25) + diversityBonus;
+      // 가중치 조정: feedback 0.25→0.20, formality 0.25→0.20, freshness 추가
+      const totalScore = (feedbackScore * 0.20) + (conceptScore * 0.35) + (formalityScore * 0.20) + freshnessBonus + diversityBonus;
       
       return { product: p, score: totalScore };
     });
@@ -1687,7 +1728,8 @@ serve(async (req) => {
       const colorFamily = p.dna_meta?.color_family;
       const color = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
       const slot = p.dna_meta?.item_slot || 'unknown';
-      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}`;
+      const newTag = isNewProduct(p.collected_at) ? '[NEW]' : '';
+      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}${newTag ? '|' + newTag : ''}`;
     }).join('\n');
 
     let ragResponse: RAGStyleResponse | null = null;
