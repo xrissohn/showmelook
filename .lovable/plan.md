@@ -1,73 +1,85 @@
 
+# 사진 업로드 -> AI 스타일 분석 -> 유사 스타일 추천 기능
 
-# style-recommend 페이지네이션 + 신상품 가산점 구현
+## 개요
+사용자가 참고할 패션 사진을 업로드하면 AI가 해당 사진의 스타일을 분석하여 텍스트 프롬프트로 변환하고, 기존 `style-recommend` 파이프라인에 자연스럽게 연결하는 기능.
 
-## 문제
-현재 `style-recommend` Edge Function의 DB 쿼리(라인 1421-1429)가 Supabase 기본 1000행 제한에 걸려, 전체 3,176개+ 상품 중 1,000개만 조회됨. 최근 등록된 신상품이 추천 후보에서 빠지는 원인.
-
-## 변경 사항
-
-### 1. 페이지네이션 헬퍼 함수 추가
-`fetchAllProducts`라는 헬퍼 함수를 추가하여, `.range()`를 사용해 1,000개씩 반복 조회 후 합산. 최대 10,000개까지 지원.
+## 구현 구조
 
 ```text
-async function fetchAllProducts(supabase, filters) {
-  const PAGE_SIZE = 1000;
-  let allData = [];
-  let from = 0;
-  
-  while (true) {
-    const { data, error } = await supabase
-      .from('products_cache')
-      .select(...)
-      .eq('is_active', true)
-      .eq('is_in_stock', true)
-      .not('image_url', 'is', null)
-      .not('dna_meta', 'is', null)
-      .range(from, from + PAGE_SIZE - 1);
-    
-    if (error || !data || data.length === 0) break;
-    allData.push(...data);
-    if (data.length < PAGE_SIZE) break; // 마지막 페이지
-    from += PAGE_SIZE;
-  }
-  return allData;
-}
+[사진 업로드] --> [analyze-style-image Edge Function] --> 스타일 설명 텍스트
+                                                              |
+                                                              v
+                                               [customStylePrompt에 자동 입력]
+                                                              |
+                                                              v
+                                               [기존 style-recommend 호출]
 ```
 
-기존 라인 1421-1429의 단일 쿼리를 이 함수 호출로 교체.
+## 변경 파일
 
-### 2. Freshness Boost (신상품 가산점) 함수 추가
-`collected_at` 기준으로 최근 등록된 상품에 가산점 부여:
+### 1. 새 Edge Function: `supabase/functions/analyze-style-image/index.ts`
 
-- 3일 이내: +15% (0.15)
-- 7일 이내: +10% (0.10)  
-- 14일 이내: +5% (0.05)
-- 그 이상: 0%
+- 사용자가 업로드한 이미지 URL(base64 data URL 또는 public URL)을 받아 Gemini 2.5 Flash로 분석
+- 프롬프트: "이 패션 사진의 스타일을 한국어로 자연스럽게 설명해줘. 의류 종류, 색상, 분위기, 계절감, TPO 등을 포함해서 2-3문장으로."
+- 응답 예시: `"오버사이즈 베이지 니트에 와이드 데님 팬츠, 미니멀하고 편안한 가을 데일리룩. 뉴트럴 톤 중심의 캐주얼 스타일."`
+- 모델: `google/gemini-2.5-flash` (비용 최소, 이미지 분석 지원)
+- LOVABLE_API_KEY 사용 (추가 키 불필요)
 
-### 3. 스코어링 로직 수정 (라인 1589-1608)
-기존 점수 계산에 freshness 가산점을 추가:
+### 2. 프론트엔드: `src/pages/StyleGenerator.tsx`
+
+스타일 프롬프트 Textarea 영역(라인 4720 부근)에 사진 업로드 버튼 추가:
+
+- 카메라/이미지 아이콘 버튼 추가 (Textarea 우측 상단 또는 하단)
+- 클릭 시 `<input type="file" accept="image/*">` 트리거
+- 이미지 선택 -> base64로 변환 -> `analyze-style-image` Edge Function 호출
+- 분석 결과를 `customStylePrompt`에 자동 입력
+- 분석 중 로딩 표시 (스피너 + "사진 분석 중...")
+- 업로드된 이미지 미리보기 썸네일 표시
+- 분석 실패 시 토스트 에러 메시지
+
+UI 변경:
+- Textarea 위에 작은 배너/버튼: `📷 사진으로 스타일 찾기`
+- 이미지 업로드 후 썸네일 + X 버튼으로 제거 가능
+- 분석 완료 시 Textarea에 텍스트 자동 채워짐 + "AI가 분석한 스타일입니다" 안내
+
+### 3. `supabase/config.toml` 업데이트
+
+```toml
+[functions.analyze-style-image]
+verify_jwt = false
+```
+
+## 기술 세부사항
+
+### Edge Function 구현
 
 ```text
-// 기존
-totalScore = (feedbackScore * 0.25) + (conceptScore * 0.35) + (formalityScore * 0.25) + diversityBonus
-
-// 변경: freshness 추가 (기존 가중치 약간 조정)
-const freshnessBonus = calculateFreshnessBoost(p.collected_at);
-totalScore = (feedbackScore * 0.20) + (conceptScore * 0.35) + (formalityScore * 0.20) + freshnessBonus + diversityBonus
+POST /analyze-style-image
+Body: { image_data: "data:image/jpeg;base64,..." }
+Response: { success: true, description: "오버사이즈 니트에 와이드 데님..." }
 ```
 
-### 4. Stage 2 AI 프롬프트에 [NEW] 태그 추가
-Stage 2에 전달하는 상품 목록에서, 14일 이내 등록된 상품에 `[NEW]` 태그를 붙이고, 프롬프트에 "동일 조건이면 신상품 우선 선택" 지시 추가.
+- base64 이미지를 Gemini vision에 전달
+- 최대 이미지 크기: 5MB (프론트에서 리사이즈)
+- 응답 시간: 약 2-3초 (Flash 모델)
+- 에러 처리: 429/402 Rate Limit 핸들링 포함
 
-## CachedProduct 인터페이스 수정
-`collected_at` 필드를 인터페이스에 추가 (이미 DB에는 존재하나 타입 정의에 누락).
+### 프론트엔드 이미지 처리
 
-## 수정 파일
-- `supabase/functions/style-recommend/index.ts` (단일 파일)
+- FileReader로 base64 변환
+- 큰 이미지는 canvas로 리사이즈 (최대 1024px)
+- 미리보기 표시용 Object URL 생성
+- 상태: `styleImageFile`, `styleImagePreview`, `isAnalyzingImage`
 
-## 기대 효과
-- 전체 상품이 추천 후보에 포함됨 (1,000개 제한 해소)
-- 신상품이 자연스럽게 더 자주 노출되되, 기존 인기 상품도 계속 추천됨
-- 추가 쿼리 시간: 약 2-3초 (3,176개 기준 4회 쿼리)
+## 비용 영향
+- Gemini 2.5 Flash 이미지 분석: 요청당 약 0.1~0.3원 (KRW)
+- 기존 style-recommend 비용에 추가되는 금액 무시 가능 수준
 
+## 사용자 흐름
+1. "스타일 설정" 영역에서 `📷 사진으로 스타일 찾기` 클릭
+2. 갤러리/카메라에서 참고 사진 선택
+3. 썸네일 표시 + "AI 분석 중..." 로딩 (2-3초)
+4. 분석 완료: Textarea에 스타일 설명 자동 입력
+5. 사용자가 필요시 텍스트 수정 가능
+6. "스타일 추천 받기" 버튼으로 기존 플로우 진행
