@@ -2693,6 +2693,9 @@ const StyleGenerator = () => {
   // 주관식 스타일 입력 모드 상태
   const [inputMode, setInputMode] = useState<'trend' | 'custom'>('custom'); // 기본값을 custom으로 변경
   const [customStylePrompt, setCustomStylePrompt] = useState('');
+  const [styleImagePreview, setStyleImagePreview] = useState<string | null>(null);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const styleImageInputRef = useRef<HTMLInputElement>(null);
   const [customGender, setCustomGender] = useState<'female' | 'male' | 'unisex' | 'kids'>('female');
   const [customAge, setCustomAge] = useState<number | undefined>(undefined);
   const [customBudget, setCustomBudget] = useState([200000]);
@@ -3839,6 +3842,75 @@ const StyleGenerator = () => {
     }
   };
 
+  // 📷 사진 업로드 → AI 스타일 분석 핸들러
+  const handleStyleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // 파일 크기 체크 (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: '이미지가 너무 큽니다', description: '5MB 이하의 이미지를 선택해주세요.', variant: 'destructive' });
+      return;
+    }
+
+    // 미리보기 생성
+    const previewUrl = URL.createObjectURL(file);
+    setStyleImagePreview(previewUrl);
+    setIsAnalyzingImage(true);
+
+    try {
+      // Canvas로 리사이즈 (최대 1024px)
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const maxSize = 1024;
+            let { width, height } = img;
+            if (width > maxSize || height > maxSize) {
+              const ratio = Math.min(maxSize / width, maxSize / height);
+              width = Math.round(width * ratio);
+              height = Math.round(height * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d')!;
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = reject;
+          img.src = reader.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke('analyze-style-image', {
+        body: { image_data: base64 },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'AI 분석 실패');
+
+      setCustomStylePrompt(data.description);
+      toast({ title: '📷 AI가 스타일을 분석했습니다', description: '프롬프트를 수정하거나 바로 추천을 받아보세요.' });
+    } catch (err: any) {
+      console.error('[StyleGenerator] Image analysis error:', err);
+      toast({ title: '사진 분석 실패', description: err?.message || '다시 시도해주세요.', variant: 'destructive' });
+      setStyleImagePreview(null);
+    } finally {
+      setIsAnalyzingImage(false);
+      // input 리셋
+      if (styleImageInputRef.current) styleImageInputRef.current.value = '';
+    }
+  };
+
+  const clearStyleImage = () => {
+    setStyleImagePreview(null);
+    if (styleImageInputRef.current) styleImageInputRef.current.value = '';
+  };
+
   // 주관식 스타일 추천 핸들러
   const handleCustomStyleSearch = async () => {
     if (!customStylePrompt.trim()) {
@@ -4720,7 +4792,52 @@ const StyleGenerator = () => {
                     <div className="space-y-4">
                       {/* 스타일 프롬프트 */}
                       <div className="space-y-2">
-                        <Label className="font-korean text-sm">스타일 프롬프트</Label>
+                        <div className="flex items-center justify-between">
+                          <Label className="font-korean text-sm">스타일 프롬프트</Label>
+                          <button
+                            type="button"
+                            onClick={() => styleImageInputRef.current?.click()}
+                            disabled={isAnalyzingImage || isCustomSearching}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-korean font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
+                          >
+                            {isAnalyzingImage ? (
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> 사진 분석 중...</>
+                            ) : (
+                              <><Camera className="w-3.5 h-3.5" /> 사진으로 스타일 찾기</>
+                            )}
+                          </button>
+                          <input
+                            ref={styleImageInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleStyleImageUpload}
+                          />
+                        </div>
+                        
+                        {/* 업로드된 이미지 미리보기 */}
+                        {styleImagePreview && (
+                          <div className="relative inline-block">
+                            <img
+                              src={styleImagePreview}
+                              alt="참고 스타일 사진"
+                              className="w-20 h-20 object-cover rounded-xl border-2 border-accent/30"
+                            />
+                            <button
+                              type="button"
+                              onClick={clearStyleImage}
+                              className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center text-xs hover:scale-110 transition-transform"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                            {isAnalyzingImage && (
+                              <div className="absolute inset-0 bg-background/60 rounded-xl flex items-center justify-center">
+                                <Loader2 className="w-5 h-5 animate-spin text-accent" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
                         <Textarea
                           placeholder="예: 봄 데이트룩, 화사하고 로맨틱한 느낌으로 원피스나 블라우스 위주로 추천해줘"
                           value={customStylePrompt}
