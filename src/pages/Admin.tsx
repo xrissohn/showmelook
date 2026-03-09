@@ -286,6 +286,30 @@ const Admin = () => {
     loadFeedbackStats();
   }, []);
 
+  // Realtime: products_cache 변경 시 자동으로 통계 갱신
+  useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const channel = supabase
+      .channel('admin-products-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products_cache' },
+        () => {
+          if (debounceTimer) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(() => {
+            loadProductStats();
+            loadDnaStats();
+          }, 3000);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Auto-refresh queue monitoring every 10 seconds
   useEffect(() => {
     if (!isAutoRefresh) return;
