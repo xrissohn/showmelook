@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -55,8 +55,51 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const PAGE_SIZE = 20;
 
+  const autoReprocessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isBatchReprocessingRef = useRef(false);
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isBatchReprocessingRef.current = isBatchReprocessing;
+  }, [isBatchReprocessing]);
+
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Realtime: 새 pending_products INSERT 감지 → 자동 배치 재처리 (10초 디바운스)
+  useEffect(() => {
+    const channel = supabase
+      .channel('pending-products-auto-reprocess')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'pending_products',
+        },
+        () => {
+          console.log('[AutoReprocess] New pending product detected');
+          // 디바운스: 10초 내 추가 INSERT가 오면 타이머 리셋
+          if (autoReprocessTimerRef.current) {
+            clearTimeout(autoReprocessTimerRef.current);
+          }
+          autoReprocessTimerRef.current = setTimeout(() => {
+            if (!isBatchReprocessingRef.current) {
+              console.log('[AutoReprocess] Auto-triggering batch reprocess');
+              batchReprocessAll();
+            }
+          }, 10000); // 10초 후 자동 실행
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (autoReprocessTimerRef.current) {
+        clearTimeout(autoReprocessTimerRef.current);
+      }
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const loadData = async () => {
