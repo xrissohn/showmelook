@@ -1925,6 +1925,29 @@ serve(async (req) => {
       return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}${newTag ? '|' + newTag : ''}`;
     }).join('\n');
 
+    // 📷 사진 분석 모드: Stage 2에 원본 사진 분석 컨텍스트 추가
+    let photoContextForStage2 = '';
+    if (hasPhotoAnalysis) {
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      const itemDescriptions = photoData.items.map((item: PhotoAnalysisItem) => 
+        `${item.type === 'top' ? '상의' : item.type === 'bottom' ? '하의' : item.type === 'outer' ? '아우터' : item.type === 'shoes' ? '신발' : '액세서리'}: ${item.color} ${item.category} (${item.material}, ${item.fit}, ${item.pattern})`
+      ).join('\n');
+      
+      photoContextForStage2 = `
+🚨🚨🚨 **최우선 지시: 사진 매칭 모드**
+사용자가 참고 사진을 업로드했습니다. 아래 사진 속 아이템과 **가장 유사한** 상품을 선택하세요.
+색상, 카테고리, 소재, 핏이 사진 속 아이템과 최대한 일치해야 합니다!
+
+📷 사진 속 아이템:
+${itemDescriptions}
+
+전체 스타일: ${photoData.overallStyle || ''}
+계절: ${photoData.season || ''} / TPO: ${photoData.tpo || ''}
+
+⚠️ 상품 목록에서 위 아이템들과 가장 유사한 색상/카테고리/소재를 가진 상품을 우선 선택하세요!
+`;
+    }
+
     let ragResponse: RAGStyleResponse | null = null;
     let apiCalls = { gpt5: 1, gemini: 0 };
     const stage2Start = Date.now();
