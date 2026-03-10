@@ -3893,8 +3893,22 @@ const StyleGenerator = () => {
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || 'AI 분석 실패');
 
-      setCustomStylePrompt(data.description);
-      toast({ title: '📷 AI가 스타일을 분석했습니다', description: '프롬프트를 수정하거나 바로 추천을 받아보세요.' });
+      // 구조화된 분석 결과에서 searchPrompt 사용 (의류 정보만 포함, 인물 묘사 제외)
+      const prompt = data.searchPrompt || data.description;
+      setCustomStylePrompt(prompt);
+      
+      // 분석된 아이템 정보를 토스트로 표시
+      const itemSummary = data.items?.length 
+        ? data.items.map((item: any) => `${item.color} ${item.category}`).join(', ')
+        : '';
+      const styleInfo = [data.overallStyle, data.season, data.tpo].filter(Boolean).join(' · ');
+      
+      toast({ 
+        title: '📷 AI가 스타일을 분석했습니다', 
+        description: itemSummary 
+          ? `${itemSummary} (${styleInfo})` 
+          : '프롬프트를 수정하거나 바로 추천을 받아보세요.' 
+      });
     } catch (err: any) {
       console.error('[StyleGenerator] Image analysis error:', err);
       toast({ title: '사진 분석 실패', description: err?.message || '다시 시도해주세요.', variant: 'destructive' });
