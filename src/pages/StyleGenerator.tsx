@@ -3938,6 +3938,7 @@ const StyleGenerator = () => {
 
   const clearStyleImage = () => {
     setStyleImagePreview(null);
+    setStyleImageAnalysis(null);
     if (styleImageInputRef.current) styleImageInputRef.current.value = '';
   };
 
