@@ -1,67 +1,85 @@
 
+# 사진 업로드 -> AI 스타일 분석 -> 유사 스타일 추천 기능
 
-# 사진 분석 → DB 직접 매칭 (1차 필터링 강화)
+## 개요
+사용자가 참고할 패션 사진을 업로드하면 AI가 해당 사진의 스타일을 분석하여 텍스트 프롬프트로 변환하고, 기존 `style-recommend` 파이프라인에 자연스럽게 연결하는 기능.
 
-## 문제 진단
-
-현재 흐름:
-```text
-사진 → analyze-style-image (구조화 분석) → searchPrompt 텍스트만 추출
-  → style-recommend Stage 1 (AI가 텍스트를 재해석) → Stage 2 (AI가 상품 선택)
-```
-
-**핵심 문제**: `analyze-style-image`가 이미 정확한 구조화 데이터(카테고리, 색상, 소재, 핏)를 반환하는데, 이 데이터를 **버리고** `searchPrompt` 텍스트만 `style-recommend`에 전달함. Stage 1이 텍스트를 재해석하면서 "카라 있는 아우터" → "야구복 스타일 아우터" 같은 변환이 발생.
-
-## 해결 방안
-
-사진 분석 결과의 **구조화된 아이템 데이터**를 `style-recommend`에 직접 전달하여, DB의 `dna_meta`/`dna_text`/`color`/`category` 필드와 **직접 매칭**하는 새로운 경로 추가.
+## 구현 구조
 
 ```text
-사진 → analyze-style-image (구조화 분석) → items[] + searchPrompt
-  → style-recommend에 items[] 직접 전달 (photoAnalysisItems 파라미터)
-    → Stage 1 스킵 (이미 분석 완료)
-    → DB에서 각 아이템별로 색상/카테고리/소재/핏 직접 매칭 필터링
-    → 매칭된 후보군으로 Stage 2 실행 (최종 조합 선택만)
+[사진 업로드] --> [analyze-style-image Edge Function] --> 스타일 설명 텍스트
+                                                              |
+                                                              v
+                                               [customStylePrompt에 자동 입력]
+                                                              |
+                                                              v
+                                               [기존 style-recommend 호출]
 ```
 
 ## 변경 파일
 
-### 1. `src/pages/StyleGenerator.tsx`
-- `handleCustomStyleSearch`에서 사진 분석 결과(`items`, `overallStyle`, `season`, `tpo`)를 `style-recommend` 호출 시 `photoAnalysisItems` 파라미터로 함께 전달
-- `handleStyleImageUpload` 완료 시 분석된 아이템 데이터를 상태로 저장 (`styleImageAnalysis`)
+### 1. 새 Edge Function: `supabase/functions/analyze-style-image/index.ts`
 
-### 2. `supabase/functions/style-recommend/index.ts`
-- `photoAnalysisItems` 파라미터 수신 처리 추가
-- 사진 분석 아이템이 있을 때의 새로운 필터링 로직:
-  - **Stage 1 스킵**: 사진 분석 결과가 이미 카테고리/색상/소재/핏을 포함하므로 TPO 분석 불필요
-  - **아이템별 DB 직접 매칭**: 각 분석된 아이템(예: `{type: "outer", category: "카라 자켓", color: "네이비", material: "면"}`)에 대해:
-    - `dna_meta.item_slot` 매칭 (outer → outer)
-    - `color` 필드 또는 `dna_meta.color_family` 매칭
-    - `dna_text`에서 소재/핏 키워드 매칭 (텍스트 유사도)
-    - 카테고리 키워드 매칭 (제품명에서 "카라", "자켓" 등 검색)
-  - 매칭 점수가 높은 후보군을 카테고리별로 선별
-- Stage 2 프롬프트에 **원본 사진 분석 결과를 컨텍스트로 추가**: "사용자가 참고한 사진에는 네이비 카라 자켓, 화이트 티셔츠가 있었습니다. 이와 가장 유사한 상품을 선택하세요."
+- 사용자가 업로드한 이미지 URL(base64 data URL 또는 public URL)을 받아 Gemini 2.5 Flash로 분석
+- 프롬프트: "이 패션 사진의 스타일을 한국어로 자연스럽게 설명해줘. 의류 종류, 색상, 분위기, 계절감, TPO 등을 포함해서 2-3문장으로."
+- 응답 예시: `"오버사이즈 베이지 니트에 와이드 데님 팬츠, 미니멀하고 편안한 가을 데일리룩. 뉴트럴 톤 중심의 캐주얼 스타일."`
+- 모델: `google/gemini-2.5-flash` (비용 최소, 이미지 분석 지원)
+- LOVABLE_API_KEY 사용 (추가 키 불필요)
+
+### 2. 프론트엔드: `src/pages/StyleGenerator.tsx`
+
+스타일 프롬프트 Textarea 영역(라인 4720 부근)에 사진 업로드 버튼 추가:
+
+- 카메라/이미지 아이콘 버튼 추가 (Textarea 우측 상단 또는 하단)
+- 클릭 시 `<input type="file" accept="image/*">` 트리거
+- 이미지 선택 -> base64로 변환 -> `analyze-style-image` Edge Function 호출
+- 분석 결과를 `customStylePrompt`에 자동 입력
+- 분석 중 로딩 표시 (스피너 + "사진 분석 중...")
+- 업로드된 이미지 미리보기 썸네일 표시
+- 분석 실패 시 토스트 에러 메시지
+
+UI 변경:
+- Textarea 위에 작은 배너/버튼: `📷 사진으로 스타일 찾기`
+- 이미지 업로드 후 썸네일 + X 버튼으로 제거 가능
+- 분석 완료 시 Textarea에 텍스트 자동 채워짐 + "AI가 분석한 스타일입니다" 안내
+
+### 3. `supabase/config.toml` 업데이트
+
+```toml
+[functions.analyze-style-image]
+verify_jwt = false
+```
 
 ## 기술 세부사항
 
-### 새 매칭 함수 (`calculatePhotoMatchScore`)
-```text
-입력: 분석된 아이템 1개 + DB 상품 1개
-출력: 0~1 점수
+### Edge Function 구현
 
-매칭 기준 (가중치):
-- item_slot 일치: 필수 (불일치 시 0점)
-- 색상 매칭: 0.35 (color 필드 + dna_meta.color_family)
-- 카테고리 키워드: 0.30 (제품명/sub_category에서 키워드 검색)
-- 소재 매칭: 0.20 (dna_text에서 material 키워드)
-- 핏 매칭: 0.15 (dna_text에서 fit 키워드)
+```text
+POST /analyze-style-image
+Body: { image_data: "data:image/jpeg;base64,..." }
+Response: { success: true, description: "오버사이즈 니트에 와이드 데님..." }
 ```
 
-### 프론트엔드 상태 추가
-- `styleImageAnalysis`: 분석된 아이템 배열을 저장 (사진 업로드 시 설정, 사진 제거 시 null)
-- `handleCustomStyleSearch` 호출 시 이 데이터를 `style-recommend`에 전달
+- base64 이미지를 Gemini vision에 전달
+- 최대 이미지 크기: 5MB (프론트에서 리사이즈)
+- 응답 시간: 약 2-3초 (Flash 모델)
+- 에러 처리: 429/402 Rate Limit 핸들링 포함
+
+### 프론트엔드 이미지 처리
+
+- FileReader로 base64 변환
+- 큰 이미지는 canvas로 리사이즈 (최대 1024px)
+- 미리보기 표시용 Object URL 생성
+- 상태: `styleImageFile`, `styleImagePreview`, `isAnalyzingImage`
 
 ## 비용 영향
-- 사진 분석 모드에서 Stage 1 AI 호출을 스킵하므로 오히려 **비용 절감** (GPT-5-mini 1회 절약)
-- Stage 2는 동일하게 실행
+- Gemini 2.5 Flash 이미지 분석: 요청당 약 0.1~0.3원 (KRW)
+- 기존 style-recommend 비용에 추가되는 금액 무시 가능 수준
 
+## 사용자 흐름
+1. "스타일 설정" 영역에서 `📷 사진으로 스타일 찾기` 클릭
+2. 갤러리/카메라에서 참고 사진 선택
+3. 썸네일 표시 + "AI 분석 중..." 로딩 (2-3초)
+4. 분석 완료: Textarea에 스타일 설명 자동 입력
+5. 사용자가 필요시 텍스트 수정 가능
+6. "스타일 추천 받기" 버튼으로 기존 플로우 진행

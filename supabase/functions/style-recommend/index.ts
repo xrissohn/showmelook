@@ -590,6 +590,155 @@ function getDisplaySubCategory(category: string, subCategory?: string | null, pr
   return mapToPriorityCategory(category, subCategory, productName);
 }
 
+// ============= 📷 사진 분석 직접 매칭 함수 =============
+
+interface PhotoAnalysisItem {
+  type: string;      // top, bottom, outer, shoes, bag, accessory, set
+  category: string;  // 니트/스웨터, 와이드팬츠, 스니커즈 등
+  color: string;     // 베이지, 인디고블루 등
+  material: string;  // 울, 데님, 가죽 등
+  fit: string;       // 오버사이즈, 슬림핏 등
+  pattern: string;   // 무지, 스트라이프 등
+}
+
+interface PhotoAnalysisData {
+  items: PhotoAnalysisItem[];
+  overallStyle: string;
+  season: string;
+  tpo: string;
+}
+
+// 색상 유사도 매핑 (한국어 색상 → color_family)
+const COLOR_FAMILY_MAP: Record<string, string[]> = {
+  'neutral': ['베이지', '아이보리', '크림', '카키', '브라운', '탄', '캐멀', '누드', '모카', '오트밀', '샌드', '토프', '그레이', '회색', '차콜', '흑', '블랙', '검정', '화이트', '흰', '백', '네이비'],
+  'warm': ['레드', '빨강', '와인', '버건디', '마룬', '오렌지', '주황', '코랄', '살몬', '피치', '옐로우', '노랑', '머스타드', '골드', '브라운', '갈색', '카멜', '탄', '테라코타', '러스트'],
+  'cool': ['블루', '파랑', '네이비', '인디고', '스카이', '코발트', '그린', '녹색', '올리브', '카키', '민트', '에메랄드', '틸', '퍼플', '보라', '라벤더', '바이올렛'],
+  'bold': ['레드', '빨강', '오렌지', '주황', '옐로우', '노랑', '핫핑크', '네온', '일렉트릭', '코발트', '에메랄드', '로열블루'],
+  'pastel': ['라벤더', '민트', '피치', '베이비핑크', '스카이', '라일락', '파스텔', '연', '밝은'],
+};
+
+function calculatePhotoMatchScore(
+  analysisItem: PhotoAnalysisItem,
+  product: CachedProduct
+): number {
+  const meta = product.dna_meta;
+  
+  // 1. item_slot 일치 필수 (불일치 시 0점)
+  const productSlot = meta?.item_slot || '';
+  if (productSlot && analysisItem.type !== productSlot) {
+    // dress는 bottom과도 매칭 가능
+    if (!(analysisItem.type === 'bottom' && productSlot === 'dress') &&
+        !(analysisItem.type === 'set' && (productSlot === 'top' || productSlot === 'bottom'))) {
+      return 0;
+    }
+  }
+  
+  const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.dna_text || ''}`.toLowerCase();
+  const productColor = (product.color || '').toLowerCase();
+  const analysisColor = (analysisItem.color || '').toLowerCase();
+  const analysisCategory = (analysisItem.category || '').toLowerCase();
+  const analysisMaterial = (analysisItem.material || '').toLowerCase();
+  const analysisFit = (analysisItem.fit || '').toLowerCase();
+  const analysisPattern = (analysisItem.pattern || '').toLowerCase();
+  
+  let score = 0;
+  
+  // 2. 색상 매칭 (0.35)
+  let colorScore = 0;
+  // 직접 색상 매칭
+  if (analysisColor && (productColor.includes(analysisColor) || analysisColor.includes(productColor) || combined.includes(analysisColor))) {
+    colorScore = 1.0;
+  } else if (meta?.color_family) {
+    // color_family 간접 매칭
+    const productFamily = Array.isArray(meta.color_family) ? meta.color_family : [meta.color_family];
+    for (const [family, keywords] of Object.entries(COLOR_FAMILY_MAP)) {
+      if (productFamily.includes(family as any) && keywords.some(kw => analysisColor.includes(kw.toLowerCase()))) {
+        colorScore = 0.6;
+        break;
+      }
+    }
+  }
+  score += colorScore * 0.35;
+  
+  // 3. 카테고리 키워드 매칭 (0.30)
+  let categoryScore = 0;
+  if (analysisCategory) {
+    // 카테고리 키워드를 개별 단어로 분리하여 검색
+    const categoryTokens = analysisCategory.split(/[\/\s,]+/).filter(t => t.length >= 2);
+    const matchedTokens = categoryTokens.filter(token => combined.includes(token));
+    if (matchedTokens.length > 0) {
+      categoryScore = Math.min(matchedTokens.length / Math.max(categoryTokens.length, 1), 1.0);
+    }
+    // 제품명에서 직접 카테고리 매칭
+    if (combined.includes(analysisCategory)) {
+      categoryScore = 1.0;
+    }
+  }
+  score += categoryScore * 0.30;
+  
+  // 4. 소재 매칭 (0.20)
+  let materialScore = 0;
+  if (analysisMaterial) {
+    const materialTokens = analysisMaterial.split(/[\/\s,]+/).filter(t => t.length >= 2);
+    const matchedMaterials = materialTokens.filter(token => combined.includes(token));
+    materialScore = matchedMaterials.length > 0 ? Math.min(matchedMaterials.length / materialTokens.length, 1.0) : 0;
+  }
+  score += materialScore * 0.20;
+  
+  // 5. 핏 매칭 (0.10)
+  let fitScore = 0;
+  if (analysisFit && combined.includes(analysisFit)) {
+    fitScore = 1.0;
+  }
+  score += fitScore * 0.10;
+  
+  // 6. 패턴 매칭 (0.05)
+  let patternScore = 0;
+  if (analysisPattern && analysisPattern !== '무지') {
+    if (combined.includes(analysisPattern)) patternScore = 1.0;
+  } else if (analysisPattern === '무지') {
+    // 무지인 경우 패턴 키워드가 없으면 매칭
+    const patternKeywords = ['스트라이프', '체크', '플로럴', '도트', '프린트', '패턴'];
+    if (!patternKeywords.some(pk => combined.includes(pk))) patternScore = 0.5;
+  }
+  score += patternScore * 0.05;
+  
+  return score;
+}
+
+function filterProductsByPhotoAnalysis(
+  allProducts: CachedProduct[],
+  photoItems: PhotoAnalysisItem[],
+  productsByPriority: Record<string, CachedProduct[]>
+): void {
+  // 각 분석 아이템에 대해 매칭 점수 계산 후 카테고리별로 정렬
+  for (const analysisItem of photoItems) {
+    const targetSlot = analysisItem.type;
+    const targetCategory = targetSlot === 'top' ? '상의' 
+      : targetSlot === 'bottom' || targetSlot === 'set' ? '하의'
+      : targetSlot === 'outer' ? '아우터'
+      : targetSlot === 'shoes' ? '신발'
+      : '액세서리';
+    
+    const scoredProducts = allProducts
+      .map(p => ({ product: p, score: calculatePhotoMatchScore(analysisItem, p) }))
+      .filter(sp => sp.score > 0)
+      .sort((a, b) => b.score - a.score);
+    
+    console.log(`[style-recommend] Photo match for ${targetCategory} (${analysisItem.color} ${analysisItem.category}): ${scoredProducts.length} candidates, top score: ${scoredProducts[0]?.score.toFixed(3) || 'N/A'}`);
+    
+    // 기존 카테고리 목록에 점수순으로 재배치 (높은 점수 우선)
+    if (scoredProducts.length > 0 && productsByPriority[targetCategory]) {
+      const photoMatchedIds = new Set(scoredProducts.slice(0, 15).map(sp => sp.product.id));
+      const existing = productsByPriority[targetCategory].filter(p => !photoMatchedIds.has(p.id));
+      productsByPriority[targetCategory] = [
+        ...scoredProducts.slice(0, 15).map(sp => sp.product),
+        ...existing
+      ];
+    }
+  }
+}
+
 // ============= DNA 2.0 필터링 함수들 =============
 
 function filterByTarget(products: CachedProduct[], isKids: boolean, gender: string): CachedProduct[] {
@@ -1260,8 +1409,10 @@ serve(async (req) => {
 
   try {
     requestPayload = await req.json();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences } = requestPayload;
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems } = requestPayload;
     userId = requestPayload.userId || null;
+    
+    const hasPhotoAnalysis = photoAnalysisItems && photoAnalysisItems.items && photoAnalysisItems.items.length > 0;
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
@@ -1313,10 +1464,13 @@ serve(async (req) => {
     console.log(`[style-recommend] Request: "${userRequest}"`);
     console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Pattern: ${patternKey}`);
     console.log(`[style-recommend] Models: Stage1=${stage1Primary}/${stage1Backup}, Stage2=${stage2Primary}/${stage2Backup}`);
+    if (hasPhotoAnalysis) {
+      console.log(`[style-recommend] 📷 Photo analysis mode: ${photoAnalysisItems.items.length} items detected`);
+    }
 
     // ============= PHASE 1: 캐시 체크 =============
     
-    if (!forceRefresh) {
+    if (!forceRefresh && !hasPhotoAnalysis) {
       const { data: cachedLook } = await supabase
         .from('style_cache')
         .select('*')
@@ -1387,12 +1541,42 @@ serve(async (req) => {
     console.log(`[style-recommend] Cache MISS, generating new recommendation...`);
 
     // ============= 🔥 Stage 1: GPT TPO 분석 (교차 Fallback) =============
+    // 📷 사진 분석 모드에서는 Stage 1 스킵 (이미 구조화된 분석 완료)
     
     let stage1Result: Stage1Result | null = null;
     let stage1Source = 'gpt';
     const stage1Start = Date.now();
 
-    if (LOVABLE_API_KEY) {
+    if (hasPhotoAnalysis) {
+      // 📷 사진 분석 결과에서 Stage 1 결과 직접 생성 (AI 호출 스킵)
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      const photoTPO = photoData.tpo || '데일리';
+      const photoStyle = photoData.overallStyle || '캐주얼';
+      
+      stage1Result = {
+        concepts: [photoStyle],
+        formalityMin: 2,
+        formalityMax: 7,
+        requiredItems: photoData.items.map((item: PhotoAnalysisItem) => {
+          switch (item.type) {
+            case 'top': return '상의';
+            case 'bottom': case 'set': return '하의';
+            case 'outer': return '아우터';
+            case 'shoes': return '신발';
+            default: return '액세서리';
+          }
+        }),
+        excludeItems: [],
+        dressCodeHint: `사진 속 스타일: ${photoStyle} (${photoTPO})`,
+        colorSuggestions: photoData.items.map((item: PhotoAnalysisItem) => item.color).filter(Boolean),
+        reasoning: `📷 사진 분석 기반: ${photoData.items.map((item: PhotoAnalysisItem) => `${item.color} ${item.category}`).join(', ')}`,
+      };
+      
+      stage1Source = 'photo_analysis';
+      metrics.stage1Success = true;
+      metrics.stage1Model = 'photo_analysis_skip';
+      console.log(`[style-recommend] 📷 Stage 1 스킵 - 사진 분석 결과 직접 사용: ${stage1Result.reasoning}`);
+    } else if (LOVABLE_API_KEY) {
       // 1차: Primary 모델
       stage1Result = await runStage1WithModel(
         stage1Primary,
@@ -1662,6 +1846,13 @@ serve(async (req) => {
       }
     }
     
+    // 📷 사진 분석 모드: 카테고리별 상품을 매칭 점수로 재정렬
+    if (hasPhotoAnalysis) {
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      filterProductsByPhotoAnalysis(allProducts, photoData.items, productsByPriority);
+      console.log(`[style-recommend] 📷 Photo matching applied - products re-ranked by similarity`);
+    }
+    
     const dnaStats = {
       withMeta: allProducts.filter(p => p.dna_meta).length,
       withoutMeta: allProducts.filter(p => !p.dna_meta).length
@@ -1694,11 +1885,13 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = 10;  // 🔥 카테고리당 후보 수 증가 (6 → 10)
+        const maxPerCategory = hasPhotoAnalysis ? 8 : 10;
         
-        // 🎲 카테고리 내에서 상위 20개 중 랜덤 샘플링
+        // 📷 사진 분석 모드: 매칭 순서 유지 / 일반 모드: 랜덤 샘플링
         const topCandidates = catProducts.slice(0, 25);
-        const shuffledCandidates = [...topCandidates].sort(() => Math.random() - 0.5);
+        const shuffledCandidates = hasPhotoAnalysis 
+          ? topCandidates  // 사진 매칭 점수순 유지
+          : [...topCandidates].sort(() => Math.random() - 0.5);
         
         for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
@@ -1732,16 +1925,40 @@ serve(async (req) => {
       return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}${newTag ? '|' + newTag : ''}`;
     }).join('\n');
 
+    // 📷 사진 분석 모드: Stage 2에 원본 사진 분석 컨텍스트 추가
+    let photoContextForStage2 = '';
+    if (hasPhotoAnalysis) {
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      const itemDescriptions = photoData.items.map((item: PhotoAnalysisItem) => 
+        `${item.type === 'top' ? '상의' : item.type === 'bottom' ? '하의' : item.type === 'outer' ? '아우터' : item.type === 'shoes' ? '신발' : '액세서리'}: ${item.color} ${item.category} (${item.material}, ${item.fit}, ${item.pattern})`
+      ).join('\n');
+      
+      photoContextForStage2 = `
+🚨🚨🚨 **최우선 지시: 사진 매칭 모드**
+사용자가 참고 사진을 업로드했습니다. 아래 사진 속 아이템과 **가장 유사한** 상품을 선택하세요.
+색상, 카테고리, 소재, 핏이 사진 속 아이템과 최대한 일치해야 합니다!
+
+📷 사진 속 아이템:
+${itemDescriptions}
+
+전체 스타일: ${photoData.overallStyle || ''}
+계절: ${photoData.season || ''} / TPO: ${photoData.tpo || ''}
+
+⚠️ 상품 목록에서 위 아이템들과 가장 유사한 색상/카테고리/소재를 가진 상품을 우선 선택하세요!
+`;
+    }
+
     let ragResponse: RAGStyleResponse | null = null;
     let apiCalls = { gpt5: 1, gemini: 0 };
     const stage2Start = Date.now();
     
     if (LOVABLE_API_KEY && stage2Products.length > 0) {
       // 1차: Primary 모델
+      const stage2Context = photoContextForStage2 + productListContext;
       ragResponse = await runStage2WithModel(
         stage2Primary,
         stage1Result,
-        productListContext,
+        stage2Context,
         userRequest,
         gender,
         ageGroupLabel,
@@ -1756,7 +1973,7 @@ serve(async (req) => {
         ragResponse = await runStage2WithModel(
           stage2Backup,
           stage1Result,
-          productListContext,
+          stage2Context,
           userRequest,
           gender,
           ageGroupLabel,

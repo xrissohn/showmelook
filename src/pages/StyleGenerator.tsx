@@ -2696,6 +2696,12 @@ const StyleGenerator = () => {
   const [styleImagePreview, setStyleImagePreview] = useState<string | null>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   const styleImageInputRef = useRef<HTMLInputElement>(null);
+  const [styleImageAnalysis, setStyleImageAnalysis] = useState<{
+    items: Array<{ type: string; category: string; color: string; material: string; fit: string; pattern: string }>;
+    overallStyle: string;
+    season: string;
+    tpo: string;
+  } | null>(null);
   const [customGender, setCustomGender] = useState<'female' | 'male' | 'unisex' | 'kids'>('female');
   const [customAge, setCustomAge] = useState<number | undefined>(undefined);
   const [customBudget, setCustomBudget] = useState([200000]);
@@ -3897,6 +3903,16 @@ const StyleGenerator = () => {
       const prompt = data.searchPrompt || data.description;
       setCustomStylePrompt(prompt);
       
+      // 구조화된 아이템 데이터를 상태에 저장 (style-recommend에 직접 전달용)
+      if (data.items?.length) {
+        setStyleImageAnalysis({
+          items: data.items,
+          overallStyle: data.overallStyle || '',
+          season: data.season || '',
+          tpo: data.tpo || '',
+        });
+      }
+      
       // 분석된 아이템 정보를 토스트로 표시
       const itemSummary = data.items?.length 
         ? data.items.map((item: any) => `${item.color} ${item.category}`).join(', ')
@@ -3922,6 +3938,7 @@ const StyleGenerator = () => {
 
   const clearStyleImage = () => {
     setStyleImagePreview(null);
+    setStyleImageAnalysis(null);
     if (styleImageInputRef.current) styleImageInputRef.current.value = '';
   };
 
@@ -3976,7 +3993,9 @@ const StyleGenerator = () => {
           age: isKidsRequest ? (customAge || 10) : undefined,
           ageGroup: effectiveAgeGroup,
           stylePreferences: effectiveStylePrefs,
-          profileName: selectedGenerationProfile?.full_name || userProfile?.full_name, // 디버깅용
+          profileName: selectedGenerationProfile?.full_name || userProfile?.full_name,
+          // 📷 사진 분석 구조화 데이터 직접 전달 (DB 직접 매칭용)
+          ...(styleImageAnalysis ? { photoAnalysisItems: styleImageAnalysis } : {}),
         }
       });
 
