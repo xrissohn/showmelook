@@ -1470,7 +1470,7 @@ serve(async (req) => {
 
     // ============= PHASE 1: 캐시 체크 =============
     
-    if (!forceRefresh) {
+    if (!forceRefresh && !hasPhotoAnalysis) {
       const { data: cachedLook } = await supabase
         .from('style_cache')
         .select('*')
