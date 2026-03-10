@@ -590,6 +590,155 @@ function getDisplaySubCategory(category: string, subCategory?: string | null, pr
   return mapToPriorityCategory(category, subCategory, productName);
 }
 
+// ============= 📷 사진 분석 직접 매칭 함수 =============
+
+interface PhotoAnalysisItem {
+  type: string;      // top, bottom, outer, shoes, bag, accessory, set
+  category: string;  // 니트/스웨터, 와이드팬츠, 스니커즈 등
+  color: string;     // 베이지, 인디고블루 등
+  material: string;  // 울, 데님, 가죽 등
+  fit: string;       // 오버사이즈, 슬림핏 등
+  pattern: string;   // 무지, 스트라이프 등
+}
+
+interface PhotoAnalysisData {
+  items: PhotoAnalysisItem[];
+  overallStyle: string;
+  season: string;
+  tpo: string;
+}
+
+// 색상 유사도 매핑 (한국어 색상 → color_family)
+const COLOR_FAMILY_MAP: Record<string, string[]> = {
+  'neutral': ['베이지', '아이보리', '크림', '카키', '브라운', '탄', '캐멀', '누드', '모카', '오트밀', '샌드', '토프', '그레이', '회색', '차콜', '흑', '블랙', '검정', '화이트', '흰', '백', '네이비'],
+  'warm': ['레드', '빨강', '와인', '버건디', '마룬', '오렌지', '주황', '코랄', '살몬', '피치', '옐로우', '노랑', '머스타드', '골드', '브라운', '갈색', '카멜', '탄', '테라코타', '러스트'],
+  'cool': ['블루', '파랑', '네이비', '인디고', '스카이', '코발트', '그린', '녹색', '올리브', '카키', '민트', '에메랄드', '틸', '퍼플', '보라', '라벤더', '바이올렛'],
+  'bold': ['레드', '빨강', '오렌지', '주황', '옐로우', '노랑', '핫핑크', '네온', '일렉트릭', '코발트', '에메랄드', '로열블루'],
+  'pastel': ['라벤더', '민트', '피치', '베이비핑크', '스카이', '라일락', '파스텔', '연', '밝은'],
+};
+
+function calculatePhotoMatchScore(
+  analysisItem: PhotoAnalysisItem,
+  product: CachedProduct
+): number {
+  const meta = product.dna_meta;
+  
+  // 1. item_slot 일치 필수 (불일치 시 0점)
+  const productSlot = meta?.item_slot || '';
+  if (productSlot && analysisItem.type !== productSlot) {
+    // dress는 bottom과도 매칭 가능
+    if (!(analysisItem.type === 'bottom' && productSlot === 'dress') &&
+        !(analysisItem.type === 'set' && (productSlot === 'top' || productSlot === 'bottom'))) {
+      return 0;
+    }
+  }
+  
+  const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.dna_text || ''}`.toLowerCase();
+  const productColor = (product.color || '').toLowerCase();
+  const analysisColor = (analysisItem.color || '').toLowerCase();
+  const analysisCategory = (analysisItem.category || '').toLowerCase();
+  const analysisMaterial = (analysisItem.material || '').toLowerCase();
+  const analysisFit = (analysisItem.fit || '').toLowerCase();
+  const analysisPattern = (analysisItem.pattern || '').toLowerCase();
+  
+  let score = 0;
+  
+  // 2. 색상 매칭 (0.35)
+  let colorScore = 0;
+  // 직접 색상 매칭
+  if (analysisColor && (productColor.includes(analysisColor) || analysisColor.includes(productColor) || combined.includes(analysisColor))) {
+    colorScore = 1.0;
+  } else if (meta?.color_family) {
+    // color_family 간접 매칭
+    const productFamily = Array.isArray(meta.color_family) ? meta.color_family : [meta.color_family];
+    for (const [family, keywords] of Object.entries(COLOR_FAMILY_MAP)) {
+      if (productFamily.includes(family as any) && keywords.some(kw => analysisColor.includes(kw.toLowerCase()))) {
+        colorScore = 0.6;
+        break;
+      }
+    }
+  }
+  score += colorScore * 0.35;
+  
+  // 3. 카테고리 키워드 매칭 (0.30)
+  let categoryScore = 0;
+  if (analysisCategory) {
+    // 카테고리 키워드를 개별 단어로 분리하여 검색
+    const categoryTokens = analysisCategory.split(/[\/\s,]+/).filter(t => t.length >= 2);
+    const matchedTokens = categoryTokens.filter(token => combined.includes(token));
+    if (matchedTokens.length > 0) {
+      categoryScore = Math.min(matchedTokens.length / Math.max(categoryTokens.length, 1), 1.0);
+    }
+    // 제품명에서 직접 카테고리 매칭
+    if (combined.includes(analysisCategory)) {
+      categoryScore = 1.0;
+    }
+  }
+  score += categoryScore * 0.30;
+  
+  // 4. 소재 매칭 (0.20)
+  let materialScore = 0;
+  if (analysisMaterial) {
+    const materialTokens = analysisMaterial.split(/[\/\s,]+/).filter(t => t.length >= 2);
+    const matchedMaterials = materialTokens.filter(token => combined.includes(token));
+    materialScore = matchedMaterials.length > 0 ? Math.min(matchedMaterials.length / materialTokens.length, 1.0) : 0;
+  }
+  score += materialScore * 0.20;
+  
+  // 5. 핏 매칭 (0.10)
+  let fitScore = 0;
+  if (analysisFit && combined.includes(analysisFit)) {
+    fitScore = 1.0;
+  }
+  score += fitScore * 0.10;
+  
+  // 6. 패턴 매칭 (0.05)
+  let patternScore = 0;
+  if (analysisPattern && analysisPattern !== '무지') {
+    if (combined.includes(analysisPattern)) patternScore = 1.0;
+  } else if (analysisPattern === '무지') {
+    // 무지인 경우 패턴 키워드가 없으면 매칭
+    const patternKeywords = ['스트라이프', '체크', '플로럴', '도트', '프린트', '패턴'];
+    if (!patternKeywords.some(pk => combined.includes(pk))) patternScore = 0.5;
+  }
+  score += patternScore * 0.05;
+  
+  return score;
+}
+
+function filterProductsByPhotoAnalysis(
+  allProducts: CachedProduct[],
+  photoItems: PhotoAnalysisItem[],
+  productsByPriority: Record<string, CachedProduct[]>
+): void {
+  // 각 분석 아이템에 대해 매칭 점수 계산 후 카테고리별로 정렬
+  for (const analysisItem of photoItems) {
+    const targetSlot = analysisItem.type;
+    const targetCategory = targetSlot === 'top' ? '상의' 
+      : targetSlot === 'bottom' || targetSlot === 'set' ? '하의'
+      : targetSlot === 'outer' ? '아우터'
+      : targetSlot === 'shoes' ? '신발'
+      : '액세서리';
+    
+    const scoredProducts = allProducts
+      .map(p => ({ product: p, score: calculatePhotoMatchScore(analysisItem, p) }))
+      .filter(sp => sp.score > 0)
+      .sort((a, b) => b.score - a.score);
+    
+    console.log(`[style-recommend] Photo match for ${targetCategory} (${analysisItem.color} ${analysisItem.category}): ${scoredProducts.length} candidates, top score: ${scoredProducts[0]?.score.toFixed(3) || 'N/A'}`);
+    
+    // 기존 카테고리 목록에 점수순으로 재배치 (높은 점수 우선)
+    if (scoredProducts.length > 0 && productsByPriority[targetCategory]) {
+      const photoMatchedIds = new Set(scoredProducts.slice(0, 15).map(sp => sp.product.id));
+      const existing = productsByPriority[targetCategory].filter(p => !photoMatchedIds.has(p.id));
+      productsByPriority[targetCategory] = [
+        ...scoredProducts.slice(0, 15).map(sp => sp.product),
+        ...existing
+      ];
+    }
+  }
+}
+
 // ============= DNA 2.0 필터링 함수들 =============
 
 function filterByTarget(products: CachedProduct[], isKids: boolean, gender: string): CachedProduct[] {
