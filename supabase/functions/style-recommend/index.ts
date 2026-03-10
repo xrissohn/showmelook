@@ -1409,8 +1409,10 @@ serve(async (req) => {
 
   try {
     requestPayload = await req.json();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences } = requestPayload;
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems } = requestPayload;
     userId = requestPayload.userId || null;
+    
+    const hasPhotoAnalysis = photoAnalysisItems && photoAnalysisItems.items && photoAnalysisItems.items.length > 0;
 
     if (!userRequest) {
       return new Response(JSON.stringify({ error: 'userRequest is required' }), {
