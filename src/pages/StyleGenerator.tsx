@@ -3903,6 +3903,16 @@ const StyleGenerator = () => {
       const prompt = data.searchPrompt || data.description;
       setCustomStylePrompt(prompt);
       
+      // 구조화된 아이템 데이터를 상태에 저장 (style-recommend에 직접 전달용)
+      if (data.items?.length) {
+        setStyleImageAnalysis({
+          items: data.items,
+          overallStyle: data.overallStyle || '',
+          season: data.season || '',
+          tpo: data.tpo || '',
+        });
+      }
+      
       // 분석된 아이템 정보를 토스트로 표시
       const itemSummary = data.items?.length 
         ? data.items.map((item: any) => `${item.color} ${item.category}`).join(', ')
