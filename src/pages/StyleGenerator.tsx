@@ -2696,6 +2696,12 @@ const StyleGenerator = () => {
   const [styleImagePreview, setStyleImagePreview] = useState<string | null>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   const styleImageInputRef = useRef<HTMLInputElement>(null);
+  const [styleImageAnalysis, setStyleImageAnalysis] = useState<{
+    items: Array<{ type: string; category: string; color: string; material: string; fit: string; pattern: string }>;
+    overallStyle: string;
+    season: string;
+    tpo: string;
+  } | null>(null);
   const [customGender, setCustomGender] = useState<'female' | 'male' | 'unisex' | 'kids'>('female');
   const [customAge, setCustomAge] = useState<number | undefined>(undefined);
   const [customBudget, setCustomBudget] = useState([200000]);
