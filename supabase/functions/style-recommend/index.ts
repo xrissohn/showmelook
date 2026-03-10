@@ -1846,6 +1846,13 @@ serve(async (req) => {
       }
     }
     
+    // 📷 사진 분석 모드: 카테고리별 상품을 매칭 점수로 재정렬
+    if (hasPhotoAnalysis) {
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      filterProductsByPhotoAnalysis(allProducts, photoData.items, productsByPriority);
+      console.log(`[style-recommend] 📷 Photo matching applied - products re-ranked by similarity`);
+    }
+    
     const dnaStats = {
       withMeta: allProducts.filter(p => p.dna_meta).length,
       withoutMeta: allProducts.filter(p => !p.dna_meta).length
