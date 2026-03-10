@@ -1973,7 +1973,7 @@ ${itemDescriptions}
         ragResponse = await runStage2WithModel(
           stage2Backup,
           stage1Result,
-          productListContext,
+          stage2Context,
           userRequest,
           gender,
           ageGroupLabel,
