@@ -1464,6 +1464,9 @@ serve(async (req) => {
     console.log(`[style-recommend] Request: "${userRequest}"`);
     console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Pattern: ${patternKey}`);
     console.log(`[style-recommend] Models: Stage1=${stage1Primary}/${stage1Backup}, Stage2=${stage2Primary}/${stage2Backup}`);
+    if (hasPhotoAnalysis) {
+      console.log(`[style-recommend] 📷 Photo analysis mode: ${photoAnalysisItems.items.length} items detected`);
+    }
 
     // ============= PHASE 1: 캐시 체크 =============
     
