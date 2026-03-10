@@ -1541,12 +1541,42 @@ serve(async (req) => {
     console.log(`[style-recommend] Cache MISS, generating new recommendation...`);
 
     // ============= 🔥 Stage 1: GPT TPO 분석 (교차 Fallback) =============
+    // 📷 사진 분석 모드에서는 Stage 1 스킵 (이미 구조화된 분석 완료)
     
     let stage1Result: Stage1Result | null = null;
     let stage1Source = 'gpt';
     const stage1Start = Date.now();
 
-    if (LOVABLE_API_KEY) {
+    if (hasPhotoAnalysis) {
+      // 📷 사진 분석 결과에서 Stage 1 결과 직접 생성 (AI 호출 스킵)
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      const photoTPO = photoData.tpo || '데일리';
+      const photoStyle = photoData.overallStyle || '캐주얼';
+      
+      stage1Result = {
+        concepts: [photoStyle],
+        formalityMin: 2,
+        formalityMax: 7,
+        requiredItems: photoData.items.map((item: PhotoAnalysisItem) => {
+          switch (item.type) {
+            case 'top': return '상의';
+            case 'bottom': case 'set': return '하의';
+            case 'outer': return '아우터';
+            case 'shoes': return '신발';
+            default: return '액세서리';
+          }
+        }),
+        excludeItems: [],
+        dressCodeHint: `사진 속 스타일: ${photoStyle} (${photoTPO})`,
+        colorSuggestions: photoData.items.map((item: PhotoAnalysisItem) => item.color).filter(Boolean),
+        reasoning: `📷 사진 분석 기반: ${photoData.items.map((item: PhotoAnalysisItem) => `${item.color} ${item.category}`).join(', ')}`,
+      };
+      
+      stage1Source = 'photo_analysis';
+      metrics.stage1Success = true;
+      metrics.stage1Model = 'photo_analysis_skip';
+      console.log(`[style-recommend] 📷 Stage 1 스킵 - 사진 분석 결과 직접 사용: ${stage1Result.reasoning}`);
+    } else if (LOVABLE_API_KEY) {
       // 1차: Primary 모델
       stage1Result = await runStage1WithModel(
         stage1Primary,
