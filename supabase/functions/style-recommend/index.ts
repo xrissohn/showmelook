@@ -1954,10 +1954,11 @@ ${itemDescriptions}
     
     if (LOVABLE_API_KEY && stage2Products.length > 0) {
       // 1차: Primary 모델
+      const stage2Context = photoContextForStage2 + productListContext;
       ragResponse = await runStage2WithModel(
         stage2Primary,
         stage1Result,
-        productListContext,
+        stage2Context,
         userRequest,
         gender,
         ageGroupLabel,
