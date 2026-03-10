@@ -1885,11 +1885,13 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = 10;  // 🔥 카테고리당 후보 수 증가 (6 → 10)
+        const maxPerCategory = hasPhotoAnalysis ? 8 : 10;
         
-        // 🎲 카테고리 내에서 상위 20개 중 랜덤 샘플링
+        // 📷 사진 분석 모드: 매칭 순서 유지 / 일반 모드: 랜덤 샘플링
         const topCandidates = catProducts.slice(0, 25);
-        const shuffledCandidates = [...topCandidates].sort(() => Math.random() - 0.5);
+        const shuffledCandidates = hasPhotoAnalysis 
+          ? topCandidates  // 사진 매칭 점수순 유지
+          : [...topCandidates].sort(() => Math.random() - 0.5);
         
         for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
