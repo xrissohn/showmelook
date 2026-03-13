@@ -1735,6 +1735,7 @@ export type Database = {
         Returns: number
       }
       calculate_user_tier: { Args: { p_total_amount: number }; Returns: string }
+      cleanup_duplicate_pending_products: { Args: never; Returns: number }
       cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_inference_metrics: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }
