@@ -93,6 +93,64 @@ const MissingImagesManager = () => {
     loadMerchants();
   }, []);
 
+  // 중복 제품 자동 정리
+  const cleanupDuplicatePending = async () => {
+    try {
+      const { data: pendingAll } = await supabase
+        .from('pending_products')
+        .select('id, raw_data')
+        .in('error_type', ['missing_image', 'image_download_failed'])
+        .is('resolved_at', null);
+
+      if (!pendingAll || pendingAll.length === 0) return;
+
+      const urlToIds: Record<string, string[]> = {};
+      for (const p of pendingAll) {
+        const url = (p.raw_data as RawProductData)?.product_url;
+        if (url) {
+          if (!urlToIds[url]) urlToIds[url] = [];
+          urlToIds[url].push(p.id);
+        }
+      }
+
+      const allUrls = Object.keys(urlToIds);
+      if (allUrls.length === 0) return;
+
+      const duplicateIds: string[] = [];
+      for (let i = 0; i < allUrls.length; i += 100) {
+        const batch = allUrls.slice(i, i + 100);
+        const { data: existing } = await supabase
+          .from('products_cache')
+          .select('product_url')
+          .in('product_url', batch);
+
+        if (existing) {
+          for (const e of existing) {
+            const ids = urlToIds[e.product_url];
+            if (ids) duplicateIds.push(...ids);
+          }
+        }
+      }
+
+      if (duplicateIds.length === 0) return;
+
+      for (let i = 0; i < duplicateIds.length; i += 100) {
+        const batch = duplicateIds.slice(i, i + 100);
+        await supabase.from('pending_products').delete().in('id', batch);
+      }
+
+      if (duplicateIds.length > 0) {
+        console.log(`[ImageCleanup] ${duplicateIds.length}개 중복 제품 자동 삭제`);
+        toast({
+          title: "중복 자동 정리",
+          description: `이미 등록된 ${duplicateIds.length}개 제품이 이미지 대기열에서 삭제되었습니다.`,
+        });
+      }
+    } catch (err) {
+      console.error('[ImageCleanup] Error:', err);
+    }
+  };
+
   // ==================== Data Loaders ====================
   const loadProductsWithoutImages = async () => {
     setIsLoading(true);
@@ -122,6 +180,9 @@ const MissingImagesManager = () => {
   const loadPendingProducts = async () => {
     setPendingLoading(true);
     try {
+      // 먼저 중복 제품 자동 정리
+      await cleanupDuplicatePending();
+
       // 이미지 관련 에러만 (missing_image, image_download_failed)
       const { data, error } = await supabase
         .from('pending_products')
