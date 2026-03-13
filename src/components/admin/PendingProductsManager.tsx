@@ -105,6 +105,9 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
   const loadData = async () => {
     setIsLoading(true);
     try {
+      // 1. 먼저 중복 제품 자동 정리
+      await cleanupDuplicates();
+
       // Load pending products (머천트 오류만, 이미지 관련 에러 제외)
       const { data: pending, error: pendingError } = await supabase
         .from('pending_products')
