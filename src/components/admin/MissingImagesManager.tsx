@@ -122,6 +122,9 @@ const MissingImagesManager = () => {
   const loadPendingProducts = async () => {
     setPendingLoading(true);
     try {
+      // 먼저 중복 제품 자동 정리
+      await cleanupDuplicatePending();
+
       // 이미지 관련 에러만 (missing_image, image_download_failed)
       const { data, error } = await supabase
         .from('pending_products')
