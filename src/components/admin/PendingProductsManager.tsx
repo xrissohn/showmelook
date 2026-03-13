@@ -102,6 +102,72 @@ const PendingProductsManager = ({ onStatsUpdate }: PendingProductsManagerProps) 
     };
   }, []);
 
+  // 중복 제품 자동 정리: products_cache에 이미 등록된 product_url이면 pending에서 삭제
+  const cleanupDuplicates = async () => {
+    try {
+      // pending_products에서 미해결 항목의 product_url 수집
+      const { data: pendingAll } = await supabase
+        .from('pending_products')
+        .select('id, raw_data')
+        .is('resolved_at', null);
+
+      if (!pendingAll || pendingAll.length === 0) return;
+
+      const urlToIds: Record<string, string[]> = {};
+      for (const p of pendingAll) {
+        const url = (p.raw_data as RawProductData)?.product_url;
+        if (url) {
+          if (!urlToIds[url]) urlToIds[url] = [];
+          urlToIds[url].push(p.id);
+        }
+      }
+
+      const allUrls = Object.keys(urlToIds);
+      if (allUrls.length === 0) return;
+
+      // products_cache에서 이미 등록된 URL 확인 (100개씩 배치)
+      const duplicateIds: string[] = [];
+      for (let i = 0; i < allUrls.length; i += 100) {
+        const batch = allUrls.slice(i, i + 100);
+        const { data: existing } = await supabase
+          .from('products_cache')
+          .select('product_url')
+          .in('product_url', batch);
+
+        if (existing) {
+          for (const e of existing) {
+            const ids = urlToIds[e.product_url];
+            if (ids) duplicateIds.push(...ids);
+          }
+        }
+      }
+
+      if (duplicateIds.length === 0) return;
+
+      // 중복 항목 삭제 (100개씩 배치)
+      let totalDeleted = 0;
+      for (let i = 0; i < duplicateIds.length; i += 100) {
+        const batch = duplicateIds.slice(i, i + 100);
+        const { error } = await supabase
+          .from('pending_products')
+          .delete()
+          .in('id', batch);
+        if (!error) totalDeleted += batch.length;
+      }
+
+      if (totalDeleted > 0) {
+        console.log(`[AutoCleanup] ${totalDeleted}개 중복 대기 제품 자동 삭제`);
+        toast({
+          title: "중복 자동 정리",
+          description: `이미 등록된 ${totalDeleted}개 제품이 대기열에서 자동 삭제되었습니다.`,
+        });
+        onStatsUpdate?.();
+      }
+    } catch (err) {
+      console.error('[AutoCleanup] Error:', err);
+    }
+  };
+
   const loadData = async () => {
     setIsLoading(true);
     try {
