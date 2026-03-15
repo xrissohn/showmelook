@@ -4358,6 +4358,10 @@ const StyleGenerator = () => {
         // Save to database
         if (!genData.cached) {
           console.log('[StyleGenerator] About to save to DB, styleReasoning:', styleReasoning?.substring(0, 100), 'length:', styleReasoning?.length || 0);
+          // 생성 시점 tag_positions 포함
+          const generationTagPositions = genData.tagPositions || null;
+          console.log('[StyleGenerator] Tag positions from generation:', generationTagPositions?.length || 0);
+          
           const { data: insertedLook, error: insertError } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: genData.imagePath || genData.imageUrl,
@@ -4365,6 +4369,7 @@ const StyleGenerator = () => {
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map((p: any) => p.id),
             style_reasoning: styleReasoning || null,
+            tag_positions: generationTagPositions,
           }).select('id').single();
           if (insertError) console.error('[StyleGenerator] DB insert error:', insertError);
           if (insertedLook?.id) {
@@ -4380,6 +4385,7 @@ const StyleGenerator = () => {
               style_trend_id: selectedTrend?.id || null,
               product_ids: productsWithDetails.map((p: any) => p.id),
               style_reasoning: styleReasoning || null,
+              tag_positions: generationTagPositions,
             });
           }
         }
