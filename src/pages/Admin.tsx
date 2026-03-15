@@ -856,16 +856,14 @@ const Admin = () => {
 
       const byCategory: Record<string, number> = {};
       const categoryList: string[] = [];
-      if (categoryData) {
-        categoryData.forEach(item => {
-          if (item.category) {
-            byCategory[item.category] = (byCategory[item.category] || 0) + 1;
-            if (!categoryList.includes(item.category)) {
-              categoryList.push(item.category);
-            }
+      categoryData.forEach(item => {
+        if (item.category) {
+          byCategory[item.category] = (byCategory[item.category] || 0) + 1;
+          if (!categoryList.includes(item.category)) {
+            categoryList.push(item.category);
           }
-        });
-      }
+        }
+      });
 
       setAvailableMerchants(merchantList.sort());
       setAvailableCategories(categoryList.sort());
