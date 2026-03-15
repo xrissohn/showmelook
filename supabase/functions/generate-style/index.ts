@@ -433,7 +433,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors. If an item says "(MUST be white or black color ONLY)", you MUST use white or black, not red, yellow, or any other color.
+COLOR CRITICAL: Each item MUST be rendered in its EXACT real-world color. If a color is specified (e.g. "MUST be cream color ONLY"), use exactly that color. If an item says "match the EXACT color from product image #N", carefully look at the corresponding product image and reproduce its exact color and pattern. Do NOT guess or substitute colors - always refer to the product images provided below for accurate color reproduction.
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
