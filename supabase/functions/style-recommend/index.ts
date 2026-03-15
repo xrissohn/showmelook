@@ -617,23 +617,103 @@ const COLOR_FAMILY_MAP: Record<string, string[]> = {
   'pastel': ['라벤더', '민트', '피치', '베이비핑크', '스카이', '라일락', '파스텔', '연', '밝은'],
 };
 
+// 카테고리 한영 동의어 매핑 (사진 분석 카테고리 → 상품명/sub_category에서 찾을 키워드들)
+const CATEGORY_SYNONYMS: Record<string, string[]> = {
+  // 상의
+  '블레이저': ['blazer', '블레이저', '재킷', 'jacket', '테일러드'],
+  '니트': ['knit', '니트', 'sweater', '스웨터', 'knitwear', '풀오버', 'pullover'],
+  '셔츠': ['shirt', '셔츠', 'blouse', '블라우스'],
+  '티셔츠': ['t-shirt', 'tee', '티셔츠', '반팔', '긴팔', '롱슬리브'],
+  '맨투맨': ['sweatshirt', '맨투맨', 'mtm', '스웨트셔츠', '크루넥'],
+  '후드': ['hoodie', '후드', '후디', 'hood'],
+  '카디건': ['cardigan', '카디건', '가디건'],
+  '폴라': ['turtleneck', '폴라', '터틀넥', '목폴라', '반목'],
+  '조끼': ['vest', '조끼', '베스트'],
+  // 하의
+  '청바지': ['jeans', '진', '데님', 'denim', '청바지'],
+  '슬랙스': ['slacks', '슬랙스', '드레스팬츠', 'dress pants', '정장바지'],
+  '치노': ['chino', '치노', '면바지'],
+  '카고': ['cargo', '카고'],
+  '와이드팬츠': ['wide', '와이드', '와이드팬츠'],
+  '스트레이트팬츠': ['straight', '스트레이트'],
+  '스키니': ['skinny', '스키니', '슬림'],
+  '코듀로이': ['corduroy', '코듀로이', '골덴'],
+  '반바지': ['shorts', '반바지', '숏팬츠', '하프팬츠'],
+  '스커트': ['skirt', '스커트', '치마'],
+  '원피스': ['dress', '원피스', '드레스'],
+  // 아우터
+  '코트': ['coat', '코트'],
+  '패딩': ['padding', '패딩', 'puffer', '퍼퍼', '다운', 'down'],
+  '점퍼': ['jumper', '점퍼', '봄버', 'bomber', '항공점퍼'],
+  '자켓': ['jacket', '자켓', '재킷'],
+  '트렌치코트': ['trench', '트렌치', '트렌치코트'],
+  '바시티': ['varsity', '바시티', '레터맨'],
+  '가디건': ['cardigan', '카디건', '가디건'],
+  // 신발
+  '스니커즈': ['sneaker', '스니커즈', '운동화', '러닝화'],
+  '부츠': ['boots', '부츠', '워커', 'walker', '첼시'],
+  '로퍼': ['loafer', '로퍼', '페니로퍼'],
+  '구두': ['oxford', '구두', '더비', 'derby', '드레스슈즈'],
+  '샌들': ['sandal', '샌들', '슬리퍼'],
+  '워커': ['walker', '워커', 'boots', '부츠', '워크부츠'],
+  // 액세서리
+  '가방': ['bag', '가방', '백', '토트', 'tote', '크로스백', '숄더백', '클러치'],
+  '모자': ['hat', '모자', '캡', 'cap', '비니', 'beanie', '버킷햇'],
+  '안경': ['glasses', '안경', '선글라스', 'sunglasses'],
+  '시계': ['watch', '시계'],
+  '목걸이': ['necklace', '목걸이', '체인'],
+  '벨트': ['belt', '벨트'],
+  '머플러': ['muffler', '머플러', '스카프', 'scarf'],
+};
+
+// 분석 카테고리에 해당하는 동의어 키워드 목록 반환
+function getCategorySynonyms(analysisCategory: string): string[] {
+  const lowerCat = analysisCategory.toLowerCase();
+  const allSynonyms: string[] = [lowerCat];
+  
+  for (const [key, synonyms] of Object.entries(CATEGORY_SYNONYMS)) {
+    if (lowerCat.includes(key.toLowerCase()) || synonyms.some(s => lowerCat.includes(s.toLowerCase()))) {
+      allSynonyms.push(...synonyms.map(s => s.toLowerCase()));
+    }
+  }
+  
+  return [...new Set(allSynonyms)];
+}
+
+// item_slot → 카테고리 매핑 (역방향: 상품의 카테고리로 slot 추론)
+function inferSlotFromCategory(category: string, subCategory: string): string {
+  const combined = `${category} ${subCategory}`.toLowerCase();
+  if (['상의', 'top'].some(k => combined.includes(k))) return 'top';
+  if (['하의', 'bottom', '팬츠', '스커트'].some(k => combined.includes(k))) return 'bottom';
+  if (['아우터', 'outer', '코트', '재킷', '점퍼', '패딩'].some(k => combined.includes(k))) return 'outer';
+  if (['신발', 'shoes', '스니커즈', '부츠', '로퍼', '구두'].some(k => combined.includes(k))) return 'shoes';
+  if (['액세서리', '가방', '모자', '안경', '시계'].some(k => combined.includes(k))) return 'accessory';
+  return '';
+}
+
 function calculatePhotoMatchScore(
   analysisItem: PhotoAnalysisItem,
   product: CachedProduct
 ): number {
   const meta = product.dna_meta;
   
-  // 1. item_slot 일치 필수 (불일치 시 0점)
-  const productSlot = meta?.item_slot || '';
-  if (productSlot && analysisItem.type !== productSlot) {
-    // dress는 bottom과도 매칭 가능
-    if (!(analysisItem.type === 'bottom' && productSlot === 'dress') &&
-        !(analysisItem.type === 'set' && (productSlot === 'top' || productSlot === 'bottom'))) {
-      return 0;
-    }
+  // 1. item_slot 일치 체크 (강화: meta 없으면 카테고리에서 추론)
+  let productSlot = meta?.item_slot || '';
+  if (!productSlot) {
+    productSlot = inferSlotFromCategory(product.category || '', product.sub_category || '');
   }
   
-  const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.dna_text || ''}`.toLowerCase();
+  if (productSlot && analysisItem.type !== productSlot) {
+    // 유연한 매칭 허용
+    const allowed = [
+      analysisItem.type === 'bottom' && productSlot === 'dress',
+      analysisItem.type === 'set' && (productSlot === 'top' || productSlot === 'bottom'),
+      analysisItem.type === 'outer' && productSlot === 'top', // 카디건 등 아우터/상의 경계
+    ];
+    if (!allowed.some(Boolean)) return 0;
+  }
+  
+  const combined = `${product.name || ''} ${product.category || ''} ${product.sub_category || ''} ${product.dna_text || ''} ${product.brand || ''}`.toLowerCase();
   const productColor = (product.color || '').toLowerCase();
   const analysisColor = (analysisItem.color || '').toLowerCase();
   const analysisCategory = (analysisItem.category || '').toLowerCase();
@@ -643,25 +723,24 @@ function calculatePhotoMatchScore(
   
   let score = 0;
   
-  // 2. 색상 매칭 (0.35) - 강화된 동의어 매핑
+  // 2. 색상 매칭 (0.30) - 강화된 동의어 매핑
   let colorScore = 0;
   
-  // 색상 동의어 그룹 (같은 그룹의 색상은 서로 매칭)
   const COLOR_SYNONYMS: string[][] = [
-    ['브라운', 'brown', '갈색', '카멜', 'camel', '탄', 'tan', '카키', 'khaki', '초콜릿', 'chocolate', '코코아', 'cocoa', '토프', 'taupe', '모카', 'mocha', '월넛'],
-    ['네이비', 'navy', '남색', '진한파랑', '다크블루', 'dark blue', '인디고', 'indigo'],
-    ['올리브', 'olive', '올리브그린', 'olive green', '카키', 'khaki', '밀리터리그린'],
-    ['베이지', 'beige', '아이보리', 'ivory', '크림', 'cream', '오트밀', '누드', '샌드'],
-    ['블랙', 'black', '검정', '흑', '차콜', 'charcoal'],
-    ['화이트', 'white', '흰', '백', '오프화이트'],
-    ['레드', 'red', '빨강', '와인', 'wine', '버건디', 'burgundy', '마룬'],
-    ['그린', 'green', '녹색', '민트', 'mint', '에메랄드', '틸'],
-    ['블루', 'blue', '파랑', '스카이', 'sky', '코발트', '로열블루'],
-    ['옐로우', 'yellow', '노랑', '머스타드', 'mustard', '골드', 'gold', '밀색', 'wheat'],
-    ['핑크', 'pink', '분홍', '로즈', 'rose', '코랄', 'coral', '살몬'],
-    ['퍼플', 'purple', '보라', '라벤더', 'lavender', '바이올렛'],
-    ['그레이', 'gray', 'grey', '회색', '실버', 'silver'],
-    ['오렌지', 'orange', '주황', '테라코타', 'terracotta', '러스트', 'rust'],
+    ['브라운', 'brown', '갈색', '카멜', 'camel', '탄', 'tan', '카키', 'khaki', '초콜릿', 'chocolate', '코코아', 'cocoa', '토프', 'taupe', '모카', 'mocha', '월넛', '코냑', 'cognac', '버프', 'buff'],
+    ['네이비', 'navy', '남색', '진한파랑', '다크블루', 'dark blue', 'dark_blue', 'darkblue', '인디고', 'indigo', 'deep blue'],
+    ['올리브', 'olive', '올리브그린', 'olive green', '밀리터리그린', 'military'],
+    ['베이지', 'beige', '아이보리', 'ivory', '크림', 'cream', '오트밀', '누드', '샌드', 'sand', 'natural', '내추럴'],
+    ['블랙', 'black', '검정', '흑', '차콜', 'charcoal', 'dark', '다크'],
+    ['화이트', 'white', '흰', '백', '오프화이트', 'off-white', 'offwhite', 'ecru'],
+    ['레드', 'red', '빨강', '와인', 'wine', '버건디', 'burgundy', '마룬', 'maroon', '보르도', 'bordeaux'],
+    ['그린', 'green', '녹색', '민트', 'mint', '에메랄드', '틸', 'teal', '포레스트', 'forest'],
+    ['블루', 'blue', '파랑', '스카이', 'sky', '코발트', '로열블루', 'royal', '라이트블루', 'light blue'],
+    ['옐로우', 'yellow', '노랑', '머스타드', 'mustard', '골드', 'gold', '밀색', 'wheat', '레몬'],
+    ['핑크', 'pink', '분홍', '로즈', 'rose', '코랄', 'coral', '살몬', 'salmon'],
+    ['퍼플', 'purple', '보라', '라벤더', 'lavender', '바이올렛', 'violet', '플럼', 'plum'],
+    ['그레이', 'gray', 'grey', '회색', '실버', 'silver', '애쉬', 'ash'],
+    ['오렌지', 'orange', '주황', '테라코타', 'terracotta', '러스트', 'rust', '앰버'],
   ];
   
   function areColorsSimilar(c1: string, c2: string): boolean {
@@ -677,64 +756,136 @@ function calculatePhotoMatchScore(
   }
   
   // 직접/동의어 색상 매칭
-  if (analysisColor && (areColorsSimilar(analysisColor, productColor) || areColorsSimilar(analysisColor, combined))) {
-    colorScore = 1.0;
-  } else if (analysisColor && productColor && areColorsSimilar(analysisColor, productColor)) {
-    colorScore = 0.8;
-  } else if (meta?.color_family) {
-    // color_family 간접 매칭
-    const productFamily = Array.isArray(meta.color_family) ? meta.color_family : [meta.color_family];
-    for (const [family, keywords] of Object.entries(COLOR_FAMILY_MAP)) {
-      if (productFamily.includes(family as any) && keywords.some(kw => analysisColor.includes(kw.toLowerCase()))) {
-        colorScore = 0.5;
-        break;
+  if (analysisColor) {
+    if (areColorsSimilar(analysisColor, productColor)) {
+      colorScore = 1.0;
+    } else if (areColorsSimilar(analysisColor, combined)) {
+      colorScore = 0.8;
+    } else if (meta?.color_family) {
+      // color_family 간접 매칭
+      const productFamily = Array.isArray(meta.color_family) ? meta.color_family : [meta.color_family];
+      for (const group of COLOR_SYNONYMS) {
+        const analysisInGroup = group.some(g => analysisColor.includes(g));
+        if (analysisInGroup) {
+          // 해당 그룹의 대표 키워드가 productFamily에 있는지 확인
+          const familyMatches = productFamily.some((fam: string) => 
+            group.some(g => fam.toLowerCase().includes(g))
+          );
+          if (familyMatches) {
+            colorScore = 0.6;
+            break;
+          }
+        }
       }
     }
   }
-  score += colorScore * 0.35;
+  score += colorScore * 0.30;
   
-  // 3. 카테고리 키워드 매칭 (0.30)
+  // 3. 카테고리 키워드 매칭 (0.35) - 강화: 동의어 사전 활용
   let categoryScore = 0;
   if (analysisCategory) {
-    // 카테고리 키워드를 개별 단어로 분리하여 검색
-    const categoryTokens = analysisCategory.split(/[\/\s,]+/).filter(t => t.length >= 2);
-    const matchedTokens = categoryTokens.filter(token => combined.includes(token));
-    if (matchedTokens.length > 0) {
-      categoryScore = Math.min(matchedTokens.length / Math.max(categoryTokens.length, 1), 1.0);
-    }
-    // 제품명에서 직접 카테고리 매칭
-    if (combined.includes(analysisCategory)) {
-      categoryScore = 1.0;
+    const synonyms = getCategorySynonyms(analysisCategory);
+    
+    // 동의어 중 하나라도 상품명/카테고리/sub_category에 포함되면 매칭
+    const matchedSynonyms = synonyms.filter(syn => combined.includes(syn));
+    if (matchedSynonyms.length > 0) {
+      // 정확한 카테고리 매칭은 높은 점수, 동의어 매칭은 약간 낮은 점수
+      const directMatch = combined.includes(analysisCategory);
+      categoryScore = directMatch ? 1.0 : 0.85;
+    } else {
+      // 카테고리 키워드를 개별 단어로 분리하여 검색 (기존 로직 유지)
+      const categoryTokens = analysisCategory.split(/[\/\s,]+/).filter(t => t.length >= 2);
+      const matchedTokens = categoryTokens.filter(token => combined.includes(token));
+      if (matchedTokens.length > 0) {
+        categoryScore = Math.min(matchedTokens.length / Math.max(categoryTokens.length, 1), 1.0) * 0.7;
+      }
     }
   }
-  score += categoryScore * 0.30;
+  score += categoryScore * 0.35;
   
-  // 4. 소재 매칭 (0.20)
+  // 4. 소재 매칭 (0.15)
   let materialScore = 0;
   if (analysisMaterial) {
-    const materialTokens = analysisMaterial.split(/[\/\s,]+/).filter(t => t.length >= 2);
-    const matchedMaterials = materialTokens.filter(token => combined.includes(token));
-    materialScore = matchedMaterials.length > 0 ? Math.min(matchedMaterials.length / materialTokens.length, 1.0) : 0;
+    const MATERIAL_SYNONYMS: Record<string, string[]> = {
+      '울': ['wool', '울', '모직', '양모', '캐시미어', 'cashmere', '메리노'],
+      '데님': ['denim', '데님', '청', 'jean'],
+      '가죽': ['leather', '가죽', '레더', '스웨이드', 'suede'],
+      '코듀로이': ['corduroy', '코듀로이', '골덴', '코르덴'],
+      '면': ['cotton', '면', '코튼'],
+      '린넨': ['linen', '린넨', '리넨', '마'],
+      '폴리': ['polyester', '폴리', '나일론', 'nylon', '합성'],
+      '니트': ['knit', '니트', '편직'],
+      '플리스': ['fleece', '플리스', '양털'],
+      '실크': ['silk', '실크', '새틴', 'satin'],
+    };
+    
+    let materialMatched = false;
+    for (const [, synonyms] of Object.entries(MATERIAL_SYNONYMS)) {
+      const analysisMatch = synonyms.some(s => analysisMaterial.includes(s.toLowerCase()));
+      if (analysisMatch) {
+        const productMatch = synonyms.some(s => combined.includes(s.toLowerCase()));
+        if (productMatch) {
+          materialScore = 1.0;
+          materialMatched = true;
+          break;
+        }
+      }
+    }
+    if (!materialMatched) {
+      const materialTokens = analysisMaterial.split(/[\/\s,]+/).filter(t => t.length >= 2);
+      const matchedMaterials = materialTokens.filter(token => combined.includes(token));
+      materialScore = matchedMaterials.length > 0 ? Math.min(matchedMaterials.length / materialTokens.length, 1.0) : 0;
+    }
   }
-  score += materialScore * 0.20;
+  score += materialScore * 0.15;
   
   // 5. 핏 매칭 (0.10)
   let fitScore = 0;
-  if (analysisFit && combined.includes(analysisFit)) {
-    fitScore = 1.0;
+  if (analysisFit) {
+    const FIT_SYNONYMS: Record<string, string[]> = {
+      '오버사이즈': ['oversize', '오버사이즈', '오버핏', 'oversized', '루즈'],
+      '슬림': ['slim', '슬림', '스키니', 'skinny', '타이트'],
+      '레귤러': ['regular', '레귤러', '일반', '스탠다드'],
+      '와이드': ['wide', '와이드', '루즈핏', '배기'],
+      '릴랙스': ['relaxed', '릴랙스', '편한'],
+      '스트레이트': ['straight', '스트레이트', '일자'],
+      '테이퍼드': ['tapered', '테이퍼드', '조거'],
+    };
+    for (const [, synonyms] of Object.entries(FIT_SYNONYMS)) {
+      if (synonyms.some(s => analysisFit.includes(s.toLowerCase())) && 
+          synonyms.some(s => combined.includes(s.toLowerCase()))) {
+        fitScore = 1.0;
+        break;
+      }
+    }
+    if (!fitScore && combined.includes(analysisFit)) fitScore = 0.8;
   }
   score += fitScore * 0.10;
   
-  // 6. 패턴 매칭 (0.05)
+  // 6. 패턴 매칭 (0.10)
   let patternScore = 0;
   if (analysisPattern && analysisPattern !== '무지') {
-    if (combined.includes(analysisPattern)) patternScore = 1.0;
+    const PATTERN_SYNONYMS: Record<string, string[]> = {
+      '스트라이프': ['stripe', '스트라이프', '줄무늬'],
+      '체크': ['check', '체크', '격자', 'plaid', '타탄'],
+      '플로럴': ['floral', '플로럴', '꽃무늬', '화훼'],
+      '도트': ['dot', '도트', '물방울', 'polka'],
+      '프린트': ['print', '프린트', '패턴'],
+      '카모': ['camo', '카모', '밀리터리', '위장'],
+    };
+    for (const [, synonyms] of Object.entries(PATTERN_SYNONYMS)) {
+      if (synonyms.some(s => analysisPattern.includes(s.toLowerCase())) &&
+          synonyms.some(s => combined.includes(s.toLowerCase()))) {
+        patternScore = 1.0;
+        break;
+      }
+    }
+    if (!patternScore && combined.includes(analysisPattern)) patternScore = 0.8;
   } else if (analysisPattern === '무지') {
-    // 무지인 경우 패턴 키워드가 없으면 매칭
-    const patternKeywords = ['스트라이프', '체크', '플로럴', '도트', '프린트', '패턴'];
+    const patternKeywords = ['스트라이프', '체크', '플로럴', '도트', '프린트', '패턴', 'stripe', 'check', 'plaid', 'floral', 'print'];
     if (!patternKeywords.some(pk => combined.includes(pk))) patternScore = 0.5;
   }
-  score += patternScore * 0.05;
+  score += patternScore * 0.10;
   
   return score;
 }
