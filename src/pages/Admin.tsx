@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Gauge, Store
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,8 +24,6 @@ import { ProductDetailEditor } from "@/components/admin/ProductDetailEditor";
 
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
-import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
-import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
@@ -186,17 +184,6 @@ const Admin = () => {
     bySlot: Record<string, number>;
     byConcept: Record<string, number>;
   } | null>(null);
-  const [isDnaLoading, setIsDnaLoading] = useState(false);
-  const [dnaBatchResult, setDnaBatchResult] = useState<{
-    success: boolean;
-    processed?: number;
-    updated?: number;
-    remaining?: number;
-    errors?: number;
-    timeMs?: number;
-    error?: string;
-  } | null>(null);
-  const [dnaBatchSize, setDnaBatchSize] = useState("50");
   
   
   // Feedback stats state (v4.0)
@@ -358,18 +345,6 @@ const Admin = () => {
     }
   };
 
-  const clearOldErrorLogs = async () => {
-    try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      await supabase.from('error_logs').delete().lt('created_at', thirtyDaysAgo);
-      toast({ title: "정리 완료", description: "30일 이전 에러 로그가 삭제되었습니다." });
-      loadErrorLogStats();
-      loadErrorLogs();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: "정리 실패", description: errorMessage, variant: "destructive" });
-    }
-  };
 
   // Generation jobs functions
   const loadJobStats = async () => {
@@ -1188,32 +1163,6 @@ const Admin = () => {
     }
   };
 
-  const runDnaBatch = async () => {
-    setIsDnaLoading(true);
-    setDnaBatchResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('dna-batch', {
-        body: { batchSize: parseInt(dnaBatchSize) || 50 },
-      });
-
-      if (error) throw error;
-      setDnaBatchResult(data);
-      
-      if (data.success) {
-        toast({ title: "DNA 2.0 생성 완료", description: `${data.updated}개 상품 처리됨, ${data.remaining}개 남음` });
-        loadDnaStats();
-      } else {
-        toast({ title: "DNA 생성 실패", description: data.error, variant: "destructive" });
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setDnaBatchResult({ success: false, error: errorMessage });
-      toast({ title: "DNA 배치 오류", description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsDnaLoading(false);
-    }
-  };
 
 
 
@@ -1342,21 +1291,9 @@ const Admin = () => {
                   <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">{jobStats.queued + jobStats.processing}</Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="performance" className="flex-shrink-0 whitespace-nowrap">
                 <BarChart3 className="w-4 h-4 mr-1" />
-                처리량 분석
-              </TabsTrigger>
-              <TabsTrigger value="inference" className="flex-shrink-0 whitespace-nowrap">
-                <Activity className="w-4 h-4 mr-1" />
-                추론 성능
-              </TabsTrigger>
-              <TabsTrigger value="ratelimit" className="flex-shrink-0 whitespace-nowrap">
-                <Gauge className="w-4 h-4 mr-1" />
-                Rate Limiter
-              </TabsTrigger>
-              <TabsTrigger value="loadtest" className="flex-shrink-0 whitespace-nowrap">
-                <Zap className="w-4 h-4 mr-1" />
-                부하 테스트
+                성능 분석
               </TabsTrigger>
               <TabsTrigger value="tools" className="flex-shrink-0 whitespace-nowrap">
                 <Zap className="w-4 h-4 mr-1" />
@@ -1752,67 +1689,19 @@ const Admin = () => {
                   </div>
                 )}
 
-                {/* DNA Batch Generation */}
-                <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
-                  <div>
-                    <h3 className="font-medium flex items-center gap-2">
-                      <Dna className="w-4 h-4" />
-                      DNA 배치 생성
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      규칙 기반으로 DNA 메타 정보(target, concepts, occasions 등)를 자동 생성합니다.
-                    </p>
+                {/* DNA 배치 자동화 안내 */}
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Dna className="w-4 h-4" />
+                    DNA 자동 생성
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    DNA 배치 생성은 10분마다 자동으로 실행됩니다 (배치 크기: 50개). 색상 분석도 10분 주기로 자동 실행됩니다.
+                  </p>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">🤖 자동화됨</Badge>
+                    <Badge variant="outline">10분 주기</Badge>
                   </div>
-
-                  <div className="flex flex-wrap items-end gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">배치 크기</label>
-                      <Select value={dnaBatchSize} onValueChange={setDnaBatchSize}>
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="20">20개</SelectItem>
-                          <SelectItem value="50">50개</SelectItem>
-                          <SelectItem value="100">100개</SelectItem>
-                          <SelectItem value="200">200개</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button onClick={runDnaBatch} disabled={isDnaLoading}>
-                      {isDnaLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Dna className="w-4 h-4 mr-2" />}
-                      🧬 DNA 생성
-                    </Button>
-                  </div>
-
-                  {dnaBatchResult && (
-                    <div className={`p-4 rounded-lg border ${
-                      dnaBatchResult.success 
-                        ? 'bg-accent/10 border-accent/30'
-                        : 'bg-destructive/10 border-destructive/30'
-                    }`}>
-                      {dnaBatchResult.success ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-primary" />
-                            <span className="font-medium">DNA 생성 완료</span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-4 text-sm">
-                            <div><span className="text-muted-foreground">처리:</span> <span className="font-medium">{dnaBatchResult.processed}</span></div>
-                            <div><span className="text-muted-foreground">성공:</span> <span className="font-medium text-primary">{dnaBatchResult.updated}</span></div>
-                            <div><span className="text-muted-foreground">에러:</span> <span className="font-medium text-destructive">{dnaBatchResult.errors || 0}</span></div>
-                            <div><span className="text-muted-foreground">남음:</span> <span className="font-medium">{dnaBatchResult.remaining}</span></div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <XCircle className="w-5 h-5 text-destructive" />
-                          <span className="font-medium">오류: {dnaBatchResult.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
               </CardContent>
@@ -2240,26 +2129,14 @@ const Admin = () => {
                   </div>
                 </div>
 
-                <div className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2"><RefreshCw className="w-4 h-4" />추천 캐시 정리</h3>
-                      <p className="text-sm text-muted-foreground">만료된 스타일 추천 캐시를 삭제합니다.</p>
-                    </div>
-                    <Button 
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          await supabase.from('style_cache').delete().lt('expires_at', new Date().toISOString());
-                          toast({ title: "캐시 정리 완료", description: "만료된 캐시가 삭제되었습니다." });
-                        } catch (error: unknown) {
-                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                          toast({ title: "캐시 정리 실패", description: errorMessage, variant: "destructive" });
-                        }
-                      }}
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />만료 캐시 정리
-                    </Button>
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                  <h3 className="font-medium flex items-center gap-2"><RefreshCw className="w-4 h-4" />자동화된 정리 작업</h3>
+                  <p className="text-sm text-muted-foreground">추천 캐시 정리와 에러 로그 정리는 매일 자동으로 실행됩니다.</p>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">🤖 캐시 정리 (매일 01:00)</Badge>
+                    <Badge variant="secondary">🤖 에러 로그 정리 (매일 00:00)</Badge>
+                    <Badge variant="secondary">🤖 DNA 배치 (10분 주기)</Badge>
+                    <Badge variant="secondary">🤖 색상 분석 (10분 주기)</Badge>
                   </div>
                 </div>
 
@@ -2334,10 +2211,6 @@ const Admin = () => {
                   <Button onClick={() => { loadErrorLogs(); loadErrorLogStats(); }} disabled={errorLogsLoading}>
                     {errorLogsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                     새로고침
-                  </Button>
-                  <Button variant="outline" onClick={clearOldErrorLogs}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    30일 이전 삭제
                   </Button>
                 </div>
 
@@ -2677,8 +2550,8 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Throughput Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-4">
+          {/* Performance Analytics Tab (merged) */}
+          <TabsContent value="performance" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -2693,21 +2566,7 @@ const Admin = () => {
                 <ThroughputAnalytics />
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Inference Performance Tab */}
-          <TabsContent value="inference" className="space-y-4">
             <InferenceMetricsPanel />
-          </TabsContent>
-
-          {/* Token Bucket Rate Limiter Tab */}
-          <TabsContent value="ratelimit" className="space-y-4">
-            <TokenBucketMonitor />
-          </TabsContent>
-
-          {/* Load Test Tab */}
-          <TabsContent value="loadtest" className="space-y-4">
-            <LoadTestPanel />
           </TabsContent>
 
           {/* Cafe24 Tab */}
