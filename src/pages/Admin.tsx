@@ -1291,21 +1291,9 @@ const Admin = () => {
                   <Badge variant="secondary" className="ml-1 text-xs px-1 py-0">{jobStats.queued + jobStats.processing}</Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="analytics" className="flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="performance" className="flex-shrink-0 whitespace-nowrap">
                 <BarChart3 className="w-4 h-4 mr-1" />
-                처리량 분석
-              </TabsTrigger>
-              <TabsTrigger value="inference" className="flex-shrink-0 whitespace-nowrap">
-                <Activity className="w-4 h-4 mr-1" />
-                추론 성능
-              </TabsTrigger>
-              <TabsTrigger value="ratelimit" className="flex-shrink-0 whitespace-nowrap">
-                <Gauge className="w-4 h-4 mr-1" />
-                Rate Limiter
-              </TabsTrigger>
-              <TabsTrigger value="loadtest" className="flex-shrink-0 whitespace-nowrap">
-                <Zap className="w-4 h-4 mr-1" />
-                부하 테스트
+                성능 분석
               </TabsTrigger>
               <TabsTrigger value="tools" className="flex-shrink-0 whitespace-nowrap">
                 <Zap className="w-4 h-4 mr-1" />
