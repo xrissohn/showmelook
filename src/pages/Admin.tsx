@@ -2010,13 +2010,54 @@ const Admin = () => {
 
                     <Button 
                       onClick={() => runColorAnalysis(false)} 
-                      disabled={isColorAnalyzing || colorUnknownCount === 0}
+                      disabled={isColorAnalyzing || colorUnknownCount === 0 || colorAutoRunning}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       {isColorAnalyzing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
                       🎨 색상 분석 실행
                     </Button>
+
+                    {!colorAutoRunning ? (
+                      <Button 
+                        onClick={startColorAutoRun} 
+                        disabled={isColorAnalyzing || colorUnknownCount === 0}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        🔄 전체 자동 실행
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={stopColorAutoRun} 
+                        variant="destructive"
+                      >
+                        <XOctagon className="w-4 h-4 mr-2" />
+                        ⏹️ 중지
+                      </Button>
+                    )}
                   </div>
+
+                  {/* Auto-run progress */}
+                  {(colorAutoRunning || colorAutoRunLog.length > 0) && (
+                    <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {colorAutoRunning && <Loader2 className="w-4 h-4 animate-spin text-green-600" />}
+                          <span className="font-medium text-sm">
+                            {colorAutoRunning ? '자동 실행 중...' : '자동 실행 완료'}
+                          </span>
+                        </div>
+                        <Badge variant="secondary" className="text-green-600">
+                          누적 {colorTotalUpdated}개 업데이트
+                        </Badge>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto text-xs font-mono bg-background/50 rounded p-2 space-y-0.5">
+                        {colorAutoRunLog.map((log, i) => (
+                          <div key={i} className="text-muted-foreground">{log}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {colorAnalysisResult && (
                     <div className={`p-4 rounded-lg border ${
