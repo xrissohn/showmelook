@@ -1217,26 +1217,6 @@ const Admin = () => {
 
 
 
-
-  // Helper function for color display
-  const getColorHex = (color: string): string => {
-    const colorMap: Record<string, string> = {
-      white: '#FFFFFF', ivory: '#FFFFF0', cream: '#FFFDD0', beige: '#F5F5DC',
-      brown: '#8B4513', tan: '#D2B48C', camel: '#C19A6B',
-      black: '#000000', charcoal: '#36454F', gray: '#808080', silver: '#C0C0C0',
-      navy: '#000080', blue: '#0000FF', skyblue: '#87CEEB', lightblue: '#ADD8E6', denim: '#1560BD',
-      red: '#FF0000', burgundy: '#800020', wine: '#722F37', coral: '#FF7F50', 
-      pink: '#FFC0CB', rose: '#FF007F', salmon: '#FA8072',
-      orange: '#FFA500', peach: '#FFDAB9', apricot: '#FBCEB1',
-      yellow: '#FFFF00', gold: '#FFD700', mustard: '#FFDB58', lemon: '#FFF44F',
-      green: '#008000', olive: '#808000', khaki: '#C3B091', mint: '#98FF98', 
-      sage: '#87AE73', emerald: '#50C878', forest: '#228B22',
-      purple: '#800080', lavender: '#E6E6FA', violet: '#EE82EE', plum: '#DDA0DD', lilac: '#C8A2C8',
-      multicolor: '#888888', pattern: '#888888', unknown: '#CCCCCC'
-    };
-    return colorMap[color.toLowerCase()] || '#CCCCCC';
-  };
-
   const dnaPercentage = dnaStats ? Math.round((dnaStats.withDna / dnaStats.total) * 100) : 0;
 
   // 인증/권한 체크
