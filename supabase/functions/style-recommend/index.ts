@@ -1460,7 +1460,7 @@ JSON만 응답:
             { role: 'system', content: stage2SystemPrompt },
             { role: 'user', content: stage2UserPrompt }
           ],
-          max_tokens: 1200,
+          max_tokens: 700,
           temperature: 0.8,
         }),
         signal: controller.signal,
