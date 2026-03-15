@@ -4612,6 +4612,10 @@ const StyleGenerator = () => {
           const styleReasoningToSave = customResult?.styleReasoning || null;
           console.log('[generateStyle] Saving with styleReasoning:', styleReasoningToSave?.substring(0, 100), 'length:', styleReasoningToSave?.length || 0);
           
+          // 생성 시점 tag_positions 포함
+          const generationTagPositions2 = data.tagPositions || null;
+          console.log('[generateStyle] Tag positions from generation:', generationTagPositions2?.length || 0);
+          
           const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
             image_url: data.imagePath || data.imageUrl,
@@ -4619,6 +4623,7 @@ const StyleGenerator = () => {
             style_trend_id: selectedTrend?.id || null,
             product_ids: productsWithDetails.map(p => p.id),
             style_reasoning: styleReasoningToSave,
+            tag_positions: generationTagPositions2,
           }).select('id').single();
           if (insertedLook?.id) {
             setGeneratedLookId(insertedLook.id);
@@ -4633,6 +4638,7 @@ const StyleGenerator = () => {
               style_trend_id: selectedTrend?.id || null,
               product_ids: productsWithDetails.map(p => p.id),
               style_reasoning: styleReasoningToSave,
+              tag_positions: generationTagPositions2,
             });
           }
         }
