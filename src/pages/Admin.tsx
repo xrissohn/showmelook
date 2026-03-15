@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -211,6 +211,9 @@ const Admin = () => {
   } | null>(null);
   const [colorBatchSize, setColorBatchSize] = useState("20");
   const [colorUnknownCount, setColorUnknownCount] = useState(0);
+  const [colorAutoRunning, setColorAutoRunning] = useState(false);
+  const [colorAutoRunLog, setColorAutoRunLog] = useState<string[]>([]);
+  const [colorTotalUpdated, setColorTotalUpdated] = useState(0);
 
   // Feedback stats state (v4.0)
   const [feedbackStats, setFeedbackStats] = useState<{
@@ -1269,13 +1272,75 @@ const Admin = () => {
       } else {
         toast({ title: "색상 분석 실패", description: data.error, variant: "destructive" });
       }
+      return data;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setColorAnalysisResult({ success: false, error: errorMessage });
       toast({ title: "색상 분석 오류", description: errorMessage, variant: "destructive" });
+      return { success: false, error: errorMessage };
     } finally {
       setIsColorAnalyzing(false);
     }
+  };
+
+  // Auto-run color analysis until all done
+  const colorAutoRunRef = useRef(false);
+  const startColorAutoRun = async () => {
+    setColorAutoRunning(true);
+    colorAutoRunRef.current = true;
+    setColorAutoRunLog([]);
+    setColorTotalUpdated(0);
+    let totalUpdated = 0;
+    let round = 1;
+
+    while (colorAutoRunRef.current) {
+      const timestamp = new Date().toLocaleTimeString('ko-KR');
+      setColorAutoRunLog(prev => [...prev, `[${timestamp}] 라운드 ${round} 시작 (배치 ${colorBatchSize}개)...`]);
+
+      try {
+        const { data, error } = await supabase.functions.invoke('analyze-product-colors', {
+          body: { batchSize: parseInt(colorBatchSize) || 20, dryRun: false },
+        });
+
+        if (error) throw error;
+
+        if (data.success) {
+          totalUpdated += (data.updated || 0);
+          setColorTotalUpdated(totalUpdated);
+          const endTime = new Date().toLocaleTimeString('ko-KR');
+          setColorAutoRunLog(prev => [...prev, `[${endTime}] ✅ 라운드 ${round}: ${data.updated}개 업데이트 (누적 ${totalUpdated}개, ${data.elapsed})`]);
+          
+          if (data.processed === 0 || (data.updated === 0 && data.failed === 0)) {
+            setColorAutoRunLog(prev => [...prev, `[${endTime}] 🎉 모든 상품 색상 분석 완료!`]);
+            break;
+          }
+        } else {
+          setColorAutoRunLog(prev => [...prev, `[${timestamp}] ❌ 오류: ${data.error}`]);
+          break;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setColorAutoRunLog(prev => [...prev, `[${timestamp}] ❌ 에러: ${msg}`]);
+        break;
+      }
+
+      // Wait 3 seconds between rounds
+      await new Promise(r => setTimeout(r, 3000));
+      round++;
+      loadColorUnknownCount();
+    }
+
+    colorAutoRunRef.current = false;
+    setColorAutoRunning(false);
+    loadColorUnknownCount();
+    loadDnaStats();
+    toast({ title: "자동 색상 분석 완료", description: `총 ${totalUpdated}개 상품 색상 업데이트됨` });
+  };
+
+  const stopColorAutoRun = () => {
+    colorAutoRunRef.current = false;
+    setColorAutoRunning(false);
+    setColorAutoRunLog(prev => [...prev, `[${new Date().toLocaleTimeString('ko-KR')}] ⏹️ 사용자에 의해 중지됨`]);
   };
 
   // Add to initial load
@@ -1945,13 +2010,54 @@ const Admin = () => {
 
                     <Button 
                       onClick={() => runColorAnalysis(false)} 
-                      disabled={isColorAnalyzing || colorUnknownCount === 0}
+                      disabled={isColorAnalyzing || colorUnknownCount === 0 || colorAutoRunning}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
                       {isColorAnalyzing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
                       🎨 색상 분석 실행
                     </Button>
+
+                    {!colorAutoRunning ? (
+                      <Button 
+                        onClick={startColorAutoRun} 
+                        disabled={isColorAnalyzing || colorUnknownCount === 0}
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        🔄 전체 자동 실행
+                      </Button>
+                    ) : (
+                      <Button 
+                        onClick={stopColorAutoRun} 
+                        variant="destructive"
+                      >
+                        <XOctagon className="w-4 h-4 mr-2" />
+                        ⏹️ 중지
+                      </Button>
+                    )}
                   </div>
+
+                  {/* Auto-run progress */}
+                  {(colorAutoRunning || colorAutoRunLog.length > 0) && (
+                    <div className="p-4 rounded-lg border border-green-500/30 bg-green-500/5 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {colorAutoRunning && <Loader2 className="w-4 h-4 animate-spin text-green-600" />}
+                          <span className="font-medium text-sm">
+                            {colorAutoRunning ? '자동 실행 중...' : '자동 실행 완료'}
+                          </span>
+                        </div>
+                        <Badge variant="secondary" className="text-green-600">
+                          누적 {colorTotalUpdated}개 업데이트
+                        </Badge>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto text-xs font-mono bg-background/50 rounded p-2 space-y-0.5">
+                        {colorAutoRunLog.map((log, i) => (
+                          <div key={i} className="text-muted-foreground">{log}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {colorAnalysisResult && (
                     <div className={`p-4 rounded-lg border ${
