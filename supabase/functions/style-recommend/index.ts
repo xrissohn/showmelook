@@ -2361,6 +2361,7 @@ ${itemDescriptions}
     return new Response(JSON.stringify({
       success: true,
       cacheHit: false,
+      mode: responseMode,
       look: {
         name: ragResponse.lookName,
         styleConcept: ragResponse.styleConcept,
