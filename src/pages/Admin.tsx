@@ -2550,8 +2550,8 @@ const Admin = () => {
             </Card>
           </TabsContent>
 
-          {/* Throughput Analytics Tab */}
-          <TabsContent value="analytics" className="space-y-4">
+          {/* Performance Analytics Tab (merged) */}
+          <TabsContent value="performance" className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -2566,21 +2566,7 @@ const Admin = () => {
                 <ThroughputAnalytics />
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* Inference Performance Tab */}
-          <TabsContent value="inference" className="space-y-4">
             <InferenceMetricsPanel />
-          </TabsContent>
-
-          {/* Token Bucket Rate Limiter Tab */}
-          <TabsContent value="ratelimit" className="space-y-4">
-            <TokenBucketMonitor />
-          </TabsContent>
-
-          {/* Load Test Tab */}
-          <TabsContent value="loadtest" className="space-y-4">
-            <LoadTestPanel />
           </TabsContent>
 
           {/* Cafe24 Tab */}
