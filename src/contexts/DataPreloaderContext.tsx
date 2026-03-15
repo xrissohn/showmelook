@@ -26,6 +26,7 @@ interface GeneratedLook {
   memo?: string | null;
   tags?: string[] | null;
   style_reasoning?: string | null;
+  tag_positions?: any;
 }
 
 interface DataCache {
