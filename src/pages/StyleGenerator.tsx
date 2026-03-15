@@ -2714,6 +2714,7 @@ const StyleGenerator = () => {
     autoSelectedTotal?: number;
     autoSelectedCount?: number;
     budget?: number;
+    mode?: 'evaluation' | 'recommendation';
   } | null>(null);
 
   // 구매 버튼 로딩 상태
@@ -3462,6 +3463,7 @@ const StyleGenerator = () => {
           autoSelectedTotal: look.autoSelectedTotal || 0,
           autoSelectedCount: look.autoSelectedCount || 0,
           budget: look.budget || customBudget[0],
+          mode: (look as any).mode || 'recommendation',
         });
         setSelectedTrendProducts(transformedItems);
       }
@@ -4024,7 +4026,8 @@ const StyleGenerator = () => {
           totalPrice: data.look.totalPrice || 0,
           autoSelectedTotal: data.look.autoSelectedTotal || 0,
           autoSelectedCount: data.look.autoSelectedCount || 0,
-          budget: data.look.budget || customBudget[0]
+          budget: data.look.budget || customBudget[0],
+          mode: data.mode || 'recommendation',
         });
 
         // 모든 추천 아이템을 기본 선택 상태로 (예산 무관)
@@ -4211,7 +4214,8 @@ const StyleGenerator = () => {
             totalPrice: recData.look.totalPrice || 0,
             autoSelectedTotal: recData.look.autoSelectedTotal || 0,
             autoSelectedCount: recData.look.autoSelectedCount || 0,
-            budget: recData.look.budget || customBudget[0]
+            budget: recData.look.budget || customBudget[0],
+            mode: recData.mode || 'recommendation',
           });
           
           setSelectedTrendProducts(transformedItems);
@@ -5100,7 +5104,7 @@ const StyleGenerator = () => {
                         <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
                         </div>
-                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{customResult.mode === 'evaluation' ? 'AI 스타일 평가' : 'AI 스타일리스트 추천'}</span>
                       </div>
                       
                       {/* 타이틀 */}
@@ -5118,7 +5122,7 @@ const StyleGenerator = () => {
                       {/* 피드백 버튼 */}
                       <div className="mt-4 sm:mt-5 pt-4 border-t border-border/30">
                         <p className="text-xs sm:text-sm text-muted-foreground font-korean mb-2 sm:mb-3">
-                          이 추천이 마음에 드시나요?
+                          {customResult.mode === 'evaluation' ? '이 평가가 도움이 되셨나요?' : '이 추천이 마음에 드시나요?'}
                         </p>
                         <div className="flex gap-2 sm:gap-3">
                           <button

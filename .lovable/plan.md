@@ -1,91 +1,85 @@
 
+# 사진 업로드 -> AI 스타일 분석 -> 유사 스타일 추천 기능
 
-# 사진 업로드 시 AI 평가 + 직접 매칭 모드 구현 계획
+## 개요
+사용자가 참고할 패션 사진을 업로드하면 AI가 해당 사진의 스타일을 분석하여 텍스트 프롬프트로 변환하고, 기존 `style-recommend` 파이프라인에 자연스럽게 연결하는 기능.
 
-## 현재 문제
+## 구현 구조
 
-사진 업로드 → analyze-style-image (1단계, 정확) → style-recommend Stage 2 AI 스타일리스트가 **주관적으로 다른 제품을 선택** → 사진과 전혀 다른 결과
-
-## 해결 방향
-
-사진 모드일 때 Stage 2의 역할을 **"추천"에서 "평가"로 전환**:
-- 기존 텍스트 프롬프트: Stage 2 = AI 스타일리스트 추천 (기존 그대로)
-- 사진 업로드: Stage 2 = AI 패션 평가사 (스타일 평가 + 점수 기반 직접 매칭)
-
-## 변경 파일 및 내용
-
-### 1. `supabase/functions/style-recommend/index.ts`
-
-사진 모드(`hasPhotoAnalysis`)일 때 Stage 2 처리를 완전히 분기:
-
-**Stage 2 AI 호출을 "평가 모드"로 교체:**
-- 상품 선택은 `calculatePhotoMatchScore` 점수 기반으로 **직접 선택** (카테고리별 최고 점수 1개)
-- Stage 2 AI는 상품을 고르는 게 아니라, **사진 속 스타일에 대한 평가 코멘트만 생성**
-  - 색상 조화 평가, 시즌 적합성, TPO 분석, 스타일링 강점/개선점
-  - 예: "네이비와 올리브의 조합이 절묘해요. 가을 비즈니스 캐주얼로 완벽한 선택입니다."
-- AI가 `selectedProductIds`를 결정하지 않으므로 엉뚱한 상품이 나올 수 없음
-
-로직 흐름:
 ```text
-사진 모드:
-1. calculatePhotoMatchScore로 각 분석 아이템별 최고 점수 상품 직접 선택
-2. AI에게는 "선택된 상품 + 사진 분석 결과"를 주고 스타일 평가만 요청
-3. ragResponse = { selectedProductIds: 점수기반, styleReasoning: AI평가 }
-
-텍스트 모드:
-(기존 Stage 2 로직 100% 유지 — 세계최고 AI 패셔니스타 추천)
+[사진 업로드] --> [analyze-style-image Edge Function] --> 스타일 설명 텍스트
+                                                              |
+                                                              v
+                                               [customStylePrompt에 자동 입력]
+                                                              |
+                                                              v
+                                               [기존 style-recommend 호출]
 ```
 
-**평가 모드 AI 프롬프트 (새로 추가):**
+## 변경 파일
+
+### 1. 새 Edge Function: `supabase/functions/analyze-style-image/index.ts`
+
+- 사용자가 업로드한 이미지 URL(base64 data URL 또는 public URL)을 받아 Gemini 2.5 Flash로 분석
+- 프롬프트: "이 패션 사진의 스타일을 한국어로 자연스럽게 설명해줘. 의류 종류, 색상, 분위기, 계절감, TPO 등을 포함해서 2-3문장으로."
+- 응답 예시: `"오버사이즈 베이지 니트에 와이드 데님 팬츠, 미니멀하고 편안한 가을 데일리룩. 뉴트럴 톤 중심의 캐주얼 스타일."`
+- 모델: `google/gemini-2.5-flash` (비용 최소, 이미지 분석 지원)
+- LOVABLE_API_KEY 사용 (추가 키 불필요)
+
+### 2. 프론트엔드: `src/pages/StyleGenerator.tsx`
+
+스타일 프롬프트 Textarea 영역(라인 4720 부근)에 사진 업로드 버튼 추가:
+
+- 카메라/이미지 아이콘 버튼 추가 (Textarea 우측 상단 또는 하단)
+- 클릭 시 `<input type="file" accept="image/*">` 트리거
+- 이미지 선택 -> base64로 변환 -> `analyze-style-image` Edge Function 호출
+- 분석 결과를 `customStylePrompt`에 자동 입력
+- 분석 중 로딩 표시 (스피너 + "사진 분석 중...")
+- 업로드된 이미지 미리보기 썸네일 표시
+- 분석 실패 시 토스트 에러 메시지
+
+UI 변경:
+- Textarea 위에 작은 배너/버튼: `📷 사진으로 스타일 찾기`
+- 이미지 업로드 후 썸네일 + X 버튼으로 제거 가능
+- 분석 완료 시 Textarea에 텍스트 자동 채워짐 + "AI가 분석한 스타일입니다" 안내
+
+### 3. `supabase/config.toml` 업데이트
+
+```toml
+[functions.analyze-style-image]
+verify_jwt = false
+```
+
+## 기술 세부사항
+
+### Edge Function 구현
+
 ```text
-"당신은 세계 최고의 패션 평론가입니다.
-사용자가 업로드한 패션 사진을 분석한 결과와, DB에서 매칭된 유사 상품을 보고
-스타일 평가를 해주세요.
-
-평가 항목:
-1. 전체 스타일 완성도 (★~★★★★★)
-2. 색상 조화 분석
-3. 시즌/TPO 적합성
-4. 이 스타일의 강점
-5. 업그레이드 팁 (선택)
-
-⚠️ 상품을 선택하거나 변경하지 마세요. 평가만 하세요."
+POST /analyze-style-image
+Body: { image_data: "data:image/jpeg;base64,..." }
+Response: { success: true, description: "오버사이즈 니트에 와이드 데님..." }
 ```
 
-### 2. `src/pages/StyleGenerator.tsx`
+- base64 이미지를 Gemini vision에 전달
+- 최대 이미지 크기: 5MB (프론트에서 리사이즈)
+- 응답 시간: 약 2-3초 (Flash 모델)
+- 에러 처리: 429/402 Rate Limit 핸들링 포함
 
-- 사진 모드일 때 UI에 "평가 결과" 섹션 표시
-- 기존 `styleReasoning` 영역에 평가 코멘트가 자연스럽게 표시됨 (추가 UI 변경 최소화)
-- 응답의 `mode: 'evaluation'` 플래그로 프론트에서 "AI 추천" vs "AI 평가" 라벨 구분
+### 프론트엔드 이미지 처리
 
-### 3. 응답 포맷 확장
+- FileReader로 base64 변환
+- 큰 이미지는 canvas로 리사이즈 (최대 1024px)
+- 미리보기 표시용 Object URL 생성
+- 상태: `styleImageFile`, `styleImagePreview`, `isAnalyzingImage`
 
-```typescript
-// style-recommend 응답에 mode 필드 추가
-{
-  success: true,
-  mode: 'evaluation' | 'recommendation',  // 새 필드
-  look: {
-    name: "비즈니스 캐주얼 룩",
-    styleReasoning: "★★★★☆ 네이비와 올리브의 조합이...", // 평가 코멘트
-    items: [...],  // 점수 기반 직접 매칭 결과
-  }
-}
-```
+## 비용 영향
+- Gemini 2.5 Flash 이미지 분석: 요청당 약 0.1~0.3원 (KRW)
+- 기존 style-recommend 비용에 추가되는 금액 무시 가능 수준
 
-## 핵심 변경 요약
-
-| 구분 | 텍스트 프롬프트 | 사진 업로드 |
-|---|---|---|
-| Stage 1 | AI TPO 분석 | 사진 분석 결과 직접 사용 (기존) |
-| Stage 2 상품 선택 | AI 스타일리스트 추천 | **점수 기반 직접 매칭** |
-| Stage 2 AI 역할 | 추천 + 코멘트 | **스타일 평가만** |
-| AI 비용 | Stage1 + Stage2 | Stage1 스킵 + Stage2 (평가만, 경량) |
-
-## 기대 효과
-
-- 사진과 추천 결과의 100% 일관성 보장 (AI가 상품을 바꿀 수 없음)
-- "세계 최고 AI 패셔니스타" 브랜드 유지 (텍스트 모드는 완전히 동일)
-- 사진 모드에서는 평가라는 새로운 가치 제공
-- Stage 2 AI 프롬프트가 가벼워져 비용/속도 개선
-
+## 사용자 흐름
+1. "스타일 설정" 영역에서 `📷 사진으로 스타일 찾기` 클릭
+2. 갤러리/카메라에서 참고 사진 선택
+3. 썸네일 표시 + "AI 분석 중..." 로딩 (2-3초)
+4. 분석 완료: Textarea에 스타일 설명 자동 입력
+5. 사용자가 필요시 텍스트 수정 가능
+6. "스타일 추천 받기" 버튼으로 기존 플로우 진행
