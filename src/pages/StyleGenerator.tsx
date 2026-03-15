@@ -2151,15 +2151,30 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         </h3>
                       )}
                       
-                      {/* 설명 (styleReasoning) - 스크롤 가능 */}
-                      <div className="relative pl-3 border-l-2 border-accent/40 max-h-32 overflow-y-auto scrollbar-hide">
-                        <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
-                          {selectedLook.style_reasoning || (
-                            lookProducts.length > 0 
-                              ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요. 각 아이템의 조화로운 믹스가 스타일리시한 무드를 연출하죠!`
-                              : '스타일리시한 코디가 완성되었어요!'
-                          )}
-                        </p>
+                      {/* 설명 (styleReasoning) - 구조화된 렌더링 */}
+                      <div className="relative pl-3 border-l-2 border-accent/40 max-h-36 overflow-y-auto scrollbar-hide space-y-1">
+                        {(selectedLook.style_reasoning || (
+                          lookProducts.length > 0 
+                            ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`
+                            : '스타일리시한 코디가 완성되었어요!'
+                        )).split('\n').filter(line => line.trim()).map((line, i) => {
+                          const trimmed = line.trim();
+                          const isEmoji = /^(😏|✨|🔥|💡|👗|📋|🎨|🌟|💎|👑|★)/.test(trimmed);
+                          const isBullet = /^[-•]/.test(trimmed);
+                          
+                          if (isEmoji || i === 0) {
+                            return <p key={i} className="text-sm text-white font-medium font-korean">{trimmed}</p>;
+                          }
+                          if (isBullet) {
+                            return (
+                              <div key={i} className="pl-2 flex gap-1.5 items-start">
+                                <span className="text-accent mt-0.5 flex-shrink-0">•</span>
+                                <span className="text-sm text-white/90 font-korean">{trimmed.replace(/^[-•]\s*/, '')}</span>
+                              </div>
+                            );
+                          }
+                          return <p key={i} className="text-sm text-white/90 font-korean">{trimmed}</p>;
+                        })}
                       </div>
                     </div>
                     
