@@ -1,33 +1,46 @@
-// analyze-product-colors - AI를 통한 상품 이미지 색상 분석
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
+// analyze-product-colors v2 - AI 이미지 색상 분석 (병렬 처리)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 // 표준 색상 카테고리
 const STANDARD_COLORS = [
-  'white', 'ivory', 'cream', 'beige', 'brown', 'tan', 'camel',
+  'white', 'ivory', 'cream', 'beige', 'oatmeal',
+  'brown', 'tan', 'camel', 'mocha', 'wheat', 'sand',
   'black', 'charcoal', 'gray', 'silver',
-  'navy', 'blue', 'skyblue', 'lightblue', 'denim',
-  'red', 'burgundy', 'wine', 'coral', 'pink', 'rose', 'salmon',
-  'orange', 'peach', 'apricot',
-  'yellow', 'gold', 'mustard', 'lemon',
-  'green', 'olive', 'khaki', 'mint', 'sage', 'emerald', 'forest',
-  'purple', 'lavender', 'violet', 'plum', 'lilac',
-  'multicolor', 'pattern', 'print'
+  'navy', 'blue', 'skyblue', 'denim blue',
+  'red', 'burgundy', 'wine', 'coral', 'pink', 'rose',
+  'orange', 'peach',
+  'yellow', 'gold', 'mustard',
+  'green', 'olive', 'khaki', 'mint', 'sage',
+  'purple', 'lavender', 'lilac',
+  'multicolor',
 ];
+
+// 비표준 색상 → 표준 매핑
+const COLOR_NORMALIZE: Record<string, string> = {
+  'grey': 'gray', 'dark blue': 'navy', 'light blue': 'skyblue',
+  'off-white': 'ivory', 'dark green': 'olive', 'light green': 'mint',
+  'dark red': 'burgundy', 'light pink': 'pink', 'forest': 'green',
+  'emerald': 'green', 'salmon': 'coral', 'plum': 'purple',
+  'violet': 'purple', 'lemon': 'yellow', 'apricot': 'orange',
+  'denim': 'denim blue', 'pattern': 'multicolor', 'print': 'multicolor',
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+
   try {
     const { batchSize = 20, dryRun = false } = await req.json();
+    const effectiveBatchSize = Math.min(batchSize, 50);
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -36,251 +49,106 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ 
-        success: false, 
-        error: 'LOVABLE_API_KEY not configured' 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      return new Response(JSON.stringify({ success: false, error: 'LOVABLE_API_KEY not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // color_family가 unknown이고 이미지가 있는 상품 조회
+    // color_family가 unknown인 상품 조회 (여유분 확보)
     const { data: products, error: fetchError } = await supabase
       .from('products_cache')
-      .select('id, name, image_url, dna_meta')
+      .select('id, name, brand, color, image_url, category, dna_meta')
       .eq('is_active', true)
       .not('image_url', 'is', null)
-      .limit(batchSize);
+      .not('dna_meta', 'is', null)
+      .order('collected_at', { ascending: false })
+      .limit(effectiveBatchSize * 3);
 
-    if (fetchError) {
-      throw new Error(`Failed to fetch products: ${fetchError.message}`);
-    }
+    if (fetchError) throw new Error(`Fetch failed: ${fetchError.message}`);
 
-    // unknown 색상만 필터링 (배열 또는 단일값 모두 처리)
-    const unknownColorProducts = products?.filter(p => {
-      const colorFamily = p.dna_meta?.color_family;
-      if (!colorFamily) return true;
-      if (Array.isArray(colorFamily)) {
-        return colorFamily.length === 0 || (colorFamily.length === 1 && colorFamily[0] === 'unknown');
-      }
-      return colorFamily === 'unknown';
-    }) || [];
+    // unknown 색상만 필터링
+    const unknownProducts = (products || []).filter(p => {
+      const cf = (p as any).dna_meta?.color_family;
+      if (!cf) return true;
+      if (Array.isArray(cf)) return cf.length === 0 || cf.every((c: string) => c === 'unknown');
+      return cf === 'unknown';
+    }).slice(0, effectiveBatchSize);
 
-    console.log(`[analyze-colors] Found ${unknownColorProducts.length} products with unknown color`);
+    console.log(`[analyze-colors] Found ${unknownProducts.length} products with unknown color (dryRun: ${dryRun})`);
 
-    if (unknownColorProducts.length === 0) {
+    if (unknownProducts.length === 0) {
       return new Response(JSON.stringify({
-        success: true,
-        message: 'No products with unknown color found',
-        processed: 0,
-        updated: 0
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+        success: true, message: 'No products with unknown color found',
+        processed: 0, updated: 0, failed: 0,
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const results: { id: string; name: string; oldColor: string; newColor: string; success: boolean; error?: string }[] = [];
+    const results: any[] = [];
     let updated = 0;
 
-    for (const product of unknownColorProducts) {
-      try {
-        const imageUrl = product.image_url;
-        
-        if (!imageUrl || imageUrl.includes('placeholder')) {
-          results.push({
-            id: product.id,
-            name: product.name,
-            oldColor: 'unknown',
-            newColor: 'unknown',
-            success: false,
-            error: 'No valid image URL'
-          });
-          continue;
-        }
-
-        console.log(`[analyze-colors] Analyzing: ${product.name.substring(0, 30)}...`);
-
-        // AI로 이미지 색상 분석 - 다중 색상 추출
-        const prompt = `Analyze this product image and identify ALL visible colors of the clothing or accessory item.
-
-Return up to 5 colors from this exact list (choose the closest matches):
-${STANDARD_COLORS.join(', ')}
-
-Rules:
-- List colors in order of prominence (largest area first)
-- Include secondary/accent colors if clearly visible
-- If it's a pattern (stripes, checks, prints), return "pattern" or "multicolor" as first, then list component colors
-- Return ONLY color words separated by commas, nothing else
-
-Example responses: 
-- Single color: "navy"
-- Two colors: "black, white"
-- Pattern: "pattern, navy, cream"`;
-
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: prompt },
-                  { type: 'image_url', image_url: { url: imageUrl } }
-                ]
-              }
-            ],
-            max_tokens: 100,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[analyze-colors] AI error for ${product.id}:`, errorText);
-          
-          if (response.status === 429) {
-            // Rate limit - stop processing
-            results.push({
-              id: product.id,
-              name: product.name,
-              oldColor: 'unknown',
-              newColor: 'unknown',
-              success: false,
-              error: 'Rate limit reached'
-            });
-            break;
+    // 병렬 처리 (5개씩)
+    const CONCURRENCY = 5;
+    for (let i = 0; i < unknownProducts.length; i += CONCURRENCY) {
+      const batch = unknownProducts.slice(i, i + CONCURRENCY);
+      
+      const promises = batch.map(async (product: any) => {
+        try {
+          if (!product.image_url || product.image_url.includes('placeholder')) {
+            return { id: product.id, name: product.name, oldColor: 'unknown', newColor: 'unknown', success: false, error: 'No valid image' };
           }
-          
-          results.push({
-            id: product.id,
-            name: product.name,
-            oldColor: 'unknown',
-            newColor: 'unknown',
-            success: false,
-            error: `AI API error: ${response.status}`
-          });
-          continue;
-        }
 
-        const aiData = await response.json();
-        const rawColor = aiData.choices?.[0]?.message?.content?.trim().toLowerCase() || '';
-        
-        // 다중 색상 추출 - 콤마로 분리
-        const colorMap: Record<string, string> = {
-          'grey': 'gray',
-          'dark blue': 'navy',
-          'light blue': 'skyblue',
-          'off-white': 'ivory',
-          'dark green': 'forest',
-          'light green': 'mint',
-          'dark red': 'burgundy',
-          'light pink': 'rose',
-        };
-        
-        const detectedColors: string[] = [];
-        const addedColors = new Set<string>();
-        
-        // 콤마로 분리하여 각 색상 처리
-        const rawParts = rawColor.split(',').map((s: string) => s.trim()).filter((s: string) => s);
-        
-        for (const part of rawParts) {
-          // 표준 색상 매칭
-          for (const stdColor of STANDARD_COLORS) {
-            if (part.includes(stdColor) && !addedColors.has(stdColor)) {
-              detectedColors.push(stdColor);
-              addedColors.add(stdColor);
-              break;
+          const finalColors = await analyzeImageColor(product, LOVABLE_API_KEY!);
+
+          if (finalColors[0] !== 'unknown' && !dryRun) {
+            const updatedMeta = {
+              ...(product as any).dna_meta,
+              color_family: finalColors,
+              color_analyzed_at: new Date().toISOString(),
+            };
+
+            const { error: updateError } = await supabase
+              .from('products_cache')
+              .update({ dna_meta: updatedMeta, color: finalColors.join(', ') })
+              .eq('id', product.id);
+
+            if (updateError) {
+              return { id: product.id, name: product.name, oldColor: 'unknown', newColor: finalColors.join(', '), success: false, error: `DB: ${updateError.message}` };
             }
-          }
-          
-          // 추가 매핑
-          if (!addedColors.has(part)) {
-            for (const [key, val] of Object.entries(colorMap)) {
-              if (part.includes(key) && !addedColors.has(val)) {
-                detectedColors.push(val);
-                addedColors.add(val);
-                break;
-              }
-            }
-          }
-        }
-
-        const finalColors = detectedColors.length > 0 ? detectedColors.slice(0, 5) : ['unknown'];
-
-        console.log(`[analyze-colors] ${product.name.substring(0, 20)}: AI said "${rawColor}" → mapped to [${finalColors.join(', ')}]`);
-
-        if (finalColors[0] !== 'unknown' && !dryRun) {
-          // DB 업데이트 - 배열로 저장
-          const updatedMeta = {
-            ...product.dna_meta,
-            color_family: finalColors,
-            color_analyzed_at: new Date().toISOString()
-          };
-
-          const { error: updateError } = await supabase
-            .from('products_cache')
-            .update({ 
-              dna_meta: updatedMeta,
-              dna_generated_at: new Date().toISOString()
-            })
-            .eq('id', product.id);
-
-          if (updateError) {
-            results.push({
-              id: product.id,
-              name: product.name,
-              oldColor: 'unknown',
-              newColor: finalColors.join(', '),
-              success: false,
-              error: `DB update failed: ${updateError.message}`
-            });
-          } else {
             updated++;
-            results.push({
-              id: product.id,
-              name: product.name,
-              oldColor: 'unknown',
-              newColor: finalColors.join(', '),
-              success: true
-            });
+            return { id: product.id, name: product.name, oldColor: 'unknown', newColor: finalColors.join(', '), success: true };
           }
-        } else {
-          results.push({
-            id: product.id,
-            name: product.name,
-            oldColor: 'unknown',
+
+          return {
+            id: product.id, name: product.name, oldColor: 'unknown',
             newColor: finalColors.join(', '),
             success: finalColors[0] !== 'unknown',
-            error: dryRun ? 'Dry run - not saved' : undefined
-          });
+            error: dryRun ? 'Dry run' : undefined,
+          };
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[analyze-colors] Error ${product.id}:`, msg);
+          return { id: product.id, name: product.name, oldColor: 'unknown', newColor: 'unknown', success: false, error: msg };
         }
+      });
 
-        // Rate limit 방지를 위한 딜레이
-        await new Promise(resolve => setTimeout(resolve, 300));
+      const batchResults = await Promise.all(promises);
+      results.push(...batchResults);
 
-      } catch (err) {
-        console.error(`[analyze-colors] Error processing ${product.id}:`, err);
-        results.push({
-          id: product.id,
-          name: product.name,
-          oldColor: 'unknown',
-          newColor: 'unknown',
-          success: false,
-          error: err instanceof Error ? err.message : 'Unknown error'
-        });
+      // Rate limit 방지: 배치 간 800ms 대기
+      if (i + CONCURRENCY < unknownProducts.length) {
+        await new Promise(r => setTimeout(r, 800));
       }
     }
 
     // 통계 집계
     const colorCounts: Record<string, number> = {};
     results.filter(r => r.success && r.newColor !== 'unknown').forEach(r => {
-      colorCounts[r.newColor] = (colorCounts[r.newColor] || 0) + 1;
+      const colors = r.newColor.split(', ');
+      colors.forEach((c: string) => { colorCounts[c] = (colorCounts[c] || 0) + 1; });
     });
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[analyze-colors] Done in ${elapsed}ms: ${updated} updated, ${results.filter(r => !r.success).length} failed`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -288,8 +156,9 @@ Example responses:
       updated,
       failed: results.filter(r => !r.success).length,
       colorDistribution: colorCounts,
-      results: results.slice(0, 50), // 상세 결과는 50개까지만
-      dryRun
+      results: results.slice(0, 50),
+      dryRun,
+      elapsed: `${elapsed}ms`,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -297,11 +166,80 @@ Example responses:
   } catch (error) {
     console.error('[analyze-colors] Error:', error);
     return new Response(JSON.stringify({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+      success: false, error: error instanceof Error ? error.message : 'Unknown error' 
     }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
+
+async function analyzeImageColor(product: any, apiKey: string): Promise<string[]> {
+  const prompt = `Analyze this product image. Return ONLY the 1-2 main colors from this list:
+${STANDARD_COLORS.join(', ')}
+
+Rules:
+- Return the most dominant color(s) only
+- For denim, use "denim blue"  
+- For metallic jewelry, use "silver" or "gold"
+- For many colors/patterns, use "multicolor"
+- Return ONLY color words separated by commas
+
+Product name hint: ${(product.name || '').substring(0, 60)}
+Category: ${product.category || ''}`;
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash-lite',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: product.image_url } },
+        ],
+      }],
+      max_tokens: 50,
+    }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) throw new Error('Rate limit');
+    throw new Error(`AI error ${response.status}`);
+  }
+
+  const data = await response.json();
+  const raw = data.choices?.[0]?.message?.content?.trim().toLowerCase() || '';
+
+  // 색상 파싱
+  const detected: string[] = [];
+  const added = new Set<string>();
+
+  for (const part of raw.split(',').map((s: string) => s.trim()).filter(Boolean)) {
+    // 표준 색상 직접 매칭
+    for (const std of STANDARD_COLORS) {
+      if (part.includes(std) && !added.has(std)) {
+        detected.push(std);
+        added.add(std);
+        break;
+      }
+    }
+    // 비표준 → 표준 매핑
+    if (!added.has(part)) {
+      for (const [key, val] of Object.entries(COLOR_NORMALIZE)) {
+        if (part.includes(key) && !added.has(val)) {
+          detected.push(val);
+          added.add(val);
+          break;
+        }
+      }
+    }
+  }
+
+  const result = detected.length > 0 ? detected.slice(0, 3) : ['unknown'];
+  console.log(`[analyze-colors] ${(product.name || '').substring(0, 25)}: "${raw}" → [${result.join(', ')}]`);
+  return result;
+}
