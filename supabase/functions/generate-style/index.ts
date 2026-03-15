@@ -894,6 +894,10 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
       }
     }
 
+    // ===== 생성 시점 태그 위치 anchor 계산 =====
+    const tagPositions = buildTagPositions(productDetails || []);
+    console.log(`[generate-style] Tag positions generated: ${tagPositions.length} items`);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -901,7 +905,8 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         storagePath: fileName,
         style: style,
         productIds: productIds,
-        executionTime: totalTime
+        executionTime: totalTime,
+        tagPositions: tagPositions,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
