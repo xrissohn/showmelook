@@ -345,18 +345,6 @@ const Admin = () => {
     }
   };
 
-  const clearOldErrorLogs = async () => {
-    try {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      await supabase.from('error_logs').delete().lt('created_at', thirtyDaysAgo);
-      toast({ title: "정리 완료", description: "30일 이전 에러 로그가 삭제되었습니다." });
-      loadErrorLogStats();
-      loadErrorLogs();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: "정리 실패", description: errorMessage, variant: "destructive" });
-    }
-  };
 
   // Generation jobs functions
   const loadJobStats = async () => {
