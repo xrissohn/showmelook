@@ -937,7 +937,6 @@ async function runStage1WithModel(
   ageGroupLabel: string,
   occasion: string,
   LOVABLE_API_KEY: string,
-  OPENAI_API_KEY?: string
 ): Promise<Stage1Result | null> {
   console.log(`[style-recommend] Stage 1: ${modelName} TPO 분석 시작...`);
   
