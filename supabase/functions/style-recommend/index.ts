@@ -1485,9 +1485,11 @@ serve(async (req) => {
       console.log(`[style-recommend] 📷 Photo analysis mode: ${photoAnalysisItems.items.length} items detected`);
     }
 
-    // ============= PHASE 1: 캐시 체크 =============
+    // ============= PHASE 1: 캐시 체크 (다양성 위해 비활성화 - 매번 새로운 추천) =============
+    // 🔥 forceRefresh가 false여도 매 요청마다 새로운 추천을 생성하여 다양성 극대화
+    const skipCache = true; // Always generate fresh recommendations
     
-    if (!forceRefresh && !hasPhotoAnalysis) {
+    if (!skipCache && !forceRefresh && !hasPhotoAnalysis) {
       const { data: cachedLook } = await supabase
         .from('style_cache')
         .select('*')
@@ -1822,8 +1824,8 @@ serve(async (req) => {
     
     // ============= 점수 계산 및 카테고리 분류 =============
     
-    // 🎲 다양성을 위한 랜덤 시드 생성 (요청마다 다름)
-    const randomSeed = Date.now() % 1000;
+    // 🎲 다양성을 위한 강화된 랜덤 시드 (요청마다 크게 달라짐)
+    const randomSeed = Date.now() ^ (Math.random() * 0xFFFFFF | 0);
     
     const scoredProducts = allProducts.map(p => {
       const feedbackScore = p.feedback_score || 0.5;
@@ -1839,12 +1841,12 @@ serve(async (req) => {
       // 🆕 Freshness Boost: 신상품 가산점
       const freshnessBonus = calculateFreshnessBoost(p.collected_at);
       
-      // 🎲 랜덤 다양성 요소 추가 (0~0.15 범위의 랜덤 보너스)
+      // 🎲 강화된 랜덤 다양성 (0~0.25 범위) - 매 요청마다 완전히 다른 결과
       const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-      const diversityBonus = ((idHash + randomSeed) % 100) / 666;  // 0 ~ 0.15 범위
+      const diversityBonus = ((idHash ^ randomSeed) % 1000) / 4000;  // 0 ~ 0.25 범위
       
-      // 가중치 조정: feedback 0.25→0.20, formality 0.25→0.20, freshness 추가
-      const totalScore = (feedbackScore * 0.20) + (conceptScore * 0.35) + (formalityScore * 0.20) + freshnessBonus + diversityBonus;
+      // 가중치 조정: diversity 비중 강화
+      const totalScore = (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
       
       return { product: p, score: totalScore };
     });
@@ -1894,7 +1896,7 @@ serve(async (req) => {
 
     // ============= 🔥 Stage 2: Gemini Flash 최종 선택 (교차 Fallback) =============
     
-    // GPT에 보낼 상품 목록 준비 - 다양성 강화
+    // GPT에 보낼 상품 목록 준비 - 다양성 극대화
     const getProductsForStage2 = () => {
       const result: CachedProduct[] = [];
       const usedBrands = new Map<string, number>();
@@ -1902,10 +1904,10 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = hasPhotoAnalysis ? 8 : 10;
+        const maxPerCategory = hasPhotoAnalysis ? 8 : 12;  // 🔥 카테고리당 12개로 확대
         
-        // 📷 사진 분석 모드: 매칭 순서 유지 / 일반 모드: 랜덤 샘플링
-        const topCandidates = catProducts.slice(0, 25);
+        // 상위 40개에서 랜덤 셔플 (기존 25 → 40)
+        const topCandidates = catProducts.slice(0, 40);
         const shuffledCandidates = hasPhotoAnalysis 
           ? topCandidates  // 사진 매칭 점수순 유지
           : [...topCandidates].sort(() => Math.random() - 0.5);
