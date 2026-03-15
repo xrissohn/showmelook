@@ -3463,6 +3463,7 @@ const StyleGenerator = () => {
           autoSelectedTotal: look.autoSelectedTotal || 0,
           autoSelectedCount: look.autoSelectedCount || 0,
           budget: look.budget || customBudget[0],
+          mode: (look as any).mode || 'recommendation',
         });
         setSelectedTrendProducts(transformedItems);
       }
