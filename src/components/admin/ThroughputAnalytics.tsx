@@ -57,15 +57,17 @@ export const ThroughputAnalytics = () => {
           startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       }
 
-      // Fetch completed jobs with timing data
-      const { data: jobs, error } = await supabase
-        .from('generation_jobs')
-        .select('id, status, created_at, started_at, completed_at')
-        .gte('created_at', startDate.toISOString())
-        .in('status', ['completed', 'failed'])
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      // Fetch ALL completed/failed jobs with timing data (paginated)
+      const jobs = await fetchAllRows<{
+        id: string; status: string; created_at: string; started_at: string | null; completed_at: string | null;
+      }>(
+        'generation_jobs',
+        'id, status, created_at, started_at, completed_at',
+        (q: ReturnType<typeof supabase.from>) => q
+          .gte('created_at', startDate.toISOString())
+          .in('status', ['completed', 'failed'])
+          .order('created_at', { ascending: true })
+      );
 
       // Calculate processing times for completed jobs
       const processingTimes: number[] = [];
