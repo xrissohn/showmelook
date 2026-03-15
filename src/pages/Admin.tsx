@@ -184,17 +184,6 @@ const Admin = () => {
     bySlot: Record<string, number>;
     byConcept: Record<string, number>;
   } | null>(null);
-  const [isDnaLoading, setIsDnaLoading] = useState(false);
-  const [dnaBatchResult, setDnaBatchResult] = useState<{
-    success: boolean;
-    processed?: number;
-    updated?: number;
-    remaining?: number;
-    errors?: number;
-    timeMs?: number;
-    error?: string;
-  } | null>(null);
-  const [dnaBatchSize, setDnaBatchSize] = useState("50");
   
   
   // Feedback stats state (v4.0)
