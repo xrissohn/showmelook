@@ -168,18 +168,18 @@ export function InteractiveProductTags({
   const [isSaving, setIsSaving] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 생성 시점 데이터(source: "generation")가 있으면 AI 재분석 스킵
-  const hasGenerationAnchors = useMemo(() => {
-    return cachedPositions?.some(p => p.source === 'generation') || false;
+  // 이미 캐시된 위치 데이터가 있으면 AI 재분석 스킵 (source 무관)
+  const hasExistingPositions = useMemo(() => {
+    return (cachedPositions?.length ?? 0) > 0;
   }, [cachedPositions]);
 
-  // AI 위치 분석 실행 - 레거시 룩(generation 소스 없음)에만
+  // AI 위치 분석 실행 - 캐시된 위치가 없는 경우에만
   useEffect(() => {
-    if (enableAIPositioning && imageUrl && products.length > 0 && !cachedPositions?.length && !hasAnalyzed.current && !hasGenerationAnchors) {
+    if (enableAIPositioning && imageUrl && products.length > 0 && !hasExistingPositions && !hasAnalyzed.current) {
       hasAnalyzed.current = true;
       analyzeImagePositions();
     }
-  }, [enableAIPositioning, imageUrl, products.length, cachedPositions, hasGenerationAnchors]);
+  }, [enableAIPositioning, imageUrl, products.length, hasExistingPositions]);
 
   useEffect(() => {
     if (cachedPositions?.length && aiPositions.length === 0) {

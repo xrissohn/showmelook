@@ -5780,8 +5780,15 @@ const StyleGenerator = () => {
                       prompt={customStylePrompt}
                       tags={selectedTrendProducts.map(p => p.category)}
                       onTagPositionsAnalyzed={async (positions) => {
+                        // 이미 태그가 있으면 덮어쓰지 않음
                         if (generatedLookId) {
                           try {
+                            const { data: existing } = await supabase
+                              .from('generated_looks')
+                              .select('tag_positions')
+                              .eq('id', generatedLookId)
+                              .single();
+                            if (existing?.tag_positions && Array.isArray(existing.tag_positions) && existing.tag_positions.length > 0) return;
                             await supabase
                               .from('generated_looks')
                               .update({ tag_positions: positions as any })
