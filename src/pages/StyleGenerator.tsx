@@ -4214,7 +4214,8 @@ const StyleGenerator = () => {
             totalPrice: recData.look.totalPrice || 0,
             autoSelectedTotal: recData.look.autoSelectedTotal || 0,
             autoSelectedCount: recData.look.autoSelectedCount || 0,
-            budget: recData.look.budget || customBudget[0]
+            budget: recData.look.budget || customBudget[0],
+            mode: recData.mode || 'recommendation',
           });
           
           setSelectedTrendProducts(transformedItems);
