@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { RefreshCw, Clock, Zap, AlertTriangle, CheckCircle2, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
