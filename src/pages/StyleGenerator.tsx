@@ -4033,9 +4033,12 @@ const StyleGenerator = () => {
         // 모든 추천 아이템을 기본 선택 상태로 (예산 무관)
         setSelectedTrendProducts(transformedItems);
 
+        const isEvalMode = data.mode === 'evaluation';
         toast({
-          title: '스타일 추천 완료!',
-          description: `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
+          title: isEvalMode ? 'AI 스타일 평가 완료!' : '스타일 추천 완료!',
+          description: isEvalMode 
+            ? `${transformedItems.length}개의 유사 아이템을 매칭하고 스타일을 평가했어요.`
+            : `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
         });
 
         // 히스토리 저장 및 피드백용 ID 설정
