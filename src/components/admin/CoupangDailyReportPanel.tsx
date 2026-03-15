@@ -9,6 +9,7 @@ import {
   ShoppingCart, Upload, AlertTriangle, FileSpreadsheet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 import { useToast } from "@/hooks/use-toast";
 import { parseExcelFile, findColumnValue } from '@/lib/excelParser';
 
@@ -95,13 +96,11 @@ export function CoupangDailyReportPanel() {
 
   const loadStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('coupang_daily_reports')
-        .select('*')
-        .order('report_date', { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
+      const data = await fetchAllRows<DailyReportRow>(
+        'coupang_daily_reports', '*',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q.order('report_date', { ascending: false })
+      );
 
       const statsResult: ReportStats = {
         total: data?.length || 0,

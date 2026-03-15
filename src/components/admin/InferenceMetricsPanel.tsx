@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table";
 import { RefreshCw, Clock, Zap, AlertTriangle, CheckCircle2, Activity } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 import { useToast } from "@/hooks/use-toast";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -86,16 +87,15 @@ export const InferenceMetricsPanel = () => {
           startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       }
 
-      // 메트릭 조회
-      const { data: metricsData, error: metricsError } = await supabase
-        .from('inference_metrics')
-        .select('*')
-        .gte('created_at', startDate.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      if (metricsError) throw metricsError;
-      setMetrics((metricsData as InferenceMetric[]) || []);
+      // 메트릭 조회 (전체 - 페이지네이션)
+      const metricsData = await fetchAllRows<InferenceMetric>(
+        'inference_metrics', '*',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false })
+      );
+      setMetrics(metricsData);
 
       // 모델 설정 조회
       const { data: configData, error: configError } = await supabase

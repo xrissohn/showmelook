@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, RefreshCw, TrendingUp, Clock, Zap, BarChart3 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, AreaChart, Area } from 'recharts';
 
 interface ProcessingStats {
@@ -56,15 +57,18 @@ export const ThroughputAnalytics = () => {
           startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       }
 
-      // Fetch completed jobs with timing data
-      const { data: jobs, error } = await supabase
-        .from('generation_jobs')
-        .select('id, status, created_at, started_at, completed_at')
-        .gte('created_at', startDate.toISOString())
-        .in('status', ['completed', 'failed'])
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
+      // Fetch ALL completed/failed jobs with timing data (paginated)
+      const jobs = await fetchAllRows<{
+        id: string; status: string; created_at: string; started_at: string | null; completed_at: string | null;
+      }>(
+        'generation_jobs',
+        'id, status, created_at, started_at, completed_at',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q
+          .gte('created_at', startDate.toISOString())
+          .in('status', ['completed', 'failed'])
+          .order('created_at', { ascending: true })
+      );
 
       // Calculate processing times for completed jobs
       const processingTimes: number[] = [];
@@ -74,7 +78,7 @@ export const ThroughputAnalytics = () => {
       const hourlyMap = new Map<string, { completed: number; failed: number; totalTimeMs: number; count: number }>();
       const dailyMap = new Map<string, { completed: number; failed: number; totalTimeMs: number; count: number }>();
 
-      jobs?.forEach(job => {
+      jobs.forEach(job => {
         const createdAt = new Date(job.created_at);
         const hourKey = createdAt.toISOString().slice(0, 13) + ':00';
         const dayKey = createdAt.toISOString().slice(0, 10);

@@ -29,6 +29,7 @@ import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
+import { fetchAllRows } from '@/lib/paginatedFetch';
 
 interface DeeplinkResult {
   success?: boolean;
@@ -303,24 +304,26 @@ const Admin = () => {
   // Error logs functions
   const loadErrorLogStats = async () => {
     try {
-      const { data, error } = await supabase
+      // Use count for total, and paginate for breakdown
+      const { count: totalCount } = await supabase
         .from('error_logs')
-        .select('function_name, error_code')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      
-      if (error) throw error;
+        .select('*', { count: 'exact', head: true });
+
+      const allLogs = await fetchAllRows<{ function_name: string; error_code: string | null }>(
+        'error_logs', 'function_name, error_code',
+        (q) => q.order('created_at', { ascending: false })
+      );
       
       const byFunction: Record<string, number> = {};
       const byCode: Record<string, number> = {};
       
-      data?.forEach(log => {
+      allLogs.forEach(log => {
         byFunction[log.function_name] = (byFunction[log.function_name] || 0) + 1;
         const code = log.error_code || 'UNKNOWN';
         byCode[code] = (byCode[code] || 0) + 1;
       });
       
-      setErrorLogStats({ total: data?.length || 0, byFunction, byCode });
+      setErrorLogStats({ total: totalCount || allLogs.length, byFunction, byCode });
     } catch (error) {
       console.error('Error loading error log stats:', error);
     }
@@ -349,15 +352,14 @@ const Admin = () => {
   // Generation jobs functions
   const loadJobStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('generation_jobs')
-        .select('status')
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-      
-      if (error) throw error;
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const allJobs = await fetchAllRows<{ status: string }>(
+        'generation_jobs', 'status',
+        (q) => q.gte('created_at', since)
+      );
       
       const stats = { queued: 0, processing: 0, completed: 0, failed: 0 };
-      data?.forEach(job => {
+      allJobs.forEach(job => {
         if (job.status === 'queued') stats.queued++;
         else if (['processing', 'generating_style', 'generating_image'].includes(job.status)) stats.processing++;
         else if (job.status === 'completed') stats.completed++;
@@ -847,25 +849,22 @@ const Admin = () => {
         });
       }
 
-      // 카테고리 목록 조회 (최근 1000개 기준)
-      const { data: categoryData } = await supabase
-        .from('products_cache')
-        .select('category')
-        .eq('is_active', true)
-        .limit(1000);
+      // 카테고리 목록 조회 (전체 상품 대상 - 페이지네이션)
+      const categoryData = await fetchAllRows<{ category: string }>(
+        'products_cache', 'category',
+        (q) => q.eq('is_active', true)
+      );
 
       const byCategory: Record<string, number> = {};
       const categoryList: string[] = [];
-      if (categoryData) {
-        categoryData.forEach(item => {
-          if (item.category) {
-            byCategory[item.category] = (byCategory[item.category] || 0) + 1;
-            if (!categoryList.includes(item.category)) {
-              categoryList.push(item.category);
-            }
+      categoryData.forEach(item => {
+        if (item.category) {
+          byCategory[item.category] = (byCategory[item.category] || 0) + 1;
+          if (!categoryList.includes(item.category)) {
+            categoryList.push(item.category);
           }
-        });
-      }
+        }
+      });
 
       setAvailableMerchants(merchantList.sort());
       setAvailableCategories(categoryList.sort());
@@ -894,11 +893,30 @@ const Admin = () => {
       if (category !== 'all') query = query.eq('category', category);
       
       query = query.order('collected_at', { ascending: false });
-      if (!loadAll) query = query.limit(100);
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      setCachedProducts(data || []);
+      if (!loadAll) {
+        query = query.limit(100);
+        const { data, error } = await query;
+        if (error) throw error;
+        setCachedProducts(data || []);
+      } else {
+        // Paginate to get ALL products
+        const allProducts: CachedProduct[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        while (hasMore) {
+          const { data, error } = await query.range(from, from + pageSize - 1);
+          if (error) throw error;
+          if (data && data.length > 0) {
+            allProducts.push(...data);
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
+        setCachedProducts(allProducts);
+      }
       loadProductStats();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1047,20 +1065,17 @@ const Admin = () => {
       const withDna = withDnaCount || 0;
       const withoutDna = total - withDna;
 
-      // DNA 메타 분석은 최신 1000개만 샘플링
-      const { data: products } = await supabase
-        .from('products_cache')
-        .select('dna_meta')
-        .eq('is_active', true)
-        .not('dna_meta', 'is', null)
-        .order('collected_at', { ascending: false })
-        .limit(1000);
+      // DNA 메타 분석 - 전체 상품 대상 (페이지네이션)
+      const products = await fetchAllRows<{ dna_meta: unknown }>(
+        'products_cache', 'dna_meta',
+        (q) => q.eq('is_active', true).not('dna_meta', 'is', null)
+      );
 
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
       const byConcept: Record<string, number> = {};
       
-      if (products) {
+      if (products.length > 0) {
         products.forEach(p => {
           if (p.dna_meta) {
             const meta = p.dna_meta as { target?: string; item_slot?: string; concepts?: string[] };
@@ -1084,19 +1099,23 @@ const Admin = () => {
   const loadFeedbackStats = async () => {
     setIsFeedbackLoading(true);
     try {
-      // Load product feedback scores
-      const { data: scores } = await supabase
-        .from('product_feedback_scores')
-        .select('*')
-        .order('overall_score', { ascending: false })
-        .limit(200);
+      // Load ALL product feedback scores (paginated)
+      const scores = await fetchAllRows<{
+        product_id: string; like_count: number; dislike_count: number;
+        cart_count: number; purchase_count: number; click_count: number;
+        overall_score: number; style_weights: unknown;
+      }>(
+        'product_feedback_scores', '*',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q.order('overall_score', { ascending: false })
+      );
 
       // Load product names for top items
       const topLiked: Array<{ id: string; name: string; score: number; likeCount: number }> = [];
       const topDisliked: Array<{ id: string; name: string; score: number; dislikeCount: number }> = [];
       const allStyleWeights: Record<string, { positive: number; negative: number }> = {};
 
-      if (scores && scores.length > 0) {
+      if (scores.length > 0) {
         // Get product names
         const productIds = scores.slice(0, 50).map(s => s.product_id);
         const { data: products } = await supabase
@@ -1150,8 +1169,8 @@ const Admin = () => {
       }
 
       setFeedbackStats({
-        totalProducts: scores?.length || 0,
-        withFeedback: scores?.filter(s => s.like_count > 0 || s.dislike_count > 0 || s.cart_count > 0).length || 0,
+        totalProducts: scores.length,
+        withFeedback: scores.filter(s => s.like_count > 0 || s.dislike_count > 0 || s.cart_count > 0).length,
         topLiked,
         topDisliked,
         styleWeights: allStyleWeights
