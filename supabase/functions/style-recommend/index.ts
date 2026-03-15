@@ -992,22 +992,36 @@ JSON 응답:
     
     const startTime = Date.now();
     
+    // OpenAI 모델이면 직접 OpenAI API 호출, 아니면 Lovable AI Gateway
+    const isOpenAI = modelName.startsWith('openai/');
+    const apiUrl = isOpenAI
+      ? 'https://api.openai.com/v1/chat/completions'
+      : 'https://ai.gateway.lovable.dev/v1/chat/completions';
+    const apiKey = isOpenAI ? OPENAI_API_KEY : LOVABLE_API_KEY;
+    // OpenAI 모델명 변환: openai/gpt-5-mini → gpt-4o-mini 등
+    const actualModel = isOpenAI ? modelName.replace('openai/', '') : modelName;
+    
+    if (!apiKey) {
+      console.error(`[style-recommend] Stage 1: API key missing for ${modelName}`);
+      return null;
+    }
+
     const response = await fetch(
-      'https://ai.gateway.lovable.dev/v1/chat/completions',
+      apiUrl,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: modelName,
+          model: actualModel,
           messages: [
             { role: 'system', content: stage1SystemPrompt },
             { role: 'user', content: stage1UserPrompt }
           ],
           max_tokens: 400,
-          temperature: 0.3, // 일관성 중요
+          temperature: 0.3,
         }),
         signal: controller.signal,
       }
