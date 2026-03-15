@@ -2181,10 +2181,18 @@ serve(async (req) => {
         `${item.type === 'top' ? '상의' : item.type === 'bottom' ? '하의' : item.type === 'outer' ? '아우터' : item.type === 'shoes' ? '신발' : '액세서리'}: ${item.color} ${item.category} (${item.material}, ${item.fit})`
       ).join(', ');
       
-      const selectedProductNames = directSelectedIds.map(id => {
-        const p = allProducts.find(ap => ap.id === id);
-        return p ? `${p.brand || ''} ${p.name.slice(0, 30)}` : '';
-      }).filter(Boolean).join(', ');
+      // 📷 매칭된 상품 상세 정보 (사진 아이템 ↔ 매칭 상품 대응 관계 포함)
+      const matchDetails: string[] = [];
+      const sortedPhotoItemsForEval = [...sortedPhotoItems].slice(0, directSelectedIds.length);
+      
+      sortedPhotoItemsForEval.forEach((item, idx) => {
+        if (idx >= directSelectedIds.length) return;
+        const matchedProduct = allProducts.find(ap => ap.id === directSelectedIds[idx]);
+        if (matchedProduct) {
+          const slotLabel = item.type === 'top' ? '상의' : item.type === 'bottom' ? '하의' : item.type === 'outer' ? '아우터' : item.type === 'shoes' ? '신발' : '액세서리';
+          matchDetails.push(`[${slotLabel}] 사진: ${item.color} ${item.category}(${item.material}) → 매칭: ${matchedProduct.brand || ''} ${matchedProduct.name.slice(0, 35)} (${matchedProduct.color || '색상미상'}, ₩${Math.floor(matchedProduct.price / 1000)}k)`);
+        }
+      });
       
       let evaluationReasoning = '';
       
@@ -2203,23 +2211,23 @@ serve(async (req) => {
                 {
                   role: 'system',
                   content: `당신은 세계 최고의 패션 평론가이자 스타일 분석가입니다.
-사용자가 업로드한 패션 사진의 분석 결과를 보고, 해당 스타일에 대한 전문적인 평가를 해주세요.
+사용자가 업로드한 패션 사진의 스타일을 분석하고, DB에서 매칭된 유사 상품이 사진과 얼마나 잘 대응하는지 평가해주세요.
 
 평가 규칙:
 1. 상품을 선택하거나 변경하지 마세요. 오직 평가만 하세요.
 2. 사진 속 인물의 외모는 절대 언급하지 마세요.
-3. 의류 아이템과 스타일링에 대해서만 평가하세요.
+3. 매칭된 각 상품이 사진 속 해당 아이템과 색상/소재/핏이 얼마나 유사한지 구체적으로 언급하세요.
 4. 한국어로 자연스럽고 전문적으로 작성하세요.
 5. "~거든요", "~죠" 등 친근하지만 전문가다운 말투를 사용하세요.
 
 평가 포맷:
-★ 전체 스타일 완성도 (★~★★★★★)로 시작하고, 이어서:
-- 색상 조화 분석 (어떤 색상이 어떻게 어울리는지)
+★ 전체 매칭 완성도 (★~★★★★★)로 시작하고, 이어서:
+- 각 아이템별 매칭 유사도 (사진 속 아이템 vs 추천 상품이 얼마나 비슷한지)
+- 매칭된 상품들끼리의 색상 조화
 - 시즌/TPO 적합성
-- 이 스타일의 강점
-- 업그레이드 팁 (더 멋지게 만들 수 있는 포인트 1-2개)
+- 스타일 업그레이드 팁 1-2개
 
-200자 이상 작성하세요. 텍스트만 반환하세요 (JSON 아님).`
+250자 이상 작성하세요. 텍스트만 반환하세요 (JSON 아님).`
                 },
                 {
                   role: 'user',
@@ -2229,9 +2237,10 @@ serve(async (req) => {
 계절: ${photoData.season || '사계절'}
 TPO: ${photoData.tpo || '데일리'}
 
-DB에서 매칭된 유사 상품: ${selectedProductNames}
+📷 사진 아이템 ↔ DB 매칭 상품 대응:
+${matchDetails.join('\n')}
 
-이 스타일에 대해 전문적인 패션 평가를 해주세요.`
+위 매칭 결과에 대해 평가해주세요. 각 매칭 상품이 사진 속 원본 아이템과 얼마나 유사한지, 이 조합으로 코디했을 때의 완성도를 분석해주세요.`
                 }
               ],
               max_tokens: 600,
