@@ -643,17 +643,50 @@ function calculatePhotoMatchScore(
   
   let score = 0;
   
-  // 2. 색상 매칭 (0.35)
+  // 2. 색상 매칭 (0.35) - 강화된 동의어 매핑
   let colorScore = 0;
-  // 직접 색상 매칭
-  if (analysisColor && (productColor.includes(analysisColor) || analysisColor.includes(productColor) || combined.includes(analysisColor))) {
+  
+  // 색상 동의어 그룹 (같은 그룹의 색상은 서로 매칭)
+  const COLOR_SYNONYMS: string[][] = [
+    ['브라운', 'brown', '갈색', '카멜', 'camel', '탄', 'tan', '카키', 'khaki', '초콜릿', 'chocolate', '코코아', 'cocoa', '토프', 'taupe', '모카', 'mocha', '월넛'],
+    ['네이비', 'navy', '남색', '진한파랑', '다크블루', 'dark blue', '인디고', 'indigo'],
+    ['올리브', 'olive', '올리브그린', 'olive green', '카키', 'khaki', '밀리터리그린'],
+    ['베이지', 'beige', '아이보리', 'ivory', '크림', 'cream', '오트밀', '누드', '샌드'],
+    ['블랙', 'black', '검정', '흑', '차콜', 'charcoal'],
+    ['화이트', 'white', '흰', '백', '오프화이트'],
+    ['레드', 'red', '빨강', '와인', 'wine', '버건디', 'burgundy', '마룬'],
+    ['그린', 'green', '녹색', '민트', 'mint', '에메랄드', '틸'],
+    ['블루', 'blue', '파랑', '스카이', 'sky', '코발트', '로열블루'],
+    ['옐로우', 'yellow', '노랑', '머스타드', 'mustard', '골드', 'gold', '밀색', 'wheat'],
+    ['핑크', 'pink', '분홍', '로즈', 'rose', '코랄', 'coral', '살몬'],
+    ['퍼플', 'purple', '보라', '라벤더', 'lavender', '바이올렛'],
+    ['그레이', 'gray', 'grey', '회색', '실버', 'silver'],
+    ['오렌지', 'orange', '주황', '테라코타', 'terracotta', '러스트', 'rust'],
+  ];
+  
+  function areColorsSimilar(c1: string, c2: string): boolean {
+    const l1 = c1.toLowerCase();
+    const l2 = c2.toLowerCase();
+    if (l1.includes(l2) || l2.includes(l1)) return true;
+    for (const group of COLOR_SYNONYMS) {
+      const has1 = group.some(g => l1.includes(g));
+      const has2 = group.some(g => l2.includes(g));
+      if (has1 && has2) return true;
+    }
+    return false;
+  }
+  
+  // 직접/동의어 색상 매칭
+  if (analysisColor && (areColorsSimilar(analysisColor, productColor) || areColorsSimilar(analysisColor, combined))) {
     colorScore = 1.0;
+  } else if (analysisColor && productColor && areColorsSimilar(analysisColor, productColor)) {
+    colorScore = 0.8;
   } else if (meta?.color_family) {
     // color_family 간접 매칭
     const productFamily = Array.isArray(meta.color_family) ? meta.color_family : [meta.color_family];
     for (const [family, keywords] of Object.entries(COLOR_FAMILY_MAP)) {
       if (productFamily.includes(family as any) && keywords.some(kw => analysisColor.includes(kw.toLowerCase()))) {
-        colorScore = 0.6;
+        colorScore = 0.5;
         break;
       }
     }
@@ -1904,7 +1937,7 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = hasPhotoAnalysis ? 8 : 12;  // 🔥 카테고리당 12개로 확대
+        const maxPerCategory = hasPhotoAnalysis ? 15 : 12;  // 📷 사진 매칭 시 15개로 확대
         
         // 상위 40개에서 랜덤 셔플 (기존 25 → 40)
         const topCandidates = catProducts.slice(0, 40);
@@ -1938,10 +1971,13 @@ serve(async (req) => {
       const concepts = p.dna_meta?.concepts?.slice(0, 2).join('/') || '';
       // color_family 배열 처리
       const colorFamily = p.dna_meta?.color_family;
-      const color = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
+      const colorFam = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
+      // 실제 색상도 포함 (AI가 색상 매칭에 활용)
+      const actualColor = p.color || '';
+      const colorInfo = actualColor ? `${actualColor}(${colorFam})` : colorFam;
       const slot = p.dna_meta?.item_slot || 'unknown';
       const newTag = isNewProduct(p.collected_at) ? '[NEW]' : '';
-      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}${newTag ? '|' + newTag : ''}`;
+      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}`;
     }).join('\n');
 
     // 📷 사진 분석 모드: Stage 2에 원본 사진 분석 컨텍스트 추가
@@ -1953,17 +1989,22 @@ serve(async (req) => {
       ).join('\n');
       
       photoContextForStage2 = `
-🚨🚨🚨 **최우선 지시: 사진 매칭 모드**
-사용자가 참고 사진을 업로드했습니다. 아래 사진 속 아이템과 **가장 유사한** 상품을 선택하세요.
-색상, 카테고리, 소재, 핏이 사진 속 아이템과 최대한 일치해야 합니다!
+🚨🚨🚨 **최우선 지시: 사진 매칭 모드 - 색상과 아이템 종류 일치가 최우선!**
+사용자가 참고 사진을 업로드했습니다. 아래 사진 속 아이템과 **가장 유사한** 상품을 반드시 선택하세요.
 
-📷 사진 속 아이템:
+📷 사진 속 아이템 (이 색상/카테고리와 일치하는 상품을 최우선 선택):
 ${itemDescriptions}
 
 전체 스타일: ${photoData.overallStyle || ''}
 계절: ${photoData.season || ''} / TPO: ${photoData.tpo || ''}
 
-⚠️ 상품 목록에서 위 아이템들과 가장 유사한 색상/카테고리/소재를 가진 상품을 우선 선택하세요!
+⚠️ 색상 일치 규칙 (필수):
+1. 사진에서 "브라운 코듀로이 팬츠"면 → 상품 목록에서 색상에 "브라운/갈색/카멜/탄" 등이 포함된 코듀로이 팬츠를 선택
+2. "네이비 블레이저"면 → 색상에 "네이비/남색/다크블루" 등이 포함된 블레이저/재킷을 선택
+3. "올리브 그린 폴로"면 → 색상에 "올리브/카키/그린" 등이 포함된 폴로 셔츠를 선택
+4. 정확한 색상의 상품이 없으면 가장 유사한 색상을 선택하되, 흰색/블랙 등 완전히 다른 색상은 절대 선택 금지!
+5. 아이템 종류도 최대한 일치: 블레이저→블레이저/재킷, 폴로→폴로/카라티, 코듀로이→코듀로이 등
+6. 항공점퍼 대신 블레이저가 요구되면 반드시 블레이저/재킷을 선택!
 `;
     }
 
