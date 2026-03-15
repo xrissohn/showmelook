@@ -63,7 +63,8 @@ export const ThroughputAnalytics = () => {
       }>(
         'generation_jobs',
         'id, status, created_at, started_at, completed_at',
-        (q: ReturnType<typeof supabase.from>) => q
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q
           .gte('created_at', startDate.toISOString())
           .in('status', ['completed', 'failed'])
           .order('created_at', { ascending: true })

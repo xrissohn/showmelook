@@ -90,7 +90,8 @@ export const InferenceMetricsPanel = () => {
       // 메트릭 조회 (전체 - 페이지네이션)
       const metricsData = await fetchAllRows<InferenceMetric>(
         'inference_metrics', '*',
-        (q: ReturnType<typeof supabase.from>) => q
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q
           .gte('created_at', startDate.toISOString())
           .order('created_at', { ascending: false })
       );
