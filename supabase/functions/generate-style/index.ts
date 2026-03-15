@@ -504,9 +504,31 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
     // Prepare messages for Nano Banana (Gemini image generation)
     const messages: any[] = [];
     
+    // Build content array with prompt + product images for color reference
+    const contentArray: any[] = [
+      { type: 'text', text: prompt }
+    ];
+
+    // 🔥 상품 이미지를 AI에 전달하여 정확한 색상 매칭 보장
+    if (productImageUrls && Array.isArray(productImageUrls) && productImageUrls.length > 0) {
+      console.log(`[generate-style] Including ${productImageUrls.length} product images for color reference`);
+      for (let i = 0; i < productImageUrls.length; i++) {
+        const imgUrl = productImageUrls[i];
+        if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
+          contentArray.push({
+            type: 'image_url',
+            image_url: { url: imgUrl }
+          });
+          console.log(`[generate-style] Product image #${i + 1}: ${imgUrl.substring(0, 80)}...`);
+        }
+      }
+    } else {
+      console.log('[generate-style] No product images provided for color reference');
+    }
+
     messages.push({
       role: 'user',
-      content: prompt
+      content: contentArray.length > 1 ? contentArray : prompt
     });
 
     // If face composite is enabled, include the avatar image
@@ -518,18 +540,15 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
         try {
           console.log('[generate-style] Fetching avatar from storage...');
           
-          // If it's a signed URL that might have expired, try to get a fresh signed URL
-          // Extract the path from the URL
           const urlMatch = userAvatarUrl.match(/\/avatars\/([^?]+)/);
           if (urlMatch) {
             const avatarPath = urlMatch[1];
             console.log('[generate-style] Avatar path:', avatarPath);
             
-            // Get a fresh signed URL using service role
             const { data: signedData, error: signedError } = await supabase
               .storage
               .from('avatars')
-              .createSignedUrl(avatarPath, 300); // 5 minute validity
+              .createSignedUrl(avatarPath, 300);
             
             if (signedData?.signedUrl) {
               console.log('[generate-style] Got fresh signed URL');
@@ -551,7 +570,6 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
             }
           }
           
-          // Fallback: try the original URL if fresh signed URL failed
           if (!avatarFetchSuccess) {
             console.log('[generate-style] Trying original avatar URL...');
             const avatarResponse = await fetch(userAvatarUrl);
@@ -572,29 +590,42 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
           console.error('[generate-style] Error fetching avatar:', fetchError);
         }
       } else if (userAvatarUrl.startsWith('data:')) {
-        // Already a data URL
         avatarDataUrl = userAvatarUrl;
         avatarFetchSuccess = true;
       }
       
-      // Only include avatar in messages if we successfully fetched it
       if (avatarFetchSuccess) {
-        // Build content array with avatar
-        const contentArray: any[] = [
-          { type: 'text', text: prompt },
-          { type: 'image_url', image_url: { url: avatarDataUrl } }
+        // Rebuild content array: prompt + product images + avatar
+        const fullContentArray: any[] = [
+          { type: 'text', text: prompt }
         ];
+        
+        // Add product images first
+        if (productImageUrls && Array.isArray(productImageUrls)) {
+          for (const imgUrl of productImageUrls) {
+            if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
+              fullContentArray.push({
+                type: 'image_url',
+                image_url: { url: imgUrl }
+              });
+            }
+          }
+        }
+        
+        // Add avatar last (reference photo)
+        fullContentArray.push({
+          type: 'image_url',
+          image_url: { url: avatarDataUrl }
+        });
         
         console.log('[generate-style] Avatar included in request');
         
         messages[0] = {
           role: 'user',
-          content: contentArray
+          content: fullContentArray
         };
       } else {
-        // If avatar fetch failed, proceed without face composite
         console.log('[generate-style] Avatar fetch failed, proceeding without face composite');
-        // Revert to non-face-composite prompt
         prompt = `Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}.
 
 ${bodyProportionHint}
@@ -608,9 +639,19 @@ COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
         
+        // Keep product images even without avatar
+        const fallbackContent: any[] = [{ type: 'text', text: prompt }];
+        if (productImageUrls && Array.isArray(productImageUrls)) {
+          for (const imgUrl of productImageUrls) {
+            if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
+              fallbackContent.push({ type: 'image_url', image_url: { url: imgUrl } });
+            }
+          }
+        }
+        
         messages[0] = {
           role: 'user',
-          content: prompt
+          content: fallbackContent.length > 1 ? fallbackContent : prompt
         };
       }
     }
