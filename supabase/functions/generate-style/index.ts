@@ -451,7 +451,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
+COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is specified, use it. If it says "match from product image", refer to the product images for accurate color. Do NOT substitute colors.
 
 IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
