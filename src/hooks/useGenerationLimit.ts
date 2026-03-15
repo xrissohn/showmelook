@@ -49,6 +49,29 @@ export const useGenerationLimit = (userId: string | undefined) => {
       // 한국시간 기준 오늘 날짜
       const today = getTodayKST();
 
+      // 관리자 체크 - 관리자는 무제한
+      const { data: adminRole } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (adminRole) {
+        setLimit({
+          isPremium: true,
+          currentTier: 'platinum',
+          dailyLimit: -1,
+          currentCount: 0,
+          remainingCount: -1,
+          bonusCredits: 0,
+          totalRemaining: -1,
+          isLoading: false,
+          canGenerate: true,
+        });
+        return;
+      }
+
       // Fetch purchase stats for tier-based limits
       const { data: purchaseStats } = await supabase
         .from('user_purchase_stats')
