@@ -29,7 +29,7 @@ interface AIAnalyzedPosition {
   x: number;
   y: number;
   confidence: number;
-  source?: 'ai' | 'manual';
+  source?: 'ai' | 'manual' | 'generation';
 }
 
 // 카테고리별 기본 위치 (이미지 내 상대 위치 %)
