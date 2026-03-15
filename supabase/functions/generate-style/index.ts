@@ -812,12 +812,14 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         Date.now() - startTime
       );
       
+      const fallbackTagPositions = buildTagPositions(productDetails || []);
       return new Response(
         JSON.stringify({
           success: true,
           imageUrl: generatedImage,
           style: style,
-          productIds: productIds
+          productIds: productIds,
+          tagPositions: fallbackTagPositions,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
