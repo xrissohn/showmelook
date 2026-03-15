@@ -5176,11 +5176,31 @@ const StyleGenerator = () => {
                           })()}
                         </div>
                       ) : (
-                        /* 추천 모드: 기존 UI 유지 */
-                        <div className="relative pl-3 sm:pl-4 border-l-2 border-accent/30">
-                          <p className="text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
-                            {customResult.styleReasoning}
-                          </p>
+                        /* 추천 모드: 구조화된 UI */
+                        <div className="space-y-2 text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
+                          {(customResult.styleReasoning || '').split('\n').filter(line => line.trim()).map((line, i) => {
+                            const trimmed = line.trim();
+                            // 이모지로 시작하는 섹션 헤더
+                            const isEmoji = /^(😏|✨|🔥|💡|👗|📋|🎨|🌟|💎|👑)/.test(trimmed);
+                            const isBullet = /^[-•]/.test(trimmed);
+                            
+                            if (isEmoji || i === 0) {
+                              return (
+                                <p key={i} className="text-sm sm:text-base font-medium text-foreground">
+                                  {trimmed}
+                                </p>
+                              );
+                            }
+                            if (isBullet) {
+                              return (
+                                <div key={i} className="pl-2 flex gap-1.5 items-start">
+                                  <span className="text-accent mt-0.5 flex-shrink-0">•</span>
+                                  <span>{trimmed.replace(/^[-•]\s*/, '')}</span>
+                                </div>
+                              );
+                            }
+                            return <p key={i}>{trimmed}</p>;
+                          })}
                         </div>
                       )}
                       
