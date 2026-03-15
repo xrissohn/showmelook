@@ -892,11 +892,30 @@ const Admin = () => {
       if (category !== 'all') query = query.eq('category', category);
       
       query = query.order('collected_at', { ascending: false });
-      if (!loadAll) query = query.limit(100);
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      setCachedProducts(data || []);
+      if (!loadAll) {
+        query = query.limit(100);
+        const { data, error } = await query;
+        if (error) throw error;
+        setCachedProducts(data || []);
+      } else {
+        // Paginate to get ALL products
+        const allProducts: CachedProduct[] = [];
+        let from = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+        while (hasMore) {
+          const { data, error } = await query.range(from, from + pageSize - 1);
+          if (error) throw error;
+          if (data && data.length > 0) {
+            allProducts.push(...data);
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else {
+            hasMore = false;
+          }
+        }
+        setCachedProducts(allProducts);
+      }
       loadProductStats();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
