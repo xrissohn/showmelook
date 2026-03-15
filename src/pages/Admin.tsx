@@ -29,6 +29,7 @@ import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
+import { fetchAllRows } from '@/lib/paginatedFetch';
 
 interface DeeplinkResult {
   success?: boolean;
