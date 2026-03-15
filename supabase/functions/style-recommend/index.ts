@@ -1894,7 +1894,7 @@ serve(async (req) => {
 
     // ============= 🔥 Stage 2: Gemini Flash 최종 선택 (교차 Fallback) =============
     
-    // GPT에 보낼 상품 목록 준비 - 다양성 강화
+    // GPT에 보낼 상품 목록 준비 - 다양성 극대화
     const getProductsForStage2 = () => {
       const result: CachedProduct[] = [];
       const usedBrands = new Map<string, number>();
@@ -1902,10 +1902,10 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = hasPhotoAnalysis ? 8 : 10;
+        const maxPerCategory = hasPhotoAnalysis ? 8 : 12;  // 🔥 카테고리당 12개로 확대
         
-        // 📷 사진 분석 모드: 매칭 순서 유지 / 일반 모드: 랜덤 샘플링
-        const topCandidates = catProducts.slice(0, 25);
+        // 상위 40개에서 랜덤 셔플 (기존 25 → 40)
+        const topCandidates = catProducts.slice(0, 40);
         const shuffledCandidates = hasPhotoAnalysis 
           ? topCandidates  // 사진 매칭 점수순 유지
           : [...topCandidates].sort(() => Math.random() - 0.5);
