@@ -98,7 +98,8 @@ export function CoupangDailyReportPanel() {
     try {
       const data = await fetchAllRows<DailyReportRow>(
         'coupang_daily_reports', '*',
-        (q: ReturnType<typeof supabase.from>) => q.order('report_date', { ascending: false })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q.order('report_date', { ascending: false })
       );
 
       const statsResult: ReportStats = {
