@@ -1,4 +1,4 @@
-// style-recommend v7.0 - 세계 최고 패셔니스타 + 하이브리드 2단계 추론 + 교차 Fallback
+// style-recommend v8.0 - Lovable AI Gateway 통일 + 교차 Fallback
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
