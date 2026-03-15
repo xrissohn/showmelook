@@ -1074,7 +1074,7 @@ const Admin = () => {
       const bySlot: Record<string, number> = {};
       const byConcept: Record<string, number> = {};
       
-      if (products) {
+      if (products.length > 0) {
         products.forEach(p => {
           if (p.dna_meta) {
             const meta = p.dna_meta as { target?: string; item_slot?: string; concepts?: string[] };
