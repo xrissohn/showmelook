@@ -1,85 +1,92 @@
 
-# 사진 업로드 -> AI 스타일 분석 -> 유사 스타일 추천 기능
 
-## 개요
-사용자가 참고할 패션 사진을 업로드하면 AI가 해당 사진의 스타일을 분석하여 텍스트 프롬프트로 변환하고, 기존 `style-recommend` 파이프라인에 자연스럽게 연결하는 기능.
+# AI 태그 정확도 향상 계획: 생성 시점 구조 데이터 활용
 
-## 구현 구조
+## 현재 문제
 
+현재 플로우:
 ```text
-[사진 업로드] --> [analyze-style-image Edge Function] --> 스타일 설명 텍스트
-                                                              |
-                                                              v
-                                               [customStylePrompt에 자동 입력]
-                                                              |
-                                                              v
-                                               [기존 style-recommend 호출]
+generate-style (이미지 생성) → DB 저장 (tag_positions 없음)
+→ InteractiveProductTags 렌더링 시 analyze-image-positions 호출
+→ Gemini Flash가 완성 이미지만 보고 위치 추정 → 부정확
 ```
 
-## 변경 파일
+생성 시점에 이미 알고 있는 정보(어떤 카테고리 상품이 어디에 입혀졌는지)를 버리고, 완성 이미지만으로 다시 추정하고 있어서 정확도가 낮음.
 
-### 1. 새 Edge Function: `supabase/functions/analyze-style-image/index.ts`
+## 핵심 전략
 
-- 사용자가 업로드한 이미지 URL(base64 data URL 또는 public URL)을 받아 Gemini 2.5 Flash로 분석
-- 프롬프트: "이 패션 사진의 스타일을 한국어로 자연스럽게 설명해줘. 의류 종류, 색상, 분위기, 계절감, TPO 등을 포함해서 2-3문장으로."
-- 응답 예시: `"오버사이즈 베이지 니트에 와이드 데님 팬츠, 미니멀하고 편안한 가을 데일리룩. 뉴트럴 톤 중심의 캐주얼 스타일."`
-- 모델: `google/gemini-2.5-flash` (비용 최소, 이미지 분석 지원)
-- LOVABLE_API_KEY 사용 (추가 키 불필요)
+**"생성 입력 → 구조 anchor 저장 → 태그 배치"** 패턴으로 전환.
 
-### 2. 프론트엔드: `src/pages/StyleGenerator.tsx`
+`generate-style` Edge Function에서 이미지 생성 직후, 같은 AI 호출(또는 후속 경량 호출)로 **각 상품의 위치 anchor를 함께 추출**하여 DB에 즉시 저장.
 
-스타일 프롬프트 Textarea 영역(라인 4720 부근)에 사진 업로드 버튼 추가:
+## 변경 사항
 
-- 카메라/이미지 아이콘 버튼 추가 (Textarea 우측 상단 또는 하단)
-- 클릭 시 `<input type="file" accept="image/*">` 트리거
-- 이미지 선택 -> base64로 변환 -> `analyze-style-image` Edge Function 호출
-- 분석 결과를 `customStylePrompt`에 자동 입력
-- 분석 중 로딩 표시 (스피너 + "사진 분석 중...")
-- 업로드된 이미지 미리보기 썸네일 표시
-- 분석 실패 시 토스트 에러 메시지
+### 1. `generate-style` Edge Function 수정
 
-UI 변경:
-- Textarea 위에 작은 배너/버튼: `📷 사진으로 스타일 찾기`
-- 이미지 업로드 후 썸네일 + X 버튼으로 제거 가능
-- 분석 완료 시 Textarea에 텍스트 자동 채워짐 + "AI가 분석한 스타일입니다" 안내
+이미지 생성 후, AI 응답의 text content에서 위치 정보를 추출하거나, 생성 직후 같은 세션에서 경량 위치 분석 수행:
 
-### 3. `supabase/config.toml` 업데이트
+- 이미지 생성 프롬프트에 **"각 아이템의 중심 좌표를 JSON으로 함께 반환"** 지시 추가
+- Gemini image 모델의 text 응답에서 좌표 JSON 파싱
+- 파싱 실패 시 productDetails의 카테고리 정보 + 표준 body-zone 매핑으로 **rule-based anchor** 생성 (현재 DEFAULT_POSITIONS보다 정교한 버전: 상품 개수, 겹침 순서 고려)
+- 생성된 tag_positions를 응답에 포함하여 반환
 
-```toml
-[functions.analyze-style-image]
-verify_jwt = false
+### 2. 응답 포맷 확장
+
+```typescript
+// generate-style 응답에 추가
+{
+  success: true,
+  imageUrl: "...",
+  tagPositions: [
+    { category: "상의", x: 48, y: 32, confidence: 0.95, source: "generation" },
+    { category: "하의", x: 50, y: 65, confidence: 0.95, source: "generation" },
+    ...
+  ]
+}
 ```
 
-## 기술 세부사항
+### 3. StyleGenerator.tsx 수정
 
-### Edge Function 구현
+DB 저장 시 `tag_positions`를 함께 insert:
 
-```text
-POST /analyze-style-image
-Body: { image_data: "data:image/jpeg;base64,..." }
-Response: { success: true, description: "오버사이즈 니트에 와이드 데님..." }
+```typescript
+const { data: insertedLook } = await supabase.from('generated_looks').insert({
+  ...existingFields,
+  tag_positions: genData.tagPositions || null,  // 생성 시점 anchor
+}).select('id').single();
 ```
 
-- base64 이미지를 Gemini vision에 전달
-- 최대 이미지 크기: 5MB (프론트에서 리사이즈)
-- 응답 시간: 약 2-3초 (Flash 모델)
-- 에러 처리: 429/402 Rate Limit 핸들링 포함
+### 4. Rule-based Anchor 로직 (fallback)
 
-### 프론트엔드 이미지 처리
+AI가 좌표를 반환하지 않을 때, productDetails의 카테고리와 레이어 순서를 활용한 정밀 매핑:
 
-- FileReader로 base64 변환
-- 큰 이미지는 canvas로 리사이즈 (최대 1024px)
-- 미리보기 표시용 Object URL 생성
-- 상태: `styleImageFile`, `styleImagePreview`, `isAnalyzingImage`
+- 상품 목록에서 카테고리별 body-zone 할당 (outer > top > bottom > shoes 순서)
+- 같은 zone에 여러 상품이 있으면 좌우/상하 오프셋 자동 분배
+- 소품(가방, 액세서리)은 성별/스타일에 따라 좌우 배치 결정
+- confidence를 0.85로 설정 (AI 추정보다 높고, 수동보다 낮음)
 
-## 비용 영향
-- Gemini 2.5 Flash 이미지 분석: 요청당 약 0.1~0.3원 (KRW)
-- 기존 style-recommend 비용에 추가되는 금액 무시 가능 수준
+### 5. InteractiveProductTags 수정
 
-## 사용자 흐름
-1. "스타일 설정" 영역에서 `📷 사진으로 스타일 찾기` 클릭
-2. 갤러리/카메라에서 참고 사진 선택
-3. 썸네일 표시 + "AI 분석 중..." 로딩 (2-3초)
-4. 분석 완료: Textarea에 스타일 설명 자동 입력
-5. 사용자가 필요시 텍스트 수정 가능
-6. "스타일 추천 받기" 버튼으로 기존 플로우 진행
+- `cachedPositions`에 `source: "generation"` 데이터가 있으면 AI 재분석을 **스킵**
+- `analyze-image-positions` 호출은 `source: "generation"` 데이터가 없는 레거시 룩에만 실행
+- 기존 few-shot 학습 루프는 유지 (수동 보정 → tag_corrections 저장)
+
+### 6. analyze-image-positions 역할 축소
+
+- 레거시 룩(tag_positions 없는 기존 데이터)에만 사용
+- 새로 생성되는 룩에서는 호출되지 않으므로 AI 비용 절감
+
+## 변경 파일 목록
+
+| 파일 | 변경 내용 |
+|---|---|
+| `supabase/functions/generate-style/index.ts` | 프롬프트에 좌표 반환 지시 추가, rule-based anchor fallback, 응답에 tagPositions 포함 |
+| `src/pages/StyleGenerator.tsx` | DB insert 시 tag_positions 저장, genData에서 tagPositions 전달 |
+| `src/components/style/InteractiveProductTags.tsx` | `source: "generation"` 캐시 있으면 AI 재분석 스킵 |
+
+## 기대 효과
+
+- AI 태그 위치 분석 호출 제거 → 비용 절감 + 로딩 속도 향상
+- 생성 시점의 구조 데이터(카테고리, 레이어 순서) 활용 → 정확도 대폭 향상
+- 수동 보정 피드백 루프는 유지하여 지속적 개선
+
