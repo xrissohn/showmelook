@@ -5101,7 +5101,7 @@ const StyleGenerator = () => {
                         <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
                         </div>
-                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{customResult.mode === 'evaluation' ? 'AI 스타일 평가' : 'AI 스타일리스트 추천'}</span>
                       </div>
                       
                       {/* 타이틀 */}
