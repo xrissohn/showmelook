@@ -351,15 +351,14 @@ const Admin = () => {
   // Generation jobs functions
   const loadJobStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('generation_jobs')
-        .select('status')
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-      
-      if (error) throw error;
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const allJobs = await fetchAllRows<{ status: string }>(
+        'generation_jobs', 'status',
+        (q) => q.gte('created_at', since)
+      );
       
       const stats = { queued: 0, processing: 0, completed: 0, failed: 0 };
-      data?.forEach(job => {
+      allJobs.forEach(job => {
         if (job.status === 'queued') stats.queued++;
         else if (['processing', 'generating_style', 'generating_image'].includes(job.status)) stats.processing++;
         else if (job.status === 'completed') stats.completed++;
