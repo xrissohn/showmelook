@@ -2714,6 +2714,7 @@ const StyleGenerator = () => {
     autoSelectedTotal?: number;
     autoSelectedCount?: number;
     budget?: number;
+    mode?: 'evaluation' | 'recommendation';
   } | null>(null);
 
   // 구매 버튼 로딩 상태
