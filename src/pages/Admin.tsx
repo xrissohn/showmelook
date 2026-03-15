@@ -1701,67 +1701,19 @@ const Admin = () => {
                   </div>
                 )}
 
-                {/* DNA Batch Generation */}
-                <div className="p-4 border-2 border-primary/20 rounded-lg space-y-4 bg-primary/5">
-                  <div>
-                    <h3 className="font-medium flex items-center gap-2">
-                      <Dna className="w-4 h-4" />
-                      DNA 배치 생성
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      규칙 기반으로 DNA 메타 정보(target, concepts, occasions 등)를 자동 생성합니다.
-                    </p>
+                {/* DNA 배치 자동화 안내 */}
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Dna className="w-4 h-4" />
+                    DNA 자동 생성
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    DNA 배치 생성은 10분마다 자동으로 실행됩니다 (배치 크기: 50개). 색상 분석도 10분 주기로 자동 실행됩니다.
+                  </p>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">🤖 자동화됨</Badge>
+                    <Badge variant="outline">10분 주기</Badge>
                   </div>
-
-                  <div className="flex flex-wrap items-end gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-1 block">배치 크기</label>
-                      <Select value={dnaBatchSize} onValueChange={setDnaBatchSize}>
-                        <SelectTrigger className="w-[120px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="20">20개</SelectItem>
-                          <SelectItem value="50">50개</SelectItem>
-                          <SelectItem value="100">100개</SelectItem>
-                          <SelectItem value="200">200개</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <Button onClick={runDnaBatch} disabled={isDnaLoading}>
-                      {isDnaLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Dna className="w-4 h-4 mr-2" />}
-                      🧬 DNA 생성
-                    </Button>
-                  </div>
-
-                  {dnaBatchResult && (
-                    <div className={`p-4 rounded-lg border ${
-                      dnaBatchResult.success 
-                        ? 'bg-accent/10 border-accent/30'
-                        : 'bg-destructive/10 border-destructive/30'
-                    }`}>
-                      {dnaBatchResult.success ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-primary" />
-                            <span className="font-medium">DNA 생성 완료</span>
-                          </div>
-                          <div className="grid grid-cols-4 gap-4 text-sm">
-                            <div><span className="text-muted-foreground">처리:</span> <span className="font-medium">{dnaBatchResult.processed}</span></div>
-                            <div><span className="text-muted-foreground">성공:</span> <span className="font-medium text-primary">{dnaBatchResult.updated}</span></div>
-                            <div><span className="text-muted-foreground">에러:</span> <span className="font-medium text-destructive">{dnaBatchResult.errors || 0}</span></div>
-                            <div><span className="text-muted-foreground">남음:</span> <span className="font-medium">{dnaBatchResult.remaining}</span></div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <XCircle className="w-5 h-5 text-destructive" />
-                          <span className="font-medium">오류: {dnaBatchResult.error}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
               </CardContent>
