@@ -1148,7 +1148,8 @@ async function runStage2WithModel(
   gender: string,
   ageGroupLabel: string,
   occasion: string,
-  LOVABLE_API_KEY: string
+  LOVABLE_API_KEY: string,
+  OPENAI_API_KEY?: string
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
