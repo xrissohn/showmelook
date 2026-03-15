@@ -9,6 +9,7 @@ import {
   ShoppingCart, Upload, AlertTriangle, FileSpreadsheet
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 import { useToast } from "@/hooks/use-toast";
 import { parseExcelFile, findColumnValue } from '@/lib/excelParser';
 
