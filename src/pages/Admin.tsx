@@ -1064,14 +1064,11 @@ const Admin = () => {
       const withDna = withDnaCount || 0;
       const withoutDna = total - withDna;
 
-      // DNA 메타 분석은 최신 1000개만 샘플링
-      const { data: products } = await supabase
-        .from('products_cache')
-        .select('dna_meta')
-        .eq('is_active', true)
-        .not('dna_meta', 'is', null)
-        .order('collected_at', { ascending: false })
-        .limit(1000);
+      // DNA 메타 분석 - 전체 상품 대상 (페이지네이션)
+      const products = await fetchAllRows<{ dna_meta: unknown }>(
+        'products_cache', 'dna_meta',
+        (q) => q.eq('is_active', true).not('dna_meta', 'is', null)
+      );
 
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
