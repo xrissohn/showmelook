@@ -2129,26 +2129,14 @@ const Admin = () => {
                   </div>
                 </div>
 
-                <div className="p-4 border rounded-lg space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-medium flex items-center gap-2"><RefreshCw className="w-4 h-4" />추천 캐시 정리</h3>
-                      <p className="text-sm text-muted-foreground">만료된 스타일 추천 캐시를 삭제합니다.</p>
-                    </div>
-                    <Button 
-                      variant="outline"
-                      onClick={async () => {
-                        try {
-                          await supabase.from('style_cache').delete().lt('expires_at', new Date().toISOString());
-                          toast({ title: "캐시 정리 완료", description: "만료된 캐시가 삭제되었습니다." });
-                        } catch (error: unknown) {
-                          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                          toast({ title: "캐시 정리 실패", description: errorMessage, variant: "destructive" });
-                        }
-                      }}
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />만료 캐시 정리
-                    </Button>
+                <div className="p-4 border rounded-lg bg-muted/30 space-y-2">
+                  <h3 className="font-medium flex items-center gap-2"><RefreshCw className="w-4 h-4" />자동화된 정리 작업</h3>
+                  <p className="text-sm text-muted-foreground">추천 캐시 정리와 에러 로그 정리는 매일 자동으로 실행됩니다.</p>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">🤖 캐시 정리 (매일 01:00)</Badge>
+                    <Badge variant="secondary">🤖 에러 로그 정리 (매일 00:00)</Badge>
+                    <Badge variant="secondary">🤖 DNA 배치 (10분 주기)</Badge>
+                    <Badge variant="secondary">🤖 색상 분석 (10분 주기)</Badge>
                   </div>
                 </div>
 
