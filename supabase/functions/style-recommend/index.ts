@@ -1984,7 +1984,7 @@ ${itemDescriptions}
     let apiCalls = { gpt5: 1, gemini: 0 };
     const stage2Start = Date.now();
     
-    if (LOVABLE_API_KEY && stage2Products.length > 0) {
+    if ((LOVABLE_API_KEY || OPENAI_API_KEY) && stage2Products.length > 0) {
       // 1차: Primary 모델
       const stage2Context = photoContextForStage2 + productListContext;
       ragResponse = await runStage2WithModel(
@@ -1995,7 +1995,8 @@ ${itemDescriptions}
         gender,
         ageGroupLabel,
         occasion,
-        LOVABLE_API_KEY
+        LOVABLE_API_KEY || '',
+        OPENAI_API_KEY || undefined
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
