@@ -131,39 +131,81 @@ serve(async (req) => {
         return fallbackProducts;
       }
       
-      return productDetails.map((p: any) => {
+      // 확장된 색상 키워드 매핑 (영문/한국어)
+      const COLOR_KEYWORDS: Record<string, string> = {
+        'white': 'white', '화이트': 'white', '흰': 'white', '백': 'white', 'wht': 'white',
+        'black': 'black', '블랙': 'black', '검정': 'black', '흑': 'black', 'blk': 'black',
+        'navy': 'navy', '네이비': 'navy',
+        'blue': 'blue', '블루': 'blue', '파랑': 'blue', '파란': 'blue',
+        'gray': 'gray', 'grey': 'gray', '그레이': 'gray', '회색': 'gray', '차콜': 'charcoal', 'charcoal': 'charcoal',
+        'beige': 'beige', '베이지': 'beige',
+        'brown': 'brown', '브라운': 'brown', '갈색': 'brown',
+        'cream': 'cream', '크림': 'cream', 'ivory': 'ivory', '아이보리': 'ivory',
+        'red': 'red', '레드': 'red', '빨강': 'red',
+        'pink': 'pink', '핑크': 'pink',
+        'green': 'green', '그린': 'green', '초록': 'green', 'olive': 'olive', '올리브': 'olive',
+        'yellow': 'yellow', '옐로우': 'yellow', '노랑': 'yellow',
+        'orange': 'orange', '오렌지': 'orange',
+        'purple': 'purple', '퍼플': 'purple', '보라': 'purple',
+        'khaki': 'khaki', '카키': 'khaki',
+        'camel': 'camel', '카멜': 'camel', '캐멀': 'camel',
+        'wine': 'wine', '와인': 'wine', 'burgundy': 'burgundy', '버건디': 'burgundy',
+        'wheat': 'wheat/tan', 'tan': 'tan', '탄': 'tan',
+        'sand': 'sand', '샌드': 'sand',
+        'mint': 'mint', '민트': 'mint',
+        'lavender': 'lavender', '라벤더': 'lavender',
+        'coral': 'coral', '코랄': 'coral',
+        'denim': 'denim blue', '데님': 'denim blue',
+        'mocha': 'mocha brown', '모카': 'mocha brown',
+        'oatmeal': 'oatmeal', '오트밀': 'oatmeal',
+        'silver': 'silver', '실버': 'silver',
+        'gold': 'gold', '골드': 'gold',
+      };
+
+      const parseColorsFromString = (str: string): string[] => {
+        if (!str) return [];
+        const lower = str.toLowerCase();
+        const found: string[] = [];
+        for (const [keyword, colorName] of Object.entries(COLOR_KEYWORDS)) {
+          if (lower.includes(keyword)) {
+            if (!found.includes(colorName)) found.push(colorName);
+          }
+        }
+        return found;
+      };
+
+      return productDetails.map((p: any, idx: number) => {
         const brandPart = p.brand ? `${p.brand} ` : '';
         const name = p.name || 'Item';
         
         // Extract color_family from dna_meta or direct color field
         let colors: string[] = [];
         if (p.dna_meta?.color_family) {
-          colors = Array.isArray(p.dna_meta.color_family) 
+          const rawColors = Array.isArray(p.dna_meta.color_family) 
             ? p.dna_meta.color_family 
             : [p.dna_meta.color_family];
-        } else if (p.color_family) {
-          colors = Array.isArray(p.color_family) ? p.color_family : [p.color_family];
-        } else if (p.color) {
-          // Parse color string if available
-          const colorStr = String(p.color).toLowerCase();
-          if (colorStr.includes('white')) colors.push('white');
-          if (colorStr.includes('black')) colors.push('black');
-          if (colorStr.includes('navy')) colors.push('navy');
-          if (colorStr.includes('blue')) colors.push('blue');
-          if (colorStr.includes('gray') || colorStr.includes('grey')) colors.push('gray');
-          if (colorStr.includes('beige')) colors.push('beige');
-          if (colorStr.includes('brown')) colors.push('brown');
-          if (colorStr.includes('cream')) colors.push('cream');
-          if (colorStr.includes('red')) colors.push('red');
-          if (colorStr.includes('pink')) colors.push('pink');
-          if (colorStr.includes('green')) colors.push('green');
-          if (colorStr.includes('yellow')) colors.push('yellow');
-          if (colorStr.includes('orange')) colors.push('orange');
-          if (colorStr.includes('purple')) colors.push('purple');
+          colors = rawColors.filter((c: string) => c && c !== 'unknown');
         }
         
-        // Remove 'unknown' from colors
-        colors = colors.filter(c => c && c !== 'unknown');
+        if (colors.length === 0 && p.color_family) {
+          const rawColors = Array.isArray(p.color_family) ? p.color_family : [p.color_family];
+          colors = rawColors.filter((c: string) => c && c !== 'unknown');
+        }
+        
+        // color 필드에서 확장 파서로 추출
+        if (colors.length === 0 && p.color) {
+          colors = parseColorsFromString(String(p.color));
+        }
+        
+        // 상품명에서도 색상 추출 시도
+        if (colors.length === 0) {
+          colors = parseColorsFromString(name);
+        }
+        
+        // 다중 색상이 너무 많으면 (4개 이상) 상품 이미지 참조로 전환
+        if (colors.length > 3) {
+          colors = []; // 이미지 참조로 대체
+        }
         
         // Build constraints array
         const constraints: string[] = [];
@@ -171,6 +213,9 @@ serve(async (req) => {
         // Add color constraint
         if (colors.length > 0) {
           constraints.push(`MUST be ${colors.join(' or ')} color ONLY`);
+        } else {
+          // 색상 정보 없으면 이미지 참조 지시
+          constraints.push(`match the EXACT color from product image #${idx + 1}`);
         }
         
         // Check for small_accessory (wallet, card holder, etc.)
@@ -182,7 +227,6 @@ serve(async (req) => {
                                  isCardWallet || isWallet;
         
         if (isSmallAccessory) {
-          // 카드지갑은 특히 작은 사이즈 강조
           if (isCardWallet) {
             constraints.push(`CRITICAL SIZE: This is a TINY card wallet - approximately 10cm x 7cm, about the size of a credit card. It should fit in ONE PALM. Do NOT render as a bag, purse, or handbag. Show it held between fingers or in a single hand, NOT slung over shoulder or arm.`);
           } else if (isWallet) {
@@ -193,12 +237,8 @@ serve(async (req) => {
           }
         }
         
-        if (constraints.length > 0) {
-          return `${brandPart}${name} (${constraints.join('; ')})`;
-        }
-        
-        return `${brandPart}${name}`;
-      }).join(', ');
+        return `${brandPart}${name} (${constraints.join('; ')})`;
+      }).join('\n');
     };
 
     const productsWithColors = buildProductsWithColors(productDetails, products);
@@ -393,7 +433,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors. If an item says "(MUST be white or black color ONLY)", you MUST use white or black, not red, yellow, or any other color.
+COLOR CRITICAL: Each item MUST be rendered in its EXACT real-world color. If a color is specified (e.g. "MUST be cream color ONLY"), use exactly that color. If an item says "match the EXACT color from product image #N", carefully look at the corresponding product image and reproduce its exact color and pattern. Do NOT guess or substitute colors - always refer to the product images provided below for accurate color reproduction.
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
 
@@ -411,7 +451,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
+COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is specified, use it. If it says "match from product image", refer to the product images for accurate color. Do NOT substitute colors.
 
 IMPORTANT: The child model should have a similar cute and adorable appearance inspired by the reference photo, but MUST maintain the correct age appearance (${ageInfo.minAge}-${ageInfo.maxAge} years old). Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Professional studio lighting, clean white background, high fashion editorial style for kids, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
       } else {
@@ -450,7 +490,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
+COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is specified, use it. If it says "match from product image", refer to the product images for accurate color. Do NOT substitute colors.
 
 IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, age appearance, and overall look. The body should reflect the specified build (${bodyDescription}). Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
@@ -564,7 +604,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
+COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is specified, use it. If it says "match from product image", refer to the product images for accurate color. Do NOT substitute colors.
 
 IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
         
