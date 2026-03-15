@@ -643,17 +643,50 @@ function calculatePhotoMatchScore(
   
   let score = 0;
   
-  // 2. 색상 매칭 (0.35)
+  // 2. 색상 매칭 (0.35) - 강화된 동의어 매핑
   let colorScore = 0;
-  // 직접 색상 매칭
-  if (analysisColor && (productColor.includes(analysisColor) || analysisColor.includes(productColor) || combined.includes(analysisColor))) {
+  
+  // 색상 동의어 그룹 (같은 그룹의 색상은 서로 매칭)
+  const COLOR_SYNONYMS: string[][] = [
+    ['브라운', 'brown', '갈색', '카멜', 'camel', '탄', 'tan', '카키', 'khaki', '초콜릿', 'chocolate', '코코아', 'cocoa', '토프', 'taupe', '모카', 'mocha', '월넛'],
+    ['네이비', 'navy', '남색', '진한파랑', '다크블루', 'dark blue', '인디고', 'indigo'],
+    ['올리브', 'olive', '올리브그린', 'olive green', '카키', 'khaki', '밀리터리그린'],
+    ['베이지', 'beige', '아이보리', 'ivory', '크림', 'cream', '오트밀', '누드', '샌드'],
+    ['블랙', 'black', '검정', '흑', '차콜', 'charcoal'],
+    ['화이트', 'white', '흰', '백', '오프화이트'],
+    ['레드', 'red', '빨강', '와인', 'wine', '버건디', 'burgundy', '마룬'],
+    ['그린', 'green', '녹색', '민트', 'mint', '에메랄드', '틸'],
+    ['블루', 'blue', '파랑', '스카이', 'sky', '코발트', '로열블루'],
+    ['옐로우', 'yellow', '노랑', '머스타드', 'mustard', '골드', 'gold', '밀색', 'wheat'],
+    ['핑크', 'pink', '분홍', '로즈', 'rose', '코랄', 'coral', '살몬'],
+    ['퍼플', 'purple', '보라', '라벤더', 'lavender', '바이올렛'],
+    ['그레이', 'gray', 'grey', '회색', '실버', 'silver'],
+    ['오렌지', 'orange', '주황', '테라코타', 'terracotta', '러스트', 'rust'],
+  ];
+  
+  function areColorsSimilar(c1: string, c2: string): boolean {
+    const l1 = c1.toLowerCase();
+    const l2 = c2.toLowerCase();
+    if (l1.includes(l2) || l2.includes(l1)) return true;
+    for (const group of COLOR_SYNONYMS) {
+      const has1 = group.some(g => l1.includes(g));
+      const has2 = group.some(g => l2.includes(g));
+      if (has1 && has2) return true;
+    }
+    return false;
+  }
+  
+  // 직접/동의어 색상 매칭
+  if (analysisColor && (areColorsSimilar(analysisColor, productColor) || areColorsSimilar(analysisColor, combined))) {
     colorScore = 1.0;
+  } else if (analysisColor && productColor && areColorsSimilar(analysisColor, productColor)) {
+    colorScore = 0.8;
   } else if (meta?.color_family) {
     // color_family 간접 매칭
     const productFamily = Array.isArray(meta.color_family) ? meta.color_family : [meta.color_family];
     for (const [family, keywords] of Object.entries(COLOR_FAMILY_MAP)) {
       if (productFamily.includes(family as any) && keywords.some(kw => analysisColor.includes(kw.toLowerCase()))) {
-        colorScore = 0.6;
+        colorScore = 0.5;
         break;
       }
     }
