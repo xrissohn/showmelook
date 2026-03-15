@@ -1937,7 +1937,7 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = hasPhotoAnalysis ? 8 : 12;  // 🔥 카테고리당 12개로 확대
+        const maxPerCategory = hasPhotoAnalysis ? 15 : 12;  // 📷 사진 매칭 시 15개로 확대
         
         // 상위 40개에서 랜덤 셔플 (기존 25 → 40)
         const topCandidates = catProducts.slice(0, 40);
