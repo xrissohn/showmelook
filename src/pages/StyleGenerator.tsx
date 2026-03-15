@@ -4164,6 +4164,8 @@ const StyleGenerator = () => {
         ageGroup: effectiveAgeGroup,
         stylePreferences: effectiveStylePrefs,
         profileName: selectedGenerationProfile?.full_name || userProfile?.full_name,
+        // 📷 사진 분석 구조화 데이터 직접 전달 (DB 직접 매칭용)
+        ...(styleImageAnalysis ? { photoAnalysisItems: styleImageAnalysis } : {}),
       }
     });
 
