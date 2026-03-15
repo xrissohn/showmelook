@@ -4026,7 +4026,8 @@ const StyleGenerator = () => {
           totalPrice: data.look.totalPrice || 0,
           autoSelectedTotal: data.look.autoSelectedTotal || 0,
           autoSelectedCount: data.look.autoSelectedCount || 0,
-          budget: data.look.budget || customBudget[0]
+          budget: data.look.budget || customBudget[0],
+          mode: data.mode || 'recommendation',
         });
 
         // 모든 추천 아이템을 기본 선택 상태로 (예산 무관)
