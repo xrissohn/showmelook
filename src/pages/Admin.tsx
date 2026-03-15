@@ -2224,10 +2224,6 @@ const Admin = () => {
                     {errorLogsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
                     새로고침
                   </Button>
-                  <Button variant="outline" onClick={clearOldErrorLogs}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    30일 이전 삭제
-                  </Button>
                 </div>
 
                 {/* Error Logs Table */}
