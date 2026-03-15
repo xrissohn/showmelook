@@ -1284,7 +1284,7 @@ const Admin = () => {
   };
 
   // Auto-run color analysis until all done
-  const colorAutoRunRef = React.useRef(false);
+  const colorAutoRunRef = useRef(false);
   const startColorAutoRun = async () => {
     setColorAutoRunning(true);
     colorAutoRunRef.current = true;
