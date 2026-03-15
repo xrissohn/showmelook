@@ -1927,7 +1927,7 @@ serve(async (req) => {
       });
     }
 
-    // ============= 🔥 Stage 2: Gemini Flash 최종 선택 (교차 Fallback) =============
+    // ============= 🔥 Stage 2: 사진 모드 = 직접 매칭 + AI 평가 / 텍스트 모드 = AI 추천 =============
     
     // GPT에 보낼 상품 목록 준비 - 다양성 극대화
     const getProductsForStage2 = () => {
@@ -1937,12 +1937,11 @@ serve(async (req) => {
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
         let selectedFromCat = 0;
-        const maxPerCategory = hasPhotoAnalysis ? 15 : 12;  // 📷 사진 매칭 시 15개로 확대
+        const maxPerCategory = hasPhotoAnalysis ? 15 : 12;
         
-        // 상위 40개에서 랜덤 셔플 (기존 25 → 40)
         const topCandidates = catProducts.slice(0, 40);
         const shuffledCandidates = hasPhotoAnalysis 
-          ? topCandidates  // 사진 매칭 점수순 유지
+          ? topCandidates
           : [...topCandidates].sort(() => Math.random() - 0.5);
         
         for (const p of shuffledCandidates) {
@@ -1951,7 +1950,6 @@ serve(async (req) => {
           const brand = p.brand || 'unknown';
           const brandCount = usedBrands.get(brand) || 0;
           
-          // 브랜드당 최대 2개로 다양성 확보
           if (brandCount < 2) {
             result.push(p);
             usedBrands.set(brand, brandCount + 1);
@@ -1965,60 +1963,160 @@ serve(async (req) => {
     
     const stage2Products = getProductsForStage2();
     console.log(`[style-recommend] Stage 2 상품 수: ${stage2Products.length}`);
-    
-    // 상품 컨텍스트 생성
-    const productListContext = stage2Products.map(p => {
-      const concepts = p.dna_meta?.concepts?.slice(0, 2).join('/') || '';
-      // color_family 배열 처리
-      const colorFamily = p.dna_meta?.color_family;
-      const colorFam = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
-      // 실제 색상도 포함 (AI가 색상 매칭에 활용)
-      const actualColor = p.color || '';
-      const colorInfo = actualColor ? `${actualColor}(${colorFam})` : colorFam;
-      const slot = p.dna_meta?.item_slot || 'unknown';
-      const newTag = isNewProduct(p.collected_at) ? '[NEW]' : '';
-      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}`;
-    }).join('\n');
-
-    // 📷 사진 분석 모드: Stage 2에 원본 사진 분석 컨텍스트 추가
-    let photoContextForStage2 = '';
-    if (hasPhotoAnalysis) {
-      const photoData = photoAnalysisItems as PhotoAnalysisData;
-      const itemDescriptions = photoData.items.map((item: PhotoAnalysisItem) => 
-        `${item.type === 'top' ? '상의' : item.type === 'bottom' ? '하의' : item.type === 'outer' ? '아우터' : item.type === 'shoes' ? '신발' : '액세서리'}: ${item.color} ${item.category} (${item.material}, ${item.fit}, ${item.pattern})`
-      ).join('\n');
-      
-      photoContextForStage2 = `
-🚨🚨🚨 **최우선 지시: 사진 매칭 모드 - 색상과 아이템 종류 일치가 최우선!**
-사용자가 참고 사진을 업로드했습니다. 아래 사진 속 아이템과 **가장 유사한** 상품을 반드시 선택하세요.
-
-📷 사진 속 아이템 (이 색상/카테고리와 일치하는 상품을 최우선 선택):
-${itemDescriptions}
-
-전체 스타일: ${photoData.overallStyle || ''}
-계절: ${photoData.season || ''} / TPO: ${photoData.tpo || ''}
-
-⚠️ 색상 일치 규칙 (필수):
-1. 사진에서 "브라운 코듀로이 팬츠"면 → 상품 목록에서 색상에 "브라운/갈색/카멜/탄" 등이 포함된 코듀로이 팬츠를 선택
-2. "네이비 블레이저"면 → 색상에 "네이비/남색/다크블루" 등이 포함된 블레이저/재킷을 선택
-3. "올리브 그린 폴로"면 → 색상에 "올리브/카키/그린" 등이 포함된 폴로 셔츠를 선택
-4. 정확한 색상의 상품이 없으면 가장 유사한 색상을 선택하되, 흰색/블랙 등 완전히 다른 색상은 절대 선택 금지!
-5. 아이템 종류도 최대한 일치: 블레이저→블레이저/재킷, 폴로→폴로/카라티, 코듀로이→코듀로이 등
-6. 항공점퍼 대신 블레이저가 요구되면 반드시 블레이저/재킷을 선택!
-`;
-    }
 
     let ragResponse: RAGStyleResponse | null = null;
     let apiCalls = { gpt5: 1, gemini: 0 };
+    let responseMode: 'evaluation' | 'recommendation' = 'recommendation';
     const stage2Start = Date.now();
     
-    if (LOVABLE_API_KEY && stage2Products.length > 0) {
+    // ============= 📷 사진 모드: 점수 기반 직접 매칭 + AI 평가 =============
+    if (hasPhotoAnalysis && LOVABLE_API_KEY) {
+      responseMode = 'evaluation';
+      console.log(`[style-recommend] 📷 사진 평가 모드: Stage 2 AI 추천 스킵, 점수 기반 직접 매칭`);
+      
+      const photoData = photoAnalysisItems as PhotoAnalysisData;
+      const directSelectedIds: string[] = [];
+      const usedSlots = new Set<string>();
+      
+      // 각 분석 아이템별 최고 점수 상품 직접 선택
+      for (const analysisItem of photoData.items) {
+        const targetSlot = analysisItem.type;
+        const priorityCat = targetSlot === 'top' ? '상의' 
+          : targetSlot === 'bottom' || targetSlot === 'set' ? '하의'
+          : targetSlot === 'outer' ? '아우터'
+          : targetSlot === 'shoes' ? '신발'
+          : '액세서리';
+        
+        if (usedSlots.has(priorityCat)) continue;
+        
+        // 전체 필터링된 상품에서 매칭 점수 계산
+        const scoredForItem = allProducts
+          .map(p => ({ product: p, score: calculatePhotoMatchScore(analysisItem, p) }))
+          .filter(sp => sp.score > 0.05)
+          .sort((a, b) => b.score - a.score);
+        
+        if (scoredForItem.length > 0) {
+          const best = scoredForItem[0];
+          directSelectedIds.push(best.product.id);
+          usedSlots.add(priorityCat);
+          console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}]: ${best.product.brand} ${best.product.name.slice(0, 25)} (score: ${best.score.toFixed(3)})`);
+        } else {
+          console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}]: 매칭 상품 없음 (${analysisItem.color} ${analysisItem.category})`);
+        }
+      }
+      
+      // AI 평가 호출 (상품 선택이 아닌 스타일 평가만)
+      const itemDescriptions = photoData.items.map((item: PhotoAnalysisItem) => 
+        `${item.type === 'top' ? '상의' : item.type === 'bottom' ? '하의' : item.type === 'outer' ? '아우터' : item.type === 'shoes' ? '신발' : '액세서리'}: ${item.color} ${item.category} (${item.material}, ${item.fit})`
+      ).join(', ');
+      
+      const selectedProductNames = directSelectedIds.map(id => {
+        const p = allProducts.find(ap => ap.id === id);
+        return p ? `${p.brand || ''} ${p.name.slice(0, 30)}` : '';
+      }).filter(Boolean).join(', ');
+      
+      let evaluationReasoning = '';
+      
+      try {
+        const evalResponse = await fetchWithRetry(
+          'https://ai.gateway.lovable.dev/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: stage2Primary,
+              messages: [
+                {
+                  role: 'system',
+                  content: `당신은 세계 최고의 패션 평론가이자 스타일 분석가입니다.
+사용자가 업로드한 패션 사진의 분석 결과를 보고, 해당 스타일에 대한 전문적인 평가를 해주세요.
+
+평가 규칙:
+1. 상품을 선택하거나 변경하지 마세요. 오직 평가만 하세요.
+2. 사진 속 인물의 외모는 절대 언급하지 마세요.
+3. 의류 아이템과 스타일링에 대해서만 평가하세요.
+4. 한국어로 자연스럽고 전문적으로 작성하세요.
+5. "~거든요", "~죠" 등 친근하지만 전문가다운 말투를 사용하세요.
+
+평가 포맷:
+★ 전체 스타일 완성도 (★~★★★★★)로 시작하고, 이어서:
+- 색상 조화 분석 (어떤 색상이 어떻게 어울리는지)
+- 시즌/TPO 적합성
+- 이 스타일의 강점
+- 업그레이드 팁 (더 멋지게 만들 수 있는 포인트 1-2개)
+
+200자 이상 작성하세요. 텍스트만 반환하세요 (JSON 아님).`
+                },
+                {
+                  role: 'user',
+                  content: `사진 속 스타일 분석 결과:
+아이템: ${itemDescriptions}
+전체 스타일: ${photoData.overallStyle || '캐주얼'}
+계절: ${photoData.season || '사계절'}
+TPO: ${photoData.tpo || '데일리'}
+
+DB에서 매칭된 유사 상품: ${selectedProductNames}
+
+이 스타일에 대해 전문적인 패션 평가를 해주세요.`
+                }
+              ],
+              max_tokens: 600,
+              temperature: 0.7,
+            }),
+          },
+          2
+        );
+        
+        if (evalResponse.ok) {
+          const evalData = await evalResponse.json();
+          evaluationReasoning = evalData.choices?.[0]?.message?.content?.trim() || '';
+          metrics.stage2Success = true;
+          apiCalls.gemini = 1;
+          console.log(`[style-recommend] 📷 AI 평가 완료: ${evaluationReasoning.slice(0, 80)}...`);
+        }
+      } catch (evalErr) {
+        console.error(`[style-recommend] 📷 AI 평가 실패:`, evalErr);
+      }
+      
+      if (!evaluationReasoning) {
+        evaluationReasoning = `★★★★☆ ${photoData.overallStyle || '캐주얼'} 스타일의 코디입니다. ` +
+          `${photoData.items.map((item: PhotoAnalysisItem) => `${item.color} ${item.category}`).join(', ')}의 조합이 ` +
+          `${photoData.season || '시즌'} ${photoData.tpo || '데일리'} 룩으로 잘 어울려요. ` +
+          `색상 톤의 조화가 안정감을 주고, 전체적으로 균형 잡힌 스타일링이에요.`;
+      }
+      
+      ragResponse = {
+        lookName: `${photoData.overallStyle || '스타일'} 분석 룩`,
+        styleConcept: `📷 ${photoData.overallStyle || '업로드 사진'} 스타일 평가`,
+        styleReasoning: evaluationReasoning,
+        selectedProductIds: directSelectedIds,
+        stylingTips: `사진 속 ${photoData.items.length}개 아이템을 분석하여 유사한 상품을 매칭했습니다.`,
+      };
+      
+      metrics.stage2Model = `${stage2Primary}_evaluation`;
+      
+    } else if (LOVABLE_API_KEY && stage2Products.length > 0) {
+      // ============= 텍스트 모드: 기존 Stage 2 AI 추천 (100% 유지) =============
+      
+      const productListContext = stage2Products.map(p => {
+        const concepts = p.dna_meta?.concepts?.slice(0, 2).join('/') || '';
+        const colorFamily = p.dna_meta?.color_family;
+        const colorFam = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
+        const actualColor = p.color || '';
+        const colorInfo = actualColor ? `${actualColor}(${colorFam})` : colorFam;
+        const slot = p.dna_meta?.item_slot || 'unknown';
+        const newTag = isNewProduct(p.collected_at) ? '[NEW]' : '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}`;
+      }).join('\n');
+
       // 1차: Primary 모델
-      const stage2Context = photoContextForStage2 + productListContext;
       ragResponse = await runStage2WithModel(
         stage2Primary,
         stage1Result,
-        stage2Context,
+        productListContext,
         userRequest,
         gender,
         ageGroupLabel,
@@ -2033,7 +2131,7 @@ ${itemDescriptions}
         ragResponse = await runStage2WithModel(
           stage2Backup,
           stage1Result,
-          stage2Context,
+          productListContext,
           userRequest,
           gender,
           ageGroupLabel,
