@@ -1169,8 +1169,8 @@ const Admin = () => {
       }
 
       setFeedbackStats({
-        totalProducts: scores?.length || 0,
-        withFeedback: scores?.filter(s => s.like_count > 0 || s.dislike_count > 0 || s.cart_count > 0).length || 0,
+        totalProducts: scores.length,
+        withFeedback: scores.filter(s => s.like_count > 0 || s.dislike_count > 0 || s.cart_count > 0).length,
         topLiked,
         topDisliked,
         styleWeights: allStyleWeights
