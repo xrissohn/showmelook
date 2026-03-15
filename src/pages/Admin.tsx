@@ -1115,7 +1115,7 @@ const Admin = () => {
       const topDisliked: Array<{ id: string; name: string; score: number; dislikeCount: number }> = [];
       const allStyleWeights: Record<string, { positive: number; negative: number }> = {};
 
-      if (scores && scores.length > 0) {
+      if (scores.length > 0) {
         // Get product names
         const productIds = scores.slice(0, 50).map(s => s.product_id);
         const { data: products } = await supabase
