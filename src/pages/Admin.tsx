@@ -211,6 +211,9 @@ const Admin = () => {
   } | null>(null);
   const [colorBatchSize, setColorBatchSize] = useState("20");
   const [colorUnknownCount, setColorUnknownCount] = useState(0);
+  const [colorAutoRunning, setColorAutoRunning] = useState(false);
+  const [colorAutoRunLog, setColorAutoRunLog] = useState<string[]>([]);
+  const [colorTotalUpdated, setColorTotalUpdated] = useState(0);
 
   // Feedback stats state (v4.0)
   const [feedbackStats, setFeedbackStats] = useState<{
