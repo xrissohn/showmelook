@@ -1938,10 +1938,13 @@ serve(async (req) => {
       const concepts = p.dna_meta?.concepts?.slice(0, 2).join('/') || '';
       // color_family 배열 처리
       const colorFamily = p.dna_meta?.color_family;
-      const color = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
+      const colorFam = Array.isArray(colorFamily) ? colorFamily.join('/') : (colorFamily || '');
+      // 실제 색상도 포함 (AI가 색상 매칭에 활용)
+      const actualColor = p.color || '';
+      const colorInfo = actualColor ? `${actualColor}(${colorFam})` : colorFam;
       const slot = p.dna_meta?.item_slot || 'unknown';
       const newTag = isNewProduct(p.collected_at) ? '[NEW]' : '';
-      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 25)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${color}${newTag ? '|' + newTag : ''}`;
+      return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}`;
     }).join('\n');
 
     // 📷 사진 분석 모드: Stage 2에 원본 사진 분석 컨텍스트 추가
