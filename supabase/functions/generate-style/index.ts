@@ -490,7 +490,7 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST be rendered in ONLY the specified colors. Do NOT change or substitute any colors.
+COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is specified, use it. If it says "match from product image", refer to the product images for accurate color. Do NOT substitute colors.
 
 IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, age appearance, and overall look. The body should reflect the specified build (${bodyDescription}). Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
 
