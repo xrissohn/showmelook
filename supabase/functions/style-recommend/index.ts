@@ -1284,22 +1284,35 @@ JSON만 응답:
     
     const startTime = Date.now();
     
+    // OpenAI 모델이면 직접 OpenAI API 호출, 아니면 Lovable AI Gateway
+    const isOpenAI = modelName.startsWith('openai/');
+    const apiUrl = isOpenAI
+      ? 'https://api.openai.com/v1/chat/completions'
+      : 'https://ai.gateway.lovable.dev/v1/chat/completions';
+    const apiKey = isOpenAI ? OPENAI_API_KEY : LOVABLE_API_KEY;
+    const actualModel = isOpenAI ? modelName.replace('openai/', '') : modelName;
+    
+    if (!apiKey) {
+      console.error(`[style-recommend] Stage 2: API key missing for ${modelName}`);
+      return null;
+    }
+
     const response = await fetch(
-      'https://ai.gateway.lovable.dev/v1/chat/completions',
+      apiUrl,
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: modelName,
+          model: actualModel,
           messages: [
             { role: 'system', content: stage2SystemPrompt },
             { role: 'user', content: stage2UserPrompt }
           ],
-          max_tokens: 1200, // 더 풍부한 설명을 위해 토큰 증가
-          temperature: 0.8, // 창의성 더 허용
+          max_tokens: 1200,
+          temperature: 0.8,
         }),
         signal: controller.signal,
       }
