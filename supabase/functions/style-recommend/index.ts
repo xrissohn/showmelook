@@ -1822,8 +1822,8 @@ serve(async (req) => {
     
     // ============= 점수 계산 및 카테고리 분류 =============
     
-    // 🎲 다양성을 위한 랜덤 시드 생성 (요청마다 다름)
-    const randomSeed = Date.now() % 1000;
+    // 🎲 다양성을 위한 강화된 랜덤 시드 (요청마다 크게 달라짐)
+    const randomSeed = Date.now() ^ (Math.random() * 0xFFFFFF | 0);
     
     const scoredProducts = allProducts.map(p => {
       const feedbackScore = p.feedback_score || 0.5;
@@ -1839,12 +1839,12 @@ serve(async (req) => {
       // 🆕 Freshness Boost: 신상품 가산점
       const freshnessBonus = calculateFreshnessBoost(p.collected_at);
       
-      // 🎲 랜덤 다양성 요소 추가 (0~0.15 범위의 랜덤 보너스)
+      // 🎲 강화된 랜덤 다양성 (0~0.25 범위) - 매 요청마다 완전히 다른 결과
       const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-      const diversityBonus = ((idHash + randomSeed) % 100) / 666;  // 0 ~ 0.15 범위
+      const diversityBonus = ((idHash ^ randomSeed) % 1000) / 4000;  // 0 ~ 0.25 범위
       
-      // 가중치 조정: feedback 0.25→0.20, formality 0.25→0.20, freshness 추가
-      const totalScore = (feedbackScore * 0.20) + (conceptScore * 0.35) + (formalityScore * 0.20) + freshnessBonus + diversityBonus;
+      // 가중치 조정: diversity 비중 강화
+      const totalScore = (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
       
       return { product: p, score: totalScore };
     });
