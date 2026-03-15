@@ -5097,7 +5097,7 @@ const StyleGenerator = () => {
               {/* 주관식 추천 결과 */}
               {customResult && (
                 <div className="space-y-4 sm:space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-700">
-                  {/* 스타일 컨셉 헤더 - 글래스모피즘 효과 */}
+                  {/* 스타일 컨셉 헤더 - 평가 모드와 추천 모드 분기 */}
                   <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-white/80 via-white/60 to-white/40 dark:from-card/80 dark:via-card/60 dark:to-card/40 backdrop-blur-xl border border-white/50 dark:border-white/10 p-4 sm:p-6 shadow-xl shadow-accent/5">
                     {/* 배경 장식 */}
                     <div className="absolute top-0 right-0 w-32 sm:w-40 h-32 sm:h-40 bg-gradient-to-br from-accent/20 to-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
@@ -5109,20 +5109,80 @@ const StyleGenerator = () => {
                         <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
                         </div>
-                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{customResult.mode === 'evaluation' ? 'AI 스타일 평가' : 'AI 스타일리스트 추천'}</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{customResult.mode === 'evaluation' ? '📷 AI 스타일 평가' : 'AI 스타일리스트 추천'}</span>
                       </div>
                       
                       {/* 타이틀 */}
                       <h3 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-3 sm:mb-4 leading-tight tracking-tight">
                         {customResult.styleConcept}
                       </h3>
-                      
-                      {/* 설명 - 카드 스타일 */}
-                      <div className="relative pl-3 sm:pl-4 border-l-2 border-accent/30">
-                        <p className="text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
-                          {customResult.styleReasoning}
-                        </p>
-                      </div>
+
+                      {/* 📷 평가 모드: 구조화된 전용 UI */}
+                      {customResult.mode === 'evaluation' ? (
+                        <div className="space-y-3">
+                          {/* 별점 추출 및 큰 표시 */}
+                          {(() => {
+                            const reasoning = customResult.styleReasoning || '';
+                            const starMatch = reasoning.match(/[★☆]{1,5}/);
+                            const stars = starMatch ? starMatch[0] : '★★★';
+                            const filledCount = (stars.match(/★/g) || []).length;
+                            const totalCount = Math.max(stars.length, 5);
+                            // 별점 이후 텍스트 (별점 줄 제거)
+                            const bodyText = reasoning
+                              .replace(/^[★☆\s]+/, '')
+                              .replace(/^\(.*?\)\s*/, '')
+                              .trim();
+
+                            return (
+                              <>
+                                {/* 별점 대형 표시 */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <div className="flex gap-0.5">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                      <span key={i} className={`text-lg sm:text-xl ${i < filledCount ? 'text-yellow-400' : 'text-muted-foreground/30'}`}>★</span>
+                                    ))}
+                                  </div>
+                                  <span className="text-sm font-bold text-foreground">{filledCount}/5</span>
+                                </div>
+
+                                {/* 평가 본문 - 섹션별 파싱 */}
+                                <div className="space-y-2 text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
+                                  {bodyText.split('\n').filter(line => line.trim()).map((line, i) => {
+                                    const trimmed = line.trim();
+                                    // 섹션 헤더 감지 (📋, 🎨, 💡, - 등)
+                                    const isHeader = /^(📋|🎨|💡|🌟|✨)/.test(trimmed);
+                                    const isBullet = /^[-•]/.test(trimmed);
+                                    
+                                    if (isHeader) {
+                                      return (
+                                        <div key={i} className="pt-1">
+                                          <span className="text-xs sm:text-sm font-semibold text-foreground">{trimmed}</span>
+                                        </div>
+                                      );
+                                    }
+                                    if (isBullet) {
+                                      return (
+                                        <div key={i} className="pl-2 flex gap-1.5 items-start">
+                                          <span className="text-accent mt-0.5 flex-shrink-0">•</span>
+                                          <span>{trimmed.replace(/^[-•]\s*/, '')}</span>
+                                        </div>
+                                      );
+                                    }
+                                    return <p key={i}>{trimmed}</p>;
+                                  })}
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        /* 추천 모드: 기존 UI 유지 */
+                        <div className="relative pl-3 sm:pl-4 border-l-2 border-accent/30">
+                          <p className="text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
+                            {customResult.styleReasoning}
+                          </p>
+                        </div>
+                      )}
                       
                       {/* 피드백 버튼 */}
                       <div className="mt-4 sm:mt-5 pt-4 border-t border-border/30">
