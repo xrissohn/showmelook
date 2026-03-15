@@ -2129,8 +2129,19 @@ serve(async (req) => {
       const directSelectedIds: string[] = [];
       const usedSlots = new Set<string>();
       
-       // 각 분석 아이템별 최고 점수 상품 직접 선택
-      for (const analysisItem of photoData.items) {
+       // 각 분석 아이템별 최고 점수 상품 직접 선택 (최대 4개)
+      const MAX_PHOTO_ITEMS = 4;
+      // 우선순위: 상의 > 하의 > 아우터 > 신발 > 액세서리
+      const SLOT_PRIORITY = ['top', 'bottom', 'outer', 'shoes', 'accessory', 'set'];
+      const sortedPhotoItems = [...photoData.items].sort((a, b) => {
+        const aIdx = SLOT_PRIORITY.indexOf(a.type);
+        const bIdx = SLOT_PRIORITY.indexOf(b.type);
+        return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+      });
+      
+      for (const analysisItem of sortedPhotoItems) {
+        if (directSelectedIds.length >= MAX_PHOTO_ITEMS) break; // 🔥 최대 4개 제한
+        
         const targetSlot = analysisItem.type;
         const priorityCat = targetSlot === 'top' ? '상의' 
           : targetSlot === 'bottom' || targetSlot === 'set' ? '하의'
@@ -2161,6 +2172,9 @@ serve(async (req) => {
           console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}]: 매칭 상품 없음 (${analysisItem.color} ${analysisItem.category}), 총 ${allProducts.length}개 검색`);
         }
       }
+      
+      console.log(`[style-recommend] 📷 직접 매칭 완료: ${directSelectedIds.length}개 선택 (최대 ${MAX_PHOTO_ITEMS}개)`);
+
       
       // AI 평가 호출 (상품 선택이 아닌 스타일 평가만)
       const itemDescriptions = photoData.items.map((item: PhotoAnalysisItem) => 
