@@ -1,4 +1,4 @@
-// style-recommend v7.0 - 세계 최고 패셔니스타 + 하이브리드 2단계 추론 + 교차 Fallback
+// style-recommend v8.0 - Lovable AI Gateway 통일 + 교차 Fallback
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -937,7 +937,6 @@ async function runStage1WithModel(
   ageGroupLabel: string,
   occasion: string,
   LOVABLE_API_KEY: string,
-  OPENAI_API_KEY?: string
 ): Promise<Stage1Result | null> {
   console.log(`[style-recommend] Stage 1: ${modelName} TPO 분석 시작...`);
   
@@ -992,17 +991,11 @@ JSON 응답:
     
     const startTime = Date.now();
     
-    // OpenAI 모델이면 직접 OpenAI API 호출, 아니면 Lovable AI Gateway
-    const isOpenAI = modelName.startsWith('openai/');
-    const apiUrl = isOpenAI
-      ? 'https://api.openai.com/v1/chat/completions'
-      : 'https://ai.gateway.lovable.dev/v1/chat/completions';
-    const apiKey = isOpenAI ? OPENAI_API_KEY : LOVABLE_API_KEY;
-    // OpenAI 모델명 변환: openai/gpt-5-mini → gpt-4o-mini 등
-    const actualModel = isOpenAI ? modelName.replace('openai/', '') : modelName;
+    // 모든 모델을 Lovable AI Gateway로 통일
+    const apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
     
-    if (!apiKey) {
-      console.error(`[style-recommend] Stage 1: API key missing for ${modelName}`);
+    if (!LOVABLE_API_KEY) {
+      console.error(`[style-recommend] Stage 1: LOVABLE_API_KEY missing`);
       return null;
     }
 
@@ -1011,11 +1004,11 @@ JSON 응답:
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: actualModel,
+          model: modelName,
           messages: [
             { role: 'system', content: stage1SystemPrompt },
             { role: 'user', content: stage1UserPrompt }
@@ -1163,7 +1156,6 @@ async function runStage2WithModel(
   ageGroupLabel: string,
   occasion: string,
   LOVABLE_API_KEY: string,
-  OPENAI_API_KEY?: string
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
@@ -1284,16 +1276,11 @@ JSON만 응답:
     
     const startTime = Date.now();
     
-    // OpenAI 모델이면 직접 OpenAI API 호출, 아니면 Lovable AI Gateway
-    const isOpenAI = modelName.startsWith('openai/');
-    const apiUrl = isOpenAI
-      ? 'https://api.openai.com/v1/chat/completions'
-      : 'https://ai.gateway.lovable.dev/v1/chat/completions';
-    const apiKey = isOpenAI ? OPENAI_API_KEY : LOVABLE_API_KEY;
-    const actualModel = isOpenAI ? modelName.replace('openai/', '') : modelName;
+    // 모든 모델을 Lovable AI Gateway로 통일
+    const apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
     
-    if (!apiKey) {
-      console.error(`[style-recommend] Stage 2: API key missing for ${modelName}`);
+    if (!LOVABLE_API_KEY) {
+      console.error(`[style-recommend] Stage 2: LOVABLE_API_KEY missing`);
       return null;
     }
 
@@ -1302,11 +1289,11 @@ JSON만 응답:
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: actualModel,
+          model: modelName,
           messages: [
             { role: 'system', content: stage2SystemPrompt },
             { role: 'user', content: stage2UserPrompt }
@@ -1453,7 +1440,7 @@ serve(async (req) => {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    // OPENAI_API_KEY는 더 이상 사용하지 않음 - 모든 AI 호출은 Lovable AI Gateway 경유
     const LINKPRICE_AFFILIATE_ID = Deno.env.get('LINKPRICE_AFFILIATE_ID') || 'A100915488';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -1606,7 +1593,7 @@ serve(async (req) => {
       metrics.stage1Success = true;
       metrics.stage1Model = 'photo_analysis_skip';
       console.log(`[style-recommend] 📷 Stage 1 스킵 - 사진 분석 결과 직접 사용: ${stage1Result.reasoning}`);
-    } else if (LOVABLE_API_KEY || OPENAI_API_KEY) {
+    } else if (LOVABLE_API_KEY) {
       // 1차: Primary 모델
       stage1Result = await runStage1WithModel(
         stage1Primary,
@@ -1614,8 +1601,7 @@ serve(async (req) => {
         gender,
         ageGroupLabel,
         occasion,
-        LOVABLE_API_KEY || '',
-        OPENAI_API_KEY || undefined
+        LOVABLE_API_KEY,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -1628,8 +1614,7 @@ serve(async (req) => {
           gender,
           ageGroupLabel,
           occasion,
-          LOVABLE_API_KEY || '',
-          OPENAI_API_KEY || undefined
+          LOVABLE_API_KEY,
         );
         
         if (stage1Result) {
@@ -1984,7 +1969,7 @@ ${itemDescriptions}
     let apiCalls = { gpt5: 1, gemini: 0 };
     const stage2Start = Date.now();
     
-    if ((LOVABLE_API_KEY || OPENAI_API_KEY) && stage2Products.length > 0) {
+    if (LOVABLE_API_KEY && stage2Products.length > 0) {
       // 1차: Primary 모델
       const stage2Context = photoContextForStage2 + productListContext;
       ragResponse = await runStage2WithModel(
@@ -1995,8 +1980,7 @@ ${itemDescriptions}
         gender,
         ageGroupLabel,
         occasion,
-        LOVABLE_API_KEY || '',
-        OPENAI_API_KEY || undefined
+        LOVABLE_API_KEY,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -2011,8 +1995,7 @@ ${itemDescriptions}
           gender,
           ageGroupLabel,
           occasion,
-          LOVABLE_API_KEY || '',
-          OPENAI_API_KEY || undefined
+          LOVABLE_API_KEY,
         );
         
         if (ragResponse) {
