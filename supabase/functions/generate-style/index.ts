@@ -1,6 +1,144 @@
-// generate-style v2.1 - with error logging and retry logic
+// generate-style v3.0 - with generation-time tag anchors
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// ===== Rule-based Tag Position Anchor System =====
+// 생성 시점에 카테고리 + 레이어 순서를 활용한 정밀 body-zone 매핑
+interface TagPosition {
+  category: string;
+  x: number;
+  y: number;
+  confidence: number;
+  source: 'generation';
+}
+
+const BODY_ZONE_MAP: Record<string, { x: number; y: number }> = {
+  '모자': { x: 50, y: 5 },
+  '헤어': { x: 50, y: 5 },
+  '마스크': { x: 50, y: 18 },
+  '귀걸이': { x: 35, y: 12 },
+  '피어싱': { x: 38, y: 12 },
+  '펜던트': { x: 50, y: 20 },
+  '목걸이': { x: 50, y: 20 },
+  '아우터': { x: 50, y: 30 },
+  '상의': { x: 50, y: 33 },
+  '원피스': { x: 50, y: 42 },
+  '점프수트': { x: 50, y: 42 },
+  '하의': { x: 50, y: 62 },
+  '신발': { x: 50, y: 90 },
+  '가방': { x: 25, y: 50 },
+  '숄더백': { x: 22, y: 42 },
+  '크로스백': { x: 25, y: 50 },
+  '쇼퍼백': { x: 22, y: 50 },
+  '백팩': { x: 50, y: 35 },
+  '지갑': { x: 72, y: 58 },
+  '액세서리': { x: 30, y: 55 },
+  '시계': { x: 25, y: 55 },
+  '팔찌': { x: 25, y: 58 },
+  '반지': { x: 28, y: 60 },
+  '장갑': { x: 22, y: 62 },
+  '패션잡화': { x: 70, y: 50 },
+};
+
+function normalizeCategoryForAnchor(category: string, subCategory?: string, productName?: string): string {
+  const lower = (category || '').toLowerCase();
+  const subLower = (subCategory || '').toLowerCase();
+  const nameLower = (productName || '').toLowerCase();
+
+  if (['마스크', 'mask', '바라클라바', '넥워머'].some(k => nameLower.includes(k) || subLower.includes(k) || lower.includes(k))) return '마스크';
+  if (['모자', 'hat', 'cap', 'beanie', '버킷햇', '비니'].some(k => subLower.includes(k) || lower.includes(k))) return '모자';
+  if (['아우터', 'outer', 'jacket', 'coat', '재킷', '점퍼', '패딩'].some(k => lower.includes(k))) return '아우터';
+  if (['top', '상의', 'shirt', 'blouse', 'sweater', '여성의류', '패션의류', '티셔츠', '니트'].some(k => lower.includes(k))) return '상의';
+  if (['dress', '원피스'].some(k => lower.includes(k))) return '원피스';
+  if (['점프수트', 'jumpsuit'].some(k => lower.includes(k))) return '점프수트';
+  if (['bottom', '하의', 'pants', 'skirt', 'jeans', '바지', '스커트'].some(k => lower.includes(k))) return '하의';
+  if (['shoes', '신발', 'sneaker', 'boot', '운동화', '스니커즈', '샌들', '로퍼', '슬립온'].some(k => lower.includes(k) || subLower.includes(k))) return '신발';
+  if (['숄더백'].some(k => lower.includes(k) || subLower.includes(k))) return '숄더백';
+  if (['크로스백'].some(k => lower.includes(k) || subLower.includes(k))) return '크로스백';
+  if (['쇼퍼백', 'tote'].some(k => lower.includes(k) || subLower.includes(k))) return '쇼퍼백';
+  if (['백팩', 'backpack'].some(k => lower.includes(k) || subLower.includes(k))) return '백팩';
+  if (['bag', '가방', 'clutch'].some(k => lower.includes(k) || subLower.includes(k))) return '가방';
+  if (['지갑', 'wallet'].some(k => lower.includes(k) || subLower.includes(k))) return '지갑';
+  if (['귀걸이', 'earring'].some(k => lower.includes(k) || subLower.includes(k))) return '귀걸이';
+  if (['펜던트', 'pendant', 'necklace', '목걸이'].some(k => lower.includes(k) || subLower.includes(k))) return '펜던트';
+  if (['시계', 'watch'].some(k => lower.includes(k) || subLower.includes(k))) return '시계';
+  if (['팔찌', 'bracelet'].some(k => lower.includes(k) || subLower.includes(k))) return '팔찌';
+  if (['장갑', 'glove'].some(k => lower.includes(k) || subLower.includes(k))) return '장갑';
+  if (['accessory', '액세서리', 'jewelry', '패션잡화', '반지'].some(k => lower.includes(k) || subLower.includes(k))) return '액세서리';
+  return category;
+}
+
+// 레이어 우선순위 (낮을수록 안쪽/먼저 배치)
+const LAYER_ORDER: Record<string, number> = {
+  '모자': 0, '헤어': 0,
+  '귀걸이': 1, '피어싱': 1, '펜던트': 2, '목걸이': 2,
+  '마스크': 2,
+  '상의': 3, '원피스': 3, '점프수트': 3,
+  '아우터': 4,
+  '하의': 5,
+  '시계': 6, '팔찌': 6, '반지': 6, '장갑': 6,
+  '가방': 7, '숄더백': 7, '크로스백': 7, '쇼퍼백': 7, '백팩': 7,
+  '지갑': 8,
+  '액세서리': 8, '패션잡화': 8,
+  '신발': 9,
+};
+
+function buildTagPositions(productDetails: any[]): TagPosition[] {
+  if (!productDetails || productDetails.length === 0) return [];
+
+  const positions: TagPosition[] = [];
+  const categoryCount: Record<string, number> = {};
+
+  // 레이어 순서로 정렬
+  const sorted = [...productDetails].sort((a, b) => {
+    const catA = normalizeCategoryForAnchor(a.category, a.sub_category, a.name);
+    const catB = normalizeCategoryForAnchor(b.category, b.sub_category, b.name);
+    return (LAYER_ORDER[catA] ?? 10) - (LAYER_ORDER[catB] ?? 10);
+  });
+
+  for (const product of sorted) {
+    const cat = normalizeCategoryForAnchor(product.category, product.sub_category, product.name);
+    const idx = categoryCount[cat] || 0;
+    categoryCount[cat] = idx + 1;
+
+    const base = BODY_ZONE_MAP[cat] || { x: 50, y: 50 };
+    
+    // 같은 카테고리 여러 개: 좌우/상하 오프셋 분배
+    const offsets = [
+      { x: 0, y: 0 },
+      { x: 18, y: 5 },
+      { x: -18, y: 5 },
+      { x: 12, y: -8 },
+    ];
+    const offset = offsets[idx % offsets.length];
+
+    let x = base.x + offset.x;
+    let y = base.y + offset.y;
+
+    // 충돌 회피: 기존 위치와 너무 가까우면 오프셋
+    for (const existing of positions) {
+      const dist = Math.sqrt(Math.pow(x - existing.x, 2) + Math.pow(y - existing.y, 2));
+      if (dist < 10) {
+        x += 15;
+        y += 5;
+      }
+    }
+
+    // 클램핑
+    x = Math.min(90, Math.max(10, x));
+    y = Math.min(95, Math.max(3, y));
+
+    positions.push({
+      category: cat,
+      x: Math.round(x * 10) / 10,
+      y: Math.round(y * 10) / 10,
+      confidence: 0.85,
+      source: 'generation',
+    });
+  }
+
+  return positions;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -812,12 +950,14 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         Date.now() - startTime
       );
       
+      const fallbackTagPositions = buildTagPositions(productDetails || []);
       return new Response(
         JSON.stringify({
           success: true,
           imageUrl: generatedImage,
           style: style,
-          productIds: productIds
+          productIds: productIds,
+          tagPositions: fallbackTagPositions,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -894,6 +1034,10 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
       }
     }
 
+    // ===== 생성 시점 태그 위치 anchor 계산 =====
+    const tagPositions = buildTagPositions(productDetails || []);
+    console.log(`[generate-style] Tag positions generated: ${tagPositions.length} items`);
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -901,7 +1045,8 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         storagePath: fileName,
         style: style,
         productIds: productIds,
-        executionTime: totalTime
+        executionTime: totalTime,
+        tagPositions: tagPositions,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
