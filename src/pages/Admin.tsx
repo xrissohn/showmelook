@@ -848,12 +848,11 @@ const Admin = () => {
         });
       }
 
-      // 카테고리 목록 조회 (최근 1000개 기준)
-      const { data: categoryData } = await supabase
-        .from('products_cache')
-        .select('category')
-        .eq('is_active', true)
-        .limit(1000);
+      // 카테고리 목록 조회 (전체 상품 대상 - 페이지네이션)
+      const categoryData = await fetchAllRows<{ category: string }>(
+        'products_cache', 'category',
+        (q) => q.eq('is_active', true)
+      );
 
       const byCategory: Record<string, number> = {};
       const categoryList: string[] = [];
