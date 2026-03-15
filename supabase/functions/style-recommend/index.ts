@@ -1628,7 +1628,8 @@ serve(async (req) => {
           gender,
           ageGroupLabel,
           occasion,
-          LOVABLE_API_KEY
+          LOVABLE_API_KEY || '',
+          OPENAI_API_KEY || undefined
         );
         
         if (stage1Result) {
