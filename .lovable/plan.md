@@ -1,85 +1,64 @@
 
-# 사진 업로드 -> AI 스타일 분석 -> 유사 스타일 추천 기능
 
-## 개요
-사용자가 참고할 패션 사진을 업로드하면 AI가 해당 사진의 스타일을 분석하여 텍스트 프롬프트로 변환하고, 기존 `style-recommend` 파이프라인에 자연스럽게 연결하는 기능.
+# Admin 페이지 정리 및 자동화 계획
 
-## 구현 구조
+## 요약
+16개 탭 → 13개 탭으로 축소. 부하테스트/Rate Limiter 삭제, 처리량+추론 통합, DNA 배치/에러정리/캐시정리 자동화. 쿠팡 리포트와 카페24 유지.
 
-```text
-[사진 업로드] --> [analyze-style-image Edge Function] --> 스타일 설명 텍스트
-                                                              |
-                                                              v
-                                               [customStylePrompt에 자동 입력]
-                                                              |
-                                                              v
-                                               [기존 style-recommend 호출]
-```
+---
 
-## 변경 파일
+## 1. 삭제할 탭 (2개)
 
-### 1. 새 Edge Function: `supabase/functions/analyze-style-image/index.ts`
+| 탭 | 이유 |
+|---|---|
+| **부하 테스트** (`loadtest`) | 개발 전용 |
+| **Rate Limiter** (`ratelimit`) | 개발/디버깅 전용 |
 
-- 사용자가 업로드한 이미지 URL(base64 data URL 또는 public URL)을 받아 Gemini 2.5 Flash로 분석
-- 프롬프트: "이 패션 사진의 스타일을 한국어로 자연스럽게 설명해줘. 의류 종류, 색상, 분위기, 계절감, TPO 등을 포함해서 2-3문장으로."
-- 응답 예시: `"오버사이즈 베이지 니트에 와이드 데님 팬츠, 미니멀하고 편안한 가을 데일리룩. 뉴트럴 톤 중심의 캐주얼 스타일."`
-- 모델: `google/gemini-2.5-flash` (비용 최소, 이미지 분석 지원)
-- LOVABLE_API_KEY 사용 (추가 키 불필요)
+삭제 대상 컴포넌트 파일:
+- `src/components/admin/LoadTestPanel.tsx`
+- `src/components/admin/TokenBucketMonitor.tsx`
 
-### 2. 프론트엔드: `src/pages/StyleGenerator.tsx`
+## 2. 통합할 탭 (2→1)
 
-스타일 프롬프트 Textarea 영역(라인 4720 부근)에 사진 업로드 버튼 추가:
+**처리량 분석 + 추론 성능 → "성능 분석" 단일 탭**
+- `ThroughputAnalytics`와 `InferenceMetricsPanel`을 하나의 탭에 상하 배치
 
-- 카메라/이미지 아이콘 버튼 추가 (Textarea 우측 상단 또는 하단)
-- 클릭 시 `<input type="file" accept="image/*">` 트리거
-- 이미지 선택 -> base64로 변환 -> `analyze-style-image` Edge Function 호출
-- 분석 결과를 `customStylePrompt`에 자동 입력
-- 분석 중 로딩 표시 (스피너 + "사진 분석 중...")
-- 업로드된 이미지 미리보기 썸네일 표시
-- 분석 실패 시 토스트 에러 메시지
+## 3. 자동화 전환 (수동 버튼 → pg_cron)
 
-UI 변경:
-- Textarea 위에 작은 배너/버튼: `📷 사진으로 스타일 찾기`
-- 이미지 업로드 후 썸네일 + X 버튼으로 제거 가능
-- 분석 완료 시 Textarea에 텍스트 자동 채워짐 + "AI가 분석한 스타일입니다" 안내
+| 기능 | 현재 | 변경 |
+|---|---|---|
+| DNA 배치 생성 | DNA 탭에서 수동 버튼 | `pg_cron` 10분 주기 자동 (batchSize: 50) |
+| 에러 로그 30일 삭제 | 에러 탭에서 수동 버튼 | `pg_cron` 매일 00:00 자동 |
+| 추천 캐시 정리 | 관리도구 탭에서 수동 버튼 | `pg_cron` 매일 01:00 자동 |
 
-### 3. `supabase/config.toml` 업데이트
+## 4. 간소화할 탭
 
-```toml
-[functions.analyze-style-image]
-verify_jwt = false
-```
+### DNA 관리 탭
+- **제거**: DNA 배치 생성 수동 버튼/셀렉트 (자동화됨)
+- **유지**: DNA 커버리지 통계 + 피드백 학습 현황 (읽기 전용)
 
-## 기술 세부사항
+### 관리도구 탭
+- **제거**: "추천 캐시 정리" 버튼 (자동화됨)
+- **유지**: 일일 생성 횟수 초기화 + 상품 통계
 
-### Edge Function 구현
+### 에러 로그 탭
+- **제거**: "30일 이전 삭제" 버튼 (자동화됨)
+- **유지**: 에러 모니터링 + 새로고침
 
-```text
-POST /analyze-style-image
-Body: { image_data: "data:image/jpeg;base64,..." }
-Response: { success: true, description: "오버사이즈 니트에 와이드 데님..." }
-```
+## 5. 쿠팡 리포트 수정
+- 현재 `TabsTrigger`는 존재하지만 이전에 누락 여부 확인 → 코드상 정상 존재 확인됨 (line 1369-1372, TabsContent line 2719-2721)
 
-- base64 이미지를 Gemini vision에 전달
-- 최대 이미지 크기: 5MB (프론트에서 리사이즈)
-- 응답 시간: 약 2-3초 (Flash 모델)
-- 에러 처리: 429/402 Rate Limit 핸들링 포함
+## 6. 최종 탭 구성 (13개)
 
-### 프론트엔드 이미지 처리
+1. 제품 등록 | 2. DNA/피드백 (통계만) | 3. AI 추천 | 4. 딥링크
+5. 등록 대기 | 6. 이미지 관리 | 7. 상품 관리 | 8. 사용자 관리
+9. 에러 로그 | 10. 생성 큐 | 11. 성능 분석 (통합) | 12. 관리도구 (간소화)
+13. 카페24 | 14. 쿠팡 리포트
 
-- FileReader로 base64 변환
-- 큰 이미지는 canvas로 리사이즈 (최대 1024px)
-- 미리보기 표시용 Object URL 생성
-- 상태: `styleImageFile`, `styleImagePreview`, `isAnalyzingImage`
+## 7. 변경 파일 목록
 
-## 비용 영향
-- Gemini 2.5 Flash 이미지 분석: 요청당 약 0.1~0.3원 (KRW)
-- 기존 style-recommend 비용에 추가되는 금액 무시 가능 수준
+- `src/pages/Admin.tsx` — 탭 삭제/통합/간소화, import 정리, 관련 state/함수 제거
+- `src/components/admin/LoadTestPanel.tsx` — 삭제
+- `src/components/admin/TokenBucketMonitor.tsx` — 삭제
+- DB: `pg_cron` 3개 스케줄 등록 (dna-batch, cleanup-errors, cleanup-cache)
 
-## 사용자 흐름
-1. "스타일 설정" 영역에서 `📷 사진으로 스타일 찾기` 클릭
-2. 갤러리/카메라에서 참고 사진 선택
-3. 썸네일 표시 + "AI 분석 중..." 로딩 (2-3초)
-4. 분석 완료: Textarea에 스타일 설명 자동 입력
-5. 사용자가 필요시 텍스트 수정 가능
-6. "스타일 추천 받기" 버튼으로 기존 플로우 진행
