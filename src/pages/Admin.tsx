@@ -198,23 +198,7 @@ const Admin = () => {
   } | null>(null);
   const [dnaBatchSize, setDnaBatchSize] = useState("50");
   
-  // Color analysis state
-  const [isColorAnalyzing, setIsColorAnalyzing] = useState(false);
-  const [colorAnalysisResult, setColorAnalysisResult] = useState<{
-    success: boolean;
-    processed?: number;
-    updated?: number;
-    failed?: number;
-    colorDistribution?: Record<string, number>;
-    error?: string;
-    dryRun?: boolean;
-  } | null>(null);
-  const [colorBatchSize, setColorBatchSize] = useState("20");
-  const [colorUnknownCount, setColorUnknownCount] = useState(0);
-  const [colorAutoRunning, setColorAutoRunning] = useState(false);
-  const [colorAutoRunLog, setColorAutoRunLog] = useState<string[]>([]);
-  const [colorTotalUpdated, setColorTotalUpdated] = useState(0);
-
+  
   // Feedback stats state (v4.0)
   const [feedbackStats, setFeedbackStats] = useState<{
     totalProducts: number;
