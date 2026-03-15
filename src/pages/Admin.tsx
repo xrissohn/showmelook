@@ -303,24 +303,26 @@ const Admin = () => {
   // Error logs functions
   const loadErrorLogStats = async () => {
     try {
-      const { data, error } = await supabase
+      // Use count for total, and paginate for breakdown
+      const { count: totalCount } = await supabase
         .from('error_logs')
-        .select('function_name, error_code')
-        .order('created_at', { ascending: false })
-        .limit(500);
-      
-      if (error) throw error;
+        .select('*', { count: 'exact', head: true });
+
+      const allLogs = await fetchAllRows<{ function_name: string; error_code: string | null }>(
+        'error_logs', 'function_name, error_code',
+        (q) => q.order('created_at', { ascending: false })
+      );
       
       const byFunction: Record<string, number> = {};
       const byCode: Record<string, number> = {};
       
-      data?.forEach(log => {
+      allLogs.forEach(log => {
         byFunction[log.function_name] = (byFunction[log.function_name] || 0) + 1;
         const code = log.error_code || 'UNKNOWN';
         byCode[code] = (byCode[code] || 0) + 1;
       });
       
-      setErrorLogStats({ total: data?.length || 0, byFunction, byCode });
+      setErrorLogStats({ total: totalCount || allLogs.length, byFunction, byCode });
     } catch (error) {
       console.error('Error loading error log stats:', error);
     }
