@@ -5119,7 +5119,7 @@ const StyleGenerator = () => {
                       {/* 피드백 버튼 */}
                       <div className="mt-4 sm:mt-5 pt-4 border-t border-border/30">
                         <p className="text-xs sm:text-sm text-muted-foreground font-korean mb-2 sm:mb-3">
-                          이 추천이 마음에 드시나요?
+                          {customResult.mode === 'evaluation' ? '이 평가가 도움이 되셨나요?' : '이 추천이 마음에 드시나요?'}
                         </p>
                         <div className="flex gap-2 sm:gap-3">
                           <button
