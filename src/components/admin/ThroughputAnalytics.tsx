@@ -77,7 +77,7 @@ export const ThroughputAnalytics = () => {
       const hourlyMap = new Map<string, { completed: number; failed: number; totalTimeMs: number; count: number }>();
       const dailyMap = new Map<string, { completed: number; failed: number; totalTimeMs: number; count: number }>();
 
-      jobs?.forEach(job => {
+      jobs.forEach(job => {
         const createdAt = new Date(job.created_at);
         const hourKey = createdAt.toISOString().slice(0, 13) + ':00';
         const dayKey = createdAt.toISOString().slice(0, 10);

@@ -95,13 +95,10 @@ export function CoupangDailyReportPanel() {
 
   const loadStats = async () => {
     try {
-      const { data, error } = await supabase
-        .from('coupang_daily_reports')
-        .select('*')
-        .order('report_date', { ascending: false })
-        .limit(500);
-
-      if (error) throw error;
+      const data = await fetchAllRows<DailyReportRow>(
+        'coupang_daily_reports', '*',
+        (q: ReturnType<typeof supabase.from>) => q.order('report_date', { ascending: false })
+      );
 
       const statsResult: ReportStats = {
         total: data?.length || 0,
