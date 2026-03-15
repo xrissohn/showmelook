@@ -24,8 +24,6 @@ import { ProductDetailEditor } from "@/components/admin/ProductDetailEditor";
 
 import { UserManagementPanel } from "@/components/admin/UserManagementPanel";
 import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
-import { TokenBucketMonitor } from "@/components/admin/TokenBucketMonitor";
-import { LoadTestPanel } from "@/components/admin/LoadTestPanel";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
