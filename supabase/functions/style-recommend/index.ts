@@ -1293,7 +1293,7 @@ JSON만 응답:
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: actualModel,
+          model: modelName,
           messages: [
             { role: 'system', content: stage2SystemPrompt },
             { role: 'user', content: stage2UserPrompt }
