@@ -1593,7 +1593,7 @@ serve(async (req) => {
       metrics.stage1Success = true;
       metrics.stage1Model = 'photo_analysis_skip';
       console.log(`[style-recommend] 📷 Stage 1 스킵 - 사진 분석 결과 직접 사용: ${stage1Result.reasoning}`);
-    } else if (LOVABLE_API_KEY || OPENAI_API_KEY) {
+    } else if (LOVABLE_API_KEY) {
       // 1차: Primary 모델
       stage1Result = await runStage1WithModel(
         stage1Primary,
@@ -1601,8 +1601,7 @@ serve(async (req) => {
         gender,
         ageGroupLabel,
         occasion,
-        LOVABLE_API_KEY || '',
-        OPENAI_API_KEY || undefined
+        LOVABLE_API_KEY,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
