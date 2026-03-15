@@ -1485,9 +1485,11 @@ serve(async (req) => {
       console.log(`[style-recommend] 📷 Photo analysis mode: ${photoAnalysisItems.items.length} items detected`);
     }
 
-    // ============= PHASE 1: 캐시 체크 =============
+    // ============= PHASE 1: 캐시 체크 (다양성 위해 비활성화 - 매번 새로운 추천) =============
+    // 🔥 forceRefresh가 false여도 매 요청마다 새로운 추천을 생성하여 다양성 극대화
+    const skipCache = true; // Always generate fresh recommendations
     
-    if (!forceRefresh && !hasPhotoAnalysis) {
+    if (!skipCache && !forceRefresh && !hasPhotoAnalysis) {
       const { data: cachedLook } = await supabase
         .from('style_cache')
         .select('*')
