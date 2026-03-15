@@ -1099,12 +1099,16 @@ const Admin = () => {
   const loadFeedbackStats = async () => {
     setIsFeedbackLoading(true);
     try {
-      // Load product feedback scores
-      const { data: scores } = await supabase
-        .from('product_feedback_scores')
-        .select('*')
-        .order('overall_score', { ascending: false })
-        .limit(200);
+      // Load ALL product feedback scores (paginated)
+      const scores = await fetchAllRows<{
+        product_id: string; like_count: number; dislike_count: number;
+        cart_count: number; purchase_count: number; click_count: number;
+        overall_score: number; style_weights: unknown;
+      }>(
+        'product_feedback_scores', '*',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (q: any) => q.order('overall_score', { ascending: false })
+      );
 
       // Load product names for top items
       const topLiked: Array<{ id: string; name: string; score: number; likeCount: number }> = [];
