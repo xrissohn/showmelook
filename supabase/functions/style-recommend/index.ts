@@ -991,17 +991,11 @@ JSON 응답:
     
     const startTime = Date.now();
     
-    // OpenAI 모델이면 직접 OpenAI API 호출, 아니면 Lovable AI Gateway
-    const isOpenAI = modelName.startsWith('openai/');
-    const apiUrl = isOpenAI
-      ? 'https://api.openai.com/v1/chat/completions'
-      : 'https://ai.gateway.lovable.dev/v1/chat/completions';
-    const apiKey = isOpenAI ? OPENAI_API_KEY : LOVABLE_API_KEY;
-    // OpenAI 모델명 변환: openai/gpt-5-mini → gpt-4o-mini 등
-    const actualModel = isOpenAI ? modelName.replace('openai/', '') : modelName;
+    // 모든 모델을 Lovable AI Gateway로 통일
+    const apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
     
-    if (!apiKey) {
-      console.error(`[style-recommend] Stage 1: API key missing for ${modelName}`);
+    if (!LOVABLE_API_KEY) {
+      console.error(`[style-recommend] Stage 1: LOVABLE_API_KEY missing`);
       return null;
     }
 
