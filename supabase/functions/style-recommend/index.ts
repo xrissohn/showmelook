@@ -1426,8 +1426,7 @@ ${isFormalOccasion
 - **상품 목록에 없는 브랜드(몽클레어, 캉골, 구찌, 발렌시아가 등)는 절대 언급 금지!**
 - 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/outer/shoes/bag)
 - selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!
-- styleReasoning에서 언급하는 모든 브랜드/상품은 selectedProductIds에 해당하는 것만!
-- styleReasoning은 최소 200자 이상, 풍부하고 전문적으로 작성하세요
+- styleReasoning은 150~250자로 간결하게! (오프닝 → 코디 포인트 → 팁 → 마무리)
 - "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
 
 JSON만 응답:
