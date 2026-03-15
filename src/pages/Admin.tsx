@@ -1163,32 +1163,6 @@ const Admin = () => {
     }
   };
 
-  const runDnaBatch = async () => {
-    setIsDnaLoading(true);
-    setDnaBatchResult(null);
-
-    try {
-      const { data, error } = await supabase.functions.invoke('dna-batch', {
-        body: { batchSize: parseInt(dnaBatchSize) || 50 },
-      });
-
-      if (error) throw error;
-      setDnaBatchResult(data);
-      
-      if (data.success) {
-        toast({ title: "DNA 2.0 생성 완료", description: `${data.updated}개 상품 처리됨, ${data.remaining}개 남음` });
-        loadDnaStats();
-      } else {
-        toast({ title: "DNA 생성 실패", description: data.error, variant: "destructive" });
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      setDnaBatchResult({ success: false, error: errorMessage });
-      toast({ title: "DNA 배치 오류", description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsDnaLoading(false);
-    }
-  };
 
 
 
