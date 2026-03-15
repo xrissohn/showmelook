@@ -2129,7 +2129,7 @@ serve(async (req) => {
       const directSelectedIds: string[] = [];
       const usedSlots = new Set<string>();
       
-      // 각 분석 아이템별 최고 점수 상품 직접 선택
+       // 각 분석 아이템별 최고 점수 상품 직접 선택
       for (const analysisItem of photoData.items) {
         const targetSlot = analysisItem.type;
         const priorityCat = targetSlot === 'top' ? '상의' 
@@ -2146,13 +2146,19 @@ serve(async (req) => {
           .filter(sp => sp.score > 0.05)
           .sort((a, b) => b.score - a.score);
         
-        if (scoredForItem.length > 0) {
+        // 상위 3개 후보 로깅 (디버깅용)
+        const top3 = scoredForItem.slice(0, 3);
+        if (top3.length > 0) {
+          console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}] 검색: "${analysisItem.color} ${analysisItem.category}" (${analysisItem.material})`);
+          top3.forEach((sp, i) => {
+            console.log(`  ${i + 1}. ${sp.product.brand || '?'} ${sp.product.name.slice(0, 35)} | color=${sp.product.color || '?'} | score=${sp.score.toFixed(3)}`);
+          });
+          
           const best = scoredForItem[0];
           directSelectedIds.push(best.product.id);
           usedSlots.add(priorityCat);
-          console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}]: ${best.product.brand} ${best.product.name.slice(0, 25)} (score: ${best.score.toFixed(3)})`);
         } else {
-          console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}]: 매칭 상품 없음 (${analysisItem.color} ${analysisItem.category})`);
+          console.log(`[style-recommend] 📷 직접 매칭 [${priorityCat}]: 매칭 상품 없음 (${analysisItem.color} ${analysisItem.category}), 총 ${allProducts.length}개 검색`);
         }
       }
       
