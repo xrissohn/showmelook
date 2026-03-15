@@ -1272,13 +1272,75 @@ const Admin = () => {
       } else {
         toast({ title: "색상 분석 실패", description: data.error, variant: "destructive" });
       }
+      return data;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setColorAnalysisResult({ success: false, error: errorMessage });
       toast({ title: "색상 분석 오류", description: errorMessage, variant: "destructive" });
+      return { success: false, error: errorMessage };
     } finally {
       setIsColorAnalyzing(false);
     }
+  };
+
+  // Auto-run color analysis until all done
+  const colorAutoRunRef = React.useRef(false);
+  const startColorAutoRun = async () => {
+    setColorAutoRunning(true);
+    colorAutoRunRef.current = true;
+    setColorAutoRunLog([]);
+    setColorTotalUpdated(0);
+    let totalUpdated = 0;
+    let round = 1;
+
+    while (colorAutoRunRef.current) {
+      const timestamp = new Date().toLocaleTimeString('ko-KR');
+      setColorAutoRunLog(prev => [...prev, `[${timestamp}] 라운드 ${round} 시작 (배치 ${colorBatchSize}개)...`]);
+
+      try {
+        const { data, error } = await supabase.functions.invoke('analyze-product-colors', {
+          body: { batchSize: parseInt(colorBatchSize) || 20, dryRun: false },
+        });
+
+        if (error) throw error;
+
+        if (data.success) {
+          totalUpdated += (data.updated || 0);
+          setColorTotalUpdated(totalUpdated);
+          const endTime = new Date().toLocaleTimeString('ko-KR');
+          setColorAutoRunLog(prev => [...prev, `[${endTime}] ✅ 라운드 ${round}: ${data.updated}개 업데이트 (누적 ${totalUpdated}개, ${data.elapsed})`]);
+          
+          if (data.processed === 0 || (data.updated === 0 && data.failed === 0)) {
+            setColorAutoRunLog(prev => [...prev, `[${endTime}] 🎉 모든 상품 색상 분석 완료!`]);
+            break;
+          }
+        } else {
+          setColorAutoRunLog(prev => [...prev, `[${timestamp}] ❌ 오류: ${data.error}`]);
+          break;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setColorAutoRunLog(prev => [...prev, `[${timestamp}] ❌ 에러: ${msg}`]);
+        break;
+      }
+
+      // Wait 3 seconds between rounds
+      await new Promise(r => setTimeout(r, 3000));
+      round++;
+      loadColorUnknownCount();
+    }
+
+    colorAutoRunRef.current = false;
+    setColorAutoRunning(false);
+    loadColorUnknownCount();
+    loadDnaStats();
+    toast({ title: "자동 색상 분석 완료", description: `총 ${totalUpdated}개 상품 색상 업데이트됨` });
+  };
+
+  const stopColorAutoRun = () => {
+    colorAutoRunRef.current = false;
+    setColorAutoRunning(false);
+    setColorAutoRunLog(prev => [...prev, `[${new Date().toLocaleTimeString('ko-KR')}] ⏹️ 사용자에 의해 중지됨`]);
   };
 
   // Add to initial load
