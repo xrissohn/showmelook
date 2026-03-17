@@ -9,6 +9,7 @@ export interface PageSEO {
   keywords?: string;
   canonical?: string;
   ogImage?: string;
+  noindex?: boolean;
 }
 
 const BASE_URL = 'https://showmelook.com';
@@ -42,6 +43,7 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     keywords: '마이페이지, 스타일 히스토리, 찜목록, 등급 확인, 가족 프로필',
     canonical: `${BASE_URL}/mypage`,
     ogImage: DEFAULT_OG_IMAGE,
+    noindex: true,
   },
   auth: {
     title: '로그인 / 회원가입 | 쇼미룩',
@@ -67,6 +69,7 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     description: '쇼미룩에서 추천받은 상품들을 장바구니에서 확인하세요.',
     canonical: `${BASE_URL}/cart`,
     ogImage: DEFAULT_OG_IMAGE,
+    noindex: true,
   },
   profileSetup: {
     title: '프로필 설정 - 맞춤 스타일링 시작 | 쇼미룩',
