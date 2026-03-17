@@ -296,50 +296,15 @@ const Admin = () => {
     return () => clearInterval(interval);
   }, [isAutoRefresh]);
 
-  // Error logs functions
+  // Error log total count for tab badge
   const loadErrorLogStats = async () => {
     try {
-      // Use count for total, and paginate for breakdown
-      const { count: totalCount } = await supabase
+      const { count } = await supabase
         .from('error_logs')
         .select('*', { count: 'exact', head: true });
-
-      const allLogs = await fetchAllRows<{ function_name: string; error_code: string | null }>(
-        'error_logs', 'function_name, error_code',
-        (q) => q.order('created_at', { ascending: false })
-      );
-      
-      const byFunction: Record<string, number> = {};
-      const byCode: Record<string, number> = {};
-      
-      allLogs.forEach(log => {
-        byFunction[log.function_name] = (byFunction[log.function_name] || 0) + 1;
-        const code = log.error_code || 'UNKNOWN';
-        byCode[code] = (byCode[code] || 0) + 1;
-      });
-      
-      setErrorLogStats({ total: totalCount || allLogs.length, byFunction, byCode });
+      setErrorLogTotal(count || 0);
     } catch (error) {
       console.error('Error loading error log stats:', error);
-    }
-  };
-
-  const loadErrorLogs = async () => {
-    setErrorLogsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('error_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      
-      if (error) throw error;
-      setErrorLogs(data || []);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: "에러 로그 로드 실패", description: errorMessage, variant: "destructive" });
-    } finally {
-      setErrorLogsLoading(false);
     }
   };
 
