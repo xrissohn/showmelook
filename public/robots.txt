@@ -6,25 +6,39 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /auth?*
+Disallow: /cart
+Disallow: /mypage
+Disallow: /profile-setup
+Disallow: /profile-edit
+Disallow: /admin
+Disallow: /install
+Disallow: /pitch
+Disallow: /cafe24-fitting
 
 # Google
 User-agent: Googlebot
 Allow: /
-Crawl-delay: 1
-
-# Bing
-User-agent: Bingbot
-Allow: /
+Disallow: /cart
+Disallow: /mypage
+Disallow: /profile-setup
+Disallow: /profile-edit
+Disallow: /admin
 Crawl-delay: 1
 
 # Naver
 User-agent: Yeti
 Allow: /
+Disallow: /cart
+Disallow: /mypage
+Disallow: /admin
 Crawl-delay: 1
 
 # Daum
 User-agent: Daumoa
 Allow: /
+Disallow: /cart
+Disallow: /mypage
+Disallow: /admin
 Crawl-delay: 1
 
 # Social Media Crawlers
@@ -40,7 +54,7 @@ Allow: /
 User-agent: kakaotalk-scrap
 Allow: /
 
-# AI Crawlers (optional - adjust based on preference)
+# AI Crawlers
 User-agent: GPTBot
 Disallow: /
 
@@ -55,9 +69,3 @@ Disallow: /
 
 # Sitemap location
 Sitemap: https://showmelook.com/sitemap.xml
-
-# RSS Feed
-RSS: https://showmelook.com/rss.xml
-
-# Host
-Host: https://showmelook.com
