@@ -22,6 +22,7 @@ export const SEOHead = ({ pageKey, custom }: SEOHeadProps) => {
       {seo.description && <meta name="description" content={seo.description} />}
       {seo.keywords && <meta name="keywords" content={seo.keywords} />}
       {seo.canonical && <link rel="canonical" href={seo.canonical} />}
+      {seo.noindex && <meta name="robots" content="noindex, nofollow" />}
 
       {/* Open Graph / Facebook / KakaoTalk */}
       {seo.title && <meta property="og:title" content={seo.title} />}
