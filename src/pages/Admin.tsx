@@ -223,14 +223,8 @@ const Admin = () => {
     errors: string[];
   } | null>(null);
 
-  // Error logs state
-  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
-  const [errorLogsLoading, setErrorLogsLoading] = useState(false);
-  const [errorLogStats, setErrorLogStats] = useState<{
-    total: number;
-    byFunction: Record<string, number>;
-    byCode: Record<string, number>;
-  }>({ total: 0, byFunction: {}, byCode: {} });
+  // Error log stats for tab badge (delegated to ErrorLogPanel for details)
+  const [errorLogTotal, setErrorLogTotal] = useState(0);
 
   // Generation jobs state
   const [generationJobs, setGenerationJobs] = useState<GenerationJob[]>([]);
