@@ -1259,8 +1259,8 @@ const Admin = () => {
               <TabsTrigger value="errors" className="relative flex-shrink-0 whitespace-nowrap">
                 <AlertCircle className="w-4 h-4 mr-1" />
                 에러 로그
-                {errorLogStats.total > 0 && (
-                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogStats.total}</Badge>
+                {errorLogTotal > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogTotal}</Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="jobs" className="relative flex-shrink-0 whitespace-nowrap">
