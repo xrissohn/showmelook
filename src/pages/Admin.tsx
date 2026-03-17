@@ -117,16 +117,6 @@ interface ExcelProduct {
   color?: string;
 }
 
-interface ErrorLog {
-  id: string;
-  function_name: string;
-  error_code: string | null;
-  error_message: string | null;
-  user_id: string | null;
-  request_payload: unknown;
-  execution_time_ms: number | null;
-  created_at: string;
-}
 
 interface GenerationJob {
   id: string;
