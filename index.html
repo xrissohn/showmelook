@@ -81,7 +81,24 @@
     <meta name="twitter:site" content="@ShowMeLook" />
     <meta name="twitter:creator" content="@ShowMeLook" />
     
-    <!-- Structured Data - JSON-LD -->
+    <!-- Structured Data - JSON-LD: WebSite (helps Google show sitelinks & prioritize homepage) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "쇼미룩",
+      "alternateName": "ShowMeLook",
+      "url": "https://showmelook.com/",
+      "description": "AI가 당신에게 딱 맞는 패션 스타일을 제안하는 스타일링 서비스",
+      "inLanguage": "ko",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://showmelook.com/style?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    <!-- Structured Data - JSON-LD: WebApplication -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -96,11 +113,6 @@
         "@type": "Offer",
         "price": "0",
         "priceCurrency": "KRW"
-      },
-      "aggregateRating": {
-        "@type": "AggregateRating",
-        "ratingValue": "4.8",
-        "ratingCount": "150"
       },
       "author": {
         "@type": "Organization",

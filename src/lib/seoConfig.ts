@@ -9,6 +9,7 @@ export interface PageSEO {
   keywords?: string;
   canonical?: string;
   ogImage?: string;
+  noindex?: boolean;
 }
 
 const BASE_URL = 'https://showmelook.com';
