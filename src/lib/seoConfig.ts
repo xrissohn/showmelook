@@ -43,6 +43,7 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     keywords: '마이페이지, 스타일 히스토리, 찜목록, 등급 확인, 가족 프로필',
     canonical: `${BASE_URL}/mypage`,
     ogImage: DEFAULT_OG_IMAGE,
+    noindex: true,
   },
   auth: {
     title: '로그인 / 회원가입 | 쇼미룩',
