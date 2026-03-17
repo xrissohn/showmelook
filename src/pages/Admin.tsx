@@ -27,6 +27,7 @@ import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
+import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -116,16 +117,6 @@ interface ExcelProduct {
   color?: string;
 }
 
-interface ErrorLog {
-  id: string;
-  function_name: string;
-  error_code: string | null;
-  error_message: string | null;
-  user_id: string | null;
-  request_payload: unknown;
-  execution_time_ms: number | null;
-  created_at: string;
-}
 
 interface GenerationJob {
   id: string;
@@ -222,14 +213,8 @@ const Admin = () => {
     errors: string[];
   } | null>(null);
 
-  // Error logs state
-  const [errorLogs, setErrorLogs] = useState<ErrorLog[]>([]);
-  const [errorLogsLoading, setErrorLogsLoading] = useState(false);
-  const [errorLogStats, setErrorLogStats] = useState<{
-    total: number;
-    byFunction: Record<string, number>;
-    byCode: Record<string, number>;
-  }>({ total: 0, byFunction: {}, byCode: {} });
+  // Error log stats for tab badge (delegated to ErrorLogPanel for details)
+  const [errorLogTotal, setErrorLogTotal] = useState(0);
 
   // Generation jobs state
   const [generationJobs, setGenerationJobs] = useState<GenerationJob[]>([]);
@@ -301,50 +286,15 @@ const Admin = () => {
     return () => clearInterval(interval);
   }, [isAutoRefresh]);
 
-  // Error logs functions
+  // Error log total count for tab badge
   const loadErrorLogStats = async () => {
     try {
-      // Use count for total, and paginate for breakdown
-      const { count: totalCount } = await supabase
+      const { count } = await supabase
         .from('error_logs')
         .select('*', { count: 'exact', head: true });
-
-      const allLogs = await fetchAllRows<{ function_name: string; error_code: string | null }>(
-        'error_logs', 'function_name, error_code',
-        (q) => q.order('created_at', { ascending: false })
-      );
-      
-      const byFunction: Record<string, number> = {};
-      const byCode: Record<string, number> = {};
-      
-      allLogs.forEach(log => {
-        byFunction[log.function_name] = (byFunction[log.function_name] || 0) + 1;
-        const code = log.error_code || 'UNKNOWN';
-        byCode[code] = (byCode[code] || 0) + 1;
-      });
-      
-      setErrorLogStats({ total: totalCount || allLogs.length, byFunction, byCode });
+      setErrorLogTotal(count || 0);
     } catch (error) {
       console.error('Error loading error log stats:', error);
-    }
-  };
-
-  const loadErrorLogs = async () => {
-    setErrorLogsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('error_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      
-      if (error) throw error;
-      setErrorLogs(data || []);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      toast({ title: "에러 로그 로드 실패", description: errorMessage, variant: "destructive" });
-    } finally {
-      setErrorLogsLoading(false);
     }
   };
 
@@ -1299,8 +1249,8 @@ const Admin = () => {
               <TabsTrigger value="errors" className="relative flex-shrink-0 whitespace-nowrap">
                 <AlertCircle className="w-4 h-4 mr-1" />
                 에러 로그
-                {errorLogStats.total > 0 && (
-                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogStats.total}</Badge>
+                {errorLogTotal > 0 && (
+                  <Badge variant="destructive" className="ml-1 text-xs px-1 py-0">{errorLogTotal}</Badge>
                 )}
               </TabsTrigger>
               <TabsTrigger value="jobs" className="relative flex-shrink-0 whitespace-nowrap">
@@ -2183,104 +2133,7 @@ const Admin = () => {
 
           {/* Error Logs Tab */}
           <TabsContent value="errors" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5 text-destructive" />
-                  에러 로그 모니터링
-                </CardTitle>
-                <CardDescription>
-                  Edge Function 에러를 실시간으로 모니터링합니다.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Stats Overview */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 border rounded-lg text-center">
-                    <p className="text-2xl font-bold text-destructive">{errorLogStats.total}</p>
-                    <p className="text-sm text-muted-foreground">총 에러</p>
-                  </div>
-                  {Object.entries(errorLogStats.byFunction).slice(0, 3).map(([fn, count]) => (
-                    <div key={fn} className="p-4 border rounded-lg text-center">
-                      <p className="text-2xl font-bold">{count}</p>
-                      <p className="text-sm text-muted-foreground truncate">{fn}</p>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Error Code Distribution */}
-                {Object.keys(errorLogStats.byCode).length > 0 && (
-                  <div className="p-4 border rounded-lg space-y-2">
-                    <h3 className="font-medium">에러 코드별 분포</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(errorLogStats.byCode).sort((a, b) => b[1] - a[1]).map(([code, count]) => (
-                        <Badge 
-                          key={code} 
-                          variant={code === '429' ? 'secondary' : code === '402' ? 'outline' : 'destructive'}
-                        >
-                          {code}: {count}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2">
-                  <Button onClick={() => { loadErrorLogs(); loadErrorLogStats(); }} disabled={errorLogsLoading}>
-                    {errorLogsLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                    새로고침
-                  </Button>
-                </div>
-
-                {/* Error Logs Table */}
-                {errorLogs.length > 0 && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="max-h-96 overflow-y-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted sticky top-0">
-                          <tr>
-                            <th className="p-2 text-left">시간</th>
-                            <th className="p-2 text-left">함수</th>
-                            <th className="p-2 text-left">코드</th>
-                            <th className="p-2 text-left">메시지</th>
-                            <th className="p-2 text-right">실행시간</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {errorLogs.map(log => (
-                            <tr key={log.id} className="border-t hover:bg-muted/50">
-                              <td className="p-2 whitespace-nowrap">
-                                {new Date(log.created_at).toLocaleString('ko-KR', { 
-                                  month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' 
-                                })}
-                              </td>
-                              <td className="p-2">
-                                <Badge variant="outline">{log.function_name}</Badge>
-                              </td>
-                              <td className="p-2">
-                                <Badge 
-                                  variant={log.error_code === '429' ? 'secondary' : 
-                                           log.error_code === '402' ? 'outline' : 'destructive'}
-                                >
-                                  {log.error_code || 'N/A'}
-                                </Badge>
-                              </td>
-                              <td className="p-2 max-w-xs truncate text-muted-foreground">
-                                {log.error_message?.slice(0, 100) || '-'}
-                              </td>
-                              <td className="p-2 text-right text-muted-foreground">
-                                {log.execution_time_ms ? `${log.execution_time_ms}ms` : '-'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ErrorLogPanel />
           </TabsContent>
 
           {/* Generation Jobs Tab */}
