@@ -314,14 +314,14 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/auth')}
                             >
                               <Sparkles className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-primary'}`} />
-                              시작하기
+                              {t('nav.getStarted')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/auth')}
                               className={getMenuItemClass('/auth')}
                             >
                               <User className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              로그인
+                              {t('nav.login')}
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
@@ -329,7 +329,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/install')}
                             >
                               <Download className={`w-5 h-5 ${isActive('/install') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              앱 설치
+                              {t('nav.install')}
                             </button>
                           </>
                         )}
