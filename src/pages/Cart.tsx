@@ -413,7 +413,7 @@ const Cart = () => {
                           ) : (
                             <ExternalLink className="w-4 h-4 mr-1" />
                           )}
-                          구매하기
+                          {t('cart.purchase')}
                         </Button>
                       )}
                     </div>
