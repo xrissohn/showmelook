@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LazyImage } from '@/components/LazyImage';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { useLookLikes } from '@/hooks/useLookLikes';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Scroll animated section wrapper
 const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
