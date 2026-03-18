@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { LazyImage } from '@/components/LazyImage';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { useLookLikes } from '@/hooks/useLookLikes';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Scroll animated section wrapper
 const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -236,7 +237,7 @@ const useMouseParticles = () => {
 const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
   const { particles, addParticle, removeParticle } = useMouseParticles();
   const [isMobile, setIsMobile] = useState(false);
-  
+  const { t } = useLanguage();
   useEffect(() => {
     // Check for mobile once on mount to disable heavy mouse effects
     setIsMobile(window.matchMedia('(max-width: 768px)').matches);
@@ -304,15 +305,15 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         
         <h2 className="font-korean text-2xl sm:text-3xl md:text-5xl text-white mb-3 sm:mb-6 relative leading-tight">
           <span className="absolute -left-6 sm:-left-8 top-0 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.1} /></span>
-          지금 바로 시작하세요
+          {t('landing.ctaTitle')}
           <span className="absolute -right-6 sm:-right-8 bottom-0 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.3} /></span>
         </h2>
         <p className="text-base sm:text-lg md:text-xl font-korean text-white/70 mb-6 sm:mb-10 px-2">
-          당신만의 스타일을 발견할 준비가 되셨나요?
+          {t('landing.ctaDesc')}
         </p>
         <Button variant="gold" size="lg" onClick={handleGetStarted} className="group relative overflow-hidden font-korean text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-4">
           <span className="relative z-10 flex items-center gap-2">
-            무료로 시작하기
+            {t('landing.ctaButton')}
             <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
           </span>
           <span className="absolute top-1 right-2"><InlineSparkle className="text-white/50" size="w-4 h-4" delay={0.5} /></span>
@@ -320,8 +321,8 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         
         <p className="mt-4 sm:mt-6 text-xs sm:text-sm font-korean text-white/50 flex items-center justify-center gap-1 sm:gap-2 px-4">
           <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
-          <span className="hidden sm:inline">마우스를 움직여 파티클 효과를 경험하세요</span>
-          <span className="sm:hidden">터치하여 파티클 효과를 경험하세요</span>
+          <span className="hidden sm:inline">{t('landing.particleDesktop')}</span>
+          <span className="sm:hidden">{t('landing.particleMobile')}</span>
           <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDuration: '0.4s', animationDelay: '0.2s' }} />
         </p>
       </div>
@@ -332,6 +333,7 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
 // Gallery preview section for landing page
 const GalleryPreviewSection = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
@@ -384,10 +386,10 @@ const GalleryPreviewSection = () => {
               <Images className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
             <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-              다른 사람들의 스타일 구경하기
+              {t('landing.galleryTitle')}
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              AI가 만든 다양한 스타일에서 영감을 얻어보세요
+              {t('landing.galleryDesc')}
             </p>
           </div>
 
@@ -437,7 +439,7 @@ const GalleryPreviewSection = () => {
               className="font-korean group"
             >
               <Images className="w-5 h-5 mr-2" />
-              스타일 갤러리 더 보기
+              {t('landing.viewMore')}
               <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>
@@ -475,9 +477,8 @@ const GalleryPreviewSection = () => {
 
 const Landing = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
+  const { t } = useLanguage();
   
   const handleGetStarted = () => {
     if (user) {
@@ -555,34 +556,34 @@ const Landing = () => {
             
             <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-white/80 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-4 sm:mb-8 animate-fade-in border border-primary/20 shadow-sm">
               <Star className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
-              <span className="text-xs sm:text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
+              <span className="text-xs sm:text-sm font-korean font-medium text-foreground">{t('landing.aiService')}</span>
               <InlineSparkle className="text-primary" size="w-4 h-4" delay={0.2} />
             </div>
             
             <h1 className="font-korean text-2xl sm:text-4xl md:text-5xl lg:text-7xl text-foreground leading-tight mb-3 sm:mb-6 animate-fade-in-up">
-              나만의 스타일을<br />
-              <span className="text-gradient-brand">AI가 완성합니다</span>
+              {t('landing.heroTitle1')}<br />
+              <span className="text-gradient-brand">{t('landing.heroTitle2')}</span>
             </h1>
             
             <p className="text-sm sm:text-base md:text-xl font-korean text-muted-foreground mb-6 sm:mb-10 max-w-xl mx-auto animate-fade-in-up px-2 sm:px-4" style={{
             animationDelay: '0.2s'
           }}>
-              사진 한 장으로 트렌디한 스타일을 경험하세요.
+              {t('landing.heroDesc1')}
               <span className="hidden sm:inline"><br /></span>
               <span className="sm:hidden"> </span>
-              AI가 당신에게 딱 맞는 패션을 제안합니다.
+              {t('landing.heroDesc2')}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center animate-fade-in-up" style={{
             animationDelay: '0.4s'
           }}>
               <Button variant="hero" size="lg" onClick={handleGetStarted} className="group font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3">
-                무료로 시작하기
+                {t('landing.freeStart')}
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="hero-outline" size="lg" onClick={() => navigate('/style')} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3 group">
                 <InlineSparkle className="text-primary" size="w-5 h-5" delay={0.1} />
-                <span className="ml-1">AI 스타일 추천</span>
+                <span className="ml-1">{t('landing.aiStyleRecommend')}</span>
               </Button>
             </div>
           </div>
@@ -609,14 +610,14 @@ const Landing = () => {
           <div className="text-center mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-coral animate-twinkle" />
-              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Simple Process</span>
+              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">{t('landing.simpleProcess')}</span>
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
             <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-              쉽고 빠르게 시작하세요
+              {t('landing.easyStart')}
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              3단계로 완성되는 나만의 스타일
+              {t('landing.threeSteps')}
             </p>
           </div>
 
@@ -624,20 +625,20 @@ const Landing = () => {
             {[{
             icon: <Wand2 className="w-8 h-8" />,
             step: '01',
-            title: '프로필 설정',
-            desc: '사진을 업로드하고 키, 몸무게, 선호 스타일을 입력하세요.',
+            title: t('landing.step1Title'),
+            desc: t('landing.step1Desc'),
             color: 'from-coral to-magenta'
           }, {
             icon: <Palette className="w-8 h-8" />,
             step: '02',
-            title: 'AI 스타일 생성',
-            desc: 'AI가 당신에게 맞는 트렌디한 스타일을 생성합니다.',
+            title: t('landing.step2Title'),
+            desc: t('landing.step2Desc'),
             color: 'from-magenta to-purple'
           }, {
             icon: <ShoppingBag className="w-8 h-8" />,
             step: '03',
-            title: '아이템 구매',
-            desc: '마음에 드는 아이템을 선택하고 바로 구매하세요.',
+            title: t('landing.step3Title'),
+            desc: t('landing.step3Desc'),
             color: 'from-purple to-sky'
           }].map((item, i) => (
             <HoverParticleCard key={item.step} className="relative text-center group">
@@ -693,10 +694,10 @@ const Landing = () => {
               <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
             <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-              나에게 맞는 플랜 선택
+              {t('landing.pricingTitle')}
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              무료로 체험, 구매로 성장하는 나만의 등급
+              {t('landing.pricingDesc')}
             </p>
           </div>
 

@@ -1,14 +1,94 @@
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Privacy = () => {
+  const { t, language } = useLanguage();
+
+  if (language === 'en') {
+    return (
+      <div className="min-h-screen bg-background">
+        <SEOHead pageKey="privacy" />
+        <MainNavigation showBackButton />
+        <main className="container max-w-4xl mx-auto px-4 py-12">
+          <h1 className="text-3xl font-bold mb-8">{t('privacy.title')}</h1>
+          <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8">
+            <p className="text-muted-foreground">Effective Date: January 1, 2026</p>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">1. Purpose of Collecting and Using Personal Information</h2>
+              <p className="text-foreground/80 leading-relaxed">ShowMeLook processes personal information for the following purposes. The information collected will not be used for purposes other than those listed below, and any changes in purpose will require additional consent.</p>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>Membership registration and management: Identity verification, individual identification, prevention of unauthorized use</li>
+                <li>Service provision: AI-based style recommendation service, personalized content</li>
+                <li>Marketing and advertising: New service development, customized services, event information</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">2. Types of Personal Information Collected</h2>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>Required: Email address, password, name</li>
+                <li>Optional: Gender, height, weight, body type, style preferences</li>
+                <li>Social login: Profile information provided by social services (name, email, profile image)</li>
+                <li>Automatically collected: IP address, cookies, service usage records, access logs</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">3. Retention Period</h2>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>Member information: Until withdrawal (deleted immediately upon withdrawal)</li>
+                <li>Records related to contracts or subscription withdrawal (5 years), payment and supply records (5 years), consumer complaints or dispute resolution (3 years)</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">4. Third-Party Disclosure</h2>
+              <p className="text-foreground/80 leading-relaxed">ShowMeLook does not provide personal information to external parties, except when users consent in advance or when required by law.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">5. Destruction of Personal Information</h2>
+              <p className="text-foreground/80 leading-relaxed">When personal information is no longer needed, it will be destroyed without delay. Electronic files are deleted using methods that prevent recovery, and printed materials are shredded or incinerated.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">6. Rights of Data Subjects</h2>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>Request to view personal information</li>
+                <li>Request correction of errors</li>
+                <li>Request deletion</li>
+                <li>Request to suspend processing</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">7. Security Measures</h2>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>Encryption: User passwords are stored and managed in encrypted form.</li>
+                <li>Access control: Access rights to personal information are restricted.</li>
+                <li>Security software: Protection against hacking and computer viruses.</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">8. Data Protection Officer</h2>
+              <div className="bg-muted/50 p-4 rounded-lg text-foreground/80">
+                <p>Data Protection Officer</p>
+                <p>Email: xrissohn@gmail.com</p>
+              </div>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">9. Changes to Privacy Policy</h2>
+              <p className="text-foreground/80 leading-relaxed">This privacy policy is effective from January 1, 2026. Changes will be announced via notice at least 7 days before the effective date.</p>
+            </section>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Korean version (original)
   return (
     <div className="min-h-screen bg-background">
       <SEOHead pageKey="privacy" />
       <MainNavigation showBackButton />
       
       <main className="container max-w-4xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold font-korean mb-8">개인정보 처리방침</h1>
+        <h1 className="text-3xl font-bold font-korean mb-8">{t('privacy.title')}</h1>
         
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 font-korean">
           <p className="text-muted-foreground">

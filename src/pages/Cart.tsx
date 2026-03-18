@@ -9,6 +9,7 @@ import MainNavigation from '@/components/MainNavigation';
 import { useGuestCart, GuestCartItem } from '@/hooks/useGuestCart';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { SEOHead } from '@/components/SEOHead';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CartItem {
   id: string;
@@ -28,6 +29,7 @@ const Cart = () => {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const guestCart = useGuestCart();
+  const { t } = useLanguage();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -298,7 +300,7 @@ const Cart = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead pageKey="cart" />
-      <MainNavigation showBackButton title="장바구니" />
+      <MainNavigation showBackButton title={t('cart.title')} />
 
       <div className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-3xl">
         {/* Guest notice banner */}
@@ -306,10 +308,10 @@ const Cart = () => {
           <div className="mb-4 p-4 bg-accent/10 rounded-xl border border-accent/20 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-foreground font-korean">
-                로그인하면 장바구니가 저장됩니다
+                {t('cart.loginSave')}
               </p>
               <p className="text-xs text-muted-foreground font-korean">
-                현재 게스트 장바구니를 사용 중입니다
+                {t('cart.guestCart')}
               </p>
             </div>
             <Button
@@ -319,7 +321,7 @@ const Cart = () => {
               className="font-korean"
             >
               <LogIn className="w-4 h-4 mr-1" />
-              로그인
+              {t('cart.loginBtn')}
             </Button>
           </div>
         )}
@@ -327,9 +329,9 @@ const Cart = () => {
         {cartItems.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-lg text-muted-foreground mb-4 font-korean">장바구니가 비어있습니다</p>
+            <p className="text-lg text-muted-foreground mb-4 font-korean">{t('cart.empty')}</p>
             <Button variant="hero" onClick={() => navigate('/style')} className="font-korean">
-              쇼핑하러 가기
+              {t('cart.goShopping')}
             </Button>
           </div>
         ) : (
@@ -411,7 +413,7 @@ const Cart = () => {
                           ) : (
                             <ExternalLink className="w-4 h-4 mr-1" />
                           )}
-                          구매하기
+                          {t('cart.purchase')}
                         </Button>
                       )}
                     </div>
@@ -423,15 +425,15 @@ const Cart = () => {
             {/* Summary */}
             <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
               <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground font-korean">상품 금액</span>
+                <span className="text-muted-foreground font-korean">{t('cart.productAmount')}</span>
                 <span className="text-foreground">₩{totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground font-korean">배송비</span>
-                <span className="text-foreground font-korean">무료</span>
+                <span className="text-muted-foreground font-korean">{t('cart.shipping')}</span>
+                <span className="text-foreground font-korean">{t('cart.freeShipping')}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-medium text-foreground font-korean">총 결제 금액</span>
+                <span className="font-medium text-foreground font-korean">{t('cart.totalPayment')}</span>
                 <span className="text-xl font-bold text-foreground">
                   ₩{totalPrice.toLocaleString()}
                 </span>
@@ -447,17 +449,17 @@ const Cart = () => {
                 {bulkPurchasing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    처리 중...
+                    {t('cart.processing')}
                   </>
                 ) : (
                   <>
                     <ExternalLink className="w-5 h-5 mr-2" />
-                    전체 상품 구매하기 ({purchasableItemsCount}개)
+                    {t('cart.bulkPurchase')} ({purchasableItemsCount})
                   </>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2 font-korean">
-                각 상품의 구매 페이지가 새 탭으로 열립니다
+                {t('cart.newTabNotice')}
               </p>
             </div>
           </>

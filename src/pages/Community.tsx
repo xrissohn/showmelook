@@ -10,8 +10,10 @@ import { SEOHead } from '@/components/SEOHead';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Images, LayoutGrid } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Community = () => {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('photos');
   const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount } = useCommunityFeed();
   const { users, isLoading: galleryLoading } = useGalleryUsers();
@@ -60,8 +62,8 @@ const Community = () => {
     <>
       <SEOHead
         custom={{
-          title: '스타일 갤러리 | 쇼미룩',
-          description: 'AI가 만든 다양한 스타일을 구경하고 영감을 얻어보세요.',
+          title: `${t('community.title')} | ShowMeLook`,
+          description: t('community.description'),
           canonical: 'https://showmelook.com/community',
         }}
       />
@@ -73,10 +75,10 @@ const Community = () => {
             <div>
               <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground flex items-center gap-2">
                 <Images className="w-6 h-6 text-primary" />
-                스타일 갤러리
+                {t('community.title')}
               </h1>
               <p className="text-sm text-muted-foreground font-korean mt-1">
-                다른 사람들의 AI 스타일을 구경해보세요
+                {t('community.description')}
               </p>
             </div>
             {activeTab === 'photos' && (
@@ -89,11 +91,11 @@ const Community = () => {
             <TabsList>
               <TabsTrigger value="photos" className="font-korean text-xs sm:text-sm gap-1.5">
                 <Images className="w-4 h-4" />
-                사진별
+                {t('community.byPhoto')}
               </TabsTrigger>
               <TabsTrigger value="galleries" className="font-korean text-xs sm:text-sm gap-1.5">
                 <LayoutGrid className="w-4 h-4" />
-                갤러리별
+                {t('community.byGallery')}
               </TabsTrigger>
             </TabsList>
 
@@ -107,7 +109,7 @@ const Community = () => {
                 <div className="text-center py-20">
                   <Images className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
                   <p className="text-lg text-muted-foreground font-korean">
-                    아직 공개된 스타일이 없습니다
+                    {t('community.noPublicStyles')}
                   </p>
                 </div>
               ) : (
@@ -133,7 +135,7 @@ const Community = () => {
               {!hasMore && looks.length > 0 && (
                 <div className="text-center py-6">
                   <p className="text-sm text-muted-foreground font-korean">
-                    모든 스타일을 불러왔습니다 ✨
+                    {t('community.allLoaded')}
                   </p>
                 </div>
               )}
@@ -149,7 +151,7 @@ const Community = () => {
                 <div className="text-center py-20">
                   <LayoutGrid className="w-16 h-16 mx-auto text-muted-foreground/30 mb-4" />
                   <p className="text-lg text-muted-foreground font-korean">
-                    아직 갤러리가 없습니다
+                    {t('community.noGalleries')}
                   </p>
                 </div>
               ) : (
