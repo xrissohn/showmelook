@@ -425,7 +425,7 @@ const Cart = () => {
             {/* Summary */}
             <div className="bg-card rounded-2xl border border-border p-6 space-y-4">
               <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground font-korean">상품 금액</span>
+                <span className="text-muted-foreground font-korean">{t('cart.productAmount')}</span>
                 <span className="text-foreground">₩{totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-border">
