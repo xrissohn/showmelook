@@ -321,7 +321,7 @@ const Cart = () => {
               className="font-korean"
             >
               <LogIn className="w-4 h-4 mr-1" />
-              로그인
+              {t('cart.loginBtn')}
             </Button>
           </div>
         )}
