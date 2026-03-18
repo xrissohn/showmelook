@@ -624,20 +624,20 @@ const Landing = () => {
             {[{
             icon: <Wand2 className="w-8 h-8" />,
             step: '01',
-            title: '프로필 설정',
-            desc: '사진을 업로드하고 키, 몸무게, 선호 스타일을 입력하세요.',
+            title: t('landing.step1Title'),
+            desc: t('landing.step1Desc'),
             color: 'from-coral to-magenta'
           }, {
             icon: <Palette className="w-8 h-8" />,
             step: '02',
-            title: 'AI 스타일 생성',
-            desc: 'AI가 당신에게 맞는 트렌디한 스타일을 생성합니다.',
+            title: t('landing.step2Title'),
+            desc: t('landing.step2Desc'),
             color: 'from-magenta to-purple'
           }, {
             icon: <ShoppingBag className="w-8 h-8" />,
             step: '03',
-            title: '아이템 구매',
-            desc: '마음에 드는 아이템을 선택하고 바로 구매하세요.',
+            title: t('landing.step3Title'),
+            desc: t('landing.step3Desc'),
             color: 'from-purple to-sky'
           }].map((item, i) => (
             <HoverParticleCard key={item.step} className="relative text-center group">
