@@ -609,14 +609,14 @@ const Landing = () => {
           <div className="text-center mb-10 sm:mb-16">
             <div className="inline-flex items-center gap-2 mb-3 sm:mb-4">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-coral animate-twinkle" />
-              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">Simple Process</span>
+              <span className="text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">{t('landing.simpleProcess')}</span>
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-sky animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
             <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-              쉽고 빠르게 시작하세요
+              {t('landing.easyStart')}
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              3단계로 완성되는 나만의 스타일
+              {t('landing.threeSteps')}
             </p>
           </div>
 
