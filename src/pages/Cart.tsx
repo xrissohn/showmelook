@@ -459,7 +459,7 @@ const Cart = () => {
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2 font-korean">
-                각 상품의 구매 페이지가 새 탭으로 열립니다
+                {t('cart.newTabNotice')}
               </p>
             </div>
           </>
