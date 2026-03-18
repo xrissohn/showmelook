@@ -9,8 +9,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/ui/tier-badge';
-import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown, Images } from 'lucide-react';
+import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown, Images, Globe } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { useLanguage } from '@/contexts/LanguageContext';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
