@@ -429,8 +429,8 @@ const Cart = () => {
                 <span className="text-foreground">₩{totalPrice.toLocaleString()}</span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-border">
-                <span className="text-muted-foreground font-korean">배송비</span>
-                <span className="text-foreground font-korean">무료</span>
+                <span className="text-muted-foreground font-korean">{t('cart.shipping')}</span>
+                <span className="text-foreground font-korean">{t('cart.freeShipping')}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-medium text-foreground font-korean">총 결제 금액</span>
