@@ -300,7 +300,7 @@ const Cart = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead pageKey="cart" />
-      <MainNavigation showBackButton title="장바구니" />
+      <MainNavigation showBackButton title={t('cart.title')} />
 
       <div className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-3xl">
         {/* Guest notice banner */}
