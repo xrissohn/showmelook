@@ -239,13 +239,22 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[280px] p-0">
-                    <SheetTitle className="sr-only">메뉴</SheetTitle>
+                    <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
                     <div className="flex flex-col h-full">
                       {/* Menu Header */}
                       <div className="p-4 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          <img src={showmelookLogo} alt="쇼미룩" width={32} height={32} className="w-8 h-8" />
-                          <span className="font-korean text-lg font-semibold text-foreground">쇼미룩</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <img src={showmelookLogo} alt="쇼미룩" width={32} height={32} className="w-8 h-8" />
+                            <span className="font-korean text-lg font-semibold text-foreground">{t('nav.showmelook')}</span>
+                          </div>
+                          <button
+                            onClick={toggleLanguage}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Globe className="w-3.5 h-3.5" />
+                            {language === 'ko' ? 'EN' : 'KO'}
+                          </button>
                         </div>
                       </div>
                       
