@@ -113,6 +113,16 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
             <>
               {/* Desktop Navigation - Only on lg (1024px+) */}
               <div className="hidden lg:flex items-center gap-3">
+                {/* Language Toggle */}
+                <button
+                  onClick={toggleLanguage}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+                  aria-label="Toggle language"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  {language === 'ko' ? 'EN' : 'KO'}
+                </button>
+
                 {/* 스타일 갤러리 */}
                 <Button 
                   variant="ghost" 
@@ -121,7 +131,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   className="font-korean text-sm px-3"
                 >
                   <Images className="w-4 h-4 mr-1" />
-                  스타일 갤러리
+                  {t('nav.styleGallery')}
                 </Button>
                 
                 {/* 요금제 */}
