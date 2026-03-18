@@ -1,27 +1,105 @@
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Terms = () => {
+  const { t, language } = useLanguage();
+
+  if (language === 'en') {
+    return (
+      <div className="min-h-screen bg-background">
+        <SEOHead pageKey="terms" />
+        <MainNavigation showBackButton />
+        <main className="container max-w-4xl mx-auto px-4 py-12">
+          <h1 className="text-3xl font-bold mb-8">{t('terms.title')}</h1>
+          <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8">
+            <p className="text-muted-foreground">Effective Date: January 1, 2026</p>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 1 (Purpose)</h2>
+              <p className="text-foreground/80 leading-relaxed">These terms govern the rights, obligations, and responsibilities between ShowMeLook ("Company") and users regarding the AI-based style recommendation service ("Service").</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 2 (Definitions)</h2>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>"Service" refers to the AI-based fashion style recommendation, virtual fitting, and product connection services provided by the Company.</li>
+                <li>"User" refers to members and non-members who use the Service.</li>
+                <li>"Member" refers to a person who has registered by providing personal information to the Company.</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 3 (Effect and Amendment of Terms)</h2>
+              <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
+                <li>These terms apply to all users who wish to use the Service.</li>
+                <li>The Company may amend these terms within the bounds of applicable law.</li>
+                <li>Amendments will be announced at least 7 days before the effective date.</li>
+              </ol>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 4 (Service Provision)</h2>
+              <ul className="list-disc pl-6 space-y-2 text-foreground/80">
+                <li>AI-based personalized style recommendation service</li>
+                <li>Virtual fitting and style simulation service</li>
+                <li>Fashion product information and purchase connection service</li>
+                <li>Style gallery and save features</li>
+              </ul>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 5 (Membership Registration)</h2>
+              <p className="text-foreground/80 leading-relaxed">Users apply for membership by filling out the registration form and agreeing to these terms.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 6 (Withdrawal and Disqualification)</h2>
+              <p className="text-foreground/80 leading-relaxed">Members may request withdrawal at any time. The Company may restrict membership for violations including false registration, interference with other users, or illegal activities.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 7 (User Obligations)</h2>
+              <p className="text-foreground/80 leading-relaxed">Users must not engage in false registration, identity theft, unauthorized modification of posted information, infringement of intellectual property rights, or posting of obscene or violent content.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 8 (Copyright)</h2>
+              <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
+                <li>Copyright of AI-generated style images belongs to the Company.</li>
+                <li>Users may not commercially use or distribute information obtained through the Service without prior consent.</li>
+                <li>The Company may use user-generated style results for service improvement and marketing.</li>
+              </ol>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 9 (Disclaimer)</h2>
+              <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
+                <li>The Company is not liable for service interruptions due to force majeure.</li>
+                <li>The Company does not guarantee perfect accuracy of AI recommendations.</li>
+                <li>The Company is not responsible for product quality, delivery, or refunds from linked external shopping malls.</li>
+              </ol>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Article 10 (Dispute Resolution)</h2>
+              <p className="text-foreground/80 leading-relaxed">Disputes between the Company and users shall be governed by the laws of the Republic of Korea.</p>
+            </section>
+            <section className="space-y-4">
+              <h2 className="text-xl font-semibold">Supplementary Provisions</h2>
+              <p className="text-foreground/80 leading-relaxed">These terms are effective from January 1, 2026.</p>
+            </section>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Korean version (original)
   return (
     <div className="min-h-screen bg-background">
       <SEOHead pageKey="terms" />
       <MainNavigation showBackButton />
       
       <main className="container max-w-4xl mx-auto px-4 py-12">
-        <h1 className="text-3xl font-bold font-korean mb-8">서비스 이용약관</h1>
+        <h1 className="text-3xl font-bold font-korean mb-8">{t('terms.title')}</h1>
         
         <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 font-korean">
-          <p className="text-muted-foreground">
-            시행일: 2026년 1월 1일
-          </p>
-
+          <p className="text-muted-foreground">시행일: 2026년 1월 1일</p>
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제1조 (목적)</h2>
-            <p className="text-foreground/80 leading-relaxed">
-              이 약관은 쇼미룩(이하 "회사")이 제공하는 AI 기반 스타일 추천 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.
-            </p>
+            <p className="text-foreground/80 leading-relaxed">이 약관은 쇼미룩(이하 "회사")이 제공하는 AI 기반 스타일 추천 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제2조 (정의)</h2>
             <ul className="list-disc pl-6 space-y-2 text-foreground/80">
@@ -30,7 +108,6 @@ const Terms = () => {
               <li>"회원"이란 회사에 개인정보를 제공하여 회원등록을 한 자로서, 회사의 서비스를 계속적으로 이용할 수 있는 자를 말합니다.</li>
             </ul>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제3조 (약관의 효력 및 변경)</h2>
             <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
@@ -39,7 +116,6 @@ const Terms = () => {
               <li>회사가 약관을 변경하는 경우 적용일자 및 변경사유를 명시하여 현행 약관과 함께 적용일자 7일 전부터 서비스 내에 공지합니다.</li>
             </ol>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제4조 (서비스의 제공)</h2>
             <p className="text-foreground/80 leading-relaxed">회사는 다음과 같은 서비스를 제공합니다.</p>
@@ -51,35 +127,20 @@ const Terms = () => {
               <li>기타 회사가 정하는 서비스</li>
             </ul>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제5조 (회원가입)</h2>
             <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
               <li>이용자는 회사가 정한 가입 양식에 따라 회원정보를 기입한 후 이 약관에 동의한다는 의사표시를 함으로써 회원가입을 신청합니다.</li>
-              <li>회사는 제1항과 같이 회원으로 가입할 것을 신청한 이용자 중 다음 각 호에 해당하지 않는 한 회원으로 등록합니다.
-                <ul className="list-disc pl-6 mt-2 space-y-1">
-                  <li>가입신청자가 이 약관에 의하여 이전에 회원자격을 상실한 적이 있는 경우</li>
-                  <li>등록 내용에 허위, 기재누락, 오기가 있는 경우</li>
-                  <li>기타 회원으로 등록하는 것이 회사의 기술상 현저히 지장이 있다고 판단되는 경우</li>
-                </ul>
-              </li>
+              <li>회사는 제1항과 같이 회원으로 가입할 것을 신청한 이용자 중 다음 각 호에 해당하지 않는 한 회원으로 등록합니다.</li>
             </ol>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제6조 (회원 탈퇴 및 자격 상실)</h2>
             <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
               <li>회원은 회사에 언제든지 탈퇴를 요청할 수 있으며, 회사는 즉시 회원탈퇴를 처리합니다.</li>
-              <li>회원이 다음 각 호의 사유에 해당하는 경우, 회사는 회원자격을 제한 및 정지시킬 수 있습니다.
-                <ul className="list-disc pl-6 mt-2 space-y-1">
-                  <li>가입 신청 시에 허위 내용을 등록한 경우</li>
-                  <li>다른 사람의 서비스 이용을 방해하거나 그 정보를 도용하는 등 질서를 위협하는 경우</li>
-                  <li>서비스를 이용하여 법령 또는 이 약관이 금지하거나 공서양속에 반하는 행위를 하는 경우</li>
-                </ul>
-              </li>
+              <li>회원이 다음 각 호의 사유에 해당하는 경우, 회사는 회원자격을 제한 및 정지시킬 수 있습니다.</li>
             </ol>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제7조 (이용자의 의무)</h2>
             <p className="text-foreground/80 leading-relaxed">이용자는 다음 행위를 하여서는 안 됩니다.</p>
@@ -87,13 +148,11 @@ const Terms = () => {
               <li>신청 또는 변경 시 허위 내용의 등록</li>
               <li>타인의 정보 도용</li>
               <li>회사가 게시한 정보의 변경</li>
-              <li>회사가 정한 정보 이외의 정보(컴퓨터 프로그램 등) 등의 송신 또는 게시</li>
               <li>회사와 기타 제3자의 저작권 등 지적재산권에 대한 침해</li>
               <li>회사 및 기타 제3자의 명예를 손상시키거나 업무를 방해하는 행위</li>
               <li>외설 또는 폭력적인 메시지, 화상, 음성, 기타 공서양속에 반하는 정보를 서비스에 공개 또는 게시하는 행위</li>
             </ul>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제8조 (저작권의 귀속)</h2>
             <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
@@ -102,7 +161,6 @@ const Terms = () => {
               <li>회사는 이용자가 생성한 스타일 결과물을 서비스 개선 및 마케팅 목적으로 활용할 수 있습니다.</li>
             </ol>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제9조 (면책조항)</h2>
             <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
@@ -112,7 +170,6 @@ const Terms = () => {
               <li>회사는 서비스를 통해 연결된 외부 쇼핑몰의 상품 품질, 배송, 환불 등에 대해 책임을 지지 않습니다.</li>
             </ol>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">제10조 (분쟁해결)</h2>
             <ol className="list-decimal pl-6 space-y-2 text-foreground/80">
@@ -120,12 +177,9 @@ const Terms = () => {
               <li>회사와 이용자 간에 발생한 분쟁에 관한 소송은 대한민국 법률을 적용하며, 회사의 본사 소재지를 관할하는 법원을 관할법원으로 합니다.</li>
             </ol>
           </section>
-
           <section className="space-y-4">
             <h2 className="text-xl font-semibold">부칙</h2>
-            <p className="text-foreground/80 leading-relaxed">
-              이 약관은 2026년 1월 1일부터 시행됩니다.
-            </p>
+            <p className="text-foreground/80 leading-relaxed">이 약관은 2026년 1월 1일부터 시행됩니다.</p>
           </section>
         </div>
       </main>
