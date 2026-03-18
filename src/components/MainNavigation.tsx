@@ -267,28 +267,28 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/style')}
                             >
                               <Sparkles className={`w-5 h-5 ${isActive('/style') ? 'text-primary' : 'text-primary'}`} />
-                              내 스타일 만들기
+                              {t('nav.createStyle')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/community')}
                               className={getMenuItemClass('/community')}
                             >
                               <Images className={`w-5 h-5 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              스타일 갤러리
+                              {t('nav.styleGallery')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/cart')}
                               className={getMenuItemClass('/cart')}
                             >
                               <ShoppingBag className={`w-5 h-5 ${isActive('/cart') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              장바구니
+                              {t('nav.cart')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/mypage')}
                               className={getMenuItemClass('/mypage')}
                             >
                               <User className={`w-5 h-5 ${isActive('/mypage') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className="flex-1">마이페이지</span>
+                              <span className="flex-1">{t('nav.mypage')}</span>
                               {user && !isTierLoading && <TierBadge tier={currentTier} size="sm" />}
                             </button>
                             <button
@@ -296,7 +296,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/pricing')}
                             >
                               <Crown className={`w-5 h-5 ${isActive('/pricing') ? 'text-primary' : 'text-amber-500'}`} />
-                              요금제
+                              {t('nav.pricing')}
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
@@ -304,7 +304,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/install')}
                             >
                               <Download className={`w-5 h-5 ${isActive('/install') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              앱 설치
+                              {t('nav.install')}
                             </button>
                           </>
                         ) : (
