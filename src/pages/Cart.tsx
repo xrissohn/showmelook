@@ -9,6 +9,7 @@ import MainNavigation from '@/components/MainNavigation';
 import { useGuestCart, GuestCartItem } from '@/hooks/useGuestCart';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { SEOHead } from '@/components/SEOHead';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CartItem {
   id: string;
