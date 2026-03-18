@@ -52,6 +52,7 @@ const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <LanguageProvider>
         <DataPreloaderProvider>
           <TooltipProvider>
             <Toaster />
