@@ -476,9 +476,8 @@ const GalleryPreviewSection = () => {
 
 const Landing = () => {
   const navigate = useNavigate();
-  const {
-    user
-  } = useAuth();
+  const { user } = useAuth();
+  const { t } = useLanguage();
   
   const handleGetStarted = () => {
     if (user) {
