@@ -305,11 +305,11 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         
         <h2 className="font-korean text-2xl sm:text-3xl md:text-5xl text-white mb-3 sm:mb-6 relative leading-tight">
           <span className="absolute -left-6 sm:-left-8 top-0 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.1} /></span>
-          지금 바로 시작하세요
+          {t('landing.ctaTitle')}
           <span className="absolute -right-6 sm:-right-8 bottom-0 hidden sm:block"><InlineSparkle size="w-6 h-6" delay={0.3} /></span>
         </h2>
         <p className="text-base sm:text-lg md:text-xl font-korean text-white/70 mb-6 sm:mb-10 px-2">
-          당신만의 스타일을 발견할 준비가 되셨나요?
+          {t('landing.ctaDesc')}
         </p>
         <Button variant="gold" size="lg" onClick={handleGetStarted} className="group relative overflow-hidden font-korean text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-4">
           <span className="relative z-10 flex items-center gap-2">
