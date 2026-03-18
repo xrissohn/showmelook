@@ -187,7 +187,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
                     >
                       <Sparkles className="w-4 h-4 mr-1" />
-                      내 스타일 만들기
+                      {t('nav.createStyle')}
                     </Button>
                   </>
                 ) : (
