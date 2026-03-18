@@ -313,7 +313,7 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         </p>
         <Button variant="gold" size="lg" onClick={handleGetStarted} className="group relative overflow-hidden font-korean text-sm sm:text-base px-6 sm:px-8 py-3 sm:py-4">
           <span className="relative z-10 flex items-center gap-2">
-            무료로 시작하기
+            {t('landing.ctaButton')}
             <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
           </span>
           <span className="absolute top-1 right-2"><InlineSparkle className="text-white/50" size="w-4 h-4" delay={0.5} /></span>
