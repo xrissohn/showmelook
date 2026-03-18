@@ -577,12 +577,12 @@ const Landing = () => {
             animationDelay: '0.4s'
           }}>
               <Button variant="hero" size="lg" onClick={handleGetStarted} className="group font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3">
-                무료로 시작하기
+                {t('landing.freeStart')}
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
               <Button variant="hero-outline" size="lg" onClick={() => navigate('/style')} className="font-korean w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-3 group">
                 <InlineSparkle className="text-primary" size="w-5 h-5" delay={0.1} />
-                <span className="ml-1">AI 스타일 추천</span>
+                <span className="ml-1">{t('landing.aiStyleRecommend')}</span>
               </Button>
             </div>
           </div>
