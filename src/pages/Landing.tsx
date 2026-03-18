@@ -385,10 +385,10 @@ const GalleryPreviewSection = () => {
               <Images className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
             <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-              다른 사람들의 스타일 구경하기
+              {t('landing.galleryTitle')}
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              AI가 만든 다양한 스타일에서 영감을 얻어보세요
+              {t('landing.galleryDesc')}
             </p>
           </div>
 
