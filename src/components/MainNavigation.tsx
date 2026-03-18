@@ -26,6 +26,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { stats, isLoading: isTierLoading } = usePurchaseStats(user?.id);
+  const { language, toggleLanguage, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
