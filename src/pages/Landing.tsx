@@ -321,8 +321,8 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
         
         <p className="mt-4 sm:mt-6 text-xs sm:text-sm font-korean text-white/50 flex items-center justify-center gap-1 sm:gap-2 px-4">
           <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
-          <span className="hidden sm:inline">마우스를 움직여 파티클 효과를 경험하세요</span>
-          <span className="sm:hidden">터치하여 파티클 효과를 경험하세요</span>
+          <span className="hidden sm:inline">{t('landing.particleDesktop')}</span>
+          <span className="sm:hidden">{t('landing.particleMobile')}</span>
           <Star className="w-3 h-3 sm:w-4 sm:h-4 animate-twinkle flex-shrink-0" style={{ animationDuration: '0.4s', animationDelay: '0.2s' }} />
         </p>
       </div>
