@@ -567,10 +567,10 @@ const Landing = () => {
             <p className="text-sm sm:text-base md:text-xl font-korean text-muted-foreground mb-6 sm:mb-10 max-w-xl mx-auto animate-fade-in-up px-2 sm:px-4" style={{
             animationDelay: '0.2s'
           }}>
-              사진 한 장으로 트렌디한 스타일을 경험하세요.
+              {t('landing.heroDesc1')}
               <span className="hidden sm:inline"><br /></span>
               <span className="sm:hidden"> </span>
-              AI가 당신에게 딱 맞는 패션을 제안합니다.
+              {t('landing.heroDesc2')}
             </p>
             
             <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 justify-center animate-fade-in-up" style={{
