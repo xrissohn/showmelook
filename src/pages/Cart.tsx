@@ -449,7 +449,7 @@ const Cart = () => {
                 {bulkPurchasing ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    처리 중...
+                    {t('cart.processing')}
                   </>
                 ) : (
                   <>
