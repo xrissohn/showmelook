@@ -9,8 +9,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/ui/tier-badge';
-import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown, Images } from 'lucide-react';
+import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIcon, Crown, Images, Globe } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { useLanguage } from '@/contexts/LanguageContext';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
@@ -25,6 +26,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
   const location = useLocation();
   const { user, signOut } = useAuth();
   const { stats, isLoading: isTierLoading } = usePurchaseStats(user?.id);
+  const { language, toggleLanguage, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -111,6 +113,16 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
             <>
               {/* Desktop Navigation - Only on lg (1024px+) */}
               <div className="hidden lg:flex items-center gap-3">
+                {/* Language Toggle */}
+                <button
+                  onClick={toggleLanguage}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/50 transition-colors"
+                  aria-label="Toggle language"
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  {language === 'ko' ? 'EN' : 'KO'}
+                </button>
+
                 {/* 스타일 갤러리 */}
                 <Button 
                   variant="ghost" 
@@ -119,7 +131,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   className="font-korean text-sm px-3"
                 >
                   <Images className="w-4 h-4 mr-1" />
-                  스타일 갤러리
+                  {t('nav.styleGallery')}
                 </Button>
                 
                 {/* 요금제 */}
@@ -129,7 +141,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   onClick={() => navigate('/pricing')} 
                   className="font-korean text-sm px-3"
                 >
-                  요금제
+                  {t('nav.pricing')}
                 </Button>
                 
                 {/* 앱 설치 */}
@@ -140,7 +152,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   className="font-korean text-sm px-3"
                 >
                   <Download className="w-4 h-4 mr-1" />
-                  앱 설치
+                  {t('nav.install')}
                 </Button>
                 
                 {user ? (
@@ -153,7 +165,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       className="font-korean text-sm px-3 gap-2"
                     >
                       <User className="w-4 h-4" />
-                      마이페이지
+                      {t('nav.mypage')}
                       {!isTierLoading && <TierBadge tier={currentTier} size="sm" />}
                     </Button>
                     
@@ -175,7 +187,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
                     >
                       <Sparkles className="w-4 h-4 mr-1" />
-                      내 스타일 만들기
+                      {t('nav.createStyle')}
                     </Button>
                   </>
                 ) : (
@@ -187,7 +199,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       onClick={() => navigate('/auth')} 
                       className="font-korean text-sm px-4 h-9"
                     >
-                      로그인
+                      {t('nav.login')}
                     </Button>
                     
                     {/* 시작하기 버튼 */}
@@ -198,7 +210,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
                     >
                       <Sparkles className="w-4 h-4 mr-1" />
-                      시작하기
+                      {t('nav.getStarted')}
                     </Button>
                   </>
                 )}
@@ -227,13 +239,22 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                     </Button>
                   </SheetTrigger>
                   <SheetContent side="right" className="w-[280px] p-0">
-                    <SheetTitle className="sr-only">메뉴</SheetTitle>
+                    <SheetTitle className="sr-only">{t('nav.menu')}</SheetTitle>
                     <div className="flex flex-col h-full">
                       {/* Menu Header */}
                       <div className="p-4 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          <img src={showmelookLogo} alt="쇼미룩" width={32} height={32} className="w-8 h-8" />
-                          <span className="font-korean text-lg font-semibold text-foreground">쇼미룩</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <img src={showmelookLogo} alt="쇼미룩" width={32} height={32} className="w-8 h-8" />
+                            <span className="font-korean text-lg font-semibold text-foreground">{t('nav.showmelook')}</span>
+                          </div>
+                          <button
+                            onClick={toggleLanguage}
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Globe className="w-3.5 h-3.5" />
+                            {language === 'ko' ? 'EN' : 'KO'}
+                          </button>
                         </div>
                       </div>
                       
@@ -246,28 +267,28 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/style')}
                             >
                               <Sparkles className={`w-5 h-5 ${isActive('/style') ? 'text-primary' : 'text-primary'}`} />
-                              내 스타일 만들기
+                              {t('nav.createStyle')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/community')}
                               className={getMenuItemClass('/community')}
                             >
                               <Images className={`w-5 h-5 ${isActive('/community') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              스타일 갤러리
+                              {t('nav.styleGallery')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/cart')}
                               className={getMenuItemClass('/cart')}
                             >
                               <ShoppingBag className={`w-5 h-5 ${isActive('/cart') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              장바구니
+                              {t('nav.cart')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/mypage')}
                               className={getMenuItemClass('/mypage')}
                             >
                               <User className={`w-5 h-5 ${isActive('/mypage') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              <span className="flex-1">마이페이지</span>
+                              <span className="flex-1">{t('nav.mypage')}</span>
                               {user && !isTierLoading && <TierBadge tier={currentTier} size="sm" />}
                             </button>
                             <button
@@ -275,7 +296,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/pricing')}
                             >
                               <Crown className={`w-5 h-5 ${isActive('/pricing') ? 'text-primary' : 'text-amber-500'}`} />
-                              요금제
+                              {t('nav.pricing')}
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
@@ -283,7 +304,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/install')}
                             >
                               <Download className={`w-5 h-5 ${isActive('/install') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              앱 설치
+                              {t('nav.install')}
                             </button>
                           </>
                         ) : (
@@ -293,14 +314,14 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/auth')}
                             >
                               <Sparkles className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-primary'}`} />
-                              시작하기
+                              {t('nav.getStarted')}
                             </button>
                             <button
                               onClick={() => handleNavigate('/auth')}
                               className={getMenuItemClass('/auth')}
                             >
                               <User className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              로그인
+                              {t('nav.login')}
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
@@ -308,7 +329,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/install')}
                             >
                               <Download className={`w-5 h-5 ${isActive('/install') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              앱 설치
+                              {t('nav.install')}
                             </button>
                           </>
                         )}
@@ -322,7 +343,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                             className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                           >
                             <LogOut className="w-5 h-5" />
-                            로그아웃
+                            {t('nav.logout')}
                           </button>
                         </div>
                       )}
