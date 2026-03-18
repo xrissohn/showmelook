@@ -454,7 +454,7 @@ const Cart = () => {
                 ) : (
                   <>
                     <ExternalLink className="w-5 h-5 mr-2" />
-                    전체 상품 구매하기 ({purchasableItemsCount}개)
+                    {t('cart.bulkPurchase')} ({purchasableItemsCount})
                   </>
                 )}
               </Button>
