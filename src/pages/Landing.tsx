@@ -693,10 +693,10 @@ const Landing = () => {
               <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 animate-twinkle" style={{ animationDelay: '0.5s' }} />
             </div>
             <h2 className="font-korean text-2xl sm:text-4xl md:text-5xl text-foreground mb-3 sm:mb-4">
-              나에게 맞는 플랜 선택
+              {t('landing.pricingTitle')}
             </h2>
             <p className="text-sm sm:text-lg font-korean text-muted-foreground">
-              무료로 체험, 구매로 성장하는 나만의 등급
+              {t('landing.pricingDesc')}
             </p>
           </div>
 
