@@ -141,7 +141,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   onClick={() => navigate('/pricing')} 
                   className="font-korean text-sm px-3"
                 >
-                  요금제
+                  {t('nav.pricing')}
                 </Button>
                 
                 {/* 앱 설치 */}
