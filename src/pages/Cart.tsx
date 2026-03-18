@@ -28,6 +28,7 @@ const Cart = () => {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const guestCart = useGuestCart();
+  const { t } = useLanguage();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
