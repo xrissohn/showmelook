@@ -165,7 +165,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       className="font-korean text-sm px-3 gap-2"
                     >
                       <User className="w-4 h-4" />
-                      마이페이지
+                      {t('nav.mypage')}
                       {!isTierLoading && <TierBadge tier={currentTier} size="sm" />}
                     </Button>
                     
