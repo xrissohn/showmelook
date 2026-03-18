@@ -560,8 +560,8 @@ const Landing = () => {
             </div>
             
             <h1 className="font-korean text-2xl sm:text-4xl md:text-5xl lg:text-7xl text-foreground leading-tight mb-3 sm:mb-6 animate-fade-in-up">
-              나만의 스타일을<br />
-              <span className="text-gradient-brand">AI가 완성합니다</span>
+              {t('landing.heroTitle1')}<br />
+              <span className="text-gradient-brand">{t('landing.heroTitle2')}</span>
             </h1>
             
             <p className="text-sm sm:text-base md:text-xl font-korean text-muted-foreground mb-6 sm:mb-10 max-w-xl mx-auto animate-fade-in-up px-2 sm:px-4" style={{
