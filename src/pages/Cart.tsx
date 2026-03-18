@@ -308,10 +308,10 @@ const Cart = () => {
           <div className="mb-4 p-4 bg-accent/10 rounded-xl border border-accent/20 flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-foreground font-korean">
-                로그인하면 장바구니가 저장됩니다
+                {t('cart.loginSave')}
               </p>
               <p className="text-xs text-muted-foreground font-korean">
-                현재 게스트 장바구니를 사용 중입니다
+                {t('cart.guestCart')}
               </p>
             </div>
             <Button
