@@ -333,7 +333,8 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
 // Gallery preview section for landing page
 const GalleryPreviewSection = () => {
   const navigate = useNavigate();
-  const [previewLooks, setPreviewLooks] = useStateconst [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null }[]>([]);
+  const { t } = useLanguage();
+  const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
