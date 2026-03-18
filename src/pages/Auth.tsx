@@ -12,6 +12,7 @@ import showmelookLogo from '@/assets/showmelook-logo.webp';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { detectInAppBrowser, getExternalBrowserUrl, copyToClipboard } from '@/lib/inAppBrowserDetector';
 import { SEOHead } from '@/components/SEOHead';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Google icon component
 const GoogleIcon = () => (
@@ -42,6 +43,7 @@ type ForgotStep = 'email' | 'verify' | 'newPassword';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const Auth = () => {
+  const { t } = useLanguage();
   const [mode, setMode] = useState<AuthMode>('login');
   const [signupStep, setSignupStep] = useState<SignupStep>('email');
   const [forgotStep, setForgotStep] = useState<ForgotStep>('email');
@@ -66,31 +68,25 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // 인앱 브라우저 감지 (한 번만 실행)
   const browserInfo = useMemo(() => detectInAppBrowser(), []);
 
-  // URL 파라미터에서 ref 코드 감지 및 localStorage 저장
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const refCode = urlParams.get('ref');
     
     if (refCode) {
-      // localStorage에 7일 만료로 저장
-      const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7일
+      const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
       localStorage.setItem('referral_code', refCode.toUpperCase());
       localStorage.setItem('referral_code_expiry', expiry.toString());
-      
-      // URL에서 ref 파라미터 제거 (깔끔한 URL 유지)
       window.history.replaceState({}, '', '/auth');
       
       toast({
-        title: '🎁 추천 링크로 접속하셨네요!',
-        description: '가입 완료 시 보너스가 자동 적용됩니다.',
+        title: t('auth.referralToast'),
+        description: t('auth.referralToastDesc'),
       });
     }
-  }, [toast]);
+  }, [toast, t]);
 
-  // localStorage에 저장된 추천 코드 확인
   useEffect(() => {
     const storedCode = localStorage.getItem('referral_code');
     const expiry = localStorage.getItem('referral_code_expiry');
@@ -128,7 +124,7 @@ const Auth = () => {
 
   const handleSendCode = async (purpose: 'signup' | 'password_reset') => {
     if (!email) {
-      toast({ title: '이메일을 입력해주세요.', variant: 'destructive' });
+      toast({ title: t('auth.email'), variant: 'destructive' });
       return;
     }
     
@@ -143,15 +139,15 @@ const Auth = () => {
       if (purpose === 'signup') setSignupStep('verify');
       else setForgotStep('verify');
       
-      toast({ title: '인증코드가 발송되었습니다.', description: '이메일을 확인해주세요.' });
+      toast({ title: t('auth.codeSent'), description: t('auth.checkEmail') });
     } else {
-      toast({ title: '발송 실패', description: result.error, variant: 'destructive' });
+      toast({ title: t('common.error'), description: result.error, variant: 'destructive' });
     }
   };
 
   const handleVerifyCode = async (purpose: 'signup' | 'password_reset') => {
     if (otpCode.length !== 6) {
-      toast({ title: '6자리 인증코드를 입력해주세요.', variant: 'destructive' });
+      toast({ title: t('auth.sixDigitCode'), variant: 'destructive' });
       return;
     }
     
@@ -165,15 +161,15 @@ const Auth = () => {
       if (purpose === 'signup') setSignupStep('details');
       else setForgotStep('newPassword');
       
-      toast({ title: '이메일이 인증되었습니다.' });
+      toast({ title: t('auth.emailVerified') });
     } else {
-      toast({ title: '인증 실패', description: result.error, variant: 'destructive' });
+      toast({ title: t('common.error'), description: result.error, variant: 'destructive' });
     }
   };
 
   const handleSignup = async () => {
     if (password.length < 6) {
-      toast({ title: '비밀번호는 최소 6자 이상이어야 합니다.', variant: 'destructive' });
+      toast({ title: t('auth.minPassword'), variant: 'destructive' });
       return;
     }
     
@@ -181,10 +177,8 @@ const Auth = () => {
     const { error } = await signUp(email, password, fullName);
     
     if (!error) {
-      // Get user data after signup
       const { data: { user: newUser } } = await supabase.auth.getUser();
       
-      // 추천 코드 우선순위: 직접 입력 > localStorage
       let finalReferralCode = referralCode;
       if (!finalReferralCode) {
         const storedCode = localStorage.getItem('referral_code');
@@ -194,7 +188,6 @@ const Auth = () => {
         }
       }
       
-      // Apply referral code if available
       if (finalReferralCode && newUser) {
         try {
           const response = await fetch(`${SUPABASE_URL}/functions/v1/apply-referral-code`, {
@@ -209,9 +202,8 @@ const Auth = () => {
           });
           const result = await response.json();
           if (result.success) {
-            toast({ title: '🎉 추천 코드 적용!', description: result.message });
+            toast({ title: '🎉', description: result.message });
           }
-          // localStorage 정리
           localStorage.removeItem('referral_code');
           localStorage.removeItem('referral_code_expiry');
         } catch (e) {
@@ -219,7 +211,6 @@ const Auth = () => {
         }
       }
       
-      // Send welcome email
       try {
         await fetch(`${SUPABASE_URL}/functions/v1/send-welcome-email`, {
           method: 'POST',
@@ -229,20 +220,20 @@ const Auth = () => {
       } catch (e) {
         console.log('Welcome email failed:', e);
       }
-      toast({ title: '회원가입 완료!', description: '프로필을 설정해주세요.' });
+      toast({ title: t('auth.signupDone'), description: t('auth.setupProfile') });
     } else {
-      toast({ title: '회원가입 실패', description: error.message, variant: 'destructive' });
+      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
     }
     setIsLoading(false);
   };
 
   const handleResetPassword = async () => {
     if (password.length < 6) {
-      toast({ title: '비밀번호는 최소 6자 이상이어야 합니다.', variant: 'destructive' });
+      toast({ title: t('auth.minPassword'), variant: 'destructive' });
       return;
     }
     if (password !== confirmPassword) {
-      toast({ title: '비밀번호가 일치하지 않습니다.', variant: 'destructive' });
+      toast({ title: t('auth.confirmPassword'), variant: 'destructive' });
       return;
     }
     
@@ -251,11 +242,11 @@ const Auth = () => {
     setIsLoading(false);
     
     if (result.success) {
-      toast({ title: '비밀번호가 변경되었습니다.', description: '새 비밀번호로 로그인해주세요.' });
+      toast({ title: t('auth.passwordChanged'), description: t('auth.loginWithNew') });
       resetForm();
       setMode('login');
     } else {
-      toast({ title: '변경 실패', description: result.error, variant: 'destructive' });
+      toast({ title: t('common.error'), description: result.error, variant: 'destructive' });
     }
   };
 
@@ -267,12 +258,12 @@ const Auth = () => {
     
     if (error) {
       toast({ 
-        title: '로그인 실패', 
-        description: error.message === 'Invalid login credentials' ? '이메일 또는 비밀번호가 올바르지 않습니다.' : error.message,
+        title: t('auth.loginFail'), 
+        description: error.message === 'Invalid login credentials' ? t('auth.invalidCredentials') : error.message,
         variant: 'destructive' 
       });
     } else {
-      toast({ title: '로그인 성공!', description: '환영합니다.' });
+      toast({ title: t('auth.loginSuccess'), description: t('auth.welcome') });
     }
   };
 
@@ -296,17 +287,15 @@ const Auth = () => {
   };
 
   const handleGoogleSignIn = async () => {
-    // 인앱 브라우저에서는 외부 브라우저로 이동
     if (browserInfo.isInAppBrowser) {
       const currentUrl = window.location.href;
       
       if (browserInfo.isAndroid) {
-        // Android: Chrome Intent로 외부 브라우저 열기
         const externalUrl = getExternalBrowserUrl(currentUrl, true);
         if (externalUrl) {
           toast({
-            title: '외부 브라우저로 이동합니다',
-            description: 'Chrome에서 Google 로그인을 진행해주세요.',
+            title: t('sharedLook.openExternal'),
+            description: t('sharedLook.openInChrome'),
           });
           setTimeout(() => {
             window.location.href = externalUrl;
@@ -314,24 +303,22 @@ const Auth = () => {
           return;
         }
       } else if (browserInfo.isIOS) {
-        // iOS: 링크 복사 안내
         const copied = await copyToClipboard(currentUrl);
         if (copied) {
           toast({
-            title: '링크가 복사되었습니다!',
-            description: 'Safari에서 붙여넣기 후 Google 로그인해주세요.',
+            title: t('sharedLook.linkCopied'),
+            description: t('sharedLook.pasteInSafari'),
           });
         } else {
           toast({
-            title: 'Safari에서 열어주세요',
-            description: `${currentUrl} 주소를 Safari에서 열어주세요.`,
+            title: t('sharedLook.openExternal'),
+            description: `${currentUrl}`,
           });
         }
         return;
       }
     }
     
-    // 일반 브라우저에서는 바로 Google OAuth 진행
     setIsGoogleLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -340,29 +327,29 @@ const Auth = () => {
       },
     });
     if (error) {
-      toast({ title: 'Google 로그인 실패', description: error.message, variant: 'destructive' });
+      toast({ title: t('auth.loginFail'), description: error.message, variant: 'destructive' });
       setIsGoogleLoading(false);
     }
   };
 
   const getTitle = () => {
-    if (mode === 'login') return '다시 만나서 반가워요';
-    if (mode === 'forgot') return '비밀번호 찾기';
-    if (signupStep === 'email') return '이메일 인증';
-    if (signupStep === 'verify') return '인증코드 입력';
-    return '계정 정보 입력';
+    if (mode === 'login') return t('auth.welcomeBack');
+    if (mode === 'forgot') return t('auth.findPassword');
+    if (signupStep === 'email') return t('auth.emailVerify');
+    if (signupStep === 'verify') return t('auth.enterCode');
+    return t('auth.enterAccountInfo');
   };
 
   const getSubtitle = () => {
-    if (mode === 'login') return '계정에 로그인하세요';
+    if (mode === 'login') return t('auth.loginToAccount');
     if (mode === 'forgot') {
-      if (forgotStep === 'email') return '가입한 이메일을 입력하세요';
-      if (forgotStep === 'verify') return '이메일로 전송된 인증코드를 입력하세요';
-      return '새로운 비밀번호를 설정하세요';
+      if (forgotStep === 'email') return t('auth.enterRegisteredEmail');
+      if (forgotStep === 'verify') return t('auth.enterCodeSent');
+      return t('auth.setNewPassword');
     }
-    if (signupStep === 'email') return '이메일을 인증하고 시작하세요';
-    if (signupStep === 'verify') return '이메일로 전송된 인증코드를 입력하세요';
-    return '마지막 단계입니다';
+    if (signupStep === 'email') return t('auth.verifyAndStart');
+    if (signupStep === 'verify') return t('auth.enterCodeFromEmail');
+    return t('auth.lastStep');
   };
 
   return (
@@ -375,11 +362,11 @@ const Auth = () => {
         <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-15 animate-gradient-flow" style={{ animationDelay: '1s' }} />
         <div className="relative z-10 text-center">
           <div className="flex items-center justify-center gap-0 mb-6">
-            <img src={showmelookLogo} alt="쇼미룩 로고" width={40} height={40} className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="쇼미룩" width={90} height={90} className="h-[90px] object-contain -ml-3" />
+            <img src={showmelookLogo} alt="ShowMeLook" width={40} height={40} className="w-10 h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="ShowMeLook" width={90} height={90} className="h-[90px] object-contain -ml-3" />
           </div>
-          <p className="text-primary-foreground/80 text-xl font-korean font-light max-w-md">AI가 만들어주는 나만의 스타일</p>
-          <p className="text-primary-foreground/60 mt-4 text-lg font-korean">당신만을 위한 패션을 경험하세요</p>
+          <p className="text-primary-foreground/80 text-xl font-korean font-light max-w-md">{t('auth.aiStyle')}</p>
+          <p className="text-primary-foreground/60 mt-4 text-lg font-korean">{t('auth.experienceFashion')}</p>
         </div>
       </div>
 
@@ -389,10 +376,10 @@ const Auth = () => {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="flex items-center justify-center gap-0 mb-2">
-              <img src={showmelookLogo} alt="쇼미룩 로고" width={32} height={32} className="w-8 h-8 object-contain" />
-              <img src={showmelookKoreanLogo} alt="쇼미룩" width={70} height={70} className="h-[70px] object-contain -ml-2" />
+              <img src={showmelookLogo} alt="ShowMeLook" width={32} height={32} className="w-8 h-8 object-contain" />
+              <img src={showmelookKoreanLogo} alt="ShowMeLook" width={70} height={70} className="h-[70px] object-contain -ml-2" />
             </div>
-            <p className="text-muted-foreground font-korean text-sm">AI가 만들어주는 나만의 스타일</p>
+            <p className="text-muted-foreground font-korean text-sm">{t('auth.aiStyle')}</p>
           </div>
 
           {/* Back button for multi-step flows */}
@@ -404,7 +391,7 @@ const Auth = () => {
               }}
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 transition-colors"
             >
-              <ArrowLeft className="w-4 h-4" /> 이전
+              <ArrowLeft className="w-4 h-4" /> {t('auth.previous')}
             </button>
           )}
 
@@ -417,11 +404,11 @@ const Auth = () => {
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="font-korean">이메일</Label>
+                <Label htmlFor="email" className="font-korean">{t('auth.email')}</Label>
                 <Input id="email" type="email" placeholder="hello@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password" className="font-korean">비밀번호</Label>
+                <Label htmlFor="password" className="font-korean">{t('auth.password')}</Label>
                 <div className="relative">
                   <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
@@ -430,10 +417,10 @@ const Auth = () => {
                 </div>
               </div>
               <button type="button" onClick={() => handleModeChange('forgot')} className="text-sm text-muted-foreground hover:text-accent transition-colors font-korean">
-                비밀번호를 잊으셨나요?
+                {t('auth.forgotPassword')}
               </button>
               <Button type="submit" variant="hero" size="xl" className="w-full font-korean" disabled={isLoading}>
-                {isLoading ? '로그인 중...' : '로그인'}
+                {isLoading ? t('auth.loggingIn') : t('auth.loginBtn')}
               </Button>
 
               <div className="relative my-6">
@@ -441,7 +428,7 @@ const Auth = () => {
                   <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
+                  <span className="bg-background px-2 text-muted-foreground font-korean">{t('auth.or')}</span>
                 </div>
               </div>
 
@@ -454,7 +441,7 @@ const Auth = () => {
                 disabled={isGoogleLoading}
               >
                 {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                Google로 계속하기
+                {t('auth.continueGoogle')}
               </Button>
             </form>
           )}
@@ -463,11 +450,11 @@ const Auth = () => {
           {mode === 'signup' && signupStep === 'email' && (
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label className="font-korean flex items-center gap-2"><Mail className="w-4 h-4" /> 이메일</Label>
+                <Label className="font-korean flex items-center gap-2"><Mail className="w-4 h-4" /> {t('auth.email')}</Label>
                 <Input type="email" placeholder="hello@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading} onClick={() => handleSendCode('signup')}>
-                {isLoading ? '발송 중...' : '인증코드 받기'}
+                {isLoading ? t('auth.sending') : t('auth.getCode')}
               </Button>
 
               <div className="relative my-6">
@@ -475,7 +462,7 @@ const Auth = () => {
                   <span className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground font-korean">또는</span>
+                  <span className="bg-background px-2 text-muted-foreground font-korean">{t('auth.or')}</span>
                 </div>
               </div>
 
@@ -488,7 +475,7 @@ const Auth = () => {
                 disabled={isGoogleLoading}
               >
                 {isGoogleLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <GoogleIcon />}
-                Google로 계속하기
+                {t('auth.continueGoogle')}
               </Button>
             </div>
           )}
@@ -496,7 +483,7 @@ const Auth = () => {
           {mode === 'signup' && signupStep === 'verify' && (
             <div className="space-y-5">
               <div className="space-y-3">
-                <Label className="font-korean">6자리 인증코드</Label>
+                <Label className="font-korean">{t('auth.sixDigitCode')}</Label>
                 <div className="flex justify-center">
                   <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
                     <InputOTPGroup>
@@ -504,13 +491,13 @@ const Auth = () => {
                     </InputOTPGroup>
                   </InputOTP>
                 </div>
-                <p className="text-sm text-muted-foreground text-center font-korean">{email}로 전송됨</p>
+                <p className="text-sm text-muted-foreground text-center font-korean">{t('auth.sentTo')} {email}</p>
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading || otpCode.length !== 6} onClick={() => handleVerifyCode('signup')}>
-                {isLoading ? '확인 중...' : '인증 확인'}
+                {isLoading ? t('auth.verifying') : t('auth.verifyBtn')}
               </Button>
               <button type="button" disabled={resendCooldown > 0} onClick={() => handleSendCode('signup')} className="w-full text-sm text-muted-foreground hover:text-accent disabled:opacity-50 font-korean">
-                {resendCooldown > 0 ? `재전송 (${resendCooldown}초)` : '인증코드 재전송'}
+                {resendCooldown > 0 ? `${t('auth.resendIn')} (${resendCooldown}s)` : t('auth.resend')}
               </button>
             </div>
           )}
@@ -518,32 +505,32 @@ const Auth = () => {
           {mode === 'signup' && signupStep === 'details' && (
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label className="font-korean flex items-center gap-2"><User className="w-4 h-4" /> 이름</Label>
-                <Input type="text" placeholder="홍길동" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                <Label className="font-korean flex items-center gap-2"><User className="w-4 h-4" /> {t('auth.name')}</Label>
+                <Input type="text" placeholder="John Doe" value={fullName} onChange={(e) => setFullName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label className="font-korean flex items-center gap-2"><KeyRound className="w-4 h-4" /> 비밀번호</Label>
+                <Label className="font-korean flex items-center gap-2"><KeyRound className="w-4 h-4" /> {t('auth.password')}</Label>
                 <div className="relative">
-                  <Input type={showPassword ? 'text' : 'password'} placeholder="최소 6자 이상" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+                  <Input type={showPassword ? 'text' : 'password'} placeholder={t('auth.minPassword')} value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="font-korean flex items-center gap-2"><Gift className="w-4 h-4" /> 추천 코드 <span className="text-xs text-muted-foreground">(선택)</span></Label>
+                <Label className="font-korean flex items-center gap-2"><Gift className="w-4 h-4" /> {t('auth.referralCode')} <span className="text-xs text-muted-foreground">({t('auth.optional')})</span></Label>
                 <Input 
                   type="text" 
-                  placeholder="추천 코드가 있다면 입력하세요" 
+                  placeholder={t('auth.referralPlaceholder')} 
                   value={referralCode} 
                   onChange={(e) => setReferralCode(e.target.value.toUpperCase())} 
                   maxLength={8}
                   className="uppercase"
                 />
-                <p className="text-xs text-muted-foreground font-korean">추천 코드 입력 시 보너스 생성 5회를 받아요!</p>
+                <p className="text-xs text-muted-foreground font-korean">{t('auth.referralBonus')}</p>
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading} onClick={handleSignup}>
-                {isLoading ? '가입 중...' : '가입 완료'}
+                {isLoading ? t('auth.signingUp') : t('auth.signupComplete')}
               </Button>
             </div>
           )}
@@ -552,11 +539,11 @@ const Auth = () => {
           {mode === 'forgot' && forgotStep === 'email' && (
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label className="font-korean flex items-center gap-2"><Mail className="w-4 h-4" /> 이메일</Label>
-                <Input type="email" placeholder="가입한 이메일 입력" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Label className="font-korean flex items-center gap-2"><Mail className="w-4 h-4" /> {t('auth.email')}</Label>
+                <Input type="email" placeholder={t('auth.enterRegisteredEmail')} value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading} onClick={() => handleSendCode('password_reset')}>
-                {isLoading ? '발송 중...' : '인증코드 받기'}
+                {isLoading ? t('auth.sending') : t('auth.getCode')}
               </Button>
             </div>
           )}
@@ -564,7 +551,7 @@ const Auth = () => {
           {mode === 'forgot' && forgotStep === 'verify' && (
             <div className="space-y-5">
               <div className="space-y-3">
-                <Label className="font-korean">6자리 인증코드</Label>
+                <Label className="font-korean">{t('auth.sixDigitCode')}</Label>
                 <div className="flex justify-center">
                   <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
                     <InputOTPGroup>
@@ -574,10 +561,10 @@ const Auth = () => {
                 </div>
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading || otpCode.length !== 6} onClick={() => handleVerifyCode('password_reset')}>
-                {isLoading ? '확인 중...' : '인증 확인'}
+                {isLoading ? t('auth.verifying') : t('auth.verifyBtn')}
               </Button>
               <button type="button" disabled={resendCooldown > 0} onClick={() => handleSendCode('password_reset')} className="w-full text-sm text-muted-foreground hover:text-accent disabled:opacity-50 font-korean">
-                {resendCooldown > 0 ? `재전송 (${resendCooldown}초)` : '인증코드 재전송'}
+                {resendCooldown > 0 ? `${t('auth.resendIn')} (${resendCooldown}s)` : t('auth.resend')}
               </button>
             </div>
           )}
@@ -585,15 +572,15 @@ const Auth = () => {
           {mode === 'forgot' && forgotStep === 'newPassword' && (
             <div className="space-y-5">
               <div className="space-y-2">
-                <Label className="font-korean">새 비밀번호</Label>
-                <Input type="password" placeholder="최소 6자 이상" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+                <Label className="font-korean">{t('auth.newPassword')}</Label>
+                <Input type="password" placeholder={t('auth.minPassword')} value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
               </div>
               <div className="space-y-2">
-                <Label className="font-korean">비밀번호 확인</Label>
-                <Input type="password" placeholder="비밀번호 다시 입력" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                <Label className="font-korean">{t('auth.confirmPassword')}</Label>
+                <Input type="password" placeholder={t('auth.confirmPassword')} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
               </div>
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading} onClick={handleResetPassword}>
-                {isLoading ? '변경 중...' : '비밀번호 변경'}
+                {isLoading ? t('auth.changingPassword') : t('auth.changePassword')}
               </Button>
             </div>
           )}
@@ -602,19 +589,19 @@ const Auth = () => {
           <div className="mt-8 text-center">
             {mode === 'login' && (
               <p className="text-muted-foreground font-korean">
-                계정이 없으신가요?
-                <button onClick={() => handleModeChange('signup')} className="ml-2 text-foreground font-medium hover:text-accent transition-colors font-korean">회원가입</button>
+                {t('auth.noAccount')}
+                <button onClick={() => handleModeChange('signup')} className="ml-2 text-foreground font-medium hover:text-accent transition-colors font-korean">{t('auth.signup')}</button>
               </p>
             )}
             {mode === 'signup' && (
               <p className="text-muted-foreground font-korean">
-                이미 계정이 있으신가요?
-                <button onClick={() => handleModeChange('login')} className="ml-2 text-foreground font-medium hover:text-accent transition-colors font-korean">로그인</button>
+                {t('auth.hasAccount')}
+                <button onClick={() => handleModeChange('login')} className="ml-2 text-foreground font-medium hover:text-accent transition-colors font-korean">{t('auth.loginBtn')}</button>
               </p>
             )}
             {mode === 'forgot' && (
               <p className="text-muted-foreground font-korean">
-                <button onClick={() => handleModeChange('login')} className="text-foreground font-medium hover:text-accent transition-colors font-korean">로그인으로 돌아가기</button>
+                <button onClick={() => handleModeChange('login')} className="text-foreground font-medium hover:text-accent transition-colors font-korean">{t('auth.backToLogin')}</button>
               </p>
             )}
           </div>

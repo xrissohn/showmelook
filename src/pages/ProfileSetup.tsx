@@ -10,45 +10,47 @@ import { useToast } from '@/hooks/use-toast';
 import { Upload, Camera, ArrowRight, Check, Sparkles } from 'lucide-react';
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
-
-const styleOptions = [
-  { id: 'minimal', label: '미니멀', emoji: '🤍' },
-  { id: 'street', label: '스트릿', emoji: '🔥' },
-  { id: 'classic', label: '클래식', emoji: '👔' },
-  { id: 'casual', label: '캐주얼', emoji: '👕' },
-  { id: 'sporty', label: '스포티', emoji: '⚡' },
-  { id: 'bohemian', label: '보헤미안', emoji: '🌸' },
-];
-
-const bodyTypes = [
-  { id: 'slim', label: '마른 체형' },
-  { id: 'average', label: '보통 체형' },
-  { id: 'muscular', label: '근육질' },
-  { id: 'curvy', label: '볼륨 체형' },
-];
-
-const genderOptions = [
-  { id: 'male', label: '남성', emoji: '👨' },
-  { id: 'female', label: '여성', emoji: '👩' },
-  { id: 'unisex', label: '유니섹스', emoji: '🧑' },
-  { id: 'prefer_not_to_say', label: '선택 안함', emoji: '🔒' },
-];
-
-const ageGroupOptions = [
-  { id: 'child', label: '아동 (12세 이하)', emoji: '👶' },
-  { id: 'teen', label: '10대', emoji: '🧒' },
-  { id: '20s', label: '20대', emoji: '🧑' },
-  { id: '30s', label: '30대', emoji: '👨‍💼' },
-  { id: '40s', label: '40대', emoji: '👨‍💼' },
-  { id: '50s', label: '50대', emoji: '🧓' },
-  { id: '60plus', label: '60대 이상', emoji: '👴' },
-];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const ProfileSetup = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const { setProfileDirect } = usePreloadedData();
+
+  const styleOptions = [
+    { id: 'minimal', label: t('profileSetup.styles.minimal'), emoji: '🤍' },
+    { id: 'street', label: t('profileSetup.styles.street'), emoji: '🔥' },
+    { id: 'classic', label: t('profileSetup.styles.classic'), emoji: '👔' },
+    { id: 'casual', label: t('profileSetup.styles.casual'), emoji: '👕' },
+    { id: 'sporty', label: t('profileSetup.styles.sporty'), emoji: '⚡' },
+    { id: 'bohemian', label: t('profileSetup.styles.bohemian'), emoji: '🌸' },
+  ];
+
+  const bodyTypes = [
+    { id: 'slim', label: t('profileSetup.bodyTypes.slim') },
+    { id: 'average', label: t('profileSetup.bodyTypes.average') },
+    { id: 'muscular', label: t('profileSetup.bodyTypes.muscular') },
+    { id: 'curvy', label: t('profileSetup.bodyTypes.curvy') },
+  ];
+
+  const genderOptions = [
+    { id: 'male', label: t('profileSetup.genderOptions.male'), emoji: '👨' },
+    { id: 'female', label: t('profileSetup.genderOptions.female'), emoji: '👩' },
+    { id: 'unisex', label: t('profileSetup.genderOptions.unisex'), emoji: '🧑' },
+    { id: 'prefer_not_to_say', label: t('profileSetup.genderOptions.preferNotToSay'), emoji: '🔒' },
+  ];
+
+  const ageGroupOptions = [
+    { id: 'child', label: t('profileSetup.ageGroups.child'), emoji: '👶' },
+    { id: 'teen', label: t('profileSetup.ageGroups.teen'), emoji: '🧒' },
+    { id: '20s', label: t('profileSetup.ageGroups.twenties'), emoji: '🧑' },
+    { id: '30s', label: t('profileSetup.ageGroups.thirties'), emoji: '👨‍💼' },
+    { id: '40s', label: t('profileSetup.ageGroups.forties'), emoji: '👨‍💼' },
+    { id: '50s', label: t('profileSetup.ageGroups.fifties'), emoji: '🧓' },
+    { id: '60plus', label: t('profileSetup.ageGroups.sixtyPlus'), emoji: '👴' },
+  ];
 
   const [step, setStep] = useState(1);
   const [height, setHeight] = useState('');
@@ -63,14 +65,12 @@ const ProfileSetup = () => {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [existingAvatarPath, setExistingAvatarPath] = useState<string | null>(null);
 
-  // 로그인 체크
   useEffect(() => {
     if (!loading && !user) {
       navigate('/auth');
     }
   }, [user, loading, navigate]);
 
-  // 기존 프로필 데이터 로드 - 프로필이 완성되어 있으면 바로 스타일 페이지로 이동
   useEffect(() => {
     const loadExistingProfile = async () => {
       if (!user) return;
@@ -89,7 +89,6 @@ const ProfileSetup = () => {
         }
         
         if (profile) {
-          // 프로필이 완성되어 있으면 바로 스타일 생성 페이지로 리다이렉트
           const isProfileComplete = profile.height && 
                                     profile.style_preferences && 
                                     profile.style_preferences.length > 0 &&
@@ -100,7 +99,6 @@ const ProfileSetup = () => {
             return;
           }
           
-          // 기존 데이터로 폼 초기화 (프로필이 불완전한 경우에만)
           if (profile.height) setHeight(profile.height.toString());
           if (profile.weight) setWeight(profile.weight.toString());
           if (profile.body_type) setBodyType(profile.body_type);
@@ -110,10 +108,8 @@ const ProfileSetup = () => {
             setSelectedStyles(profile.style_preferences);
           }
           
-          // 기존 아바타 로드
           if (profile.avatar_url) {
             setExistingAvatarPath(profile.avatar_url);
-            // Signed URL 생성하여 미리보기로 표시
             if (!profile.avatar_url.startsWith('http') && !profile.avatar_url.startsWith('data:')) {
               const { data: signedData } = await supabase.storage
                 .from('avatars')
@@ -161,10 +157,8 @@ const ProfileSetup = () => {
     
     setIsSubmitting(true);
     try {
-      // 새 아바타 업로드 또는 기존 아바타 유지
-      let avatarPath = existingAvatarPath; // 기존 아바타 경로 유지
+      let avatarPath = existingAvatarPath;
 
-      // Upload avatar if NEW file provided
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
@@ -176,12 +170,10 @@ const ProfileSetup = () => {
         if (uploadError) {
           console.error('Upload error:', uploadError);
         } else if (data) {
-          // Store the file path instead of public URL (bucket is now private)
           avatarPath = filePath;
         }
       }
 
-      // Update profile - 아바타가 없어도 null이 아닌 기존값 유지
       const updateData: Record<string, any> = {
         height: height ? parseInt(height) : null,
         weight: weight ? parseInt(weight) : null,
@@ -191,7 +183,6 @@ const ProfileSetup = () => {
         age_group: ageGroup || null,
       };
       
-      // 아바타 경로가 있을 때만 업데이트 (없으면 기존값 유지)
       if (avatarPath !== null) {
         updateData.avatar_url = avatarPath;
       }
@@ -203,10 +194,8 @@ const ProfileSetup = () => {
 
       if (error) throw error;
 
-      // 프로필 데이터를 글로벌 캐시에 직접 주입 (StyleGenerator에서 즉시 사용)
-      let avatarDisplayUrl = avatarPreview; // 이미 로컬에 있는 미리보기 URL 사용
+      let avatarDisplayUrl = avatarPreview;
       if (avatarPath && !avatarPreview?.startsWith('http') && !avatarPreview?.startsWith('data:')) {
-        // 새로 업로드된 경우 signed URL 생성
         const { data: signedData } = await supabase.storage
           .from('avatars')
           .createSignedUrl(avatarPath, 3600);
@@ -227,16 +216,16 @@ const ProfileSetup = () => {
       });
 
       toast({
-        title: '프로필 설정 완료!',
-        description: '이제 AI가 당신의 스타일을 만들어 드릴게요.',
+        title: t('profileSetup.profileComplete'),
+        description: t('profileSetup.aiWillCreate'),
       });
 
       navigate('/style');
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
-        title: '오류',
-        description: '프로필 저장 중 문제가 발생했습니다.',
+        title: t('common.error'),
+        description: t('profileEdit.saveError'),
         variant: 'destructive',
       });
     } finally {
@@ -255,7 +244,7 @@ const ProfileSetup = () => {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground font-korean">
-          {isLoadingProfile ? '프로필 불러오는 중...' : '로딩 중...'}
+          {isLoadingProfile ? t('profileSetup.loadingProfile') : t('profileSetup.loading')}
         </div>
       </div>
     );
@@ -264,7 +253,6 @@ const ProfileSetup = () => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       <SEOHead pageKey="profileSetup" />
-      {/* Header - using shared navigation with progress dots */}
       <MainNavigation
         rightContent={
           <div className="flex items-center gap-2">
@@ -285,8 +273,8 @@ const ProfileSetup = () => {
           {/* Step 1: Photo Upload */}
           {step === 1 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-korean text-3xl text-foreground mb-2">사진을 업로드해주세요</h1>
-              <p className="text-muted-foreground mb-8 font-korean">AI가 당신의 스타일을 분석합니다</p>
+              <h1 className="font-korean text-3xl text-foreground mb-2">{t('profileSetup.uploadPhoto')}</h1>
+              <p className="text-muted-foreground mb-8 font-korean">{t('profileSetup.aiAnalyze')}</p>
 
               <div className="mb-8">
                 <label
@@ -301,8 +289,8 @@ const ProfileSetup = () => {
                         <Camera className="w-10 h-10 text-muted-foreground group-hover:text-accent transition-colors" />
                       </div>
                       <div className="text-center">
-                        <p className="text-foreground font-medium font-korean">클릭하여 업로드</p>
-                        <p className="text-sm text-muted-foreground mt-1 font-korean">전신 사진을 권장합니다</p>
+                        <p className="text-foreground font-medium font-korean">{t('profileSetup.clickUpload')}</p>
+                        <p className="text-sm text-muted-foreground mt-1 font-korean">{t('profileSetup.fullBodyRecommend')}</p>
                       </div>
                     </div>
                   )}
@@ -323,7 +311,7 @@ const ProfileSetup = () => {
                 onClick={() => setStep(2)}
                 disabled={!canProceed()}
               >
-                다음
+                {t('profileSetup.next')}
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </div>
@@ -332,43 +320,29 @@ const ProfileSetup = () => {
           {/* Step 2: Body Measurements */}
           {step === 2 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-korean text-3xl text-foreground mb-2">체형 정보를 알려주세요</h1>
-              <p className="text-muted-foreground mb-8 font-korean">더 정확한 스타일링을 위해 필요해요</p>
+              <h1 className="font-korean text-3xl text-foreground mb-2">{t('profileSetup.bodyInfo')}</h1>
+              <p className="text-muted-foreground mb-8 font-korean">{t('profileSetup.bodyInfoDesc')}</p>
 
               <div className="space-y-6 mb-8">
                 <div className="space-y-2">
-                  <Label htmlFor="height" className="font-korean">키 (cm)</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    placeholder="170"
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
-                  />
+                  <Label htmlFor="height" className="font-korean">{t('profileSetup.height')}</Label>
+                  <Input id="height" type="number" placeholder="170" value={height} onChange={(e) => setHeight(e.target.value)} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="weight" className="font-korean">몸무게 (kg)</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    placeholder="65"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                  />
+                  <Label htmlFor="weight" className="font-korean">{t('profileSetup.weight')}</Label>
+                  <Input id="weight" type="number" placeholder="65" value={weight} onChange={(e) => setWeight(e.target.value)} />
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="font-korean">성별 (선택)</Label>
+                  <Label className="font-korean">{t('profileSetup.gender')}</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {genderOptions.map((option) => (
                       <button
                         key={option.id}
                         onClick={() => setGender(option.id)}
                         className={`p-4 rounded-xl border-2 transition-all text-left ${
-                          gender === option.id
-                            ? 'border-accent bg-accent/5'
-                            : 'border-border hover:border-accent/50'
+                          gender === option.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
                         }`}
                       >
                         <span className="text-xl mr-2">{option.emoji}</span>
@@ -379,16 +353,14 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="font-korean">체형 (선택)</Label>
+                  <Label className="font-korean">{t('profileSetup.bodyType')}</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {bodyTypes.map((type) => (
                       <button
                         key={type.id}
                         onClick={() => setBodyType(type.id)}
                         className={`p-4 rounded-xl border-2 transition-all text-left ${
-                          bodyType === type.id
-                            ? 'border-accent bg-accent/5'
-                            : 'border-border hover:border-accent/50'
+                          bodyType === type.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
                         }`}
                       >
                         <span className="text-foreground font-medium font-korean">{type.label}</span>
@@ -398,16 +370,14 @@ const ProfileSetup = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="font-korean">연령대 (선택)</Label>
+                  <Label className="font-korean">{t('profileSetup.ageGroup')}</Label>
                   <div className="grid grid-cols-2 gap-3">
                     {ageGroupOptions.map((option) => (
                       <button
                         key={option.id}
                         onClick={() => setAgeGroup(option.id)}
                         className={`p-4 rounded-xl border-2 transition-all text-left ${
-                          ageGroup === option.id
-                            ? 'border-accent bg-accent/5'
-                            : 'border-border hover:border-accent/50'
+                          ageGroup === option.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
                         }`}
                       >
                         <span className="text-xl mr-2">{option.emoji}</span>
@@ -420,7 +390,7 @@ const ProfileSetup = () => {
 
               <div className="flex gap-3">
                 <Button variant="minimal" size="xl" onClick={() => setStep(1)} className="flex-1 font-korean">
-                  이전
+                  {t('profileSetup.previous')}
                 </Button>
                 <Button
                   variant="hero"
@@ -429,7 +399,7 @@ const ProfileSetup = () => {
                   onClick={() => setStep(3)}
                   disabled={!canProceed()}
                 >
-                  다음
+                  {t('profileSetup.next')}
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </div>
@@ -439,8 +409,8 @@ const ProfileSetup = () => {
           {/* Step 3: Style Preferences */}
           {step === 3 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-korean text-3xl text-foreground mb-2">선호하는 스타일을 선택하세요</h1>
-              <p className="text-muted-foreground mb-8 font-korean">여러 개를 선택할 수 있어요</p>
+              <h1 className="font-korean text-3xl text-foreground mb-2">{t('profileSetup.selectStyle')}</h1>
+              <p className="text-muted-foreground mb-8 font-korean">{t('profileSetup.selectMultiple')}</p>
 
               <div className="grid grid-cols-2 gap-3 mb-8">
                 {styleOptions.map((style) => (
@@ -466,7 +436,7 @@ const ProfileSetup = () => {
 
               <div className="flex gap-3">
                 <Button variant="minimal" size="xl" onClick={() => setStep(2)} className="flex-1 font-korean">
-                  이전
+                  {t('profileSetup.previous')}
                 </Button>
                 <Button
                   variant="gold"
@@ -475,7 +445,7 @@ const ProfileSetup = () => {
                   onClick={handleSubmit}
                   disabled={!canProceed() || isSubmitting}
                 >
-                  {isSubmitting ? '저장 중...' : '완료'}
+                  {isSubmitting ? t('profileSetup.saving') : t('profileSetup.complete')}
                   <Sparkles className="w-5 h-5" />
                 </Button>
               </div>

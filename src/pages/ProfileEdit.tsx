@@ -8,44 +8,46 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Camera, Check, Save } from 'lucide-react';
 import MainNavigation from '@/components/MainNavigation';
-
-const styleOptions = [
-  { id: 'minimal', label: '미니멀', emoji: '🤍' },
-  { id: 'street', label: '스트릿', emoji: '🔥' },
-  { id: 'classic', label: '클래식', emoji: '👔' },
-  { id: 'casual', label: '캐주얼', emoji: '👕' },
-  { id: 'sporty', label: '스포티', emoji: '⚡' },
-  { id: 'bohemian', label: '보헤미안', emoji: '🌸' },
-];
-
-const bodyTypes = [
-  { id: 'slim', label: '마른 체형' },
-  { id: 'average', label: '보통 체형' },
-  { id: 'muscular', label: '근육질' },
-  { id: 'curvy', label: '볼륨 체형' },
-];
-
-const genderOptions = [
-  { id: 'male', label: '남성', emoji: '👨' },
-  { id: 'female', label: '여성', emoji: '👩' },
-  { id: 'unisex', label: '유니섹스', emoji: '🧑' },
-  { id: 'prefer_not_to_say', label: '선택 안함', emoji: '🔒' },
-];
-
-const ageGroupOptions = [
-  { id: 'child', label: '아동 (12세 이하)', emoji: '👶' },
-  { id: 'teen', label: '10대', emoji: '🧒' },
-  { id: '20s', label: '20대', emoji: '🧑' },
-  { id: '30s', label: '30대', emoji: '👨‍💼' },
-  { id: '40s', label: '40대', emoji: '👨‍💼' },
-  { id: '50s', label: '50대', emoji: '🧓' },
-  { id: '60plus', label: '60대 이상', emoji: '👴' },
-];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const ProfileEdit = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { toast } = useToast();
+
+  const styleOptions = [
+    { id: 'minimal', label: t('profileSetup.styles.minimal'), emoji: '🤍' },
+    { id: 'street', label: t('profileSetup.styles.street'), emoji: '🔥' },
+    { id: 'classic', label: t('profileSetup.styles.classic'), emoji: '👔' },
+    { id: 'casual', label: t('profileSetup.styles.casual'), emoji: '👕' },
+    { id: 'sporty', label: t('profileSetup.styles.sporty'), emoji: '⚡' },
+    { id: 'bohemian', label: t('profileSetup.styles.bohemian'), emoji: '🌸' },
+  ];
+
+  const bodyTypes = [
+    { id: 'slim', label: t('profileSetup.bodyTypes.slim') },
+    { id: 'average', label: t('profileSetup.bodyTypes.average') },
+    { id: 'muscular', label: t('profileSetup.bodyTypes.muscular') },
+    { id: 'curvy', label: t('profileSetup.bodyTypes.curvy') },
+  ];
+
+  const genderOptions = [
+    { id: 'male', label: t('profileSetup.genderOptions.male'), emoji: '👨' },
+    { id: 'female', label: t('profileSetup.genderOptions.female'), emoji: '👩' },
+    { id: 'unisex', label: t('profileSetup.genderOptions.unisex'), emoji: '🧑' },
+    { id: 'prefer_not_to_say', label: t('profileSetup.genderOptions.preferNotToSay'), emoji: '🔒' },
+  ];
+
+  const ageGroupOptions = [
+    { id: 'child', label: t('profileSetup.ageGroups.child'), emoji: '👶' },
+    { id: 'teen', label: t('profileSetup.ageGroups.teen'), emoji: '🧒' },
+    { id: '20s', label: t('profileSetup.ageGroups.twenties'), emoji: '🧑' },
+    { id: '30s', label: t('profileSetup.ageGroups.thirties'), emoji: '👨‍💼' },
+    { id: '40s', label: t('profileSetup.ageGroups.forties'), emoji: '👨‍💼' },
+    { id: '50s', label: t('profileSetup.ageGroups.fifties'), emoji: '🧓' },
+    { id: '60plus', label: t('profileSetup.ageGroups.sixtyPlus'), emoji: '👴' },
+  ];
 
   const [height, setHeight] = useState('');
   const [weight, setWeight] = useState('');
@@ -87,9 +89,7 @@ const ProfileEdit = () => {
           setAgeGroup((data as any).age_group || '');
           setCurrentAvatarUrl(data.avatar_url);
           
-          // Generate signed URL for display if avatar exists
           if (data.avatar_url) {
-            // Check if it's a file path (not already a full URL)
             if (!data.avatar_url.startsWith('http')) {
               const { data: signedData } = await supabase.storage
                 .from('avatars')
@@ -103,8 +103,8 @@ const ProfileEdit = () => {
       } catch (error) {
         console.error('Error fetching profile:', error);
         toast({
-          title: '오류',
-          description: '프로필을 불러오는 중 문제가 발생했습니다.',
+          title: t('profileEdit.error'),
+          description: t('profileEdit.loadError'),
           variant: 'destructive',
         });
       } finally {
@@ -115,7 +115,7 @@ const ProfileEdit = () => {
     if (user) {
       fetchProfile();
     }
-  }, [user, toast]);
+  }, [user, toast, t]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,7 +144,6 @@ const ProfileEdit = () => {
     try {
       let avatarPath = currentAvatarUrl;
 
-      // Upload new avatar if provided
       if (avatarFile) {
         const fileExt = avatarFile.name.split('.').pop();
         const filePath = `${user.id}/avatar-${Date.now()}.${fileExt}`;
@@ -156,12 +155,10 @@ const ProfileEdit = () => {
         if (uploadError) {
           console.error('Upload error:', uploadError);
         } else if (data) {
-          // Store the file path instead of public URL (bucket is now private)
           avatarPath = filePath;
         }
       }
 
-      // Update profile
       const { error } = await supabase
         .from('profiles')
         .update({
@@ -178,16 +175,16 @@ const ProfileEdit = () => {
       if (error) throw error;
 
       toast({
-        title: '프로필 수정 완료!',
-        description: '변경 사항이 저장되었습니다.',
+        title: t('profileEdit.saveComplete'),
+        description: t('profileEdit.changesSaved'),
       });
 
       navigate('/style');
     } catch (error) {
       console.error('Error updating profile:', error);
       toast({
-        title: '오류',
-        description: '프로필 저장 중 문제가 발생했습니다.',
+        title: t('profileEdit.error'),
+        description: t('profileEdit.saveError'),
         variant: 'destructive',
       });
     } finally {
@@ -198,18 +195,17 @@ const ProfileEdit = () => {
   if (loading || isLoading) {
     return (
       <div className="min-h-screen bg-gradient-hero flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground font-korean">로딩 중...</div>
+        <div className="animate-pulse text-muted-foreground font-korean">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-hero">
-      {/* Header - using shared navigation */}
       <MainNavigation 
         showBackButton
         rightContent={
-          <span className="font-korean text-lg text-foreground">프로필 수정</span>
+          <span className="font-korean text-lg text-foreground">{t('profileEdit.title')}</span>
         }
       />
 
@@ -217,7 +213,7 @@ const ProfileEdit = () => {
         <div className="container mx-auto max-w-lg space-y-8">
           {/* Photo Section */}
           <section className="animate-fade-in-up">
-            <h2 className="font-korean text-xl text-foreground mb-4">프로필 사진</h2>
+            <h2 className="font-korean text-xl text-foreground mb-4">{t('profileEdit.profilePhoto')}</h2>
             <div className="flex justify-center">
               <label
                 htmlFor="avatar-upload"
@@ -228,7 +224,7 @@ const ProfileEdit = () => {
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                     <Camera className="w-8 h-8 text-muted-foreground group-hover:text-accent transition-colors" />
-                    <span className="text-sm text-muted-foreground font-korean">사진 추가</span>
+                    <span className="text-sm text-muted-foreground font-korean">{t('profileEdit.addPhoto')}</span>
                   </div>
                 )}
               </label>
@@ -244,42 +240,28 @@ const ProfileEdit = () => {
 
           {/* Body Info Section */}
           <section className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-            <h2 className="font-korean text-xl text-foreground mb-4">체형 정보</h2>
+            <h2 className="font-korean text-xl text-foreground mb-4">{t('profileEdit.bodyInfo')}</h2>
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="height" className="font-korean">키 (cm)</Label>
-                  <Input
-                    id="height"
-                    type="number"
-                    placeholder="170"
-                    value={height}
-                    onChange={(e) => setHeight(e.target.value)}
-                  />
+                  <Label htmlFor="height" className="font-korean">{t('profileSetup.height')}</Label>
+                  <Input id="height" type="number" placeholder="170" value={height} onChange={(e) => setHeight(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="weight" className="font-korean">몸무게 (kg)</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    placeholder="65"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                  />
+                  <Label htmlFor="weight" className="font-korean">{t('profileSetup.weight')}</Label>
+                  <Input id="weight" type="number" placeholder="65" value={weight} onChange={(e) => setWeight(e.target.value)} />
                 </div>
               </div>
 
               <div className="space-y-3">
-                <Label className="font-korean">성별</Label>
+                <Label className="font-korean">{t('profileSetup.gender')}</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {genderOptions.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setGender(option.id)}
                       className={`p-3 rounded-xl border-2 transition-all text-left ${
-                        gender === option.id
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border hover:border-accent/50'
+                        gender === option.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
                       }`}
                     >
                         <span className="text-lg mr-2">{option.emoji}</span>
@@ -290,16 +272,14 @@ const ProfileEdit = () => {
               </div>
 
               <div className="space-y-3">
-                <Label className="font-korean">체형</Label>
+                <Label className="font-korean">{t('profileSetup.bodyType')}</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {bodyTypes.map((type) => (
                     <button
                       key={type.id}
                       onClick={() => setBodyType(type.id)}
                       className={`p-3 rounded-xl border-2 transition-all text-left ${
-                        bodyType === type.id
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border hover:border-accent/50'
+                        bodyType === type.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
                       }`}
                     >
                       <span className="text-foreground font-medium text-sm font-korean">{type.label}</span>
@@ -309,16 +289,14 @@ const ProfileEdit = () => {
               </div>
 
               <div className="space-y-3">
-                <Label className="font-korean">연령대</Label>
+                <Label className="font-korean">{t('profileSetup.ageGroup')}</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {ageGroupOptions.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setAgeGroup(option.id)}
                       className={`p-3 rounded-xl border-2 transition-all text-left ${
-                        ageGroup === option.id
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border hover:border-accent/50'
+                        ageGroup === option.id ? 'border-accent bg-accent/5' : 'border-border hover:border-accent/50'
                       }`}
                     >
                       <span className="text-lg mr-2">{option.emoji}</span>
@@ -332,7 +310,7 @@ const ProfileEdit = () => {
 
           {/* Style Preferences Section */}
           <section className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-            <h2 className="font-korean text-xl text-foreground mb-4">선호 스타일</h2>
+            <h2 className="font-korean text-xl text-foreground mb-4">{t('profileEdit.preferredStyle')}</h2>
             <div className="grid grid-cols-3 gap-3">
               {styleOptions.map((style) => (
                 <button
@@ -365,7 +343,7 @@ const ProfileEdit = () => {
               onClick={handleSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting ? '저장 중...' : '변경 사항 저장'}
+              {isSubmitting ? t('profileEdit.saving') : t('profileEdit.save')}
               <Save className="w-5 h-5" />
             </Button>
           </div>

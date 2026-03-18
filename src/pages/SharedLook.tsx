@@ -11,6 +11,7 @@ import { useGuestCart } from "@/hooks/useGuestCart";
 import MainNavigation from "@/components/MainNavigation";
 import { getProductAffiliateDisclosure } from "@/lib/affiliateDisclosure";
 import { WatermarkOverlay } from "@/components/style/WatermarkOverlay";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 // 카카오톡 인앱 브라우저 감지
 const isKakaoInAppBrowser = (): boolean => {
@@ -101,6 +102,7 @@ const updateMetaTags = (metadata: {
 };
 
 const SharedLook = () => {
+  const { t } = useLanguage();
   const { lookId } = useParams<{ lookId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -134,7 +136,7 @@ const SharedLook = () => {
   useEffect(() => {
     const fetchLook = async () => {
       if (!lookId) {
-        setError("룩 ID가 없습니다.");
+        setError(t('sharedLook.styleNotFound'));
         setLoading(false);
         return;
       }
@@ -148,7 +150,7 @@ const SharedLook = () => {
           .single();
 
         if (lookError || !lookData) {
-          setError("해당 스타일을 찾을 수 없습니다.");
+          setError(t('sharedLook.notFoundDesc'));
           setLoading(false);
           return;
         }
@@ -170,12 +172,12 @@ const SharedLook = () => {
         // Update OG meta tags dynamically
         const description = lookData.prompt_used 
           ? lookData.prompt_used.slice(0, 100) + (lookData.prompt_used.length > 100 ? "..." : "")
-          : "AI가 추천하는 나만의 스타일을 확인해보세요!";
+          : "AI Style Recommendation";
         
         const tagStr = lookData.tags?.slice(0, 3).map((t: string) => `#${t}`).join(" ") || "";
 
         updateMetaTags({
-          title: "쇼미룩 AI 스타일 추천",
+          title: "ShowMeLook AI Style",
           description: `${description} ${tagStr}`.trim(),
           image: imageUrl,
           url: `https://showmelook.com/look/${lookId}`,
@@ -219,7 +221,7 @@ const SharedLook = () => {
         });
       } catch (e) {
         console.error("Error fetching look:", e);
-        setError("스타일을 불러오는 중 오류가 발생했습니다.");
+        setError(t('sharedLook.styleNotFound'));
       } finally {
         setLoading(false);
       }
@@ -229,9 +231,9 @@ const SharedLook = () => {
 
     // Cleanup: restore original meta tags on unmount
     return () => {
-      document.title = "쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook";
+      document.title = "ShowMeLook - AI Fashion Styling";
     };
-  }, [lookId]);
+  }, [lookId, t]);
 
   const handleProductClick = (product: Product) => {
     const url = product.affiliate_url || product.product_url;
@@ -258,10 +260,10 @@ const SharedLook = () => {
         if (error) throw error;
         
         setAddedToCart((prev) => new Set(prev).add(product.id));
-        toast.success("장바구니에 추가되었습니다");
+        toast.success(t('sharedLook.addedToCart'));
       } catch (err) {
         console.error("Cart error:", err);
-        toast.error("장바구니 추가에 실패했습니다");
+        toast.error(t('sharedLook.cartAddFailed'));
       }
     } else {
       // Guest: add to localStorage cart
@@ -276,30 +278,21 @@ const SharedLook = () => {
       });
 
       setAddedToCart((prev) => new Set(prev).add(product.id));
-      toast.success("장바구니에 추가되었습니다", {
-        description: "로그인하면 장바구니가 계정에 저장됩니다.",
-      });
+      toast.success(t('sharedLook.addedToCart'));
     }
   };
 
-  const handleTryStyle = () => {
-    navigate("/style");
-  };
-
-  const handleViewCart = () => {
-    navigate("/cart");
-  };
+  const handleTryStyle = () => navigate("/style");
+  const handleViewCart = () => navigate("/cart");
 
   // 링크 복사 핸들러
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      toast.success("링크가 복사되었습니다", {
-        description: "Safari 또는 Chrome에서 붙여넣기 해주세요",
-      });
+      toast.success(t('sharedLook.linkCopied'), { description: t('sharedLook.linkCopiedDesc') });
     } catch (err) {
       console.error("Copy failed:", err);
-      toast.error("링크 복사에 실패했습니다");
+      toast.error(t('sharedLook.linkCopyFailed'));
     }
   };
 
@@ -313,11 +306,10 @@ const SharedLook = () => {
           </div>
           
           <div className="space-y-2">
-            <h2 className="text-xl font-bold">외부 브라우저에서 열기</h2>
+            <h2 className="text-xl font-bold">{t('sharedLook.openExternal')}</h2>
             <p className="text-sm text-muted-foreground">
-              카카오톡 내 브라우저에서는 일부 기능이 제한됩니다.
-              <br />
-              더 나은 경험을 위해 외부 브라우저에서 열어주세요.
+              {t('sharedLook.kakaoLimited')}<br />
+              {t('sharedLook.openExternalDesc')}
             </p>
           </div>
 
@@ -328,7 +320,7 @@ const SharedLook = () => {
                 onClick={() => openInExternalBrowser(window.location.href)}
               >
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Chrome에서 열기
+                {t('sharedLook.openInChrome')}
               </Button>
             )}
             
@@ -338,12 +330,12 @@ const SharedLook = () => {
               onClick={handleCopyLink}
             >
               <Copy className="w-4 h-4 mr-2" />
-              링크 복사하기
+              {t('sharedLook.copyLink')}
             </Button>
             
             {isIOS() && (
               <p className="text-xs text-muted-foreground">
-                링크를 복사한 후 Safari에서 붙여넣기 해주세요
+                {t('sharedLook.pasteInSafari')}
               </p>
             )}
 
@@ -352,7 +344,7 @@ const SharedLook = () => {
               className="w-full text-muted-foreground" 
               onClick={() => setShowKakaoRedirectUI(false)}
             >
-              이대로 보기
+              {t('sharedLook.viewAsIs')}
             </Button>
           </div>
         </div>
@@ -365,7 +357,7 @@ const SharedLook = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-accent mx-auto mb-4" />
-          <p className="text-muted-foreground">스타일을 불러오는 중...</p>
+          <p className="text-muted-foreground">{t('sharedLook.loadingStyle')}</p>
         </div>
       </div>
     );
@@ -379,12 +371,12 @@ const SharedLook = () => {
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <ShoppingBag className="w-8 h-8 text-muted-foreground" />
             </div>
-            <h2 className="text-xl font-semibold mb-2">스타일을 찾을 수 없습니다</h2>
+            <h2 className="text-xl font-semibold mb-2">{t('sharedLook.styleNotFound')}</h2>
             <p className="text-muted-foreground mb-6">
-              {error || "요청하신 스타일이 존재하지 않거나 삭제되었습니다."}
+              {error || t('sharedLook.notFoundDesc')}
             </p>
             <Button onClick={handleTryStyle} className="w-full">
-              나만의 스타일 만들어보기
+              {t('sharedLook.createMyStyle')}
             </Button>
           </CardContent>
         </Card>
@@ -415,7 +407,7 @@ const SharedLook = () => {
               )}
             </Button>
             <Button variant="hero" size="sm" onClick={handleTryStyle} className="font-korean rounded-full">
-              나도 만들어보기
+              {t('sharedLook.tryMake')}
             </Button>
           </div>
         }
@@ -437,7 +429,7 @@ const SharedLook = () => {
         <div className="bg-card/80 backdrop-blur-sm rounded-xl p-4 mb-6 border border-border/50">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant="secondary" className="bg-accent/20 text-accent">
-              AI 스타일
+              {t('sharedLook.aiStyle')}
             </Badge>
             <span className="text-xs text-muted-foreground">
               {new Date(look.created_at).toLocaleDateString("ko-KR")}
@@ -464,7 +456,7 @@ const SharedLook = () => {
           <div className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <ShoppingBag className="w-5 h-5" />
-              스타일 상품
+              {t('sharedLook.styleProducts')}
             </h2>
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {look.products.map((product) => (
@@ -500,11 +492,11 @@ const SharedLook = () => {
                     </p>
                     <div className="flex items-baseline gap-1 flex-wrap">
                       <span className="font-bold text-accent text-xs sm:text-sm">
-                        {product.price.toLocaleString()}원
+                        {product.price.toLocaleString()}{t('common.won')}
                       </span>
                       {product.original_price && product.original_price > product.price && (
                         <span className="text-[10px] sm:text-xs text-muted-foreground line-through">
-                          {product.original_price.toLocaleString()}원
+                          {product.original_price.toLocaleString()}{t('common.won')}
                         </span>
                       )}
                     </div>
@@ -524,12 +516,12 @@ const SharedLook = () => {
                         {addedToCart.has(product.id) ? (
                           <>
                             <Check className="w-3 h-3 mr-1 shrink-0" />
-                            담김
+                            ✓
                           </>
                         ) : (
                           <>
                             <ShoppingCart className="w-3 h-3 mr-1 shrink-0" />
-                            담기
+                            {t('mypage.addToCart')}
                           </>
                         )}
                       </Button>
@@ -543,7 +535,7 @@ const SharedLook = () => {
                         }}
                       >
                         <ExternalLink className="w-3 h-3 mr-1 shrink-0" />
-                        구매
+                        {t('mypage.purchase')}
                       </Button>
                     </div>
                   </CardContent>
@@ -555,12 +547,12 @@ const SharedLook = () => {
 
         {/* CTA */}
         <div className="mt-8 p-6 bg-gradient-to-r from-accent/10 to-primary/10 rounded-2xl text-center">
-          <h3 className="text-xl font-bold mb-2">나만의 AI 스타일을 만들어보세요!</h3>
+          <h3 className="text-xl font-bold mb-2">{t('sharedLook.createMyStyle')}</h3>
           <p className="text-muted-foreground mb-4">
-            ShowMeLook AI가 당신에게 어울리는 스타일을 추천해드립니다.
+            {t('auth.experienceFashion')}
           </p>
           <Button size="lg" onClick={handleTryStyle}>
-            무료로 시작하기
+            {t('landing.freeStart')}
           </Button>
         </div>
       </main>
@@ -568,7 +560,7 @@ const SharedLook = () => {
       {/* Footer */}
       <footer className="border-t border-border py-6 mt-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2025 ShowMeLook. AI 패션 스타일링 서비스</p>
+          <p>© 2025 ShowMeLook. AI Fashion Styling Service</p>
         </div>
       </footer>
     </div>
