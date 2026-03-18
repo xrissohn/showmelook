@@ -438,7 +438,7 @@ const GalleryPreviewSection = () => {
               className="font-korean group"
             >
               <Images className="w-5 h-5 mr-2" />
-              스타일 갤러리 더 보기
+              {t('landing.viewMore')}
               <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>
