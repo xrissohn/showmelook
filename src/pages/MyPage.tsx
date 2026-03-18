@@ -15,12 +15,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { LazyImage } from "@/components/LazyImage";
 import MainNavigation from "@/components/MainNavigation";
 import { FamilyProfileManager } from "@/components/profile/FamilyProfileManager";
-import { PLAN_CONFIG, formatPrice } from "@/lib/planConfig";
+import { PLAN_CONFIG } from "@/lib/planConfig";
 import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
 import { TierHistorySection } from "@/components/mypage/TierHistorySection";
 import { TIER_CONFIG, TierType } from "@/lib/tierConfig";
 import { SEOHead } from "@/components/SEOHead";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { 
   useRecommendationHistory, 
   useLikedProducts, 
@@ -41,6 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MyPage = () => {
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -54,18 +56,15 @@ const MyPage = () => {
   const [codeCopied, setCodeCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // React Query 훅 사용 (5분 캐싱)
   const { data: recommendations = [], isLoading: isLoadingRecs } = useRecommendationHistory();
   const { data: likedProducts = [], isLoading: isLoadingLikes } = useLikedProducts();
   
-  // Mutations
   const deleteRecommendation = useDeleteRecommendation();
   const unlikeProduct = useUnlikeProduct();
   const addToCart = useAddToCart();
 
   const isLoading = isLoadingRecs || isLoadingLikes || profileLoading;
 
-  // 등급 변동 토스트 알림
   useEffect(() => {
     if (purchaseStats.recentTierChange) {
       const { previousTier, newTier, changeReason } = purchaseStats.recentTierChange;
@@ -73,17 +72,15 @@ const MyPage = () => {
       const newConfig = TIER_CONFIG[newTier];
       
       if (changeReason === 'purchase' || changeReason === 'admin') {
-        // 업그레이드
         toast({
-          title: `🎉 ${newConfig.nameKo} 등급 달성!`,
-          description: `축하합니다! ${prevConfig.nameKo}에서 ${newConfig.nameKo}로 업그레이드되었습니다.`,
+          title: `🎉 ${newConfig.nameKo} ${t('mypage.tierUpgrade')}`,
+          description: `${prevConfig.nameKo} → ${newConfig.nameKo} ${t('mypage.tierUpgradeDesc')}`,
           duration: 5000,
         });
       } else if (changeReason === 'refund') {
-        // 다운그레이드
         toast({
-          title: `등급이 변경되었습니다`,
-          description: `환불 반영으로 ${prevConfig.nameKo}에서 ${newConfig.nameKo}로 변경되었습니다.`,
+          title: t('mypage.tierDowngrade'),
+          description: `${prevConfig.nameKo} → ${newConfig.nameKo} ${t('mypage.tierDowngradeDesc')}`,
           variant: "destructive",
           duration: 5000,
         });
@@ -91,10 +88,10 @@ const MyPage = () => {
       
       purchaseStats.clearRecentTierChange();
     }
-  }, [purchaseStats.recentTierChange, purchaseStats.clearRecentTierChange, toast]);
+  }, [purchaseStats.recentTierChange, purchaseStats.clearRecentTierChange, toast, t]);
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('ko-KR').format(price) + '원';
+    return new Intl.NumberFormat('ko-KR').format(price) + t('common.won');
   };
 
   const formatDate = (dateString: string) => {
@@ -110,48 +107,27 @@ const MyPage = () => {
   const handleDelete = async (id: string) => {
     try {
       await deleteRecommendation.mutateAsync(id);
-      toast({
-        title: "삭제 완료",
-        description: "추천 히스토리가 삭제되었습니다.",
-      });
+      toast({ title: t('mypage.deleteComplete'), description: t('mypage.historyDeleted') });
     } catch (error: any) {
-      toast({
-        title: "삭제 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: t('mypage.deleteFailed'), description: error.message, variant: "destructive" });
     }
   };
 
   const handleUnlike = async (productId: string) => {
     try {
       await unlikeProduct.mutateAsync(productId);
-      toast({
-        title: "좋아요 취소",
-        description: "관심 상품에서 제거되었습니다.",
-      });
+      toast({ title: t('mypage.unliked'), description: t('mypage.removedFromLikes') });
     } catch (error: any) {
-      toast({
-        title: "삭제 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: t('mypage.deleteFailed'), description: error.message, variant: "destructive" });
     }
   };
 
   const handleAddToCart = async (product: any) => {
     try {
       await addToCart.mutateAsync(product);
-      toast({
-        title: "장바구니에 추가됨",
-        description: `${product.product_name}이(가) 장바구니에 추가되었습니다.`,
-      });
+      toast({ title: t('mypage.addedToCart'), description: `${product.product_name} ${t('mypage.addedToCartDesc')}` });
     } catch (error: any) {
-      toast({
-        title: "추가 실패",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: t('mypage.addFailed'), description: error.message, variant: "destructive" });
     }
   };
 
@@ -162,9 +138,7 @@ const MyPage = () => {
         body: { product_url: url },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
-
       if (error) throw error;
-
       if (data?.success && data?.affiliate_url) {
         window.open(data.affiliate_url, '_blank', 'noopener,noreferrer');
       } else {
@@ -187,7 +161,6 @@ const MyPage = () => {
     return colorMap[tag] || 'bg-secondary text-muted-foreground';
   };
 
-  // 인증 리다이렉트
   if (!authLoading && !user) {
     navigate('/auth');
     return null;
@@ -206,27 +179,18 @@ const MyPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead pageKey="mypage" />
-      {/* Header - using shared navigation */}
       <MainNavigation showBackButton />
 
       <main className="container max-w-4xl mx-auto px-4 pt-20 sm:pt-24 pb-6 space-y-6">
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex flex-col items-center gap-2"
-            onClick={() => navigate('/style?tab=mylooks')}
-          >
+          <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" onClick={() => navigate('/style?tab=mylooks')}>
             <Image className="w-6 h-6 text-primary" />
-            <span>마이 갤러리</span>
+            <span>{t('mypage.myGallery')}</span>
           </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-4 flex flex-col items-center gap-2"
-            onClick={() => navigate('/cart')}
-          >
+          <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" onClick={() => navigate('/cart')}>
             <ShoppingBag className="w-6 h-6 text-primary" />
-            <span>장바구니</span>
+            <span>{t('mypage.cart')}</span>
           </Button>
         </div>
 
@@ -235,28 +199,25 @@ const MyPage = () => {
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="subscription" className="flex items-center gap-1 text-xs sm:text-sm">
               <Crown className="w-4 h-4" />
-              <span className="hidden sm:inline">구독</span>
+              <span className="hidden sm:inline">{t('mypage.subscription')}</span>
             </TabsTrigger>
             <TabsTrigger value="likes" className="flex items-center gap-1 text-xs sm:text-sm">
               <Heart className="w-4 h-4" />
-              <span className="hidden sm:inline">관심</span> ({likedProducts.length})
+              <span className="hidden sm:inline">{t('mypage.likes')}</span> ({likedProducts.length})
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-1 text-xs sm:text-sm">
               <History className="w-4 h-4" />
-              <span className="hidden sm:inline">히스토리</span>
+              <span className="hidden sm:inline">{t('mypage.history')}</span>
             </TabsTrigger>
             <TabsTrigger value="family" className="flex items-center gap-1 text-xs sm:text-sm">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">모델</span>
-              {!subscription.canUseFamilyProfiles && (
-                <Crown className="w-3 h-3 text-amber-500" />
-              )}
+              <span className="hidden sm:inline">{t('mypage.model')}</span>
+              {!subscription.canUseFamilyProfiles && <Crown className="w-3 h-3 text-amber-500" />}
             </TabsTrigger>
           </TabsList>
 
-          {/* 구독 상태 탭 */}
+          {/* Subscription Tab */}
           <TabsContent value="subscription" className="mt-4 space-y-4">
-            {/* 구매 기반 등급 카드 */}
             <TierStatusCard
               stats={purchaseStats.stats}
               progressToNextTier={purchaseStats.progressToNextTier}
@@ -264,29 +225,21 @@ const MyPage = () => {
               tierHistory={purchaseStats.tierHistory}
               isLoading={purchaseStats.isLoading}
             />
+            <TierHistorySection tierHistory={purchaseStats.tierHistory} isLoading={purchaseStats.isLoading} />
 
-            {/* 등급 변동 이력 */}
-            <TierHistorySection
-              tierHistory={purchaseStats.tierHistory}
-              isLoading={purchaseStats.isLoading}
-            />
-
-            {/* 친구 추천 카드 */}
+            {/* Referral Card */}
             <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <Gift className="w-5 h-5 text-primary" />
-                  <CardTitle className="font-korean text-lg">친구 추천</CardTitle>
+                  <CardTitle className="font-korean text-lg">{t('mypage.friendReferral')}</CardTitle>
                 </div>
-                <CardDescription className="font-korean">
-                  친구를 초대하고 보너스를 받으세요!
-                </CardDescription>
+                <CardDescription className="font-korean">{t('mypage.inviteFriends')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* 내 추천 링크 */}
                 {referral.referralCode && (
                   <div className="p-4 rounded-lg bg-background border border-primary/20">
-                    <p className="text-sm text-muted-foreground mb-2 font-korean">내 추천 링크</p>
+                    <p className="text-sm text-muted-foreground mb-2 font-korean">{t('mypage.myReferralLink')}</p>
                     <div className="flex items-center gap-2 mb-3">
                       <code className="flex-1 text-sm text-primary truncate">
                         showmelook.com/auth?ref={referral.referralCode.code}
@@ -301,13 +254,13 @@ const MyPage = () => {
                           const success = await referral.copyReferralLink();
                           if (success) {
                             setLinkCopied(true);
-                            toast({ title: '복사됨!', description: '추천 링크가 클립보드에 복사되었습니다.' });
+                            toast({ title: t('mypage.copied'), description: t('mypage.copiedDesc') });
                             setTimeout(() => setLinkCopied(false), 2000);
                           }
                         }}
                       >
                         {linkCopied ? <Check className="w-4 h-4 mr-1" /> : <Link className="w-4 h-4 mr-1" />}
-                        링크 복사
+                        {t('mypage.copyLink')}
                       </Button>
                       <Button
                         variant="outline"
@@ -316,74 +269,58 @@ const MyPage = () => {
                           const success = await referral.copyReferralCode();
                           if (success) {
                             setCodeCopied(true);
-                            toast({ title: '복사됨!', description: '추천 코드가 클립보드에 복사되었습니다.' });
+                            toast({ title: t('mypage.copied'), description: t('mypage.codeCopiedDesc') });
                             setTimeout(() => setCodeCopied(false), 2000);
                           }
                         }}
                       >
                         {codeCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        코드
+                        {t('mypage.copyCode')}
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-3 font-korean">
-                      {referral.referralCode.used_count}/{referral.referralCode.max_uses}명 추천 완료
+                      {referral.referralCode.used_count}/{referral.referralCode.max_uses}{t('mypage.referralComplete')}
                     </p>
                   </div>
                 )}
 
-                {/* 보너스 크레딧 */}
                 {referral.bonusCredits.total > 0 && (
                   <div className="p-4 rounded-lg bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800">
                     <div className="flex items-center gap-2 mb-1">
                       <Sparkles className="w-4 h-4 text-amber-500" />
-                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400 font-korean">활성 보너스</p>
+                      <p className="text-sm font-medium text-amber-700 dark:text-amber-400 font-korean">{t('mypage.activeBonus')}</p>
                     </div>
-                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-300">
-                      +{referral.bonusCredits.total}회
-                    </p>
-                    <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1 font-korean">
-                      일일 한도 소진 후 사용 가능
-                    </p>
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-300">+{referral.bonusCredits.total}</p>
+                    <p className="text-xs text-amber-600/70 dark:text-amber-400/70 mt-1 font-korean">{t('mypage.afterDailyLimit')}</p>
                   </div>
                 )}
 
-                {/* 리워드 안내 */}
                 <div className="text-sm text-muted-foreground font-korean space-y-1">
-                  <p>• 추천 성공 시 보너스 5회 (30일간 유효)</p>
-                  <p>• 플래티넘 등급: 추천 시 모델 슬롯 +1 (영구)</p>
+                  <p>{t('mypage.referralInfo1')}</p>
+                  <p>{t('mypage.referralInfo2')}</p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* 프로필 설정 링크 */}
             <Card>
               <CardContent className="p-4">
-                <Button
-                  variant="outline"
-                  className="w-full font-korean"
-                  onClick={() => navigate('/profile-edit')}
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  프로필 설정
+                <Button variant="outline" className="w-full font-korean" onClick={() => navigate('/profile-edit')}>
+                  <Settings className="w-4 h-4 mr-2" />{t('mypage.profileSettings')}
                 </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* 관심 상품 탭 */}
+          {/* Likes Tab */}
           <TabsContent value="likes" className="mt-4">
             {likedProducts.length === 0 ? (
               <Card>
                 <CardContent className="text-center py-12">
                   <Heart className="w-12 h-12 mx-auto mb-4 opacity-30 text-muted-foreground" />
-                  <p className="text-muted-foreground">아직 관심 상품이 없어요</p>
-                  <p className="text-sm text-muted-foreground mt-1">스타일 추천에서 마음에 드는 상품에 좋아요를 눌러보세요!</p>
-                  <Button
-                    variant="link"
-                    className="mt-2"
-                    onClick={() => navigate('/style')}
-                  >
-                    스타일 추천받으러 가기
+                  <p className="text-muted-foreground">{t('mypage.noLikedProducts')}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{t('mypage.likeFromStyle')}</p>
+                  <Button variant="link" className="mt-2" onClick={() => navigate('/style')}>
+                    {t('mypage.goToStyle')}
                   </Button>
                 </CardContent>
               </Card>
@@ -398,13 +335,11 @@ const MyPage = () => {
                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
                         fallbackClassName="w-full h-full"
                       />
-                      {/* Category Badge */}
                       {product.product_category && (
                         <span className="absolute top-2 left-2 text-xs bg-background/90 backdrop-blur px-2 py-0.5 rounded-full z-10">
                           {product.product_category}
                         </span>
                       )}
-                      {/* Unlike Button */}
                       <button
                         onClick={() => handleUnlike(product.id)}
                         className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 backdrop-blur flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 z-10"
@@ -419,37 +354,20 @@ const MyPage = () => {
                       <p className="text-sm font-medium line-clamp-2 leading-tight">{product.product_name}</p>
                       <p className="text-sm font-bold text-primary">{formatPrice(product.product_price)}</p>
                       
-                      {/* Style Tags */}
                       {product.style_tags && product.style_tags.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {product.style_tags.slice(0, 2).map((tag, i) => (
-                            <span key={i} className={`text-xs px-1.5 py-0.5 rounded ${getTagColor(tag)}`}>
-                              {tag}
-                            </span>
+                            <span key={i} className={`text-xs px-1.5 py-0.5 rounded ${getTagColor(tag)}`}>{tag}</span>
                           ))}
                         </div>
                       )}
 
-                      {/* Action Buttons */}
                       <div className="flex gap-2 pt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-xs h-8"
-                          onClick={() => handleAddToCart(product)}
-                          disabled={addToCart.isPending}
-                        >
-                          <ShoppingCart className="w-3 h-3 mr-1" />
-                          담기
+                        <Button variant="outline" size="sm" className="flex-1 text-xs h-8" onClick={() => handleAddToCart(product)} disabled={addToCart.isPending}>
+                          <ShoppingCart className="w-3 h-3 mr-1" />{t('mypage.addToCart')}
                         </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          className="flex-1 text-xs h-8"
-                          onClick={() => handlePurchase(product.product_url)}
-                        >
-                          <ExternalLink className="w-3 h-3 mr-1" />
-                          구매
+                        <Button variant="default" size="sm" className="flex-1 text-xs h-8" onClick={() => handlePurchase(product.product_url)}>
+                          <ExternalLink className="w-3 h-3 mr-1" />{t('mypage.purchase')}
                         </Button>
                       </div>
                     </CardContent>
@@ -459,118 +377,76 @@ const MyPage = () => {
             )}
           </TabsContent>
 
-          {/* 추천 히스토리 탭 */}
+          {/* History Tab */}
           <TabsContent value="history" className="mt-4">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <History className="w-5 h-5" />
-                  추천 히스토리
+                  <History className="w-5 h-5" />{t('mypage.historyTitle')}
                 </CardTitle>
-                <CardDescription>
-                  지금까지 받은 스타일 추천 목록
-                </CardDescription>
+                <CardDescription>{t('mypage.historyList')}</CardDescription>
               </CardHeader>
               <CardContent>
                 {recommendations.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <History className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <p>아직 추천 받은 스타일이 없어요</p>
-                    <Button
-                      variant="link"
-                      className="mt-2"
-                      onClick={() => navigate('/style')}
-                    >
-                      첫 추천 받으러 가기
+                    <p>{t('mypage.noHistory')}</p>
+                    <Button variant="link" className="mt-2" onClick={() => navigate('/style')}>
+                      {t('mypage.goFirstRecommend')}
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {recommendations.map((rec) => (
                       <Card key={rec.id} className="overflow-hidden">
-                        <div
-                          className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => setExpandedId(expandedId === rec.id ? null : rec.id)}
-                        >
+                        <div className="p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => setExpandedId(expandedId === rec.id ? null : rec.id)}>
                           <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-sm truncate">
-                                {rec.style_concept || rec.prompt}
-                              </h3>
+                              <h3 className="font-semibold text-sm truncate">{rec.style_concept || rec.prompt}</h3>
                               <p className="text-xs text-muted-foreground mt-1">
-                                {formatDate(rec.created_at)} · {rec.gender === 'female' ? '여성' : '남성'}
+                                {formatDate(rec.created_at)} · {rec.gender === 'female' ? t('profileSetup.genderOptions.female') : t('profileSetup.genderOptions.male')}
                               </p>
                               <p className="text-sm font-medium text-primary mt-1">
-                                총 {formatPrice(rec.total_price)} ({rec.items.length}개 아이템)
+                                {formatPrice(rec.total_price)} ({rec.items.length} items)
                               </p>
-                              {/* AI 스타일 추천 설명 */}
                               {rec.style_reasoning && (
-                                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                                  💡 {rec.style_reasoning}
-                                </p>
+                                <p className="text-xs text-muted-foreground mt-2 line-clamp-2">💡 {rec.style_reasoning}</p>
                               )}
                             </div>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="shrink-0"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
+                                <Button variant="ghost" size="icon" className="shrink-0" onClick={(e) => e.stopPropagation()}>
                                   <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>히스토리 삭제</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    이 추천 히스토리를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
-                                  </AlertDialogDescription>
+                                  <AlertDialogTitle>{t('mypage.deleteHistory')}</AlertDialogTitle>
+                                  <AlertDialogDescription>{t('mypage.deleteConfirm')}</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>취소</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(rec.id)}>
-                                    삭제
-                                  </AlertDialogAction>
+                                  <AlertDialogCancel>{t('mypage.cancel')}</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(rec.id)}>{t('mypage.delete')}</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
                           </div>
                         </div>
 
-                        {/* Expanded Details */}
                         {expandedId === rec.id && (
                           <div className="px-4 pb-4 border-t border-border pt-4 animate-in fade-in-50 duration-200">
-                            {rec.style_reasoning && (
-                              <p className="text-sm text-muted-foreground mb-4">
-                                💡 {rec.style_reasoning}
-                              </p>
-                            )}
+                            {rec.style_reasoning && <p className="text-sm text-muted-foreground mb-4">💡 {rec.style_reasoning}</p>}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                               {rec.items.map((item, index) => (
                                 <div key={index} className="space-y-2">
                                   <div className="aspect-square relative overflow-hidden bg-muted rounded-lg">
-                                    <LazyImage
-                                      src={item.image_url}
-                                      alt={item.name}
-                                      className="w-full h-full object-cover"
-                                      fallbackClassName="w-full h-full"
-                                    />
-                                    <span className="absolute top-1 left-1 text-xs bg-background/90 px-1.5 py-0.5 rounded z-10">
-                                      {item.category}
-                                    </span>
+                                    <LazyImage src={item.image_url} alt={item.name} className="w-full h-full object-cover" fallbackClassName="w-full h-full" />
+                                    <span className="absolute top-1 left-1 text-xs bg-background/90 px-1.5 py-0.5 rounded z-10">{item.category}</span>
                                   </div>
                                   <p className="text-xs font-medium line-clamp-1">{item.name}</p>
                                   <p className="text-xs text-primary font-semibold">{formatPrice(item.price)}</p>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full text-xs h-7"
-                                    onClick={() => handlePurchase(item.product_url)}
-                                  >
-                                    <ExternalLink className="w-3 h-3 mr-1" />
-                                    구매
+                                  <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => handlePurchase(item.product_url)}>
+                                    <ExternalLink className="w-3 h-3 mr-1" />{t('mypage.purchase')}
                                   </Button>
                                 </div>
                               ))}
@@ -585,15 +461,14 @@ const MyPage = () => {
             </Card>
           </TabsContent>
 
-          {/* 모델 프로필 탭 */}
+          {/* Model Profiles Tab */}
           <TabsContent value="family" className="mt-4 space-y-4">
-            {/* 내 프로필 (항상 표시) */}
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-2">
                   <User className="w-5 h-5 text-primary" />
-                  <CardTitle className="font-korean text-base">내 프로필</CardTitle>
-                  <Badge variant="default" className="bg-primary text-primary-foreground">메인</Badge>
+                  <CardTitle className="font-korean text-base">{t('mypage.myProfile')}</CardTitle>
+                  <Badge variant="default" className="bg-primary text-primary-foreground">{t('mypage.main')}</Badge>
                 </div>
               </CardHeader>
               <CardContent>
@@ -604,86 +479,62 @@ const MyPage = () => {
                       {userProfile?.full_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
-                  
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold font-korean">
-                        {userProfile?.full_name || user?.email?.split('@')[0] || '나'}
+                        {userProfile?.full_name || user?.email?.split('@')[0] || 'Me'}
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground font-korean">
                       {userProfile?.gender && <span>{userProfile.gender}</span>}
                       {userProfile?.height && <span> · {userProfile.height}cm</span>}
                       {userProfile?.weight && <span> · {userProfile.weight}kg</span>}
-                      {userProfile?.body_type && <span> · {userProfile.body_type === 'slim' ? '마른 체형' : userProfile.body_type === 'average' ? '보통 체형' : userProfile.body_type === 'muscular' ? '근육질' : userProfile.body_type === 'curvy' ? '볼륨 체형' : userProfile.body_type}</span>}
+                      {userProfile?.body_type && <span> · {
+                        userProfile.body_type === 'slim' ? t('profileSetup.bodyTypes.slim') :
+                        userProfile.body_type === 'average' ? t('profileSetup.bodyTypes.average') :
+                        userProfile.body_type === 'muscular' ? t('profileSetup.bodyTypes.muscular') :
+                        userProfile.body_type === 'curvy' ? t('profileSetup.bodyTypes.curvy') :
+                        userProfile.body_type
+                      }</span>}
                     </div>
                     {userProfile?.style_preferences && userProfile.style_preferences.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2">
                         {userProfile.style_preferences.slice(0, 3).map((pref, i) => (
-                          <Badge key={i} variant="secondary" className="text-xs">
-                            {pref}
-                          </Badge>
+                          <Badge key={i} variant="secondary" className="text-xs">{pref}</Badge>
                         ))}
                       </div>
                     )}
                   </div>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate('/profile-edit')}
-                    className="text-xs"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => navigate('/profile-edit')} className="text-xs">
                     <Settings className="w-4 h-4" />
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* 추가 모델 섹션 - Premium만 */}
             {subscription.canUseFamilyProfiles ? (
-              <FamilyProfileManager 
-                userId={user?.id || ''} 
-                maxProfiles={5}
-              />
+              <FamilyProfileManager userId={user?.id || ''} maxProfiles={5} />
             ) : (
               <Card className="border-dashed">
                 <CardHeader className="pb-2">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-muted-foreground" />
-                    <CardTitle className="font-korean text-base">추가 모델</CardTitle>
+                    <CardTitle className="font-korean text-base">{t('mypage.additionalModel')}</CardTitle>
                     <Badge variant="outline" className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
-                      <Crown className="w-3 h-3 mr-1" />
-                      플래티넘
+                      <Crown className="w-3 h-3 mr-1" />{t('mypage.platinumModel')}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="text-center py-8">
-                  <p className="text-muted-foreground mb-4 font-korean text-sm">
-                    플래티넘 등급에서 추가 모델을 등록하고,<br />
-                    그들을 위한 스타일 룩을 생성할 수 있어요.
-                  </p>
+                  <p className="text-muted-foreground mb-4 font-korean text-sm whitespace-pre-line">{t('mypage.platinumModelDesc')}</p>
                   <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Crown className="w-4 h-4 text-amber-500" />
-                        100만원당 +1명
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-4 h-4 text-primary" />
-                        얼굴 합성
-                      </span>
+                      <span className="flex items-center gap-1"><Crown className="w-4 h-4 text-amber-500" />{t('mypage.perMillion')}</span>
+                      <span className="flex items-center gap-1"><Sparkles className="w-4 h-4 text-primary" />{t('mypage.faceMerge')}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      누적 구매 100만원 이상 시 플래티넘 등급 달성!
-                    </p>
-                    <Button
-                      variant="hero"
-                      onClick={() => navigate('/pricing')}
-                      className="font-korean"
-                    >
-                      <Crown className="w-4 h-4 mr-2" />
-                      등급 혜택 보기
+                    <p className="text-xs text-muted-foreground">{t('mypage.achievePlatinum')}</p>
+                    <Button variant="hero" onClick={() => navigate('/pricing')} className="font-korean">
+                      <Crown className="w-4 h-4 mr-2" />{t('mypage.viewTierBenefits')}
                     </Button>
                   </div>
                 </CardContent>
