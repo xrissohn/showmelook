@@ -555,7 +555,7 @@ const Landing = () => {
             
             <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-white/80 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-full mb-4 sm:mb-8 animate-fade-in border border-primary/20 shadow-sm">
               <Star className="w-3 h-3 sm:w-4 sm:h-4 text-primary animate-twinkle flex-shrink-0" style={{ animationDuration: '0.5s' }} />
-              <span className="text-xs sm:text-sm font-korean font-medium text-foreground">AI 패션 스타일링 서비스</span>
+              <span className="text-xs sm:text-sm font-korean font-medium text-foreground">{t('landing.aiService')}</span>
               <InlineSparkle className="text-primary" size="w-4 h-4" delay={0.2} />
             </div>
             
