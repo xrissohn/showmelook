@@ -152,7 +152,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   className="font-korean text-sm px-3"
                 >
                   <Download className="w-4 h-4 mr-1" />
-                  앱 설치
+                  {t('nav.install')}
                 </Button>
                 
                 {user ? (
