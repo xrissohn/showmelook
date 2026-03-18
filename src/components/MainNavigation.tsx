@@ -199,7 +199,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       onClick={() => navigate('/auth')} 
                       className="font-korean text-sm px-4 h-9"
                     >
-                      로그인
+                      {t('nav.login')}
                     </Button>
                     
                     {/* 시작하기 버튼 */}
@@ -210,7 +210,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
                     >
                       <Sparkles className="w-4 h-4 mr-1" />
-                      시작하기
+                      {t('nav.getStarted')}
                     </Button>
                   </>
                 )}
