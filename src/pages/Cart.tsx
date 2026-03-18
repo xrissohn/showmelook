@@ -329,9 +329,9 @@ const Cart = () => {
         {cartItems.length === 0 ? (
           <div className="text-center py-20">
             <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-lg text-muted-foreground mb-4 font-korean">장바구니가 비어있습니다</p>
+            <p className="text-lg text-muted-foreground mb-4 font-korean">{t('cart.empty')}</p>
             <Button variant="hero" onClick={() => navigate('/style')} className="font-korean">
-              쇼핑하러 가기
+              {t('cart.goShopping')}
             </Button>
           </div>
         ) : (
