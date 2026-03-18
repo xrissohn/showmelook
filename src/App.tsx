@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { DataPreloaderProvider } from "@/contexts/DataPreloaderContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Loader2 } from "lucide-react";
 // Lazy load pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
