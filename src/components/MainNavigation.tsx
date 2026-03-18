@@ -343,7 +343,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                             className="w-full flex items-center gap-3 px-4 py-3 text-left font-korean text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                           >
                             <LogOut className="w-5 h-5" />
-                            로그아웃
+                            {t('nav.logout')}
                           </button>
                         </div>
                       )}
