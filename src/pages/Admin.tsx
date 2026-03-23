@@ -27,6 +27,7 @@ import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
+import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
@@ -1276,6 +1277,10 @@ const Admin = () => {
                 <ShoppingBag className="w-4 h-4 mr-1" />
                 쿠팡 리포트
               </TabsTrigger>
+              <TabsTrigger value="linkprice-report" className="flex-shrink-0 whitespace-nowrap">
+                <Link2 className="w-4 h-4 mr-1" />
+                링크프라이스
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -2449,6 +2454,11 @@ const Admin = () => {
           {/* Coupang Daily Report Tab */}
           <TabsContent value="coupang-report" className="space-y-4">
             <CoupangDailyReportPanel />
+          </TabsContent>
+
+          {/* LinkPrice Report Tab */}
+          <TabsContent value="linkprice-report" className="space-y-4">
+            <LinkPriceReportPanel />
           </TabsContent>
 
         </Tabs>
