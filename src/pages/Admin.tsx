@@ -27,6 +27,7 @@ import { ThroughputAnalytics } from "@/components/admin/ThroughputAnalytics";
 import { InferenceMetricsPanel } from "@/components/admin/InferenceMetricsPanel";
 import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
+import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
