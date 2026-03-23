@@ -3352,7 +3352,7 @@ const StyleGenerator = () => {
       const { data: { session } } = await supabase.auth.getSession();
       // deeplink 함수 호출하여 제휴 링크 변환
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: product.product_url },
+        body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 

@@ -199,7 +199,7 @@ const SharedLook = () => {
                 let affiliate_url = product.product_url;
                 try {
                   const response = await supabase.functions.invoke("deeplink", {
-                    body: { product_url: product.product_url },
+                    body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
                     headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
                   });
                   if (response.data?.affiliate_url) {

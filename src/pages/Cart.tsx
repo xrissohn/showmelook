@@ -247,7 +247,7 @@ const Cart = () => {
         }
 
         const { data, error } = await supabase.functions.invoke('deeplink', {
-          body: { product_url: item.product_url },
+          body: { product_url: item.product_url, product_name: item.product_name, product_price: item.product_price },
           headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
         });
 
