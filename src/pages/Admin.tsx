@@ -1277,6 +1277,10 @@ const Admin = () => {
                 <ShoppingBag className="w-4 h-4 mr-1" />
                 쿠팡 리포트
               </TabsTrigger>
+              <TabsTrigger value="linkprice-report" className="flex-shrink-0 whitespace-nowrap">
+                <Link2 className="w-4 h-4 mr-1" />
+                링크프라이스
+              </TabsTrigger>
             </TabsList>
           </div>
 
