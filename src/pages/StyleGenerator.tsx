@@ -1503,7 +1503,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       // Get auth token for deeplink tracking
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: product.product_url },
+        body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
       
