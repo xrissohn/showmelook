@@ -730,6 +730,35 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
       } else if (userAvatarUrl.startsWith('data:')) {
         avatarDataUrl = userAvatarUrl;
         avatarFetchSuccess = true;
+      } else {
+        // Relative storage path (e.g., "uuid/avatar-123.jpg")
+        try {
+          console.log('[generate-style] Avatar path is relative, creating signed URL directly:', userAvatarUrl);
+          const { data: signedData, error: signedError } = await supabase
+            .storage
+            .from('avatars')
+            .createSignedUrl(userAvatarUrl, 300);
+          
+          if (signedData?.signedUrl) {
+            const avatarResponse = await fetch(signedData.signedUrl);
+            if (avatarResponse.ok) {
+              const avatarBuffer = await avatarResponse.arrayBuffer();
+              const base64Avatar = btoa(
+                new Uint8Array(avatarBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
+              );
+              const contentType = avatarResponse.headers.get('content-type') || 'image/png';
+              avatarDataUrl = `data:${contentType};base64,${base64Avatar}`;
+              console.log('[generate-style] Avatar from relative path converted to base64, length:', avatarDataUrl.length);
+              avatarFetchSuccess = true;
+            } else {
+              console.error('[generate-style] Failed to fetch avatar from signed URL:', avatarResponse.status);
+            }
+          } else {
+            console.error('[generate-style] Failed to create signed URL for relative path:', signedError);
+          }
+        } catch (fetchError) {
+          console.error('[generate-style] Error fetching avatar from relative path:', fetchError);
+        }
       }
       
       if (avatarFetchSuccess) {
