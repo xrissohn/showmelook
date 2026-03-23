@@ -2456,6 +2456,11 @@ const Admin = () => {
             <CoupangDailyReportPanel />
           </TabsContent>
 
+          {/* LinkPrice Report Tab */}
+          <TabsContent value="linkprice-report" className="space-y-4">
+            <LinkPriceReportPanel />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
