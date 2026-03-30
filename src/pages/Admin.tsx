@@ -29,6 +29,7 @@ import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
 import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
+import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';

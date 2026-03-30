@@ -354,9 +354,9 @@ export const BrightDataPanel = () => {
                 <>
                   <p>스냅샷 총 상품: <strong>{fetchResult.total_in_snapshot?.toLocaleString()}</strong></p>
                   <p>처리: <strong>{fetchResult.processed?.toLocaleString()}</strong></p>
-                  <p>등록 성공: <strong className="text-green-600">{fetchResult.registered?.toLocaleString()}</strong></p>
-                  <p>실패: <strong className="text-red-600">{fetchResult.failed?.toLocaleString()}</strong></p>
-                  <p>스킵: <strong className="text-yellow-600">{fetchResult.skipped?.toLocaleString()}</strong></p>
+                  <p>등록 성공: <strong className="text-primary">{fetchResult.registered?.toLocaleString()}</strong></p>
+                  <p>실패: <strong className="text-destructive">{fetchResult.failed?.toLocaleString()}</strong></p>
+                  <p>스킵: <strong className="text-muted-foreground">{fetchResult.skipped?.toLocaleString()}</strong></p>
                 </>
               ) : (
                 <p className="text-destructive">{fetchResult.error}</p>

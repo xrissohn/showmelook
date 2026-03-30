@@ -173,6 +173,65 @@ serve(async (req) => {
 
     const { action, dataset_id, snapshot_id, limit } = await req.json();
 
+    // 0. 데이터셋 목록 조회
+    if (action === 'dataset_list') {
+      console.log('Fetching dataset list from Bright Data');
+
+      // Try multiple endpoints
+      const endpoints = [
+        'https://api.brightdata.com/datasets/list',
+        'https://api.brightdata.com/dca/datasets/list',
+      ];
+
+      let allDatasets: Array<{ id: string; name: string; size?: number }> = [];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint, {
+            headers: { 'Authorization': `Bearer ${apiKey}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data)) {
+              allDatasets = data;
+              console.log(`Got ${data.length} datasets from ${endpoint}`);
+              break;
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to fetch from ${endpoint}:`, e);
+        }
+      }
+
+      // Also try views endpoint
+      try {
+        const viewsResponse = await fetch('https://api.brightdata.com/datasets/views', {
+          headers: { 'Authorization': `Bearer ${apiKey}` },
+        });
+        if (viewsResponse.ok) {
+          const views = await viewsResponse.json();
+          if (Array.isArray(views) && views.length > 0) {
+            console.log(`Got ${views.length} views`);
+            allDatasets = [...allDatasets, ...views.map((v: Record<string, unknown>) => ({
+              id: (v.id || v.view_id || '') as string,
+              name: `[View] ${v.name || v.id || 'unnamed'}`,
+              size: (v.size || 0) as number,
+            }))];
+          }
+        }
+      } catch (e) {
+        console.error('Failed to fetch views:', e);
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        datasets: allDatasets,
+        total: allDatasets.length,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // 1. 스냅샷 목록 조회
     if (action === 'list_snapshots') {
       console.log(`Fetching snapshots for dataset: ${dataset_id}`);
