@@ -1282,6 +1282,10 @@ const Admin = () => {
                 <Link2 className="w-4 h-4 mr-1" />
                 링크프라이스
               </TabsTrigger>
+              <TabsTrigger value="brightdata" className="flex-shrink-0 whitespace-nowrap">
+                <Globe className="w-4 h-4 mr-1" />
+                Bright Data
+              </TabsTrigger>
             </TabsList>
           </div>
 
