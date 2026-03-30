@@ -2466,6 +2466,11 @@ const Admin = () => {
             <LinkPriceReportPanel />
           </TabsContent>
 
+          {/* Bright Data Panel Tab */}
+          <TabsContent value="brightdata" className="space-y-4">
+            <BrightDataPanel />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
