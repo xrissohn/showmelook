@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,7 @@ import { Cafe24TenantManager } from "@/components/admin/Cafe24TenantManager";
 import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPanel";
 import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
+import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1281,6 +1282,10 @@ const Admin = () => {
                 <Link2 className="w-4 h-4 mr-1" />
                 링크프라이스
               </TabsTrigger>
+              <TabsTrigger value="brightdata" className="flex-shrink-0 whitespace-nowrap">
+                <Globe className="w-4 h-4 mr-1" />
+                Bright Data
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -2459,6 +2464,11 @@ const Admin = () => {
           {/* LinkPrice Report Tab */}
           <TabsContent value="linkprice-report" className="space-y-4">
             <LinkPriceReportPanel />
+          </TabsContent>
+
+          {/* Bright Data Panel Tab */}
+          <TabsContent value="brightdata" className="space-y-4">
+            <BrightDataPanel />
           </TabsContent>
 
         </Tabs>

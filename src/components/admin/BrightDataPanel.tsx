@@ -1,0 +1,412 @@
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, RefreshCw, Download, Play, Database, Globe, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface DatasetItem {
+  id: string;
+  name: string;
+  size?: number;
+}
+
+interface SnapshotItem {
+  id?: string;
+  snapshot_id?: string;
+  status?: string;
+  created_at?: string;
+  records_count?: number;
+  [key: string]: unknown;
+}
+
+interface FetchResult {
+  success: boolean;
+  total_in_snapshot?: number;
+  processed?: number;
+  registered?: number;
+  failed?: number;
+  skipped?: number;
+  error?: string;
+}
+
+export const BrightDataPanel = () => {
+  const { toast } = useToast();
+
+  // Dataset list
+  const [datasets, setDatasets] = useState<DatasetItem[]>([]);
+  const [datasetsLoading, setDatasetsLoading] = useState(false);
+
+  // Snapshots
+  const [datasetId, setDatasetId] = useState("");
+  const [snapshots, setSnapshots] = useState<SnapshotItem[]>([]);
+  const [snapshotsLoading, setSnapshotsLoading] = useState(false);
+  const [snapshotsRaw, setSnapshotsRaw] = useState<string | null>(null);
+
+  // Fetch snapshot
+  const [snapshotId, setSnapshotId] = useState("");
+  const [fetchLimit, setFetchLimit] = useState(100);
+  const [fetchResult, setFetchResult] = useState<FetchResult | null>(null);
+  const [fetchLoading, setFetchLoading] = useState(false);
+
+  // Collection stats
+  const [collectionStats, setCollectionStats] = useState<Array<{
+    merchant_id: string;
+    count: number;
+    last_collected: string;
+  }> | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
+  const loadDatasets = async () => {
+    setDatasetsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("brightdata-fetch", {
+        body: { action: "dataset_list" },
+      });
+      if (error) throw error;
+      if (data?.datasets) {
+        setDatasets(data.datasets);
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+      toast({ title: "데이터셋 목록 조회 완료", description: `${data?.datasets?.length || 0}개 데이터셋` });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "데이터셋 목록 조회 실패", description: msg, variant: "destructive" });
+    } finally {
+      setDatasetsLoading(false);
+    }
+  };
+
+  const loadSnapshots = async () => {
+    if (!datasetId.trim()) {
+      toast({ title: "dataset_id를 입력해주세요", variant: "destructive" });
+      return;
+    }
+    setSnapshotsLoading(true);
+    setSnapshotsRaw(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("brightdata-fetch", {
+        body: { action: "list_snapshots", dataset_id: datasetId.trim() },
+      });
+      if (error) throw error;
+      setSnapshots(data?.snapshots || []);
+      setSnapshotsRaw(data?.raw_response || null);
+      toast({ title: "스냅샷 조회 완료", description: `${data?.snapshots?.length || 0}개 스냅샷` });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "스냅샷 조회 실패", description: msg, variant: "destructive" });
+    } finally {
+      setSnapshotsLoading(false);
+    }
+  };
+
+  const fetchSnapshot = async (sid?: string) => {
+    const targetId = sid || snapshotId.trim();
+    if (!targetId) {
+      toast({ title: "snapshot_id를 입력해주세요", variant: "destructive" });
+      return;
+    }
+    setFetchLoading(true);
+    setFetchResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("brightdata-fetch", {
+        body: { action: "fetch_snapshot", snapshot_id: targetId, limit: fetchLimit },
+      });
+      if (error) throw error;
+      setFetchResult(data);
+      if (data?.success) {
+        toast({ title: "스냅샷 수집 완료", description: `등록: ${data.registered}건, 실패: ${data.failed}건` });
+      } else {
+        toast({ title: "수집 실패", description: data?.error, variant: "destructive" });
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "스냅샷 수집 실패", description: msg, variant: "destructive" });
+    } finally {
+      setFetchLoading(false);
+    }
+  };
+
+  const loadCollectionStats = async () => {
+    setStatsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("products_cache")
+        .select("merchant_id, collected_at")
+        .not("merchant_id", "is", null)
+        .order("collected_at", { ascending: false });
+
+      if (error) throw error;
+
+      const statsMap: Record<string, { count: number; last_collected: string }> = {};
+      for (const row of data || []) {
+        const mid = row.merchant_id || "unknown";
+        if (!statsMap[mid]) {
+          statsMap[mid] = { count: 0, last_collected: row.collected_at || "" };
+        }
+        statsMap[mid].count++;
+      }
+
+      const stats = Object.entries(statsMap)
+        .map(([merchant_id, s]) => ({ merchant_id, count: s.count, last_collected: s.last_collected }))
+        .sort((a, b) => b.count - a.count);
+
+      setCollectionStats(stats);
+      toast({ title: "수집 현황 조회 완료" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "수집 현황 조회 실패", description: msg, variant: "destructive" });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  const formatDate = (d: string) => {
+    if (!d) return "-";
+    try {
+      return new Date(d).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
+    } catch {
+      return d;
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* 1. Dataset List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="w-5 h-5" />
+            Bright Data 데이터셋 목록
+          </CardTitle>
+          <CardDescription>
+            계정에 연결된 모든 데이터셋/뷰 ID를 확인합니다. (marketplace + custom)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button onClick={loadDatasets} disabled={datasetsLoading} variant="outline">
+            {datasetsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            데이터셋 목록 조회
+          </Button>
+
+          {datasets.length > 0 && (
+            <div className="max-h-64 overflow-y-auto border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="text-left p-2 font-medium">ID</th>
+                    <th className="text-left p-2 font-medium">Name</th>
+                    <th className="text-right p-2 font-medium">Size</th>
+                    <th className="p-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {datasets.map((ds) => (
+                    <tr key={ds.id} className="border-t hover:bg-muted/50">
+                      <td className="p-2 font-mono text-xs">{ds.id}</td>
+                      <td className="p-2">{ds.name}</td>
+                      <td className="p-2 text-right">{ds.size?.toLocaleString() || "-"}</td>
+                      <td className="p-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setDatasetId(ds.id);
+                            toast({ title: "dataset_id 설정됨", description: ds.id });
+                          }}
+                        >
+                          선택
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 2. Snapshot List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="w-5 h-5" />
+            스냅샷 조회
+          </CardTitle>
+          <CardDescription>
+            특정 dataset_id의 스냅샷 목록을 확인하고 데이터를 가져옵니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="dataset_id 입력 (예: gd_xxx...)"
+              value={datasetId}
+              onChange={(e) => setDatasetId(e.target.value)}
+              className="font-mono text-sm"
+            />
+            <Button onClick={loadSnapshots} disabled={snapshotsLoading} variant="outline">
+              {snapshotsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              조회
+            </Button>
+          </div>
+
+          {snapshotsRaw && (
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground">Raw API Response</summary>
+              <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-40">{snapshotsRaw}</pre>
+            </details>
+          )}
+
+          {snapshots.length > 0 && (
+            <div className="max-h-64 overflow-y-auto border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted">
+                  <tr>
+                    <th className="text-left p-2 font-medium">Snapshot ID</th>
+                    <th className="text-left p-2 font-medium">Status</th>
+                    <th className="text-right p-2 font-medium">Records</th>
+                    <th className="text-left p-2 font-medium">Created</th>
+                    <th className="p-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {snapshots.map((snap, i) => {
+                    const sid = snap.id || snap.snapshot_id || `snap-${i}`;
+                    return (
+                      <tr key={sid} className="border-t hover:bg-muted/50">
+                        <td className="p-2 font-mono text-xs">{sid}</td>
+                        <td className="p-2">
+                          <Badge variant={snap.status === "ready" ? "default" : "secondary"}>
+                            {snap.status || "unknown"}
+                          </Badge>
+                        </td>
+                        <td className="p-2 text-right">{snap.records_count?.toLocaleString() || "-"}</td>
+                        <td className="p-2 text-xs">{formatDate(snap.created_at || "")}</td>
+                        <td className="p-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSnapshotId(sid);
+                              fetchSnapshot(sid);
+                            }}
+                            disabled={fetchLoading}
+                          >
+                            <Download className="w-3 h-3 mr-1" />
+                            수집
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 3. Manual Snapshot Fetch */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Play className="w-5 h-5" />
+            수동 스냅샷 수집
+          </CardTitle>
+          <CardDescription>
+            snapshot_id를 직접 입력하여 상품 데이터를 가져옵니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="snapshot_id 입력"
+              value={snapshotId}
+              onChange={(e) => setSnapshotId(e.target.value)}
+              className="font-mono text-sm flex-1"
+            />
+            <Input
+              type="number"
+              placeholder="Limit"
+              value={fetchLimit}
+              onChange={(e) => setFetchLimit(parseInt(e.target.value) || 100)}
+              className="w-24"
+            />
+            <Button onClick={() => fetchSnapshot()} disabled={fetchLoading}>
+              {fetchLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              수집 실행
+            </Button>
+          </div>
+
+          {fetchResult && (
+            <div className="p-3 bg-muted rounded-md text-sm space-y-1">
+              <div className="flex items-center gap-2">
+                <Badge variant={fetchResult.success ? "default" : "destructive"}>
+                  {fetchResult.success ? "성공" : "실패"}
+                </Badge>
+              </div>
+              {fetchResult.success ? (
+                <>
+                  <p>스냅샷 총 상품: <strong>{fetchResult.total_in_snapshot?.toLocaleString()}</strong></p>
+                  <p>처리: <strong>{fetchResult.processed?.toLocaleString()}</strong></p>
+                  <p>등록 성공: <strong className="text-primary">{fetchResult.registered?.toLocaleString()}</strong></p>
+                  <p>실패: <strong className="text-destructive">{fetchResult.failed?.toLocaleString()}</strong></p>
+                  <p>스킵: <strong className="text-muted-foreground">{fetchResult.skipped?.toLocaleString()}</strong></p>
+                </>
+              ) : (
+                <p className="text-destructive">{fetchResult.error}</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 4. Collection Stats */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            머천트별 수집 현황
+          </CardTitle>
+          <CardDescription>
+            products_cache 기준 머천트별 상품 수와 최근 수집 시각을 확인합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Button onClick={loadCollectionStats} disabled={statsLoading} variant="outline">
+            {statsLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+            현황 조회
+          </Button>
+
+          {collectionStats && (
+            <div className="border rounded-md">
+              <table className="w-full text-sm">
+                <thead className="bg-muted">
+                  <tr>
+                    <th className="text-left p-2 font-medium">머천트</th>
+                    <th className="text-right p-2 font-medium">상품 수</th>
+                    <th className="text-left p-2 font-medium">최근 수집</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {collectionStats.map((s) => (
+                    <tr key={s.merchant_id} className="border-t">
+                      <td className="p-2 font-medium">{s.merchant_id}</td>
+                      <td className="p-2 text-right">{s.count.toLocaleString()}</td>
+                      <td className="p-2 text-xs text-muted-foreground">{formatDate(s.last_collected)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
