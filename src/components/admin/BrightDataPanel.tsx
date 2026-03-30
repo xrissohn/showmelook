@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Download, Play, Database, Globe, Clock } from "lucide-react";
+import { Loader2, RefreshCw, Download, Play, Database, Globe, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 
 interface DatasetItem {
   id: string;
