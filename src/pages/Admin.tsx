@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
