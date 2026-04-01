@@ -172,9 +172,12 @@ export const LookDetailModal = ({
     setTouchStart(null); setTouchEnd(null);
   };
 
-  // Product purchase
+  // Product purchase - pre-open window to avoid popup blocking on mobile
   const handleProductPurchase = async (product: CachedProduct | { id: string; name: string; brand: string | null; price: number; image_url: string | null; product_url: string; category: string; affiliate_url?: string; merchant_id?: string | null }) => {
     if (!product.product_url) return;
+    
+    // 클릭 시점에 빈 창을 먼저 열어 팝업 차단 방지
+    const newWindow = window.open('', '_blank');
     setPurchasingProductId(product.id);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -182,9 +185,20 @@ export const LookDetailModal = ({
         body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
-      window.open(data?.affiliate_url || product.product_url, '_blank', 'noopener,noreferrer');
-    } catch { window.open(product.product_url, '_blank', 'noopener,noreferrer'); }
-    finally { setPurchasingProductId(null); }
+      const targetUrl = data?.affiliate_url || product.product_url;
+      if (newWindow) {
+        newWindow.location.href = targetUrl;
+      } else {
+        window.location.href = targetUrl;
+      }
+    } catch {
+      const fallbackUrl = product.product_url;
+      if (newWindow) {
+        newWindow.location.href = fallbackUrl;
+      } else {
+        window.location.href = fallbackUrl;
+      }
+    } finally { setPurchasingProductId(null); }
   };
 
   // Like handler

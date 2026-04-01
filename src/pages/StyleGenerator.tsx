@@ -3323,7 +3323,7 @@ const StyleGenerator = () => {
       description: `${newProduct.name}(으)로 변경되었습니다.`,
     });
   };
-  // 딥링크 변환 후 구매 페이지로 이동하는 함수
+  // 딥링크 변환 후 구매 페이지로 이동하는 함수 - pre-open window to avoid popup blocking
   const handlePurchase = async (product: CachedProduct) => {
     // 클릭 피드백 수집
     const feedbackContext = {
@@ -3350,13 +3350,13 @@ const StyleGenerator = () => {
       return;
     }
 
+    // 클릭 시점에 빈 창을 먼저 열어 팝업 차단 방지
+    const newWindow = window.open('', '_blank');
     setPurchasingProductId(product.id);
     console.log('[handlePurchase] Calling deeplink for:', product.product_url);
 
     try {
-      // Get auth token for deeplink tracking
       const { data: { session } } = await supabase.auth.getSession();
-      // deeplink 함수 호출하여 제휴 링크 변환
       const { data, error } = await supabase.functions.invoke('deeplink', {
         body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
@@ -3367,32 +3367,41 @@ const StyleGenerator = () => {
       if (error) throw error;
 
       if (data?.success && data?.affiliate_url) {
-        // 변환된 제휴 링크로 이동
         console.log('[handlePurchase] Opening affiliate URL:', data.affiliate_url);
-        window.open(data.affiliate_url, '_blank', 'noopener,noreferrer');
+        if (newWindow) {
+          newWindow.location.href = data.affiliate_url;
+        } else {
+          window.location.href = data.affiliate_url;
+        }
         toast({
           title: '구매 페이지 이동',
           description: `${product.name} 구매 페이지로 이동합니다.`,
         });
       } else {
-        // 딥링크 실패 시 원본 URL로 이동 - 경고 표시
         console.warn('[handlePurchase] Deeplink failed, using original URL:', product.product_url);
+        if (newWindow) {
+          newWindow.location.href = product.product_url;
+        } else {
+          window.location.href = product.product_url;
+        }
         toast({
           title: '딥링크 변환 실패',
           description: '제휴 링크 생성에 실패하여 원본 URL로 이동합니다.',
           variant: 'destructive',
         });
-        window.open(product.product_url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
       console.error('[handlePurchase] Deeplink error:', error);
+      if (newWindow) {
+        newWindow.location.href = product.product_url;
+      } else {
+        window.location.href = product.product_url;
+      }
       toast({
         title: '딥링크 오류',
         description: '제휴 링크 생성 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
-      // 에러 시에도 원본 URL로 이동
-      window.open(product.product_url, '_blank', 'noopener,noreferrer');
     } finally {
       setPurchasingProductId(null);
     }
