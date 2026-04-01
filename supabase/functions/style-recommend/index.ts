@@ -2484,7 +2484,53 @@ ${matchDetails.join('\n')}
         }
       }
       
-      // ============= 🔥 Reasoning 검증 및 교정 =============
+      // 🚨 원피스 필수 모드: AI가 원피스를 선택하지 않았으면 강제 교체
+      if (requiresDress && !hasDress) {
+        console.log(`[style-recommend] 🚨 원피스 필수 모드인데 AI가 dress를 선택하지 않음 → 강제 교체`);
+        
+        // 하의(bottom) 상품을 찾아서 원피스로 교체
+        const bottomIdx = sortedProducts.findIndex(p => 
+          p.dna_meta?.item_slot === 'bottom' || 
+          mapToPriorityCategory(p.category, p.sub_category, p.name) === '하의'
+        );
+        
+        // 상의(top)도 제거 대상 (원피스가 상의+하의를 대체)
+        const topIdx = sortedProducts.findIndex(p => 
+          p.dna_meta?.item_slot === 'top' || 
+          mapToPriorityCategory(p.category, p.sub_category, p.name) === '상의'
+        );
+        
+        // dress 상품 풀에서 가장 적합한 원피스 선택
+        const dressPool = (productsByPriority['하의'] || []).filter(p => 
+          p.dna_meta?.item_slot === 'dress' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스'
+        );
+        
+        if (dressPool.length > 0) {
+          const dressProduct = dressPool[0];
+          
+          // 하의를 원피스로 교체
+          if (bottomIdx >= 0) {
+            console.log(`[style-recommend] 🚨 하의 "${sortedProducts[bottomIdx].name}" → 원피스 "${dressProduct.name}" 교체`);
+            sortedProducts[bottomIdx] = dressProduct;
+          } else {
+            // 하의가 없으면 추가
+            sortedProducts.push(dressProduct);
+          }
+          
+          // 상의도 제거 (원피스가 대체)
+          if (topIdx >= 0 && topIdx !== bottomIdx) {
+            const adjustedIdx = bottomIdx >= 0 && topIdx > bottomIdx ? topIdx : topIdx;
+            console.log(`[style-recommend] 🚨 상의 "${sortedProducts[adjustedIdx].name}" 제거 (원피스가 대체)`);
+            sortedProducts.splice(adjustedIdx, 1);
+          }
+          
+          console.log(`[style-recommend] 🚨 원피스 강제 교체 완료: ${dressProduct.brand} ${dressProduct.name}`);
+        } else {
+          console.log(`[style-recommend] ⚠️ dress 상품 풀이 비어있어 강제 교체 불가`);
+        }
+      }
+      
       // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
       const actualBrands = sortedProducts.map(p => p.brand?.toLowerCase()).filter(Boolean);
       
