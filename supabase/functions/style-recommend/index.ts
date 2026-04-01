@@ -2061,9 +2061,39 @@ serve(async (req) => {
     // ============= 🔥 Stage 2: 사진 모드 = 직접 매칭 + AI 평가 / 텍스트 모드 = AI 추천 =============
     
     // GPT에 보낼 상품 목록 준비 - 다양성 극대화
+    // 🚨 requiredItems에 '원피스'가 있으면 dress 상품을 우선 배치
+    const requiresDress = stage1Result.requiredItems.some(item => 
+      item.includes('원피스') || item.includes('dress')
+    ) || userRequest.includes('원피스') || userRequest.includes('드레스');
+    
+    if (requiresDress) {
+      console.log(`[style-recommend] 🚨 원피스 필수 모드 활성화 - dress 상품 우선 배치`);
+    }
+    
     const getProductsForStage2 = () => {
       const result: CachedProduct[] = [];
       const usedBrands = new Map<string, number>();
+      
+      // 🚨 원피스 필수 모드: dress 상품을 맨 앞에 배치
+      if (requiresDress) {
+        const dressProducts = (productsByPriority['하의'] || []).filter(p => 
+          p.dna_meta?.item_slot === 'dress' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스'
+        );
+        const shuffledDresses = [...dressProducts.slice(0, 20)].sort(() => Math.random() - 0.5);
+        let dressCount = 0;
+        for (const p of shuffledDresses) {
+          if (dressCount >= 8) break;
+          const brand = p.brand || 'unknown';
+          const brandCount = usedBrands.get(brand) || 0;
+          if (brandCount < 2) {
+            result.push(p);
+            usedBrands.set(brand, brandCount + 1);
+            dressCount++;
+          }
+        }
+        console.log(`[style-recommend] 🚨 dress 상품 ${dressCount}개 우선 배치 완료`);
+      }
       
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
@@ -2077,6 +2107,8 @@ serve(async (req) => {
         
         for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
+          // 원피스 필수 모드에서 이미 추가된 dress 상품은 스킵
+          if (requiresDress && result.some(r => r.id === p.id)) continue;
           
           const brand = p.brand || 'unknown';
           const brandCount = usedBrands.get(brand) || 0;
