@@ -1419,13 +1419,14 @@ ${productListContext}
 동일한 스타일 적합도라면 신상품을 우선 선택하세요.
 
 ${isFormalOccasion 
-  ? `[필수] 상의(top) 1개 + 하의(bottom) 1개 + 신발(shoes) 1개`
-  : `[필수] 상의(top) 1개 + 하의(bottom) 1개`}
+  ? `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개 + 신발(shoes) 1개`
+  : `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개`}
 
 ⚠️⚠️⚠️ 최우선 규칙: 
 - **위 상품 목록에 있는 ID, 브랜드, 상품명만 사용하세요!**
 - **상품 목록에 없는 브랜드(몽클레어, 캉골, 구찌, 발렌시아가 등)는 절대 언급 금지!**
-- 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/outer/shoes/bag)
+- 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/dress/outer/shoes/bag)
+- 🚨 **원피스(dress)를 선택하면 하의(bottom)는 절대 선택하지 마세요!** 원피스 위에 바지를 입는 코디는 존재하지 않습니다.
 - selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!
 - styleReasoning은 150~250자로 간결하게! (오프닝 → 코디 포인트 → 팁 → 마무리)
 - "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
