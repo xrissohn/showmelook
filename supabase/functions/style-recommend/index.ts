@@ -1138,6 +1138,7 @@ async function runStage1WithModel(
    - 격식 높은 상황(7+): ["상의", "하의", "신발"] 필수
    - 일반 상황: ["상의", "하의"] 필수
    - 야외/겨울: ["아우터"] 고려
+   - ⚠️ 사용자가 "원피스", "드레스"를 요청하면 requiredItems에 "원피스"를 반드시 포함하고, "상의"와 "하의"는 제외하세요
 
 3. 제외 아이템 (excludeItems) - 상황에 어울리지 않는 것:
    - 결혼식: ["운동화", "후드티", "조거팬츠", "청바지", "슬리퍼"]
@@ -1398,6 +1399,15 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
     return parts[1] || '';
   }).filter(Boolean))];
 
+  // 🚨 원피스 필수 여부 판단
+  const requiresDressInPrompt = stage1Result.requiredItems.some(item => 
+    item.includes('원피스') || item.includes('dress')
+  ) || userRequest.includes('원피스') || userRequest.includes('드레스');
+
+  const dressForceNote = requiresDressInPrompt 
+    ? `\n🚨🚨🚨 **[최우선] 원피스(dress) 필수 선택!** 사용자가 원피스를 요청했습니다. 반드시 item_slot이 "dress"인 상품을 1개 선택하고, 하의(bottom)는 절대 선택하지 마세요! 원피스 + 아우터/신발/가방/액세서리 조합으로 구성하세요.`
+    : '';
+
   const stage2UserPrompt = `요청: "${userRequest.slice(0, 80)}"
 타겟: ${gender} ${ageGroupLabel}
 상황: ${occasion}
@@ -1408,6 +1418,7 @@ TPO 분석 결과 (Stage 1):
 - 컨셉: ${stage1Result.concepts.join(', ')}
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
+${dressForceNote}
 
 🚨 **사용 가능한 브랜드 목록 (이 브랜드들만 언급하세요!):**
 ${availableBrands.join(', ')}
@@ -1418,15 +1429,18 @@ ${productListContext}
 💡 [NEW] 태그가 붙은 상품은 최근 입고된 신상품입니다.
 동일한 스타일 적합도라면 신상품을 우선 선택하세요.
 
-${isFormalOccasion 
-  ? `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개 + 신발(shoes) 1개`
-  : `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개`}
+${requiresDressInPrompt 
+  ? `[필수] 원피스(dress) 1개 (반드시!) + 아우터/신발/가방/액세서리 중 3개\n   🚨 하의(bottom) 선택 절대 금지!`
+  : isFormalOccasion 
+    ? `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개 + 신발(shoes) 1개`
+    : `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개`}
 
 ⚠️⚠️⚠️ 최우선 규칙: 
 - **위 상품 목록에 있는 ID, 브랜드, 상품명만 사용하세요!**
 - **상품 목록에 없는 브랜드(몽클레어, 캉골, 구찌, 발렌시아가 등)는 절대 언급 금지!**
 - 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/dress/outer/shoes/bag)
 - 🚨 **원피스(dress)를 선택하면 하의(bottom)는 절대 선택하지 마세요!** 원피스 위에 바지를 입는 코디는 존재하지 않습니다.
+${requiresDressInPrompt ? '- 🚨🚨🚨 **이번 요청에서는 반드시 dress(원피스)를 선택해야 합니다! top+bottom 조합은 금지!**' : ''}
 - selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!
 - styleReasoning은 150~250자로 간결하게! (오프닝 → 코디 포인트 → 팁 → 마무리)
 - "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
@@ -2061,9 +2075,39 @@ serve(async (req) => {
     // ============= 🔥 Stage 2: 사진 모드 = 직접 매칭 + AI 평가 / 텍스트 모드 = AI 추천 =============
     
     // GPT에 보낼 상품 목록 준비 - 다양성 극대화
+    // 🚨 requiredItems에 '원피스'가 있으면 dress 상품을 우선 배치
+    const requiresDress = stage1Result.requiredItems.some(item => 
+      item.includes('원피스') || item.includes('dress')
+    ) || userRequest.includes('원피스') || userRequest.includes('드레스');
+    
+    if (requiresDress) {
+      console.log(`[style-recommend] 🚨 원피스 필수 모드 활성화 - dress 상품 우선 배치`);
+    }
+    
     const getProductsForStage2 = () => {
       const result: CachedProduct[] = [];
       const usedBrands = new Map<string, number>();
+      
+      // 🚨 원피스 필수 모드: dress 상품을 맨 앞에 배치
+      if (requiresDress) {
+        const dressProducts = (productsByPriority['하의'] || []).filter(p => 
+          p.dna_meta?.item_slot === 'dress' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스'
+        );
+        const shuffledDresses = [...dressProducts.slice(0, 20)].sort(() => Math.random() - 0.5);
+        let dressCount = 0;
+        for (const p of shuffledDresses) {
+          if (dressCount >= 8) break;
+          const brand = p.brand || 'unknown';
+          const brandCount = usedBrands.get(brand) || 0;
+          if (brandCount < 2) {
+            result.push(p);
+            usedBrands.set(brand, brandCount + 1);
+            dressCount++;
+          }
+        }
+        console.log(`[style-recommend] 🚨 dress 상품 ${dressCount}개 우선 배치 완료`);
+      }
       
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
@@ -2077,6 +2121,8 @@ serve(async (req) => {
         
         for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
+          // 원피스 필수 모드에서 이미 추가된 dress 상품은 스킵
+          if (requiresDress && result.some(r => r.id === p.id)) continue;
           
           const brand = p.brand || 'unknown';
           const brandCount = usedBrands.get(brand) || 0;
@@ -2439,7 +2485,53 @@ ${matchDetails.join('\n')}
         }
       }
       
-      // ============= 🔥 Reasoning 검증 및 교정 =============
+      // 🚨 원피스 필수 모드: AI가 원피스를 선택하지 않았으면 강제 교체
+      if (requiresDress && !hasDress) {
+        console.log(`[style-recommend] 🚨 원피스 필수 모드인데 AI가 dress를 선택하지 않음 → 강제 교체`);
+        
+        // 하의(bottom) 상품을 찾아서 원피스로 교체
+        const bottomIdx = sortedProducts.findIndex(p => 
+          p.dna_meta?.item_slot === 'bottom' || 
+          mapToPriorityCategory(p.category, p.sub_category, p.name) === '하의'
+        );
+        
+        // 상의(top)도 제거 대상 (원피스가 상의+하의를 대체)
+        const topIdx = sortedProducts.findIndex(p => 
+          p.dna_meta?.item_slot === 'top' || 
+          mapToPriorityCategory(p.category, p.sub_category, p.name) === '상의'
+        );
+        
+        // dress 상품 풀에서 가장 적합한 원피스 선택
+        const dressPool = (productsByPriority['하의'] || []).filter(p => 
+          p.dna_meta?.item_slot === 'dress' || 
+          getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스'
+        );
+        
+        if (dressPool.length > 0) {
+          const dressProduct = dressPool[0];
+          
+          // 하의를 원피스로 교체
+          if (bottomIdx >= 0) {
+            console.log(`[style-recommend] 🚨 하의 "${sortedProducts[bottomIdx].name}" → 원피스 "${dressProduct.name}" 교체`);
+            sortedProducts[bottomIdx] = dressProduct;
+          } else {
+            // 하의가 없으면 추가
+            sortedProducts.push(dressProduct);
+          }
+          
+          // 상의도 제거 (원피스가 대체)
+          if (topIdx >= 0 && topIdx !== bottomIdx) {
+            const adjustedIdx = bottomIdx >= 0 && topIdx > bottomIdx ? topIdx : topIdx;
+            console.log(`[style-recommend] 🚨 상의 "${sortedProducts[adjustedIdx].name}" 제거 (원피스가 대체)`);
+            sortedProducts.splice(adjustedIdx, 1);
+          }
+          
+          console.log(`[style-recommend] 🚨 원피스 강제 교체 완료: ${dressProduct.brand} ${dressProduct.name}`);
+        } else {
+          console.log(`[style-recommend] ⚠️ dress 상품 풀이 비어있어 강제 교체 불가`);
+        }
+      }
+      
       // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
       const actualBrands = sortedProducts.map(p => p.brand?.toLowerCase()).filter(Boolean);
       
