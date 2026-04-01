@@ -1363,13 +1363,14 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
 
 🚨 핵심 규칙 (반드시 준수!):
 1. ${isFormalOccasion 
-  ? `[필수] 상의(top) 1개 + 하의(bottom) 1개 + 신발(shoes) 1개 (구두/로퍼/힐 권장)\n   [선택] 아우터(outer)/가방(bag)/액세서리 중 1개`
-  : `[필수] 상의(top) 1개 + 하의(bottom) 1개\n   [자유] 아우터(outer)/신발(shoes)/가방(bag)/액세서리 중 2개`}
+  ? `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개 + 신발(shoes) 1개 (구두/로퍼/힐 권장)\n   [선택] 아우터(outer)/가방(bag)/액세서리 중 1개`
+  : `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개\n   [자유] 아우터(outer)/신발(shoes)/가방(bag)/액세서리 중 2개`}
 2. 같은 브랜드 2개 금지
 3. F값(격식도)이 비슷한 아이템끼리 조합 (±2 이내)
 4. ⚠️ 제외 아이템은 절대 선택하지 마세요!
 5. ⚠️⚠️⚠️ **정확히 4개의 서로 다른 카테고리 상품을 선택하세요** (상의/하의/아우터/신발/가방 등에서 중복 없이)
-6. ⚠️⚠️⚠️ **item_slot 값을 확인하세요**: top=상의, bottom=하의, outer=아우터, shoes=신발, bag=가방
+6. ⚠️⚠️⚠️ **item_slot 값을 확인하세요**: top=상의, bottom=하의, dress=원피스, outer=아우터, shoes=신발, bag=가방
+7. 🚨🚨🚨 **원피스(dress) 선택 시 하의(bottom) 절대 금지!** 원피스는 상의+하의를 대체하는 아이템이므로, 원피스를 선택하면 별도의 하의(바지/스커트 등)를 절대 추가하지 마세요. 원피스 + 아우터/신발/가방/액세서리 조합으로 구성하세요.
 
 📝 styleReasoning 작성 규칙 (반드시 150~250자, 이 구조로!):
 
@@ -1418,13 +1419,14 @@ ${productListContext}
 동일한 스타일 적합도라면 신상품을 우선 선택하세요.
 
 ${isFormalOccasion 
-  ? `[필수] 상의(top) 1개 + 하의(bottom) 1개 + 신발(shoes) 1개`
-  : `[필수] 상의(top) 1개 + 하의(bottom) 1개`}
+  ? `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개 + 신발(shoes) 1개`
+  : `[필수] 상의(top) 1개 + 하의(bottom) 또는 원피스(dress) 1개`}
 
 ⚠️⚠️⚠️ 최우선 규칙: 
 - **위 상품 목록에 있는 ID, 브랜드, 상품명만 사용하세요!**
 - **상품 목록에 없는 브랜드(몽클레어, 캉골, 구찌, 발렌시아가 등)는 절대 언급 금지!**
-- 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/outer/shoes/bag)
+- 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/dress/outer/shoes/bag)
+- 🚨 **원피스(dress)를 선택하면 하의(bottom)는 절대 선택하지 마세요!** 원피스 위에 바지를 입는 코디는 존재하지 않습니다.
 - selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!
 - styleReasoning은 150~250자로 간결하게! (오프닝 → 코디 포인트 → 팁 → 마무리)
 - "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
@@ -2412,9 +2414,30 @@ ${matchDetails.join('\n')}
     const gptSelectedIds = ragResponse.selectedProductIds || [];
     
     if (selectedProducts && selectedProducts.length > 0) {
-      const sortedProducts = gptSelectedIds
+      let sortedProducts = gptSelectedIds
         .map(id => selectedProducts.find(p => p.id === id))
         .filter(Boolean) as typeof selectedProducts;
+      
+      // 🚨 원피스+하의 충돌 방지: 원피스가 있으면 하의 제거
+      const hasDress = sortedProducts.some(p => 
+        p.dna_meta?.item_slot === 'dress' || 
+        getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스'
+      );
+      if (hasDress) {
+        const beforeCount = sortedProducts.length;
+        sortedProducts = sortedProducts.filter(p => {
+          const isDress = p.dna_meta?.item_slot === 'dress' || 
+            getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스';
+          const isBottom = p.dna_meta?.item_slot === 'bottom' && !isDress;
+          if (isBottom) {
+            console.log(`[style-recommend] 🚨 원피스+하의 충돌 제거: ${p.brand} ${p.name} (item_slot=bottom)`);
+          }
+          return !isBottom;
+        });
+        if (sortedProducts.length < beforeCount) {
+          console.log(`[style-recommend] 🚨 원피스 감지 → 하의 ${beforeCount - sortedProducts.length}개 제거됨`);
+        }
+      }
       
       // ============= 🔥 Reasoning 검증 및 교정 =============
       // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
@@ -2541,10 +2564,22 @@ ${matchDetails.join('\n')}
       lastFormality = lookItems[0].product.dna_meta.formality;
     }
 
+    // 🚨 원피스가 이미 포함되어 있는지 확인 (자동 채움에서 하의 추가 방지)
+    const hasDressInLook = lookItems.some(item => 
+      item.product?.dna_meta?.item_slot === 'dress' || item.category === '원피스'
+    );
+    
     while (lookItems.length < MIN_ITEMS) {
       for (const cat of CATEGORY_PRIORITY) {
         if (lookItems.length >= MIN_ITEMS) break;
         if (usedCategories.has(cat)) continue;
+        
+        // 🚨 원피스가 있으면 하의 카테고리 스킵
+        if (hasDressInLook && cat === '하의') {
+          console.log(`[style-recommend] 🚨 자동채움: 원피스 존재하여 하의 카테고리 스킵`);
+          usedCategories.add(cat); // 하의를 사용한 것으로 마킹하여 재시도 방지
+          continue;
+        }
         
         let catProducts = productsByPriority[cat] || [];
         
