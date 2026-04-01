@@ -2414,9 +2414,30 @@ ${matchDetails.join('\n')}
     const gptSelectedIds = ragResponse.selectedProductIds || [];
     
     if (selectedProducts && selectedProducts.length > 0) {
-      const sortedProducts = gptSelectedIds
+      let sortedProducts = gptSelectedIds
         .map(id => selectedProducts.find(p => p.id === id))
         .filter(Boolean) as typeof selectedProducts;
+      
+      // 🚨 원피스+하의 충돌 방지: 원피스가 있으면 하의 제거
+      const hasDress = sortedProducts.some(p => 
+        p.dna_meta?.item_slot === 'dress' || 
+        getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스'
+      );
+      if (hasDress) {
+        const beforeCount = sortedProducts.length;
+        sortedProducts = sortedProducts.filter(p => {
+          const isDress = p.dna_meta?.item_slot === 'dress' || 
+            getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) === '원피스';
+          const isBottom = p.dna_meta?.item_slot === 'bottom' && !isDress;
+          if (isBottom) {
+            console.log(`[style-recommend] 🚨 원피스+하의 충돌 제거: ${p.brand} ${p.name} (item_slot=bottom)`);
+          }
+          return !isBottom;
+        });
+        if (sortedProducts.length < beforeCount) {
+          console.log(`[style-recommend] 🚨 원피스 감지 → 하의 ${beforeCount - sortedProducts.length}개 제거됨`);
+        }
+      }
       
       // ============= 🔥 Reasoning 검증 및 교정 =============
       // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
