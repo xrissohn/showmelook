@@ -2564,10 +2564,22 @@ ${matchDetails.join('\n')}
       lastFormality = lookItems[0].product.dna_meta.formality;
     }
 
+    // 🚨 원피스가 이미 포함되어 있는지 확인 (자동 채움에서 하의 추가 방지)
+    const hasDressInLook = lookItems.some(item => 
+      item.product?.dna_meta?.item_slot === 'dress' || item.category === '원피스'
+    );
+    
     while (lookItems.length < MIN_ITEMS) {
       for (const cat of CATEGORY_PRIORITY) {
         if (lookItems.length >= MIN_ITEMS) break;
         if (usedCategories.has(cat)) continue;
+        
+        // 🚨 원피스가 있으면 하의 카테고리 스킵
+        if (hasDressInLook && cat === '하의') {
+          console.log(`[style-recommend] 🚨 자동채움: 원피스 존재하여 하의 카테고리 스킵`);
+          usedCategories.add(cat); // 하의를 사용한 것으로 마킹하여 재시도 방지
+          continue;
+        }
         
         let catProducts = productsByPriority[cat] || [];
         
