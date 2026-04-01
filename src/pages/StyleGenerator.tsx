@@ -1486,7 +1486,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     loadLikedProducts();
   }, []);
   
-  // 상품 구매 핸들러
+  // 상품 구매 핸들러 - pre-open window to avoid popup blocking on mobile
   const handleProductPurchase = async (product: CachedProduct) => {
     if (!product.product_url) {
       toast({
@@ -1497,10 +1497,11 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       return;
     }
     
+    // 클릭 시점에 빈 창을 먼저 열어 팝업 차단 방지
+    const newWindow = window.open('', '_blank');
     setPurchasingProductId(product.id);
     
     try {
-      // Get auth token for deeplink tracking
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
         body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
@@ -1509,14 +1510,19 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       
       if (error) throw error;
       
-      if (data?.success && data?.affiliate_url) {
-        window.open(data.affiliate_url, '_blank', 'noopener,noreferrer');
+      const targetUrl = (data?.success && data?.affiliate_url) ? data.affiliate_url : product.product_url;
+      if (newWindow) {
+        newWindow.location.href = targetUrl;
       } else {
-        window.open(product.product_url, '_blank', 'noopener,noreferrer');
+        window.location.href = targetUrl;
       }
     } catch (error) {
       console.error('Deeplink error:', error);
-      window.open(product.product_url, '_blank', 'noopener,noreferrer');
+      if (newWindow) {
+        newWindow.location.href = product.product_url;
+      } else {
+        window.location.href = product.product_url;
+      }
     } finally {
       setPurchasingProductId(null);
     }
