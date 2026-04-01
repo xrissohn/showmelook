@@ -237,7 +237,10 @@ const SharedLook = () => {
 
   const handleProductClick = (product: Product) => {
     const url = product.affiliate_url || product.product_url;
-    window.open(url, "_blank");
+    const newWindow = window.open(url, '_blank');
+    if (!newWindow) {
+      window.location.href = url;
+    }
   };
 
   const handleAddToCart = async (product: Product, e: React.MouseEvent) => {
