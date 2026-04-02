@@ -1287,6 +1287,10 @@ const Admin = () => {
                 <Globe className="w-4 h-4 mr-1" />
                 Bright Data
               </TabsTrigger>
+              <TabsTrigger value="user-analytics" className="flex-shrink-0 whitespace-nowrap">
+                <TrendingUp className="w-4 h-4 mr-1" />
+                유저 통계
+              </TabsTrigger>
             </TabsList>
           </div>
 
