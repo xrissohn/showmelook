@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -30,6 +30,7 @@ import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPa
 import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
+import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1286,6 +1287,10 @@ const Admin = () => {
                 <Globe className="w-4 h-4 mr-1" />
                 Bright Data
               </TabsTrigger>
+              <TabsTrigger value="user-analytics" className="flex-shrink-0 whitespace-nowrap">
+                <TrendingUp className="w-4 h-4 mr-1" />
+                유저 통계
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -2469,6 +2474,11 @@ const Admin = () => {
           {/* Bright Data Panel Tab */}
           <TabsContent value="brightdata" className="space-y-4">
             <BrightDataPanel />
+          </TabsContent>
+
+          {/* User Analytics Tab */}
+          <TabsContent value="user-analytics" className="space-y-4">
+            <UserAnalyticsPanel />
           </TabsContent>
 
         </Tabs>
