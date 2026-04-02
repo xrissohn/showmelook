@@ -30,6 +30,7 @@ import { CoupangDailyReportPanel } from "@/components/admin/CoupangDailyReportPa
 import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
+import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
