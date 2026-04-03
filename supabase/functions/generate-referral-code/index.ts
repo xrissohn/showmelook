@@ -88,7 +88,7 @@ serve(async (req) => {
         user_id: user_id,
         code: newCode,
         used_count: 0,
-        max_uses: 5,
+        max_uses: 10,
         is_active: true,
       })
       .select()
