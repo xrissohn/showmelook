@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown, Images, Heart } from 'lucide-react';
+import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown, Images, Heart, Gift, Users } from 'lucide-react';
 import { TIER_CONFIG, formatAmountKo } from '@/lib/tierConfig';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import { SEOHead } from '@/components/SEOHead';
