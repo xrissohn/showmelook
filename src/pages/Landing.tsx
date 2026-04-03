@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown, Images, Heart } from 'lucide-react';
+import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown, Images, Heart, Gift, Users } from 'lucide-react';
 import { TIER_CONFIG, formatAmountKo } from '@/lib/tierConfig';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import { SEOHead } from '@/components/SEOHead';
@@ -672,6 +672,55 @@ const Landing = () => {
 
       {/* Style Gallery Preview */}
       <GalleryPreviewSection />
+
+      {/* Referral Banner Section */}
+      <ScrollSection className="py-12 sm:py-16 px-4 sm:px-6 relative overflow-hidden" delay={50}>
+        <div className="container mx-auto max-w-4xl relative z-10">
+          <div 
+            className="relative rounded-3xl overflow-hidden cursor-pointer group"
+            onClick={() => user ? navigate('/mypage') : navigate('/auth')}
+          >
+            {/* Gradient background */}
+            <div className="absolute inset-0 bg-gradient-to-r from-coral via-magenta to-purple opacity-90" />
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+            
+            {/* Animated particles */}
+            <SparklesStar className="top-4 left-[10%]" delay={0} />
+            <SparklesStar className="top-6 right-[15%]" delay={0.3} />
+            <SparklesStar className="bottom-4 left-[20%]" delay={0.6} />
+            <SparklesStar className="bottom-6 right-[10%]" delay={0.9} />
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 sm:gap-8 p-6 sm:p-10">
+              {/* Icon */}
+              <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <Gift className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+              </div>
+              
+              {/* Text */}
+              <div className="flex-1 text-center sm:text-left">
+                <h3 className="font-korean text-xl sm:text-2xl md:text-3xl text-white font-bold mb-1 sm:mb-2">
+                  친구 추천하면 보너스 5회 🎁
+                </h3>
+                <p className="font-korean text-white/80 text-sm sm:text-base">
+                  추천 코드를 공유하고, 친구도 나도 스타일 생성 보너스를 받으세요! 
+                  <span className="inline-flex items-center gap-1 ml-1">
+                    <Users className="w-3.5 h-3.5" />
+                    최대 10명까지
+                  </span>
+                </p>
+              </div>
+              
+              {/* CTA Button */}
+              <div className="flex-shrink-0">
+                <div className="bg-white text-foreground font-korean font-semibold px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base group-hover:scale-105 transition-transform duration-200 flex items-center gap-2 shadow-lg">
+                  {user ? '내 추천 코드 보기' : '가입하고 코드 받기'}
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ScrollSection>
 
       {/* Pricing Section */}
       <ScrollSection className="py-16 sm:py-24 px-4 sm:px-6 bg-muted/30 relative overflow-hidden" delay={100}>
