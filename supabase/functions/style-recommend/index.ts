@@ -2088,6 +2088,27 @@ serve(async (req) => {
     // 🎲 다양성을 위한 강화된 랜덤 시드 (요청마다 크게 달라짐)
     const randomSeed = Date.now() ^ (Math.random() * 0xFFFFFF | 0);
     
+    // 🎯 세부 스타일 매칭 함수
+    function calculateSubStyleBonus(product: CachedProduct): number {
+      if (requestedSubStyles.length === 0) return 0;
+      
+      const productSubStyle = (product.dna_meta as any)?.sub_style || '';
+      const productName = (product.name || '').toLowerCase();
+      const productSubCat = (product.sub_category || '').toLowerCase();
+      
+      for (const reqStyle of requestedSubStyles) {
+        // 1. dna_meta.sub_style 정확 매칭 (최고 점수)
+        if (productSubStyle === reqStyle) return 0.50;
+        
+        // 2. 상품명/sub_category에서 키워드 매칭
+        const keywords = SUB_STYLE_KEYWORDS[reqStyle] || [];
+        if (keywords.some(kw => productName.includes(kw.toLowerCase()) || productSubCat.includes(kw.toLowerCase()))) {
+          return 0.45;
+        }
+      }
+      return 0;
+    }
+    
     const scoredProducts = allProducts.map(p => {
       const feedbackScore = p.feedback_score || 0.5;
       const conceptScore = calculateConceptScore(p, stage1Result.concepts);
@@ -2102,12 +2123,15 @@ serve(async (req) => {
       // 🆕 Freshness Boost: 신상품 가산점
       const freshnessBonus = calculateFreshnessBoost(p.collected_at);
       
+      // 🎯 세부 스타일 매칭 보너스 (사용자가 후드집업 등 특정 스타일을 요청한 경우)
+      const subStyleBonus = calculateSubStyleBonus(p);
+      
       // 🎲 강화된 랜덤 다양성 (0~0.25 범위) - 매 요청마다 완전히 다른 결과
       const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const diversityBonus = ((idHash ^ randomSeed) % 1000) / 4000;  // 0 ~ 0.25 범위
       
-      // 가중치 조정: diversity 비중 강화
-      const totalScore = (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
+      // 가중치 조정: sub_style 매칭이 있으면 가장 높은 가중치
+      const totalScore = subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
       
       return { product: p, score: totalScore };
     });
