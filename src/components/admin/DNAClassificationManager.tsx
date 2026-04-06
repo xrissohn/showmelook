@@ -43,6 +43,11 @@ interface CustomEntry {
   is_active: boolean;
 }
 
+interface ReclassifyResult {
+  matched: number;
+  updated: number;
+}
+
 const SLOT_LABELS: Record<string, string> = {
   top: "상의", bottom: "하의", outer: "아우터", dress: "원피스",
   shoes: "신발", bag: "가방", accessory: "액세서리",
@@ -53,6 +58,8 @@ export function DNAClassificationManager() {
   const [customEntries, setCustomEntries] = useState<CustomEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reclassifying, setReclassifying] = useState(false);
+  const [reclassifyResult, setReclassifyResult] = useState<ReclassifyResult | null>(null);
 
   // 입력 상태
   const [newValue, setNewValue] = useState("");
@@ -73,6 +80,87 @@ export function DNAClassificationManager() {
   }, []);
 
   useEffect(() => { fetchCustomEntries(); }, [fetchCustomEntries]);
+
+  // 키워드 매칭 제품을 찾아 dna_meta 업데이트
+  const reclassifyProducts = async (configType: string, value: string, keywords: string[], itemSlot: string | null) => {
+    setReclassifying(true);
+    setReclassifyResult(null);
+    try {
+      // 1) 키워드에 매칭되는 활성 제품 조회 (ilike로 검색)
+      const orFilters = keywords.map(kw => `name.ilike.%${kw}%`).join(",");
+      let query = supabase
+        .from("products_cache")
+        .select("id, name, dna_meta")
+        .eq("is_active", true)
+        .or(orFilters);
+
+      // sub_style인 경우 카테고리 필터 추가
+      if (configType === "sub_style" && itemSlot) {
+        const categoryMap: Record<string, string[]> = {
+          top: ["상의", "top"], bottom: ["하의", "bottom"], outer: ["아우터", "outer"],
+          dress: ["원피스", "dress"], shoes: ["신발", "shoes"], bag: ["가방", "bag"],
+          accessory: ["액세서리", "accessory"],
+        };
+        const cats = categoryMap[itemSlot];
+        if (cats) {
+          query = query.in("category", cats);
+        }
+      }
+
+      const { data: products, error } = await query.limit(500);
+      if (error) throw error;
+      if (!products || products.length === 0) {
+        setReclassifyResult({ matched: 0, updated: 0 });
+        toast({ title: "매칭 제품 없음", description: `"${value}" 키워드와 일치하는 제품이 없습니다.` });
+        return;
+      }
+
+      // 2) dna_meta 필드 결정
+      const metaFieldMap: Record<string, string> = {
+        sub_style: "sub_style", concept: "concepts", occasion: "occasions",
+        color: "colors", season: "seasons",
+      };
+      const metaField = metaFieldMap[configType] || configType;
+
+      // 3) 업데이트 대상 필터링 및 실행
+      let updatedCount = 0;
+      for (const product of products) {
+        const currentMeta = (product.dna_meta as Record<string, unknown>) || {};
+        
+        if (configType === "sub_style") {
+          // sub_style은 단일 값 → 아직 없거나 다른 값이면 업데이트
+          if (currentMeta.sub_style && currentMeta.sub_style === value) continue;
+          const newMeta = { ...currentMeta, sub_style: value };
+          const { error: upErr } = await supabase
+            .from("products_cache")
+            .update({ dna_meta: newMeta as never })
+            .eq("id", product.id);
+          if (!upErr) updatedCount++;
+        } else {
+          // 배열형 (concepts, occasions 등) → 기존 값에 추가
+          const existing = Array.isArray(currentMeta[metaField]) ? currentMeta[metaField] as string[] : [];
+          if (existing.includes(value)) continue;
+          const newMeta = { ...currentMeta, [metaField]: [...existing, value] };
+          const { error: upErr } = await supabase
+            .from("products_cache")
+            .update({ dna_meta: newMeta as never })
+            .eq("id", product.id);
+          if (!upErr) updatedCount++;
+        }
+      }
+
+      setReclassifyResult({ matched: products.length, updated: updatedCount });
+      toast({
+        title: "자동 재분류 완료",
+        description: `${products.length}개 매칭 → ${updatedCount}개 제품 DNA 업데이트`,
+      });
+    } catch (err) {
+      console.error("Reclassify error:", err);
+      toast({ title: "재분류 실패", description: String(err), variant: "destructive" });
+    } finally {
+      setReclassifying(false);
+    }
+  };
 
   const handleAdd = async () => {
     if (!newValue.trim()) return;
@@ -95,10 +183,14 @@ export function DNAClassificationManager() {
     if (error) {
       toast({ title: "추가 실패", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "추가 완료", description: `"${newValue}" 항목이 추가되었습니다.` });
+      toast({ title: "추가 완료", description: `"${newValue}" 항목이 추가되었습니다. 기존 제품 재분류 중...` });
+      const savedValue = newValue.trim();
+      const savedSlot = activeTab === "sub_style" ? selectedSlot : null;
       setNewValue("");
       setNewKeywords("");
       fetchCustomEntries();
+      // 자동 재분류 실행
+      await reclassifyProducts(activeTab, savedValue, keywords, savedSlot);
     }
     setSaving(false);
   };
@@ -155,7 +247,28 @@ export function DNAClassificationManager() {
             <TabsTrigger value="reference">기본 분류</TabsTrigger>
           </TabsList>
 
-          {/* ── 세부 스타일 (슬롯별) ── */}
+          {/* 재분류 상태 표시 */}
+          {(reclassifying || reclassifyResult) && (
+            <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+              {reclassifying ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  기존 제품 재분류 중...
+                </div>
+              ) : reclassifyResult && (
+                <div className="flex items-center justify-between text-sm">
+                  <span>
+                    <Tag className="w-4 h-4 inline mr-1" />
+                    매칭 {reclassifyResult.matched}개 → <strong>{reclassifyResult.updated}개</strong> 제품 DNA 업데이트 완료
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => setReclassifyResult(null)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           <TabsContent value="sub_style" className="space-y-4">
             <div className="flex gap-2 items-end flex-wrap">
               <div>
