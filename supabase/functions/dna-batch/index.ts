@@ -863,7 +863,7 @@ serve(async (req) => {
           const existingMeta = product.dna_meta as any;
           const { category: inferredCat, subCategory } = inferCategory(product.name, product.category);
           const itemSlot = categoryToItemSlot(inferredCat, subCategory);
-          const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
+          const subStyle = inferSubStyle(product.name, itemSlot, subCategory, customClassifications.filter(c => c.config_type === 'sub_style'));
           
           const updatedMeta = { ...existingMeta, sub_style: subStyle || '' };
           const { error: upErr } = await supabase
