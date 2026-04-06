@@ -2421,8 +2421,19 @@ ${matchDetails.join('\n')}
         const actualColor = p.color || '';
         const colorInfo = actualColor ? `${actualColor}(${colorFam})` : colorFam;
         const slot = p.dna_meta?.item_slot || 'unknown';
+        const subStyle = (p.dna_meta as any)?.sub_style || '';
         const newTag = isNewProduct(p.collected_at) ? '[NEW]' : '';
-        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}`;
+        const subStyleTag = subStyle ? `[${subStyle}]` : '';
+        // 🎯 사용자가 요청한 세부 스타일과 매칭되는 상품에 ⭐ 표시
+        const isRequestedStyle = requestedSubStyles.length > 0 && (
+          requestedSubStyles.includes(subStyle) ||
+          requestedSubStyles.some(rs => {
+            const kws = SUB_STYLE_KEYWORDS[rs] || [];
+            return kws.some(kw => (p.name || '').toLowerCase().includes(kw.toLowerCase()));
+          })
+        );
+        const starTag = isRequestedStyle ? '⭐필수' : '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}`;
       }).join('\n');
 
       // 1차: Primary 모델
