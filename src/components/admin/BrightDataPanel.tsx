@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, RefreshCw, Download, Play, Database, Globe, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { fetchAllRows } from "@/lib/paginatedFetch";
 
 interface DatasetItem {
@@ -522,6 +523,29 @@ export const BrightDataPanel = () => {
                   </p>
                   <p className="text-xs text-muted-foreground">활동일 수</p>
                 </div>
+              </div>
+
+              {/* Bar Chart */}
+              <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={[...dailyLog].reverse()} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v: string) => v.slice(5)}
+                      className="fill-muted-foreground"
+                    />
+                    <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ fontWeight: 600 }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="new_count" name="신규" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="updated_count" name="업데이트" stackId="a" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
 
               {/* Daily table */}
