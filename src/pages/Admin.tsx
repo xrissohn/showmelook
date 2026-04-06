@@ -1054,16 +1054,40 @@ const Admin = () => {
     setIsBatchDnaRunning(true);
     setBatchDnaMode(mode);
     try {
-      const body = mode === 'subStyle' 
-        ? { subStyleOnly: true }
-        : { forceRegenerate: mode === 'all' };
-      const { data, error } = await supabase.functions.invoke("dna-batch", { body });
-      if (error) throw error;
-      const label = mode === 'subStyle' ? '세부 스타일 추출' : mode === 'all' ? '재생성' : '생성';
-      toast({
-        title: `DNA ${label} 완료`,
-        description: `${data?.updated || data?.processed || 0}개 상품 처리 완료`,
-      });
+      if (mode === 'subStyle') {
+        // 반복 호출로 전체 처리
+        let totalProcessed = 0;
+        let totalUpdated = 0;
+        let hasMore = true;
+        let iteration = 0;
+        while (hasMore && iteration < 20) {
+          iteration++;
+          const { data, error } = await supabase.functions.invoke("dna-batch", {
+            body: { subStyleOnly: true }
+          });
+          if (error) throw error;
+          totalProcessed += data?.processed || 0;
+          totalUpdated += data?.updated || 0;
+          hasMore = data?.hasMore === true;
+          toast({
+            title: `세부 스타일 추출 중... (${iteration}회차)`,
+            description: `${totalProcessed}개 처리, ${totalUpdated}개 업데이트${hasMore ? ' - 계속 진행 중...' : ' - 완료!'}`,
+          });
+        }
+        toast({
+          title: "세부 스타일 추출 완료",
+          description: `총 ${totalProcessed}개 처리, ${totalUpdated}개 업데이트`,
+        });
+      } else {
+        const { data, error } = await supabase.functions.invoke("dna-batch", {
+          body: { forceRegenerate: mode === 'all' }
+        });
+        if (error) throw error;
+        toast({
+          title: `DNA ${mode === 'all' ? '재생성' : '생성'} 완료`,
+          description: `${data?.updated || data?.processed || 0}개 상품 처리 완료`,
+        });
+      }
       loadDnaStats();
     } catch (error) {
       console.error("Batch DNA error:", error);
