@@ -739,7 +739,7 @@ serve(async (req) => {
   }
 
   try {
-    const { batchSize = 50, scheduled = false, maxIterations = 10, forceRegenerate = false, productIds = [] } = await req.json().catch(() => ({}));
+    const { batchSize = 50, scheduled = false, maxIterations = 10, forceRegenerate = false, productIds = [], subStyleOnly = false } = await req.json().catch(() => ({}));
     
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
