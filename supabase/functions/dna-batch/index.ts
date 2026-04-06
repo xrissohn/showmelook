@@ -787,21 +787,31 @@ serve(async (req) => {
       
       console.log(`[dna-batch] subStyleOnly 모드 시작 (배치=${SUB_STYLE_BATCH})`);
       
-      // sub_style이 없는 상품 조회 (1배치만 처리 후 응답)
+      // sub_style이 없는 상품만 직접 SQL로 조회 (서버사이드 필터링)
       const { data: products, error: fetchErr } = await supabase
-        .from('products_cache')
-        .select('id, name, brand, category, sub_category, price, style_tags, gender, color, dna_meta')
-        .eq('is_active', true)
-        .not('dna_meta', 'is', null)
-        .limit(SUB_STYLE_BATCH);
+        .rpc('get_products_without_sub_style', { batch_limit: SUB_STYLE_BATCH })
+        .select('*');
       
-      if (fetchErr) throw new Error(`subStyleOnly fetch error: ${fetchErr.message}`);
-      
-      // dna_meta에 sub_style이 이미 있는 상품 필터링 (JS에서)
-      const needsUpdate = (products || []).filter((p: any) => {
-        const meta = p.dna_meta as any;
-        return !meta?.sub_style && meta?.sub_style !== '';
-      });
+      // RPC가 없으면 폴백: 전체 조회 후 JS 필터링
+      let needsUpdate: any[];
+      if (fetchErr) {
+        console.log(`[dna-batch] RPC 미지원, JS 필터 폴백 사용`);
+        const { data: allProducts, error: fallbackErr } = await supabase
+          .from('products_cache')
+          .select('id, name, brand, category, sub_category, price, style_tags, gender, color, dna_meta')
+          .eq('is_active', true)
+          .not('dna_meta', 'is', null)
+          .limit(SUB_STYLE_BATCH);
+        
+        if (fallbackErr) throw new Error(`subStyleOnly fetch error: ${fallbackErr.message}`);
+        
+        needsUpdate = (allProducts || []).filter((p: any) => {
+          const meta = p.dna_meta as any;
+          return meta?.sub_style === undefined || meta?.sub_style === null;
+        });
+      } else {
+        needsUpdate = products || [];
+      }
       
       if (needsUpdate.length === 0) {
         return new Response(JSON.stringify({
@@ -809,6 +819,7 @@ serve(async (req) => {
           message: '모든 상품에 세부 스타일이 있습니다',
           processed: 0,
           remaining: 0,
+          hasMore: false,
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       
