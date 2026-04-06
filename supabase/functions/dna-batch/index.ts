@@ -764,6 +764,21 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // 커스텀 분류 항목 로드
+    let customClassifications: CustomClassification[] = [];
+    try {
+      const { data: customData } = await supabase
+        .from('dna_classification_config')
+        .select('config_type, item_slot, value, keywords')
+        .eq('is_active', true);
+      if (customData) customClassifications = customData as CustomClassification[];
+      if (customClassifications.length > 0) {
+        console.log(`[dna-batch] 커스텀 분류 ${customClassifications.length}개 로드됨`);
+      }
+    } catch (err) {
+      console.warn('[dna-batch] 커스텀 분류 로드 실패 (무시):', err);
+    }
+    
     // 배치 사이즈 제한 (AI 호출 없으므로 더 많이 처리 가능)
     const effectiveBatchSize = Math.min(batchSize, 200);
     
