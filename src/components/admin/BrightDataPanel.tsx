@@ -60,6 +60,16 @@ export const BrightDataPanel = () => {
   }> | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
+  // Daily product log
+  const [dailyLog, setDailyLog] = useState<Array<{
+    date: string;
+    new_count: number;
+    updated_count: number;
+    by_merchant: Record<string, number>;
+  }> | null>(null);
+  const [dailyLogLoading, setDailyLogLoading] = useState(false);
+  const [dailyLogDays, setDailyLogDays] = useState(30);
+
   const loadDatasets = async () => {
     setDatasetsLoading(true);
     try {
