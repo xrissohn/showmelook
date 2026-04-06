@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, RefreshCw, Download, Play, Database, Globe, Clock, Calendar, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +60,16 @@ export const BrightDataPanel = () => {
     last_collected: string;
   }> | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+
+  // Daily product log
+  const [dailyLog, setDailyLog] = useState<Array<{
+    date: string;
+    new_count: number;
+    updated_count: number;
+    by_merchant: Record<string, number>;
+  }> | null>(null);
+  const [dailyLogLoading, setDailyLogLoading] = useState(false);
+  const [dailyLogDays, setDailyLogDays] = useState(30);
 
   const loadDatasets = async () => {
     setDatasetsLoading(true);
@@ -171,6 +182,58 @@ export const BrightDataPanel = () => {
       return new Date(d).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
     } catch {
       return d;
+    }
+  };
+
+  const loadDailyLog = async () => {
+    setDailyLogLoading(true);
+    try {
+      const since = new Date();
+      since.setDate(since.getDate() - dailyLogDays);
+      const sinceStr = since.toISOString();
+
+      const allRows = await fetchAllRows<{
+        collected_at: string | null;
+        updated_at: string | null;
+        merchant_id: string | null;
+      }>(
+        'products_cache',
+        'collected_at, updated_at, merchant_id',
+        (q) => q.or(`collected_at.gte.${sinceStr},updated_at.gte.${sinceStr}`)
+      );
+
+      const newMap: Record<string, { new_count: number; updated_count: number; by_merchant: Record<string, number> }> = {};
+
+      const toDateKey = (d: string) => d.slice(0, 10);
+
+      for (const row of allRows) {
+        const collDate = row.collected_at ? toDateKey(row.collected_at) : null;
+        const updDate = row.updated_at ? toDateKey(row.updated_at) : null;
+        const mid = row.merchant_id || 'unknown';
+
+        if (collDate && collDate >= sinceStr.slice(0, 10)) {
+          if (!newMap[collDate]) newMap[collDate] = { new_count: 0, updated_count: 0, by_merchant: {} };
+          newMap[collDate].new_count++;
+          newMap[collDate].by_merchant[mid] = (newMap[collDate].by_merchant[mid] || 0) + 1;
+        }
+
+        if (updDate && updDate >= sinceStr.slice(0, 10) && updDate !== collDate) {
+          if (!newMap[updDate]) newMap[updDate] = { new_count: 0, updated_count: 0, by_merchant: {} };
+          newMap[updDate].updated_count++;
+        }
+      }
+
+      const sorted = Object.entries(newMap)
+        .map(([date, v]) => ({ date, ...v }))
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      setDailyLog(sorted);
+      toast({ title: "일별 상품 로그 조회 완료", description: `${sorted.length}일간 데이터` });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "일별 로그 조회 실패", description: msg, variant: "destructive" });
+    } finally {
+      setDailyLogLoading(false);
     }
   };
 
@@ -405,6 +468,100 @@ export const BrightDataPanel = () => {
                 </tbody>
               </table>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 5. Daily Product Update Log */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            일별 상품 업데이트 이력
+          </CardTitle>
+          <CardDescription>
+            날짜별 신규 등록 및 업데이트된 상품 수를 머천트별로 확인합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2 items-center">
+            <Select value={String(dailyLogDays)} onValueChange={(v) => setDailyLogDays(Number(v))}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">최근 7일</SelectItem>
+                <SelectItem value="14">최근 14일</SelectItem>
+                <SelectItem value="30">최근 30일</SelectItem>
+                <SelectItem value="90">최근 90일</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={loadDailyLog} disabled={dailyLogLoading} variant="outline">
+              {dailyLogLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              조회
+            </Button>
+          </div>
+
+          {dailyLog && dailyLog.length > 0 && (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 border rounded-lg text-center">
+                  <p className="text-xl font-bold text-primary">
+                    {dailyLog.reduce((s, d) => s + d.new_count, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">총 신규 등록</p>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <p className="text-xl font-bold">
+                    {dailyLog.reduce((s, d) => s + d.updated_count, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">총 업데이트</p>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <p className="text-xl font-bold">
+                    {dailyLog.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">활동일 수</p>
+                </div>
+              </div>
+
+              {/* Daily table */}
+              <div className="max-h-[500px] overflow-y-auto border rounded-md">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted">
+                    <tr>
+                      <th className="text-left p-2 font-medium">날짜</th>
+                      <th className="text-right p-2 font-medium">신규</th>
+                      <th className="text-right p-2 font-medium">업데이트</th>
+                      <th className="text-left p-2 font-medium">머천트별 신규</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyLog.map((row) => (
+                      <tr key={row.date} className="border-t hover:bg-muted/50">
+                        <td className="p-2 font-mono text-xs">{row.date}</td>
+                        <td className="p-2 text-right font-medium text-primary">{row.new_count.toLocaleString()}</td>
+                        <td className="p-2 text-right text-muted-foreground">{row.updated_count.toLocaleString()}</td>
+                        <td className="p-2">
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(row.by_merchant)
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([mid, cnt]) => (
+                                <Badge key={mid} variant="outline" className="text-xs">
+                                  {mid}: {cnt}
+                                </Badge>
+                              ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {dailyLog && dailyLog.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-6">해당 기간에 상품 변동이 없습니다.</p>
           )}
         </CardContent>
       </Card>
