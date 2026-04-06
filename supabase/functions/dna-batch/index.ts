@@ -833,31 +833,18 @@ serve(async (req) => {
         }
       }
       
-      // 남은 상품 수 확인
-      const { data: remainingCheck } = await supabase
-        .from('products_cache')
-        .select('id, dna_meta')
-        .eq('is_active', true)
-        .not('dna_meta', 'is', null)
-        .limit(1);
+      // hasMore: 이번에 처리한 수가 0보다 크면 아직 남아있을 수 있음
+      // needsUpdate가 배치 사이즈와 같으면 더 있을 가능성 높음
+      const hasMore = needsUpdate.length > 0 && products!.length >= SUB_STYLE_BATCH;
       
-      const hasRemaining = (remainingCheck || []).some((p: any) => {
-        const meta = p.dna_meta as any;
-        return !meta?.sub_style && meta?.sub_style !== '';
-      });
-      
-      // 더 정확한 남은 수 추정 (전체 조회는 비용이 크므로 추정)
-      const remainingEstimate = hasRemaining ? needsUpdate.length : 0;
-      
-      console.log(`[dna-batch] subStyleOnly 완료: ${updated}개 업데이트`);
+      console.log(`[dna-batch] subStyleOnly 완료: ${updated}개 업데이트, hasMore=${hasMore}`);
       
       return new Response(JSON.stringify({
         success: true,
         message: `세부 스타일 추출 완료`,
         processed: needsUpdate.length,
         updated,
-        remaining: remainingEstimate,
-        hasMore: hasRemaining,
+        hasMore,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
