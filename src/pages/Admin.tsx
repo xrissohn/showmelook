@@ -1557,9 +1557,28 @@ const Admin = () => {
                   <div className="flex items-center justify-between">
                     <h3 className="font-medium">🧬 DNA 커버리지</h3>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={loadDnaStats}>
+                      <Button 
+                        variant="outline" size="sm" 
+                        onClick={loadDnaStats}
+                      >
                         <RefreshCw className="w-4 h-4 mr-1" />
                         새로고침
+                      </Button>
+                      <Button 
+                        variant="outline" size="sm" 
+                        onClick={() => handleBatchDnaRegenerate('missing')}
+                        disabled={isBatchDnaRunning}
+                      >
+                        {isBatchDnaRunning && batchDnaMode === 'missing' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Dna className="w-4 h-4 mr-1" />}
+                        미생성 DNA 생성
+                      </Button>
+                      <Button 
+                        variant="default" size="sm" 
+                        onClick={() => handleBatchDnaRegenerate('all')}
+                        disabled={isBatchDnaRunning}
+                      >
+                        {isBatchDnaRunning && batchDnaMode === 'all' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCw className="w-4 h-4 mr-1" />}
+                        전체 DNA 재생성
                       </Button>
                       <Button variant="outline" size="sm" onClick={loadFeedbackStats} disabled={isFeedbackLoading}>
                         {isFeedbackLoading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <BarChart3 className="w-4 h-4 mr-1" />}
