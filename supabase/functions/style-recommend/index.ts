@@ -1487,6 +1487,15 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
     ? `\n🚨🚨🚨 **[최우선] 원피스(dress) 필수 선택!** 사용자가 원피스를 요청했습니다. 반드시 item_slot이 "dress"인 상품을 1개 선택하고, 하의(bottom)는 절대 선택하지 마세요! 원피스 + 아우터/신발/가방/액세서리 조합으로 구성하세요.`
     : '';
 
+  // 🎯 세부 스타일 요청 감지
+  const subStyles = extractSubStyleKeywords(userRequest);
+  const subStyleForceNote = subStyles.length > 0 
+    ? `\n🎯🎯🎯 **[최우선] 사용자가 "${subStyles.join(', ')}" 스타일을 정확히 요청했습니다!**
+- ⭐필수 태그가 붙은 상품을 반드시 1개 이상 선택하세요!
+- 이 상품을 중심으로 나머지 아이템을 코디하세요.
+- ⭐필수 상품이 없으면 상품명에서 "${subStyles.join(', ')}" 키워드가 포함된 것을 우선 선택하세요.`
+    : '';
+
   const stage2UserPrompt = `요청: "${userRequest.slice(0, 80)}"
 타겟: ${gender} ${ageGroupLabel}
 상황: ${occasion}
@@ -1497,7 +1506,7 @@ TPO 분석 결과 (Stage 1):
 - 컨셉: ${stage1Result.concepts.join(', ')}
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
-${dressForceNote}
+${dressForceNote}${subStyleForceNote}
 
 🚨 **사용 가능한 브랜드 목록 (이 브랜드들만 언급하세요!):**
 ${availableBrands.join(', ')}
@@ -1507,6 +1516,7 @@ ${productListContext}
 
 💡 [NEW] 태그가 붙은 상품은 최근 입고된 신상품입니다.
 동일한 스타일 적합도라면 신상품을 우선 선택하세요.
+${subStyles.length > 0 ? `\n🎯 ⭐필수 태그가 붙은 상품은 사용자가 정확히 요청한 스타일입니다. 반드시 우선 선택하세요!` : ''}
 
 ${requiresDressInPrompt 
   ? `[필수] 원피스(dress) 1개 (반드시!) + 아우터/신발/가방/액세서리 중 3개\n   🚨 하의(bottom) 선택 절대 금지!`
