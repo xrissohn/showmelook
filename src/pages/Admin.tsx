@@ -1576,6 +1576,14 @@ const Admin = () => {
                       </Button>
                       <Button 
                         variant="default" size="sm" 
+                        onClick={() => handleBatchDnaRegenerate('subStyle')}
+                        disabled={isBatchDnaRunning}
+                      >
+                        {isBatchDnaRunning && batchDnaMode === 'subStyle' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCw className="w-4 h-4 mr-1" />}
+                        세부 스타일 일괄 추출
+                      </Button>
+                      <Button 
+                        variant="outline" size="sm" 
                         onClick={() => handleBatchDnaRegenerate('all')}
                         disabled={isBatchDnaRunning}
                       >
