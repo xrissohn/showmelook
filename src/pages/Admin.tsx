@@ -165,6 +165,9 @@ const Admin = () => {
   const [dnaEditorProduct, setDnaEditorProduct] = useState<CachedProduct | null>(null);
   const [isBatchDnaRunning, setIsBatchDnaRunning] = useState(false);
   const [batchDnaMode, setBatchDnaMode] = useState<'missing' | 'all' | 'subStyle'>('missing');
+  const [subStyleProgress, setSubStyleProgress] = useState<{
+    processed: number; updated: number; remaining: number; iteration: number; retries: number; status: string;
+  } | null>(null);
   // Style-recommend (AI) test state
   const [aiUserRequest, setAiUserRequest] = useState("");
   const [aiGender, setAiGender] = useState("여성");
