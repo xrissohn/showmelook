@@ -247,7 +247,28 @@ export function DNAClassificationManager() {
             <TabsTrigger value="reference">기본 분류</TabsTrigger>
           </TabsList>
 
-          {/* ── 세부 스타일 (슬롯별) ── */}
+          {/* 재분류 상태 표시 */}
+          {(reclassifying || reclassifyResult) && (
+            <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+              {reclassifying ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  기존 제품 재분류 중...
+                </div>
+              ) : reclassifyResult && (
+                <div className="flex items-center justify-between text-sm">
+                  <span>
+                    <Tag className="w-4 h-4 inline mr-1" />
+                    매칭 {reclassifyResult.matched}개 → <strong>{reclassifyResult.updated}개</strong> 제품 DNA 업데이트 완료
+                  </span>
+                  <Button variant="ghost" size="sm" onClick={() => setReclassifyResult(null)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
           <TabsContent value="sub_style" className="space-y-4">
             <div className="flex gap-2 items-end flex-wrap">
               <div>
