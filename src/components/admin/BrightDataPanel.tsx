@@ -184,6 +184,58 @@ export const BrightDataPanel = () => {
     }
   };
 
+  const loadDailyLog = async () => {
+    setDailyLogLoading(true);
+    try {
+      const since = new Date();
+      since.setDate(since.getDate() - dailyLogDays);
+      const sinceStr = since.toISOString();
+
+      const allRows = await fetchAllRows<{
+        collected_at: string | null;
+        updated_at: string | null;
+        merchant_id: string | null;
+      }>(
+        'products_cache',
+        'collected_at, updated_at, merchant_id',
+        (q) => q.or(`collected_at.gte.${sinceStr},updated_at.gte.${sinceStr}`)
+      );
+
+      const newMap: Record<string, { new_count: number; updated_count: number; by_merchant: Record<string, number> }> = {};
+
+      const toDateKey = (d: string) => d.slice(0, 10);
+
+      for (const row of allRows) {
+        const collDate = row.collected_at ? toDateKey(row.collected_at) : null;
+        const updDate = row.updated_at ? toDateKey(row.updated_at) : null;
+        const mid = row.merchant_id || 'unknown';
+
+        if (collDate && collDate >= sinceStr.slice(0, 10)) {
+          if (!newMap[collDate]) newMap[collDate] = { new_count: 0, updated_count: 0, by_merchant: {} };
+          newMap[collDate].new_count++;
+          newMap[collDate].by_merchant[mid] = (newMap[collDate].by_merchant[mid] || 0) + 1;
+        }
+
+        if (updDate && updDate >= sinceStr.slice(0, 10) && updDate !== collDate) {
+          if (!newMap[updDate]) newMap[updDate] = { new_count: 0, updated_count: 0, by_merchant: {} };
+          newMap[updDate].updated_count++;
+        }
+      }
+
+      const sorted = Object.entries(newMap)
+        .map(([date, v]) => ({ date, ...v }))
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      setDailyLog(sorted);
+      toast({ title: "일별 상품 로그 조회 완료", description: `${sorted.length}일간 데이터` });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ title: "일별 로그 조회 실패", description: msg, variant: "destructive" });
+    } finally {
+      setDailyLogLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* 1. Dataset List */}
