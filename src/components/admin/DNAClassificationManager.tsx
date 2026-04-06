@@ -58,6 +58,8 @@ export function DNAClassificationManager() {
   const [customEntries, setCustomEntries] = useState<CustomEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [reclassifying, setReclassifying] = useState(false);
+  const [reclassifyResult, setReclassifyResult] = useState<ReclassifyResult | null>(null);
 
   // 입력 상태
   const [newValue, setNewValue] = useState("");
