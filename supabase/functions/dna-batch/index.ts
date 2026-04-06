@@ -483,10 +483,27 @@ function inferFormality(product: Product, itemSlot: DNAMeta['item_slot']): numbe
   return Math.max(1, Math.min(10, base));
 }
 
+// 커스텀 분류 항목 타입
+interface CustomClassification {
+  config_type: string;
+  item_slot: string | null;
+  value: string;
+  keywords: string[];
+}
+
 // 세부 스타일명 추출 (상품명에서 구체적인 제품 유형 감지)
-function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory: string): string {
+function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory: string, customSubStyles?: CustomClassification[]): string {
   const lower = name.toLowerCase();
   
+  // 1. 커스텀 세부 스타일 먼저 체크 (우선순위 높음)
+  if (customSubStyles && customSubStyles.length > 0) {
+    const slotCustoms = customSubStyles.filter(c => c.item_slot === itemSlot || !c.item_slot);
+    for (const custom of slotCustoms) {
+      if (custom.keywords.some(kw => lower.includes(kw.toLowerCase()))) {
+        return custom.value;
+      }
+    }
+  }
   // 상의 세부 스타일
   if (itemSlot === 'top') {
     if ((lower.includes('후드') || lower.includes('hood')) && (lower.includes('집업') || lower.includes('zip'))) return '후드집업';
