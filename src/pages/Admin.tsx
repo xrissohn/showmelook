@@ -1075,7 +1075,7 @@ const Admin = () => {
     }
   };
 
-
+  const loadFeedbackStats = async () => {
     setIsFeedbackLoading(true);
     try {
       // Load ALL product feedback scores (paginated)
