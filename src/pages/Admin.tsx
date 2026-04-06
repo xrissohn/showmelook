@@ -1677,28 +1677,6 @@ const Admin = () => {
                         {isBatchDnaRunning && batchDnaMode === 'subStyle' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCw className="w-4 h-4 mr-1" />}
                         세부 스타일 일괄 추출
                       </Button>
-                      {subStyleProgress && (
-                        <div className="w-full mt-2 space-y-1">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{subStyleProgress.status}</span>
-                            <span>
-                              {subStyleProgress.processed}개 처리 / {subStyleProgress.updated}개 업데이트
-                              {subStyleProgress.remaining > 0 && ` / ${subStyleProgress.remaining}개 남음`}
-                            </span>
-                          </div>
-                          {subStyleProgress.remaining > 0 && (
-                            <Progress 
-                              value={Math.round((subStyleProgress.processed / (subStyleProgress.processed + subStyleProgress.remaining)) * 100)} 
-                              className="h-2"
-                            />
-                          )}
-                          {subStyleProgress.retries > 0 && (
-                            <p className="text-xs text-destructive flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" /> 재시도 {subStyleProgress.retries}회
-                            </p>
-                          )}
-                        </div>
-                      )}
                       <Button 
                         variant="outline" size="sm" 
                         onClick={() => handleBatchDnaRegenerate('all')}
@@ -1713,6 +1691,72 @@ const Admin = () => {
                       </Button>
                     </div>
                   </div>
+
+                  {/* DNA Batch Progress Dashboard */}
+                  {dnaProgress && (
+                    <Card className="border-primary/30 bg-primary/5">
+                      <CardContent className="pt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {isBatchDnaRunning ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <CheckCircle2 className="w-4 h-4 text-primary" />}
+                            <span className="font-medium text-sm">{dnaProgress.mode}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {dnaProgress.iteration}회차
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round((Date.now() - dnaProgress.startedAt) / 1000)}초 경과
+                          </span>
+                        </div>
+
+                        <div className="text-sm font-medium">{dnaProgress.status}</div>
+
+                        {dnaProgress.total > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>진행률: {dnaProgress.processed} / {dnaProgress.total}</span>
+                              <span>{Math.round((dnaProgress.processed / dnaProgress.total) * 100)}%</span>
+                            </div>
+                            <Progress 
+                              value={Math.round((dnaProgress.processed / dnaProgress.total) * 100)} 
+                              className="h-3"
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-4 gap-3 text-center text-xs">
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">처리</div>
+                            <div className="font-bold text-lg">{dnaProgress.processed}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">업데이트</div>
+                            <div className="font-bold text-lg">{dnaProgress.updated}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">남은 수</div>
+                            <div className="font-bold text-lg">{dnaProgress.remaining >= 0 ? dnaProgress.remaining : '-'}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">오류</div>
+                            <div className={`font-bold text-lg ${dnaProgress.errors > 0 ? 'text-destructive' : ''}`}>{dnaProgress.errors}</div>
+                          </div>
+                        </div>
+
+                        {dnaProgress.retries > 0 && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> 재시도 {dnaProgress.retries}회
+                          </p>
+                        )}
+
+                        {!isBatchDnaRunning && (
+                          <Button variant="ghost" size="sm" className="text-xs" onClick={() => setDnaProgress(null)}>
+                            닫기
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
                   
                   {dnaStats && (
                     <div className="space-y-4">
