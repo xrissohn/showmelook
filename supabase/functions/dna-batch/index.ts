@@ -782,7 +782,7 @@ serve(async (req) => {
     
     // subStyleOnly 모드: dna_meta는 있지만 sub_style이 없는 상품에 sub_style만 추가
     if (subStyleOnly) {
-      const SUB_STYLE_BATCH = 500;
+      const SUB_STYLE_BATCH = 200;
       let updated = 0;
       
       console.log(`[dna-batch] subStyleOnly 모드 시작 (배치=${SUB_STYLE_BATCH})`);
