@@ -625,7 +625,7 @@ function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory
 }
 
 // DNA 2.0 생성 (AI 없이 빠르게 처리)
-function generateDNA(product: Product): DNAResult {
+function generateDNA(product: Product, customClassifications?: CustomClassification[]): DNAResult {
   const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
   
   const target = normalizeTarget(product.gender, product.name);
@@ -640,8 +640,9 @@ function generateDNA(product: Product): DNAResult {
   const occasions = inferOccasions(formality, itemSlot, concepts);
   const pairSlots = inferPairSlots(itemSlot, formality);
   
-  // 세부 스타일명 추출
-  const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
+  // 세부 스타일명 추출 (커스텀 분류 포함)
+  const customSubStyles = customClassifications?.filter(c => c.config_type === 'sub_style');
+  const subStyle = inferSubStyle(product.name, itemSlot, subCategory, customSubStyles);
   
   const dnaMeta: DNAMeta = {
     target,
