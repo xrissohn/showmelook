@@ -1716,10 +1716,10 @@ const Admin = () => {
                           <div className="space-y-1">
                             <div className="flex justify-between text-xs text-muted-foreground">
                               <span>진행률: {dnaProgress.processed} / {dnaProgress.total}</span>
-                              <span>{Math.round((dnaProgress.processed / dnaProgress.total) * 100)}%</span>
+                              <span>{Math.min(100, Math.round((dnaProgress.processed / dnaProgress.total) * 100))}%</span>
                             </div>
                             <Progress 
-                              value={Math.round((dnaProgress.processed / dnaProgress.total) * 100)} 
+                              value={Math.min(100, Math.round((dnaProgress.processed / dnaProgress.total) * 100))} 
                               className="h-3"
                             />
                           </div>
