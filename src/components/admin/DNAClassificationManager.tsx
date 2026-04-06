@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, X, Save, Loader2, Database, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 
 // ── 하드코딩된 기본 분류 리스트 ──
 const BUILTIN_SUB_STYLES: Record<string, string[]> = {
@@ -81,54 +82,51 @@ export function DNAClassificationManager() {
 
   useEffect(() => { fetchCustomEntries(); }, [fetchCustomEntries]);
 
-  // 키워드 매칭 제품을 찾아 dna_meta 업데이트
+  // 키워드 매칭 제품을 찾아 dna_meta 업데이트 (페이지네이션 적용)
   const reclassifyProducts = async (configType: string, value: string, keywords: string[], itemSlot: string | null) => {
     setReclassifying(true);
     setReclassifyResult(null);
     try {
-      // 1) 키워드에 매칭되는 활성 제품 조회 (ilike로 검색)
       const orFilters = keywords.map(kw => `name.ilike.%${kw}%`).join(",");
-      let query = supabase
-        .from("products_cache")
-        .select("id, name, dna_meta")
-        .eq("is_active", true)
-        .or(orFilters);
 
-      // sub_style인 경우 카테고리 필터 추가
-      if (configType === "sub_style" && itemSlot) {
-        const categoryMap: Record<string, string[]> = {
-          top: ["상의", "top"], bottom: ["하의", "bottom"], outer: ["아우터", "outer"],
-          dress: ["원피스", "dress"], shoes: ["신발", "shoes"], bag: ["가방", "bag"],
-          accessory: ["액세서리", "accessory"],
-        };
-        const cats = categoryMap[itemSlot];
-        if (cats) {
-          query = query.in("category", cats);
-        }
-      }
+      const categoryMap: Record<string, string[]> = {
+        top: ["상의", "top"], bottom: ["하의", "bottom"], outer: ["아우터", "outer"],
+        dress: ["원피스", "dress"], shoes: ["신발", "shoes"], bag: ["가방", "bag"],
+        accessory: ["액세서리", "accessory"],
+      };
 
-      const { data: products, error } = await query.limit(500);
-      if (error) throw error;
+      // fetchAllRows로 전체 매칭 제품 조회
+      const products = await fetchAllRows<{ id: string; name: string; dna_meta: Record<string, unknown> | null }>(
+        "products_cache",
+        "id, name, dna_meta",
+        (q) => {
+          let built = q.eq("is_active", true).or(orFilters);
+          if (configType === "sub_style" && itemSlot) {
+            const cats = categoryMap[itemSlot];
+            if (cats) built = built.in("category", cats);
+          }
+          return built;
+        },
+        500
+      );
+
       if (!products || products.length === 0) {
         setReclassifyResult({ matched: 0, updated: 0 });
         toast({ title: "매칭 제품 없음", description: `"${value}" 키워드와 일치하는 제품이 없습니다.` });
         return;
       }
 
-      // 2) dna_meta 필드 결정
       const metaFieldMap: Record<string, string> = {
         sub_style: "sub_style", concept: "concepts", occasion: "occasions",
         color: "colors", season: "seasons",
       };
       const metaField = metaFieldMap[configType] || configType;
 
-      // 3) 업데이트 대상 필터링 및 실행
       let updatedCount = 0;
       for (const product of products) {
         const currentMeta = (product.dna_meta as Record<string, unknown>) || {};
         
         if (configType === "sub_style") {
-          // sub_style은 단일 값 → 아직 없거나 다른 값이면 업데이트
           if (currentMeta.sub_style && currentMeta.sub_style === value) continue;
           const newMeta = { ...currentMeta, sub_style: value };
           const { error: upErr } = await supabase
@@ -137,7 +135,6 @@ export function DNAClassificationManager() {
             .eq("id", product.id);
           if (!upErr) updatedCount++;
         } else {
-          // 배열형 (concepts, occasions 등) → 기존 값에 추가
           const existing = Array.isArray(currentMeta[metaField]) ? currentMeta[metaField] as string[] : [];
           if (existing.includes(value)) continue;
           const newMeta = { ...currentMeta, [metaField]: [...existing, value] };
@@ -146,6 +143,11 @@ export function DNAClassificationManager() {
             .update({ dna_meta: newMeta as never })
             .eq("id", product.id);
           if (!upErr) updatedCount++;
+        }
+
+        // 진행 상황 중간 업데이트
+        if (updatedCount > 0 && updatedCount % 50 === 0) {
+          setReclassifyResult({ matched: products.length, updated: updatedCount });
         }
       }
 
