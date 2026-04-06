@@ -1100,12 +1100,13 @@ const Admin = () => {
             totalErrors += data?.errors || 0;
 
             const remaining = data?.remaining ?? 0;
-            const total = data?.total || (totalProcessed + remaining);
+            const serverTotal = data?.total || 0;
 
             // Check if there's more to process
             if (mode === 'subStyle') {
               hasMore = data?.hasMore === true;
             } else {
+              // Stop when remaining is 0 OR when no items were processed (nothing left)
               hasMore = remaining > 0 && processed > 0;
             }
 
@@ -1113,11 +1114,11 @@ const Admin = () => {
               processed: totalProcessed,
               updated: totalUpdated,
               remaining,
-              total,
+              total: serverTotal,
               iteration,
               retries: 0,
               errors: totalErrors,
-              status: hasMore ? `${iteration}회차 완료 (${totalProcessed}/${total}) - 다음 배치...` : '✅ 전체 완료!',
+              status: hasMore ? `${iteration}회차 완료 (${totalProcessed}/${serverTotal}) - 다음 배치...` : '✅ 전체 완료!',
               startedAt,
               mode: modeLabel,
             });
@@ -1715,10 +1716,10 @@ const Admin = () => {
                           <div className="space-y-1">
                             <div className="flex justify-between text-xs text-muted-foreground">
                               <span>진행률: {dnaProgress.processed} / {dnaProgress.total}</span>
-                              <span>{Math.round((dnaProgress.processed / dnaProgress.total) * 100)}%</span>
+                              <span>{Math.min(100, Math.round((dnaProgress.processed / dnaProgress.total) * 100))}%</span>
                             </div>
                             <Progress 
-                              value={Math.round((dnaProgress.processed / dnaProgress.total) * 100)} 
+                              value={Math.min(100, Math.round((dnaProgress.processed / dnaProgress.total) * 100))} 
                               className="h-3"
                             />
                           </div>
