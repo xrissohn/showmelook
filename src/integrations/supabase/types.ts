@@ -1739,6 +1739,21 @@ export type Database = {
       cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_inference_metrics: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }
+      get_products_without_sub_style: {
+        Args: { batch_limit?: number }
+        Returns: {
+          brand: string
+          category: string
+          color: string
+          dna_meta: Json
+          gender: string
+          id: string
+          name: string
+          price: number
+          style_tags: string[]
+          sub_category: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
