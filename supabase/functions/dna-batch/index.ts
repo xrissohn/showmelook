@@ -844,17 +844,25 @@ serve(async (req) => {
         }
       }
       
-      // hasMore: 이번에 처리한 수가 0보다 크면 아직 남아있을 수 있음
-      // needsUpdate가 배치 사이즈와 같으면 더 있을 가능성 높음
-      const hasMore = needsUpdate.length > 0 && products!.length >= SUB_STYLE_BATCH;
+      // remaining 카운트: 남은 수를 확인
+      const { count: remainingCount } = await supabase
+        .from('products_cache')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .not('dna_meta', 'is', null)
+        .is('dna_meta->sub_style' as any, null);
       
-      console.log(`[dna-batch] subStyleOnly 완료: ${updated}개 업데이트, hasMore=${hasMore}`);
+      const remaining = remainingCount ?? 0;
+      const hasMore = remaining > 0 && needsUpdate.length >= SUB_STYLE_BATCH;
+      
+      console.log(`[dna-batch] subStyleOnly 완료: ${updated}개 업데이트, remaining=${remaining}, hasMore=${hasMore}`);
       
       return new Response(JSON.stringify({
         success: true,
         message: `세부 스타일 추출 완료`,
         processed: needsUpdate.length,
         updated,
+        remaining,
         hasMore,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }

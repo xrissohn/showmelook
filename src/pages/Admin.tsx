@@ -1058,29 +1058,81 @@ const Admin = () => {
     setBatchDnaMode(mode);
     try {
       if (mode === 'subStyle') {
-        // 반복 호출로 전체 처리
         let totalProcessed = 0;
         let totalUpdated = 0;
         let hasMore = true;
         let iteration = 0;
-        while (hasMore && iteration < 20) {
+        const MAX_ITERATIONS = 30;
+        const MAX_RETRIES_PER_CALL = 3;
+        setSubStyleProgress({ processed: 0, updated: 0, remaining: -1, iteration: 0, retries: 0, status: '시작 중...' });
+
+        while (hasMore && iteration < MAX_ITERATIONS) {
           iteration++;
-          const { data, error } = await supabase.functions.invoke("dna-batch", {
-            body: { subStyleOnly: true }
-          });
-          if (error) throw error;
-          totalProcessed += data?.processed || 0;
-          totalUpdated += data?.updated || 0;
-          hasMore = data?.hasMore === true;
-          toast({
-            title: `세부 스타일 추출 중... (${iteration}회차)`,
-            description: `${totalProcessed}개 처리, ${totalUpdated}개 업데이트${hasMore ? ' - 계속 진행 중...' : ' - 완료!'}`,
-          });
+          let retries = 0;
+          let success = false;
+
+          while (retries < MAX_RETRIES_PER_CALL && !success) {
+            try {
+              setSubStyleProgress(prev => ({
+                ...prev!,
+                iteration,
+                retries,
+                status: retries > 0 ? `${iteration}회차 재시도 (${retries}/${MAX_RETRIES_PER_CALL})...` : `${iteration}회차 처리 중...`,
+              }));
+
+              const { data, error } = await supabase.functions.invoke("dna-batch", {
+                body: { subStyleOnly: true }
+              });
+
+              if (error) throw error;
+              if (!data?.success) throw new Error(data?.message || 'Unknown error');
+
+              totalProcessed += data?.processed || 0;
+              totalUpdated += data?.updated || 0;
+              hasMore = data?.hasMore === true;
+              const remaining = data?.remaining ?? -1;
+
+              setSubStyleProgress({
+                processed: totalProcessed,
+                updated: totalUpdated,
+                remaining,
+                iteration,
+                retries: 0,
+                status: hasMore ? `${iteration}회차 완료 - 다음 배치 준비...` : '전체 완료!',
+              });
+
+              success = true;
+            } catch (err) {
+              retries++;
+              console.warn(`[subStyle] iteration ${iteration}, retry ${retries}:`, err);
+              setSubStyleProgress(prev => ({
+                ...prev!,
+                retries,
+                status: `${iteration}회차 실패 - ${retries < MAX_RETRIES_PER_CALL ? `${retries}초 후 재시도...` : '최대 재시도 초과'}`,
+              }));
+              if (retries < MAX_RETRIES_PER_CALL) {
+                await new Promise(r => setTimeout(r, retries * 1000));
+              }
+            }
+          }
+
+          if (!success) {
+            toast({
+              title: `세부 스타일 추출 중단 (${iteration}회차)`,
+              description: `${totalProcessed}개 처리, ${totalUpdated}개 업데이트 후 오류로 중단. 다시 시도하세요.`,
+              variant: "destructive",
+            });
+            setSubStyleProgress(prev => ({ ...prev!, status: `${totalProcessed}개 처리 후 중단됨` }));
+            setIsBatchDnaRunning(false);
+            return;
+          }
         }
+
         toast({
           title: "세부 스타일 추출 완료",
           description: `총 ${totalProcessed}개 처리, ${totalUpdated}개 업데이트`,
         });
+        setSubStyleProgress(prev => ({ ...prev!, status: `완료! ${totalProcessed}개 처리, ${totalUpdated}개 업데이트` }));
       } else {
         const { data, error } = await supabase.functions.invoke("dna-batch", {
           body: { forceRegenerate: mode === 'all' }
