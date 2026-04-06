@@ -525,28 +525,57 @@ export const BrightDataPanel = () => {
                 </div>
               </div>
 
-              {/* Bar Chart */}
-              <div className="h-[280px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[...dailyLog].reverse()} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
-                    <XAxis
-                      dataKey="date"
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v: string) => v.slice(5)}
-                      className="fill-muted-foreground"
-                    />
-                    <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                      labelStyle={{ fontWeight: 600 }}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Bar dataKey="new_count" name="신규" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="updated_count" name="업데이트" stackId="a" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {/* Bar Chart - by merchant */}
+              {(() => {
+                const MERCHANT_COLORS = [
+                  '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
+                  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16',
+                ];
+                const allMerchants = Array.from(
+                  new Set(dailyLog.flatMap((r) => Object.keys(r.by_merchant)))
+                );
+                const chartData = [...dailyLog].reverse().map((row) => {
+                  const entry: Record<string, unknown> = {
+                    date: row.date,
+                    updated_count: row.updated_count,
+                  };
+                  allMerchants.forEach((m) => {
+                    entry[m] = row.by_merchant[m] || 0;
+                  });
+                  return entry;
+                });
+                return (
+                  <div className="h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 11 }}
+                          tickFormatter={(v: string) => v.slice(5)}
+                        />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                          labelStyle={{ fontWeight: 600 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        {allMerchants.map((m, i) => (
+                          <Bar
+                            key={m}
+                            dataKey={m}
+                            name={m}
+                            stackId="merchants"
+                            fill={MERCHANT_COLORS[i % MERCHANT_COLORS.length]}
+                            radius={i === allMerchants.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
+                          />
+                        ))}
+                        <Bar dataKey="updated_count" name="업데이트" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })()}
 
               {/* Daily table */}
               <div className="max-h-[500px] overflow-y-auto border rounded-md">
