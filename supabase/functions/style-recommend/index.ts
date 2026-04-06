@@ -1728,6 +1728,7 @@ serve(async (req) => {
     
     const requestedConcepts = extractConcepts(userRequest);
     const requestedOccasions = extractOccasions(userRequest);
+    const requestedSubStyles = extractSubStyleKeywords(userRequest);
     const occasion = requestedOccasions[0] || '캐주얼';
     const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
     const patternKey = generatePatternKey(gender, occasion, requestedConcepts, budget);
@@ -1737,6 +1738,9 @@ serve(async (req) => {
     console.log(`[style-recommend] v7.0 세계 최고 패셔니스타 + 하이브리드 2단계 + 교차 Fallback`);
     console.log(`[style-recommend] Request: "${userRequest}"`);
     console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Pattern: ${patternKey}`);
+    if (requestedSubStyles.length > 0) {
+      console.log(`[style-recommend] 🎯 요청된 세부 스타일: ${requestedSubStyles.join(', ')}`);
+    }
     console.log(`[style-recommend] Models: Stage1=${stage1Primary}/${stage1Backup}, Stage2=${stage2Primary}/${stage2Backup}`);
     if (hasPhotoAnalysis) {
       console.log(`[style-recommend] 📷 Photo analysis mode: ${photoAnalysisItems.items.length} items detected`);
