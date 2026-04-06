@@ -1046,6 +1046,85 @@ function calculateOccasionScore(product: CachedProduct, requestedOccasions: stri
   return overlap.length / Math.max(requestedOccasions.length, 1);
 }
 
+// ============= 🔥 사용자 요청에서 구체적 제품 스타일명 추출 =============
+const SUB_STYLE_KEYWORDS: Record<string, string[]> = {
+  // 상의
+  '후드집업': ['후드집업', '후드 집업', 'hood zip', 'hoodie zip', 'zip-up hoodie', 'zip up hoodie', '후드짚업'],
+  '후드티': ['후드티', '후드', 'hoodie', '후디', 'hood', '후드 티'],
+  '맨투맨': ['맨투맨', '맨투', 'mtm', '스웨트셔츠', 'sweatshirt', '크루넥'],
+  '반집업': ['반집업', '하프집업', 'half zip', '반 집업'],
+  '니트': ['니트', 'knit', '스웨터', 'sweater'],
+  '셔츠': ['셔츠', 'shirt', '와이셔츠'],
+  '블라우스': ['블라우스', 'blouse'],
+  '카디건': ['카디건', '가디건', 'cardigan'],
+  '폴로셔츠': ['폴로', 'polo', '폴로셔츠'],
+  '터틀넥': ['터틀넥', '폴라', '목폴라', 'turtleneck', '반목'],
+  '조끼': ['조끼', '베스트', 'vest'],
+  // 하의
+  '와이드팬츠': ['와이드', 'wide', '와이드팬츠'],
+  '슬랙스': ['슬랙스', 'slacks', '드레스팬츠'],
+  '청바지': ['청바지', '데님', 'denim', '진', 'jeans'],
+  '카고팬츠': ['카고', 'cargo', '카고팬츠'],
+  '조거팬츠': ['조거', 'jogger', '조거팬츠', '트레이닝'],
+  '스커트': ['스커트', '치마', 'skirt'],
+  // 아우터
+  '후드자켓': ['후드자켓', '후드 자켓', 'hood jacket', '후드재킷'],
+  '블레이저': ['블레이저', 'blazer'],
+  '트렌치코트': ['트렌치', 'trench', '트렌치코트'],
+  '패딩': ['패딩', 'puffer', '퍼퍼', '패딩자켓'],
+  '봄버자켓': ['봄버', 'bomber', '항공점퍼', '봄버자켓'],
+  '가디건아우터': ['가디건', 'cardigan'],
+  '레더자켓': ['레더', '가죽', 'leather', '레더자켓'],
+  '데님자켓': ['데님자켓', '청자켓', 'denim jacket'],
+  '플리스': ['플리스', 'fleece', '후리스', '양털'],
+  '코트': ['코트', 'coat'],
+  // 신발
+  '스니커즈': ['스니커즈', 'sneaker', '운동화'],
+  '로퍼': ['로퍼', 'loafer'],
+  '부츠': ['부츠', 'boots', 'boot'],
+  '첼시부츠': ['첼시', 'chelsea'],
+  '구두': ['구두', 'derby', '더비', 'oxford', '드레스슈즈'],
+  '샌들': ['샌들', 'sandal'],
+  // 가방
+  '토트백': ['토트', 'tote', '토트백'],
+  '크로스백': ['크로스백', 'crossbody', '크로스'],
+  '백팩': ['백팩', 'backpack', '배낭'],
+};
+
+// 사용자 요청에서 구체적 제품 스타일명 추출
+function extractSubStyleKeywords(request: string): string[] {
+  const lower = request.toLowerCase();
+  const found: string[] = [];
+  
+  // 더 구체적인 것을 먼저 매칭 (후드집업 > 후드티 > 후드)
+  const sortedEntries = Object.entries(SUB_STYLE_KEYWORDS).sort((a, b) => {
+    const aMaxLen = Math.max(...a[1].map(k => k.length));
+    const bMaxLen = Math.max(...b[1].map(k => k.length));
+    return bMaxLen - aMaxLen;
+  });
+  
+  const matchedKeywords = new Set<string>();
+  
+  for (const [subStyle, keywords] of sortedEntries) {
+    for (const kw of keywords) {
+      if (lower.includes(kw) && !matchedKeywords.has(kw)) {
+        // 더 구체적인 매칭이 이미 있으면 스킵 (예: 후드집업이 있으면 후드티는 스킵)
+        const alreadyHasMoreSpecific = found.some(existing => {
+          const existingKws = SUB_STYLE_KEYWORDS[existing] || [];
+          return existingKws.some(ek => kw.includes(ek) && kw !== ek);
+        });
+        if (!alreadyHasMoreSpecific && !found.includes(subStyle)) {
+          found.push(subStyle);
+          keywords.forEach(k => matchedKeywords.add(k));
+        }
+        break;
+      }
+    }
+  }
+  
+  return found;
+}
+
 // 컨셉/상황 추출
 function extractConcepts(request: string): string[] {
   const conceptKeywords: Record<string, string[]> = {
