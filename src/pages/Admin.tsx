@@ -1661,6 +1661,28 @@ const Admin = () => {
                         {isBatchDnaRunning && batchDnaMode === 'subStyle' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCw className="w-4 h-4 mr-1" />}
                         세부 스타일 일괄 추출
                       </Button>
+                      {subStyleProgress && (
+                        <div className="w-full mt-2 space-y-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{subStyleProgress.status}</span>
+                            <span>
+                              {subStyleProgress.processed}개 처리 / {subStyleProgress.updated}개 업데이트
+                              {subStyleProgress.remaining > 0 && ` / ${subStyleProgress.remaining}개 남음`}
+                            </span>
+                          </div>
+                          {subStyleProgress.remaining > 0 && (
+                            <Progress 
+                              value={Math.round((subStyleProgress.processed / (subStyleProgress.processed + subStyleProgress.remaining)) * 100)} 
+                              className="h-2"
+                            />
+                          )}
+                          {subStyleProgress.retries > 0 && (
+                            <p className="text-xs text-destructive flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> 재시도 {subStyleProgress.retries}회
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <Button 
                         variant="outline" size="sm" 
                         onClick={() => handleBatchDnaRegenerate('all')}
