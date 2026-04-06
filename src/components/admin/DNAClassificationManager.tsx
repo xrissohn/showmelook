@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, X, Save, Loader2, Database, Tag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { fetchAllRows } from "@/lib/paginatedFetch";
 
 // ── 하드코딩된 기본 분류 리스트 ──
 const BUILTIN_SUB_STYLES: Record<string, string[]> = {
