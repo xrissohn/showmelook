@@ -1050,8 +1050,32 @@ const Admin = () => {
       console.error('Error loading DNA stats:', error);
     }
   };
+  const handleBatchDnaRegenerate = async (mode: 'missing' | 'all') => {
+    setIsBatchDnaRunning(true);
+    setBatchDnaMode(mode);
+    try {
+      const { data, error } = await supabase.functions.invoke("dna-batch", {
+        body: { forceRegenerate: mode === 'all' }
+      });
+      if (error) throw error;
+      toast({
+        title: "DNA 배치 처리 완료",
+        description: `${data?.updated || 0}개 상품의 DNA가 ${mode === 'all' ? '재생성' : '생성'}되었습니다.${data?.skipped ? ` (${data.skipped}개 스킵)` : ''}`,
+      });
+      loadDnaStats();
+    } catch (error) {
+      console.error("Batch DNA error:", error);
+      toast({
+        title: "DNA 배치 처리 실패",
+        description: error instanceof Error ? error.message : "알 수 없는 오류",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBatchDnaRunning(false);
+    }
+  };
 
-  const loadFeedbackStats = async () => {
+
     setIsFeedbackLoading(true);
     try {
       // Load ALL product feedback scores (paginated)
