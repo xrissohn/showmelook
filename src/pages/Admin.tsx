@@ -166,8 +166,8 @@ const Admin = () => {
   const [dnaEditorProduct, setDnaEditorProduct] = useState<CachedProduct | null>(null);
   const [isBatchDnaRunning, setIsBatchDnaRunning] = useState(false);
   const [batchDnaMode, setBatchDnaMode] = useState<'missing' | 'all' | 'subStyle'>('missing');
-  const [subStyleProgress, setSubStyleProgress] = useState<{
-    processed: number; updated: number; remaining: number; iteration: number; retries: number; status: string;
+  const [dnaProgress, setDnaProgress] = useState<{
+    processed: number; updated: number; remaining: number; total: number; iteration: number; retries: number; errors: number; status: string; startedAt: number; mode: string;
   } | null>(null);
   // Style-recommend (AI) test state
   const [aiUserRequest, setAiUserRequest] = useState("");
@@ -1057,93 +1057,107 @@ const Admin = () => {
   const handleBatchDnaRegenerate = async (mode: 'missing' | 'all' | 'subStyle') => {
     setIsBatchDnaRunning(true);
     setBatchDnaMode(mode);
+    const modeLabel = mode === 'all' ? '전체 재생성' : mode === 'subStyle' ? '세부 스타일 추출' : '미생성 DNA 생성';
+    const startedAt = Date.now();
+    let totalProcessed = 0;
+    let totalUpdated = 0;
+    let totalErrors = 0;
+    let hasMore = true;
+    let iteration = 0;
+    const MAX_ITERATIONS = 200;
+    const MAX_RETRIES = 3;
+    const BATCH_SIZE = mode === 'subStyle' ? 500 : 50;
+
+    setDnaProgress({ processed: 0, updated: 0, remaining: -1, total: -1, iteration: 0, retries: 0, errors: 0, status: '시작 중...', startedAt, mode: modeLabel });
+
     try {
-      if (mode === 'subStyle') {
-        let totalProcessed = 0;
-        let totalUpdated = 0;
-        let hasMore = true;
-        let iteration = 0;
-        const MAX_ITERATIONS = 30;
-        const MAX_RETRIES_PER_CALL = 3;
-        setSubStyleProgress({ processed: 0, updated: 0, remaining: -1, iteration: 0, retries: 0, status: '시작 중...' });
+      while (hasMore && iteration < MAX_ITERATIONS) {
+        iteration++;
+        let retries = 0;
+        let success = false;
 
-        while (hasMore && iteration < MAX_ITERATIONS) {
-          iteration++;
-          let retries = 0;
-          let success = false;
+        while (retries < MAX_RETRIES && !success) {
+          try {
+            setDnaProgress(prev => ({
+              ...prev!,
+              iteration,
+              retries,
+              status: retries > 0 ? `${iteration}회차 재시도 (${retries}/${MAX_RETRIES})...` : `${iteration}회차 처리 중...`,
+            }));
 
-          while (retries < MAX_RETRIES_PER_CALL && !success) {
-            try {
-              setSubStyleProgress(prev => ({
-                ...prev!,
-                iteration,
-                retries,
-                status: retries > 0 ? `${iteration}회차 재시도 (${retries}/${MAX_RETRIES_PER_CALL})...` : `${iteration}회차 처리 중...`,
-              }));
+            const body = mode === 'subStyle'
+              ? { subStyleOnly: true }
+              : { forceRegenerate: mode === 'all', batchSize: BATCH_SIZE };
 
-              const { data, error } = await supabase.functions.invoke("dna-batch", {
-                body: { subStyleOnly: true }
-              });
+            const { data, error } = await supabase.functions.invoke("dna-batch", { body });
+            if (error) throw error;
+            if (!data?.success) throw new Error(data?.message || data?.error || 'Unknown error');
 
-              if (error) throw error;
-              if (!data?.success) throw new Error(data?.message || 'Unknown error');
+            const processed = data?.processed || data?.updated || 0;
+            const updated = data?.updated || processed;
+            totalProcessed += processed;
+            totalUpdated += updated;
+            totalErrors += data?.errors || 0;
 
-              totalProcessed += data?.processed || 0;
-              totalUpdated += data?.updated || 0;
+            const remaining = data?.remaining ?? 0;
+            const total = data?.total || (totalProcessed + remaining);
+
+            // Check if there's more to process
+            if (mode === 'subStyle') {
               hasMore = data?.hasMore === true;
-              const remaining = data?.remaining ?? -1;
-
-              setSubStyleProgress({
-                processed: totalProcessed,
-                updated: totalUpdated,
-                remaining,
-                iteration,
-                retries: 0,
-                status: hasMore ? `${iteration}회차 완료 - 다음 배치 준비...` : '전체 완료!',
-              });
-
-              success = true;
-            } catch (err) {
-              retries++;
-              console.warn(`[subStyle] iteration ${iteration}, retry ${retries}:`, err);
-              setSubStyleProgress(prev => ({
-                ...prev!,
-                retries,
-                status: `${iteration}회차 실패 - ${retries < MAX_RETRIES_PER_CALL ? `${retries}초 후 재시도...` : '최대 재시도 초과'}`,
-              }));
-              if (retries < MAX_RETRIES_PER_CALL) {
-                await new Promise(r => setTimeout(r, retries * 1000));
-              }
+            } else {
+              hasMore = remaining > 0 && processed > 0;
             }
-          }
 
-          if (!success) {
-            toast({
-              title: `세부 스타일 추출 중단 (${iteration}회차)`,
-              description: `${totalProcessed}개 처리, ${totalUpdated}개 업데이트 후 오류로 중단. 다시 시도하세요.`,
-              variant: "destructive",
+            setDnaProgress({
+              processed: totalProcessed,
+              updated: totalUpdated,
+              remaining,
+              total,
+              iteration,
+              retries: 0,
+              errors: totalErrors,
+              status: hasMore ? `${iteration}회차 완료 (${totalProcessed}/${total}) - 다음 배치...` : '✅ 전체 완료!',
+              startedAt,
+              mode: modeLabel,
             });
-            setSubStyleProgress(prev => ({ ...prev!, status: `${totalProcessed}개 처리 후 중단됨` }));
-            setIsBatchDnaRunning(false);
-            return;
+
+            success = true;
+          } catch (err) {
+            retries++;
+            console.warn(`[${mode}] iteration ${iteration}, retry ${retries}:`, err);
+            setDnaProgress(prev => ({
+              ...prev!,
+              retries,
+              status: `${iteration}회차 실패 - ${retries < MAX_RETRIES ? `${retries}초 후 재시도...` : '최대 재시도 초과'}`,
+            }));
+            if (retries < MAX_RETRIES) {
+              await new Promise(r => setTimeout(r, retries * 1000));
+            }
           }
         }
 
-        toast({
-          title: "세부 스타일 추출 완료",
-          description: `총 ${totalProcessed}개 처리, ${totalUpdated}개 업데이트`,
-        });
-        setSubStyleProgress(prev => ({ ...prev!, status: `완료! ${totalProcessed}개 처리, ${totalUpdated}개 업데이트` }));
-      } else {
-        const { data, error } = await supabase.functions.invoke("dna-batch", {
-          body: { forceRegenerate: mode === 'all' }
-        });
-        if (error) throw error;
-        toast({
-          title: `DNA ${mode === 'all' ? '재생성' : '생성'} 완료`,
-          description: `${data?.updated || data?.processed || 0}개 상품 처리 완료`,
-        });
+        if (!success) {
+          toast({
+            title: `${modeLabel} 중단 (${iteration}회차)`,
+            description: `${totalProcessed}개 처리 후 오류로 중단`,
+            variant: "destructive",
+          });
+          setDnaProgress(prev => ({ ...prev!, status: `⚠️ ${totalProcessed}개 처리 후 중단됨` }));
+          setIsBatchDnaRunning(false);
+          return;
+        }
       }
+
+      const elapsed = Math.round((Date.now() - startedAt) / 1000);
+      toast({
+        title: `${modeLabel} 완료`,
+        description: `총 ${totalProcessed}개 처리, ${totalUpdated}개 업데이트 (${elapsed}초)`,
+      });
+      setDnaProgress(prev => ({
+        ...prev!,
+        status: `✅ 완료! ${totalProcessed}개 처리, ${totalUpdated}개 업데이트 (${elapsed}초)`,
+      }));
       loadDnaStats();
     } catch (error) {
       console.error("Batch DNA error:", error);
@@ -1152,6 +1166,7 @@ const Admin = () => {
         description: error instanceof Error ? error.message : "알 수 없는 오류",
         variant: "destructive",
       });
+      setDnaProgress(prev => prev ? { ...prev, status: `❌ 오류: ${error instanceof Error ? error.message : '알 수 없는 오류'}` } : null);
     } finally {
       setIsBatchDnaRunning(false);
     }
@@ -1662,28 +1677,6 @@ const Admin = () => {
                         {isBatchDnaRunning && batchDnaMode === 'subStyle' ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RotateCw className="w-4 h-4 mr-1" />}
                         세부 스타일 일괄 추출
                       </Button>
-                      {subStyleProgress && (
-                        <div className="w-full mt-2 space-y-1">
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{subStyleProgress.status}</span>
-                            <span>
-                              {subStyleProgress.processed}개 처리 / {subStyleProgress.updated}개 업데이트
-                              {subStyleProgress.remaining > 0 && ` / ${subStyleProgress.remaining}개 남음`}
-                            </span>
-                          </div>
-                          {subStyleProgress.remaining > 0 && (
-                            <Progress 
-                              value={Math.round((subStyleProgress.processed / (subStyleProgress.processed + subStyleProgress.remaining)) * 100)} 
-                              className="h-2"
-                            />
-                          )}
-                          {subStyleProgress.retries > 0 && (
-                            <p className="text-xs text-destructive flex items-center gap-1">
-                              <AlertTriangle className="w-3 h-3" /> 재시도 {subStyleProgress.retries}회
-                            </p>
-                          )}
-                        </div>
-                      )}
                       <Button 
                         variant="outline" size="sm" 
                         onClick={() => handleBatchDnaRegenerate('all')}
@@ -1698,6 +1691,72 @@ const Admin = () => {
                       </Button>
                     </div>
                   </div>
+
+                  {/* DNA Batch Progress Dashboard */}
+                  {dnaProgress && (
+                    <Card className="border-primary/30 bg-primary/5">
+                      <CardContent className="pt-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {isBatchDnaRunning ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <CheckCircle2 className="w-4 h-4 text-primary" />}
+                            <span className="font-medium text-sm">{dnaProgress.mode}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {dnaProgress.iteration}회차
+                            </Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {Math.round((Date.now() - dnaProgress.startedAt) / 1000)}초 경과
+                          </span>
+                        </div>
+
+                        <div className="text-sm font-medium">{dnaProgress.status}</div>
+
+                        {dnaProgress.total > 0 && (
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>진행률: {dnaProgress.processed} / {dnaProgress.total}</span>
+                              <span>{Math.round((dnaProgress.processed / dnaProgress.total) * 100)}%</span>
+                            </div>
+                            <Progress 
+                              value={Math.round((dnaProgress.processed / dnaProgress.total) * 100)} 
+                              className="h-3"
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-4 gap-3 text-center text-xs">
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">처리</div>
+                            <div className="font-bold text-lg">{dnaProgress.processed}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">업데이트</div>
+                            <div className="font-bold text-lg">{dnaProgress.updated}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">남은 수</div>
+                            <div className="font-bold text-lg">{dnaProgress.remaining >= 0 ? dnaProgress.remaining : '-'}</div>
+                          </div>
+                          <div className="p-2 bg-background rounded border">
+                            <div className="text-muted-foreground">오류</div>
+                            <div className={`font-bold text-lg ${dnaProgress.errors > 0 ? 'text-destructive' : ''}`}>{dnaProgress.errors}</div>
+                          </div>
+                        </div>
+
+                        {dnaProgress.retries > 0 && (
+                          <p className="text-xs text-destructive flex items-center gap-1">
+                            <AlertTriangle className="w-3 h-3" /> 재시도 {dnaProgress.retries}회
+                          </p>
+                        )}
+
+                        {!isBatchDnaRunning && (
+                          <Button variant="ghost" size="sm" className="text-xs" onClick={() => setDnaProgress(null)}>
+                            닫기
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
                   
                   {dnaStats && (
                     <div className="space-y-4">
