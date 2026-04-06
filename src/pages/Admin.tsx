@@ -1100,12 +1100,13 @@ const Admin = () => {
             totalErrors += data?.errors || 0;
 
             const remaining = data?.remaining ?? 0;
-            const total = data?.total || (totalProcessed + remaining);
+            const serverTotal = data?.total || 0;
 
             // Check if there's more to process
             if (mode === 'subStyle') {
               hasMore = data?.hasMore === true;
             } else {
+              // Stop when remaining is 0 OR when no items were processed (nothing left)
               hasMore = remaining > 0 && processed > 0;
             }
 
@@ -1113,7 +1114,7 @@ const Admin = () => {
               processed: totalProcessed,
               updated: totalUpdated,
               remaining,
-              total,
+              total: serverTotal,
               iteration,
               retries: 0,
               errors: totalErrors,

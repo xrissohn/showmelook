@@ -1123,28 +1123,33 @@ serve(async (req) => {
 
     // forceRegenerate 모드
     if (forceRegenerate) {
-      const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+      // Use a session timestamp to track which products were already processed
+      // Products updated after this timestamp are considered "done" in this session
+      const sessionStart = new Date(Date.now() - 5000).toISOString(); // 5s buffer for clock skew
 
+      // Count total first
+      const { count: totalCount } = await supabase
+        .from('products_cache')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      // Fetch products NOT yet updated in this session (dna_generated_at < sessionStart or null)
       const { data: allProducts, error: allError } = await supabase
         .from('products_cache')
         .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
         .eq('is_active', true)
-        .or(`dna_generated_at.is.null,dna_generated_at.lt.${oneMinuteAgo}`)
+        .or(`dna_generated_at.is.null,dna_generated_at.lt.${sessionStart}`)
         .order('dna_generated_at', { ascending: true, nullsFirst: true })
         .limit(effectiveBatchSize);
 
       if (allError) throw new Error(`Failed to fetch products: ${allError.message}`);
 
       if (!allProducts || allProducts.length === 0) {
-        const { count: totalCount } = await supabase
-          .from('products_cache')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_active', true);
-
         return new Response(JSON.stringify({
           success: true,
           message: '모든 상품 DNA 재생성 완료!',
           processed: 0,
+          remaining: 0,
           total: totalCount || 0,
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
@@ -1173,16 +1178,20 @@ serve(async (req) => {
         }
       }
 
-      const { count: totalCount } = await supabase
+      // Count remaining: products still with old dna_generated_at
+      const { count: remainingCount } = await supabase
         .from('products_cache')
         .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
+        .eq('is_active', true)
+        .or(`dna_generated_at.is.null,dna_generated_at.lt.${sessionStart}`);
+
+      const remaining = Math.max(0, (remainingCount || 0) - updatedCount);
 
       return new Response(JSON.stringify({
         success: true,
         message: `DNA 강제 재생성 완료`,
         processed: updatedCount,
-        remaining: (totalCount || 0) - updatedCount,
+        remaining,
         total: totalCount || 0,
         sample: results.slice(0, 3).map(r => ({ id: r.id, target: r.dna_meta.target, color: r.dna_meta.color_family, formality: r.dna_meta.formality })),
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
