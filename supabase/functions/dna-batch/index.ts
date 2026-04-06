@@ -26,6 +26,7 @@ interface Product {
 interface DNAMeta {
   target: 'female' | 'male' | 'kids' | 'unisex';
   item_slot: 'top' | 'bottom' | 'outer' | 'shoes' | 'bag' | 'accessory' | 'dress';
+  sub_style?: string; // 세부 스타일명: 후드집업, 니트가디건, 와이드팬츠, 첼시부츠 등
   concepts: string[];
   formality: number;
   pair_slots: string[];
