@@ -347,6 +347,39 @@ export type Database = {
         }
         Relationships: []
       }
+      dna_classification_config: {
+        Row: {
+          config_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          item_slot: string | null
+          keywords: string[]
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          config_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          item_slot?: string | null
+          keywords?: string[]
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          config_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          item_slot?: string | null
+          keywords?: string[]
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       email_verifications: {
         Row: {
           attempts: number | null
