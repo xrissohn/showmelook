@@ -1118,7 +1118,7 @@ const Admin = () => {
               iteration,
               retries: 0,
               errors: totalErrors,
-              status: hasMore ? `${iteration}회차 완료 (${totalProcessed}/${total}) - 다음 배치...` : '✅ 전체 완료!',
+              status: hasMore ? `${iteration}회차 완료 (${totalProcessed}/${serverTotal}) - 다음 배치...` : '✅ 전체 완료!',
               startedAt,
               mode: modeLabel,
             });
