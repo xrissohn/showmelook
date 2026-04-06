@@ -1050,17 +1050,19 @@ const Admin = () => {
       console.error('Error loading DNA stats:', error);
     }
   };
-  const handleBatchDnaRegenerate = async (mode: 'missing' | 'all') => {
+  const handleBatchDnaRegenerate = async (mode: 'missing' | 'all' | 'subStyle') => {
     setIsBatchDnaRunning(true);
     setBatchDnaMode(mode);
     try {
-      const { data, error } = await supabase.functions.invoke("dna-batch", {
-        body: { forceRegenerate: mode === 'all' }
-      });
+      const body = mode === 'subStyle' 
+        ? { subStyleOnly: true }
+        : { forceRegenerate: mode === 'all' };
+      const { data, error } = await supabase.functions.invoke("dna-batch", { body });
       if (error) throw error;
+      const label = mode === 'subStyle' ? '세부 스타일 추출' : mode === 'all' ? '재생성' : '생성';
       toast({
-        title: "DNA 배치 처리 완료",
-        description: `${data?.updated || 0}개 상품의 DNA가 ${mode === 'all' ? '재생성' : '생성'}되었습니다.${data?.skipped ? ` (${data.skipped}개 스킵)` : ''}`,
+        title: `DNA ${label} 완료`,
+        description: `${data?.updated || data?.processed || 0}개 상품 처리 완료`,
       });
       loadDnaStats();
     } catch (error) {
