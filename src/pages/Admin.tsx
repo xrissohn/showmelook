@@ -1846,6 +1846,9 @@ const Admin = () => {
 
               </CardContent>
             </Card>
+
+            {/* DNA Classification Manager */}
+            <DNAClassificationManager />
           </TabsContent>
           <TabsContent value="recommend" className="space-y-4">
             <Card>
