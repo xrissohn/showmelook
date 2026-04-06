@@ -483,6 +483,130 @@ function inferFormality(product: Product, itemSlot: DNAMeta['item_slot']): numbe
   return Math.max(1, Math.min(10, base));
 }
 
+// 세부 스타일명 추출 (상품명에서 구체적인 제품 유형 감지)
+function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory: string): string {
+  const lower = name.toLowerCase();
+  
+  // 상의 세부 스타일
+  if (itemSlot === 'top') {
+    if ((lower.includes('후드') || lower.includes('hood')) && (lower.includes('집업') || lower.includes('zip'))) return '후드집업';
+    if (lower.includes('후드') || lower.includes('hoodie') || lower.includes('후디')) return '후드티';
+    if (lower.includes('맨투맨') || lower.includes('sweatshirt') || lower.includes('mtm') || lower.includes('크루넥')) return '맨투맨';
+    if ((lower.includes('반') || lower.includes('하프')) && (lower.includes('집업') || lower.includes('zip'))) return '반집업';
+    if (lower.includes('집업') || lower.includes('zip-up') || lower.includes('zipup') || lower.includes('zip up')) return '집업';
+    if (lower.includes('폴로') || lower.includes('polo')) return '폴로셔츠';
+    if (lower.includes('터틀넥') || lower.includes('폴라') || lower.includes('목폴라') || lower.includes('turtleneck')) return '터틀넥';
+    if (lower.includes('반팔') || lower.includes('short sleeve')) return '반팔티';
+    if (lower.includes('긴팔') || lower.includes('long sleeve') || lower.includes('롱슬리브')) return '긴팔티';
+    if (lower.includes('크롭') || lower.includes('crop')) return '크롭탑';
+    if (lower.includes('니트') || lower.includes('knit') || lower.includes('스웨터') || lower.includes('sweater')) return '니트';
+    if (lower.includes('블라우스') || lower.includes('blouse')) return '블라우스';
+    if (lower.includes('셔츠') || lower.includes('shirt')) return '셔츠';
+    if (lower.includes('카디건') || lower.includes('cardigan') || lower.includes('가디건')) return '카디건';
+    if (lower.includes('베스트') || lower.includes('vest') || lower.includes('조끼')) return '조끼';
+    if (lower.includes('탱크') || lower.includes('민소매') || lower.includes('sleeveless')) return '민소매';
+    return '';
+  }
+  
+  // 하의 세부 스타일
+  if (itemSlot === 'bottom') {
+    if (lower.includes('와이드') || lower.includes('wide')) return '와이드팬츠';
+    if (lower.includes('스트레이트') || lower.includes('straight')) return '스트레이트팬츠';
+    if (lower.includes('스키니') || lower.includes('skinny')) return '스키니팬츠';
+    if (lower.includes('테이퍼드') || lower.includes('tapered')) return '테이퍼드팬츠';
+    if (lower.includes('조거') || lower.includes('jogger')) return '조거팬츠';
+    if (lower.includes('카고') || lower.includes('cargo')) return '카고팬츠';
+    if (lower.includes('부츠컷') || lower.includes('bootcut') || lower.includes('플레어') || lower.includes('flare')) return '부츠컷/플레어';
+    if (lower.includes('데님') || lower.includes('denim') || lower.includes('진') || lower.includes('jeans') || lower.includes('청바지')) return '청바지';
+    if (lower.includes('슬랙스') || lower.includes('slacks') || lower.includes('정장') || lower.includes('dress pants')) return '슬랙스';
+    if (lower.includes('치마') || lower.includes('skirt') || lower.includes('스커트')) {
+      if (lower.includes('미니')) return '미니스커트';
+      if (lower.includes('롱') || lower.includes('맥시')) return '롱스커트';
+      if (lower.includes('플리츠') || lower.includes('pleats')) return '플리츠스커트';
+      return '스커트';
+    }
+    if (lower.includes('반바지') || lower.includes('shorts') || lower.includes('쇼츠')) return '반바지';
+    if (lower.includes('레깅스') || lower.includes('leggings')) return '레깅스';
+    if (lower.includes('코듀로이') || lower.includes('corduroy') || lower.includes('골덴')) return '코듀로이팬츠';
+    if (lower.includes('치노') || lower.includes('chino')) return '치노팬츠';
+    return '';
+  }
+  
+  // 아우터 세부 스타일
+  if (itemSlot === 'outer') {
+    if ((lower.includes('후드') || lower.includes('hood')) && (lower.includes('집업') || lower.includes('zip'))) return '후드집업';
+    if ((lower.includes('후드') || lower.includes('hood')) && (lower.includes('자켓') || lower.includes('jacket'))) return '후드자켓';
+    if (lower.includes('블레이저') || lower.includes('blazer')) return '블레이저';
+    if (lower.includes('트렌치') || lower.includes('trench')) return '트렌치코트';
+    if (lower.includes('패딩') || lower.includes('puffer') || lower.includes('퍼퍼')) return '패딩';
+    if (lower.includes('다운') || lower.includes('down jacket')) return '다운재킷';
+    if (lower.includes('무스탕') || lower.includes('shearling') || lower.includes('양모')) return '무스탕';
+    if (lower.includes('야상') || lower.includes('field') || lower.includes('밀리터리')) return '야상';
+    if (lower.includes('봄버') || lower.includes('bomber') || lower.includes('항공')) return '봄버자켓';
+    if (lower.includes('바시티') || lower.includes('varsity') || lower.includes('레터맨')) return '바시티자켓';
+    if (lower.includes('집업') || lower.includes('zip')) return '집업자켓';
+    if (lower.includes('가디건') || lower.includes('카디건') || lower.includes('cardigan')) return '가디건';
+    if (lower.includes('플리스') || lower.includes('fleece') || lower.includes('후리스')) return '플리스';
+    if (lower.includes('데님') || lower.includes('denim') || lower.includes('청')) return '데님자켓';
+    if (lower.includes('가죽') || lower.includes('leather') || lower.includes('레더')) return '레더자켓';
+    if (lower.includes('코트') || lower.includes('coat')) return '코트';
+    if (lower.includes('점퍼') || lower.includes('jumper')) return '점퍼';
+    if (lower.includes('자켓') || lower.includes('jacket') || lower.includes('재킷')) return '자켓';
+    return '';
+  }
+  
+  // 신발 세부 스타일
+  if (itemSlot === 'shoes') {
+    if (lower.includes('첼시') || lower.includes('chelsea')) return '첼시부츠';
+    if (lower.includes('워커') || lower.includes('walker') || lower.includes('combat')) return '워커부츠';
+    if (lower.includes('앵클') || lower.includes('ankle')) return '앵클부츠';
+    if (lower.includes('롱부츠') || lower.includes('knee') || lower.includes('하이부츠')) return '롱부츠';
+    if (lower.includes('부츠') || lower.includes('boots') || lower.includes('boot')) return '부츠';
+    if (lower.includes('러닝') || lower.includes('running')) return '러닝화';
+    if (lower.includes('스니커즈') || lower.includes('sneaker') || lower.includes('운동화')) return '스니커즈';
+    if (lower.includes('로퍼') || lower.includes('loafer')) return '로퍼';
+    if (lower.includes('구두') || lower.includes('derby') || lower.includes('더비') || lower.includes('oxford') || lower.includes('옥스포드')) return '구두';
+    if (lower.includes('뮬') || lower.includes('mule')) return '뮬';
+    if (lower.includes('샌들') || lower.includes('sandal')) return '샌들';
+    if (lower.includes('슬리퍼') || lower.includes('slipper') || lower.includes('슬라이드') || lower.includes('slide')) return '슬리퍼';
+    if (lower.includes('플랫') || lower.includes('flat') || lower.includes('발레')) return '플랫슈즈';
+    if (lower.includes('힐') || lower.includes('heel') || lower.includes('펌프스') || lower.includes('pump')) return '힐';
+    return '';
+  }
+  
+  // 가방 세부 스타일
+  if (itemSlot === 'bag') {
+    if (lower.includes('토트') || lower.includes('tote')) return '토트백';
+    if (lower.includes('크로스') || lower.includes('cross')) return '크로스백';
+    if (lower.includes('숄더') || lower.includes('shoulder')) return '숄더백';
+    if (lower.includes('백팩') || lower.includes('backpack') || lower.includes('배낭')) return '백팩';
+    if (lower.includes('클러치') || lower.includes('clutch')) return '클러치';
+    if (lower.includes('호보') || lower.includes('hobo')) return '호보백';
+    if (lower.includes('미니') || lower.includes('mini')) return '미니백';
+    return '';
+  }
+  
+  // 액세서리 세부 스타일
+  if (itemSlot === 'accessory') {
+    if (lower.includes('비니') || lower.includes('beanie')) return '비니';
+    if (lower.includes('버킷햇') || lower.includes('bucket hat')) return '버킷햇';
+    if (lower.includes('볼캡') || lower.includes('캡') || lower.includes('야구모자') || lower.includes('baseball cap')) return '볼캡';
+    if (lower.includes('페도라') || lower.includes('fedora')) return '페도라';
+    if (lower.includes('모자') || lower.includes('hat')) return '모자';
+    if (lower.includes('머플러') || lower.includes('muffler') || lower.includes('스카프') || lower.includes('scarf')) return '머플러';
+    if (lower.includes('선글라스') || lower.includes('sunglasses')) return '선글라스';
+    if (lower.includes('시계') || lower.includes('watch')) return '시계';
+    if (lower.includes('벨트') || lower.includes('belt')) return '벨트';
+    if (lower.includes('목걸이') || lower.includes('necklace')) return '목걸이';
+    if (lower.includes('귀걸이') || lower.includes('earring')) return '귀걸이';
+    if (lower.includes('반지') || lower.includes('ring')) return '반지';
+    if (lower.includes('팔찌') || lower.includes('bracelet')) return '팔찌';
+    return '';
+  }
+  
+  return '';
+}
+
 // DNA 2.0 생성 (AI 없이 빠르게 처리)
 function generateDNA(product: Product): DNAResult {
   const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
@@ -499,9 +623,13 @@ function generateDNA(product: Product): DNAResult {
   const occasions = inferOccasions(formality, itemSlot, concepts);
   const pairSlots = inferPairSlots(itemSlot, formality);
   
+  // 세부 스타일명 추출
+  const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
+  
   const dnaMeta: DNAMeta = {
     target,
     item_slot: itemSlot,
+    ...(subStyle ? { sub_style: subStyle } : {}),
     concepts,
     formality,
     pair_slots: pairSlots,
