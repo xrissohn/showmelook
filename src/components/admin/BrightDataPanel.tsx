@@ -470,6 +470,100 @@ export const BrightDataPanel = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* 5. Daily Product Update Log */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="w-5 h-5" />
+            일별 상품 업데이트 이력
+          </CardTitle>
+          <CardDescription>
+            날짜별 신규 등록 및 업데이트된 상품 수를 머천트별로 확인합니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2 items-center">
+            <Select value={String(dailyLogDays)} onValueChange={(v) => setDailyLogDays(Number(v))}>
+              <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">최근 7일</SelectItem>
+                <SelectItem value="14">최근 14일</SelectItem>
+                <SelectItem value="30">최근 30일</SelectItem>
+                <SelectItem value="90">최근 90일</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button onClick={loadDailyLog} disabled={dailyLogLoading} variant="outline">
+              {dailyLogLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+              조회
+            </Button>
+          </div>
+
+          {dailyLog && dailyLog.length > 0 && (
+            <>
+              {/* Summary cards */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 border rounded-lg text-center">
+                  <p className="text-xl font-bold text-primary">
+                    {dailyLog.reduce((s, d) => s + d.new_count, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">총 신규 등록</p>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <p className="text-xl font-bold">
+                    {dailyLog.reduce((s, d) => s + d.updated_count, 0).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-muted-foreground">총 업데이트</p>
+                </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <p className="text-xl font-bold">
+                    {dailyLog.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">활동일 수</p>
+                </div>
+              </div>
+
+              {/* Daily table */}
+              <div className="max-h-[500px] overflow-y-auto border rounded-md">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted">
+                    <tr>
+                      <th className="text-left p-2 font-medium">날짜</th>
+                      <th className="text-right p-2 font-medium">신규</th>
+                      <th className="text-right p-2 font-medium">업데이트</th>
+                      <th className="text-left p-2 font-medium">머천트별 신규</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dailyLog.map((row) => (
+                      <tr key={row.date} className="border-t hover:bg-muted/50">
+                        <td className="p-2 font-mono text-xs">{row.date}</td>
+                        <td className="p-2 text-right font-medium text-primary">{row.new_count.toLocaleString()}</td>
+                        <td className="p-2 text-right text-muted-foreground">{row.updated_count.toLocaleString()}</td>
+                        <td className="p-2">
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(row.by_merchant)
+                              .sort((a, b) => b[1] - a[1])
+                              .map(([mid, cnt]) => (
+                                <Badge key={mid} variant="outline" className="text-xs">
+                                  {mid}: {cnt}
+                                </Badge>
+                              ))}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {dailyLog && dailyLog.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-6">해당 기간에 상품 변동이 없습니다.</p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
