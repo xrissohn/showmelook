@@ -705,7 +705,7 @@ async function continueProcessing(supabaseUrl: string, supabaseKey: string, iter
     
     for (const product of products as Product[]) {
       try {
-        const result = generateDNA(product);
+        const result = generateDNA(product, customClassifications);
         
         const updateData: Record<string, any> = {
           dna_text: result.dna_text,
@@ -795,7 +795,7 @@ serve(async (req) => {
       
       let updatedCount = 0;
       for (const product of specificProducts || []) {
-        const dnaResult = generateDNA(product);
+        const dnaResult = generateDNA(product, customClassifications);
         await supabase.from('products_cache').update({
           dna_meta: dnaResult.dna_meta as unknown as Record<string, never>,
           dna_text: dnaResult.dna_text,
@@ -936,7 +936,7 @@ serve(async (req) => {
       
       for (const product of allProducts) {
         try {
-          const dnaResult = generateDNA(product);
+          const dnaResult = generateDNA(product, customClassifications);
           results.push(dnaResult);
           
           await supabase.from('products_cache').update({
@@ -1024,7 +1024,7 @@ serve(async (req) => {
     
     for (const product of products as Product[]) {
       try {
-        const result = generateDNA(product);
+        const result = generateDNA(product, customClassifications);
         results.push(result);
       } catch (err) {
         console.error(`[dna-batch] Error processing ${product.id}:`, err);
