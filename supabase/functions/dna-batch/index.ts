@@ -483,10 +483,27 @@ function inferFormality(product: Product, itemSlot: DNAMeta['item_slot']): numbe
   return Math.max(1, Math.min(10, base));
 }
 
+// 커스텀 분류 항목 타입
+interface CustomClassification {
+  config_type: string;
+  item_slot: string | null;
+  value: string;
+  keywords: string[];
+}
+
 // 세부 스타일명 추출 (상품명에서 구체적인 제품 유형 감지)
-function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory: string): string {
+function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory: string, customSubStyles?: CustomClassification[]): string {
   const lower = name.toLowerCase();
   
+  // 1. 커스텀 세부 스타일 먼저 체크 (우선순위 높음)
+  if (customSubStyles && customSubStyles.length > 0) {
+    const slotCustoms = customSubStyles.filter(c => c.item_slot === itemSlot || !c.item_slot);
+    for (const custom of slotCustoms) {
+      if (custom.keywords.some(kw => lower.includes(kw.toLowerCase()))) {
+        return custom.value;
+      }
+    }
+  }
   // 상의 세부 스타일
   if (itemSlot === 'top') {
     if ((lower.includes('후드') || lower.includes('hood')) && (lower.includes('집업') || lower.includes('zip'))) return '후드집업';
@@ -608,7 +625,7 @@ function inferSubStyle(name: string, itemSlot: DNAMeta['item_slot'], subCategory
 }
 
 // DNA 2.0 생성 (AI 없이 빠르게 처리)
-function generateDNA(product: Product): DNAResult {
+function generateDNA(product: Product, customClassifications?: CustomClassification[]): DNAResult {
   const { category: inferredCategory, subCategory } = inferCategory(product.name, product.category);
   
   const target = normalizeTarget(product.gender, product.name);
@@ -623,8 +640,9 @@ function generateDNA(product: Product): DNAResult {
   const occasions = inferOccasions(formality, itemSlot, concepts);
   const pairSlots = inferPairSlots(itemSlot, formality);
   
-  // 세부 스타일명 추출
-  const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
+  // 세부 스타일명 추출 (커스텀 분류 포함)
+  const customSubStyles = customClassifications?.filter(c => c.config_type === 'sub_style');
+  const subStyle = inferSubStyle(product.name, itemSlot, subCategory, customSubStyles);
   
   const dnaMeta: DNAMeta = {
     target,
@@ -687,7 +705,7 @@ async function continueProcessing(supabaseUrl: string, supabaseKey: string, iter
     
     for (const product of products as Product[]) {
       try {
-        const result = generateDNA(product);
+        const result = generateDNA(product, customClassifications);
         
         const updateData: Record<string, any> = {
           dna_text: result.dna_text,
@@ -746,6 +764,21 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // 커스텀 분류 항목 로드
+    let customClassifications: CustomClassification[] = [];
+    try {
+      const { data: customData } = await supabase
+        .from('dna_classification_config')
+        .select('config_type, item_slot, value, keywords')
+        .eq('is_active', true);
+      if (customData) customClassifications = customData as CustomClassification[];
+      if (customClassifications.length > 0) {
+        console.log(`[dna-batch] 커스텀 분류 ${customClassifications.length}개 로드됨`);
+      }
+    } catch (err) {
+      console.warn('[dna-batch] 커스텀 분류 로드 실패 (무시):', err);
+    }
+    
     // 배치 사이즈 제한 (AI 호출 없으므로 더 많이 처리 가능)
     const effectiveBatchSize = Math.min(batchSize, 200);
     
@@ -762,7 +795,7 @@ serve(async (req) => {
       
       let updatedCount = 0;
       for (const product of specificProducts || []) {
-        const dnaResult = generateDNA(product);
+        const dnaResult = generateDNA(product, customClassifications);
         await supabase.from('products_cache').update({
           dna_meta: dnaResult.dna_meta as unknown as Record<string, never>,
           dna_text: dnaResult.dna_text,
@@ -830,7 +863,7 @@ serve(async (req) => {
           const existingMeta = product.dna_meta as any;
           const { category: inferredCat, subCategory } = inferCategory(product.name, product.category);
           const itemSlot = categoryToItemSlot(inferredCat, subCategory);
-          const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
+          const subStyle = inferSubStyle(product.name, itemSlot, subCategory, customClassifications.filter(c => c.config_type === 'sub_style'));
           
           const updatedMeta = { ...existingMeta, sub_style: subStyle || '' };
           const { error: upErr } = await supabase
@@ -903,7 +936,7 @@ serve(async (req) => {
       
       for (const product of allProducts) {
         try {
-          const dnaResult = generateDNA(product);
+          const dnaResult = generateDNA(product, customClassifications);
           results.push(dnaResult);
           
           await supabase.from('products_cache').update({
@@ -991,7 +1024,7 @@ serve(async (req) => {
     
     for (const product of products as Product[]) {
       try {
-        const result = generateDNA(product);
+        const result = generateDNA(product, customClassifications);
         results.push(result);
       } catch (err) {
         console.error(`[dna-batch] Error processing ${product.id}:`, err);
