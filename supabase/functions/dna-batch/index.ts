@@ -782,85 +782,80 @@ serve(async (req) => {
     
     // subStyleOnly 모드: dna_meta는 있지만 sub_style이 없는 상품에 sub_style만 추가
     if (subStyleOnly) {
-      const SUB_STYLE_BATCH = 500;
-      const MAX_LOOPS = 20;
-      let totalProcessed = 0;
-      let totalUpdated = 0;
+      const SUB_STYLE_BATCH = 200;
+      let updated = 0;
       
-      console.log(`[dna-batch] subStyleOnly 모드 시작 (배치=${SUB_STYLE_BATCH}, 최대반복=${MAX_LOOPS})`);
+      console.log(`[dna-batch] subStyleOnly 모드 시작 (배치=${SUB_STYLE_BATCH})`);
       
-      for (let loop = 0; loop < MAX_LOOPS; loop++) {
-        // sub_style이 없는 상품 조회 (dna_meta->>'sub_style' IS NULL)
-        const { data: products, error: fetchErr } = await supabase
+      // sub_style이 없는 상품만 직접 SQL로 조회 (서버사이드 필터링)
+      const { data: products, error: fetchErr } = await supabase
+        .rpc('get_products_without_sub_style', { batch_limit: SUB_STYLE_BATCH })
+        .select('*');
+      
+      // RPC가 없으면 폴백: 전체 조회 후 JS 필터링
+      let needsUpdate: any[];
+      if (fetchErr) {
+        console.log(`[dna-batch] RPC 미지원, JS 필터 폴백 사용`);
+        const { data: allProducts, error: fallbackErr } = await supabase
           .from('products_cache')
           .select('id, name, brand, category, sub_category, price, style_tags, gender, color, dna_meta')
           .eq('is_active', true)
           .not('dna_meta', 'is', null)
           .limit(SUB_STYLE_BATCH);
         
-        if (fetchErr) throw new Error(`subStyleOnly fetch error: ${fetchErr.message}`);
+        if (fallbackErr) throw new Error(`subStyleOnly fetch error: ${fallbackErr.message}`);
         
-        // dna_meta에 sub_style이 이미 있는 상품 필터링 (JS에서)
-        const needsUpdate = (products || []).filter((p: any) => {
+        needsUpdate = (allProducts || []).filter((p: any) => {
           const meta = p.dna_meta as any;
-          return !meta?.sub_style;
+          return meta?.sub_style === undefined || meta?.sub_style === null;
         });
-        
-        if (needsUpdate.length === 0) {
-          console.log(`[dna-batch] subStyleOnly 완료! 총 ${totalProcessed}개 처리됨`);
-          break;
-        }
-        
-        console.log(`[dna-batch] subStyleOnly 루프 #${loop + 1}: ${needsUpdate.length}개 처리 중...`);
-        
-        let loopUpdated = 0;
-        for (const product of needsUpdate) {
-          try {
-            const existingMeta = product.dna_meta as any;
-            const { category: inferredCat, subCategory } = inferCategory(product.name, product.category);
-            const itemSlot = categoryToItemSlot(inferredCat, subCategory);
-            const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
-            
-            if (subStyle) {
-              const updatedMeta = { ...existingMeta, sub_style: subStyle };
-              const { error: upErr } = await supabase
-                .from('products_cache')
-                .update({ dna_meta: updatedMeta as any })
-                .eq('id', product.id);
-              
-              if (!upErr) loopUpdated++;
-            } else {
-              // sub_style 빈 문자열이라도 마킹해서 다음 루프에서 스킵
-              const updatedMeta = { ...existingMeta, sub_style: '' };
-              await supabase
-                .from('products_cache')
-                .update({ dna_meta: updatedMeta as any })
-                .eq('id', product.id);
-              loopUpdated++;
-            }
-          } catch (err) {
-            console.error(`[dna-batch] subStyleOnly product ${product.id} error:`, err);
-          }
-        }
-        
-        totalProcessed += needsUpdate.length;
-        totalUpdated += loopUpdated;
-        console.log(`[dna-batch] 루프 #${loop + 1} 완료: ${loopUpdated}개 업데이트, 누적 ${totalProcessed}개`);
+      } else {
+        needsUpdate = products || [];
       }
       
-      // 최종 통계
-      const { count: totalCount } = await supabase
-        .from('products_cache')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .not('dna_meta', 'is', null);
+      if (needsUpdate.length === 0) {
+        return new Response(JSON.stringify({
+          success: true,
+          message: '모든 상품에 세부 스타일이 있습니다',
+          processed: 0,
+          remaining: 0,
+          hasMore: false,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      console.log(`[dna-batch] subStyleOnly: ${needsUpdate.length}개 처리 중...`);
+      
+      for (const product of needsUpdate) {
+        try {
+          const existingMeta = product.dna_meta as any;
+          const { category: inferredCat, subCategory } = inferCategory(product.name, product.category);
+          const itemSlot = categoryToItemSlot(inferredCat, subCategory);
+          const subStyle = inferSubStyle(product.name, itemSlot, subCategory);
+          
+          const updatedMeta = { ...existingMeta, sub_style: subStyle || '' };
+          const { error: upErr } = await supabase
+            .from('products_cache')
+            .update({ dna_meta: updatedMeta as any })
+            .eq('id', product.id);
+          
+          if (!upErr) updated++;
+        } catch (err) {
+          console.error(`[dna-batch] subStyleOnly product ${product.id} error:`, err);
+        }
+      }
+      
+      // hasMore: 이번에 처리한 수가 0보다 크면 아직 남아있을 수 있음
+      // needsUpdate가 배치 사이즈와 같으면 더 있을 가능성 높음
+      const hasMore = needsUpdate.length > 0 && products!.length >= SUB_STYLE_BATCH;
+      
+      console.log(`[dna-batch] subStyleOnly 완료: ${updated}개 업데이트, hasMore=${hasMore}`);
       
       return new Response(JSON.stringify({
         success: true,
-        message: `세부 스타일 일괄 추출 완료`,
-        processed: totalProcessed,
-        updated: totalUpdated,
-        total: totalCount || 0,
+        message: `세부 스타일 추출 완료`,
+        processed: needsUpdate.length,
+        updated,
+        hasMore,
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     
