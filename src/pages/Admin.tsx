@@ -31,6 +31,7 @@ import { LinkPriceReportPanel } from "@/components/admin/LinkPriceReportPanel";
 import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
 import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
+import { DNAClassificationManager } from "@/components/admin/DNAClassificationManager";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
