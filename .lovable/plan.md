@@ -1,59 +1,39 @@
 
 
-## 진단 결과: 팝업 차단으로 인한 구매 링크 오류
+## sub_style 미생성 상품 일괄 업데이트 계획
 
-### 문제 원인
+### 문제 분석
+- 5,075개 상품 중 114개만 `sub_style` 보유 (2.2%)
+- 현재 `forceRegenerate`는 `dna_generated_at` 기준 필터라 이미 DNA가 있는 상품은 스킵됨
+- sub_style 추출은 AI 호출 없이 규칙 기반이므로 한 번에 대량 처리 가능
 
-`window.open()`이 **비동기 호출 이후**에 실행되고 있어서, 모바일 브라우저(특히 인앱 브라우저, Safari)에서 **팝업 차단**됨.
+### 구현 계획
 
+**1. dna-batch Edge Function에 `subStyleOnly` 모드 추가**
+- 새 파라미터: `{ subStyleOnly: true }`
+- `dna_meta`는 있지만 `sub_style`이 없는 상품만 조회
+- 기존 `dna_meta`를 유지하면서 `sub_style` 필드만 추가
+- AI 호출 없이 `extractSubStyle()` 함수만 사용하므로 배치 사이즈를 **500개**로 대폭 확대
+- 자동 반복 루프: 한 배치 완료 후 남은 상품이 있으면 계속 처리 (최대 20회 반복, ~10,000개 커버)
+
+**2. Admin UI 업데이트 (`src/pages/Admin.tsx`)**
+- 기존 "전체 DNA 재생성" 대신 **"세부 스타일 일괄 추출"** 버튼 추가
+- 진행 상황 표시: "처리 중... 500/4961개 완료"
+- `subStyleOnly: true`로 dna-batch 호출
+
+**3. 처리 흐름**
 ```text
-사용자 클릭 → await getSession() → await deeplink() → window.open() ← 차단!
-                ↑ 비동기 대기로 인해 "사용자 제스처" 컨텍스트가 사라짐
+Admin 클릭 → dna-batch(subStyleOnly=true)
+  → SELECT WHERE dna_meta IS NOT NULL 
+           AND (dna_meta->>'sub_style' IS NULL)
+  → LIMIT 500
+  → 각 상품: extractSubStyle(name) → dna_meta.sub_style 업데이트
+  → 반복 (남은 상품 > 0이면 계속)
+  → 응답: { processed: 4961, total: 5075 }
 ```
 
-PC Chrome은 관대하게 허용하지만, 모바일/인앱 브라우저는 엄격하게 차단함. 이것이 "내 컴퓨터에서는 되는데 유저에게는 안 되는" 원인.
-
-### 영향 범위
-
-| 파일 | 함수 | 문제 |
-|------|------|------|
-| `LookDetailModal.tsx` | `handleProductPurchase` | await 2회 후 window.open |
-| `StyleGenerator.tsx` | `handlePurchase` | await 2회 후 window.open |
-| `SharedLook.tsx` | `handleProductClick` | affiliate_url 캐시 있으면 OK, 없으면 동일 문제 |
-
-### 해결 방법: "먼저 창 열고, 나중에 URL 교체"
-
-클릭 시점에 `window.open('')`으로 빈 창을 먼저 열고, deeplink 응답 후 해당 창의 URL을 교체하는 패턴 적용.
-
-```typescript
-// Before (차단됨)
-const handlePurchase = async (product) => {
-  const { data } = await supabase.functions.invoke('deeplink', {...});
-  window.open(data.affiliate_url, '_blank');  // ← 팝업 차단
-};
-
-// After (안전)
-const handlePurchase = async (product) => {
-  const newWindow = window.open('', '_blank');  // ← 클릭 시점에 열기
-  try {
-    const { data } = await supabase.functions.invoke('deeplink', {...});
-    if (newWindow) {
-      newWindow.location.href = data?.affiliate_url || product.product_url;
-    }
-  } catch {
-    if (newWindow) newWindow.location.href = product.product_url;
-  }
-};
-```
-
-### 수정 대상 파일 (3개)
-
-1. **`src/components/style/LookDetailModal.tsx`** — `handleProductPurchase` 함수 수정
-2. **`src/pages/StyleGenerator.tsx`** — `handlePurchase` 함수 수정  
-3. **`src/pages/SharedLook.tsx`** — `handleProductClick` 함수에서 deeplink 호출 시 동일 패턴 적용
-
-### 추가 방어
-
-- `newWindow`가 `null`인 경우(팝업 완전 차단 환경) → `window.location.href`로 현재 페이지에서 이동하는 fallback 추가
-- 인앱 브라우저에서는 `_blank` 대신 `_self`로 이동하는 옵션 고려
+### 기술 상세
+- `extractSubStyle()` 함수는 이미 dna-batch에 구현되어 있음 (100+ 세부 스타일 매핑)
+- UPDATE 쿼리: `dna_meta = {...기존dna_meta, sub_style: 추출값}` 형태로 병합
+- Edge Function 타임아웃(~60초) 안에 500개 규칙 기반 처리 충분히 가능
 
