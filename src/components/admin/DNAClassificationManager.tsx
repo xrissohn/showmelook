@@ -43,6 +43,11 @@ interface CustomEntry {
   is_active: boolean;
 }
 
+interface ReclassifyResult {
+  matched: number;
+  updated: number;
+}
+
 const SLOT_LABELS: Record<string, string> = {
   top: "상의", bottom: "하의", outer: "아우터", dress: "원피스",
   shoes: "신발", bag: "가방", accessory: "액세서리",
