@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { 
   HeartPulse, Play, Loader2, CheckCircle, Trash2, RefreshCw, 
-  AlertTriangle, Clock, Shield, History
+  AlertTriangle, Clock, Shield, History, CalendarIcon, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
