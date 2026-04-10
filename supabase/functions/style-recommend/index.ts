@@ -1607,12 +1607,88 @@ JSON만 응답:
 
 // ============= 어필리에이트 URL 생성 =============
 
+// 쿠팡 파트너스 HMAC-SHA256 서명 생성
+async function generateCoupangHmacSignature(
+  method: string,
+  url: string,
+  accessKey: string,
+  secretKey: string
+): Promise<string> {
+  const [path, query = ""] = url.split("?");
+  const now = new Date();
+  const datetime = now.toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "")
+    .slice(2);
+  const message = datetime + method + path + query;
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secretKey);
+  const messageData = encoder.encode(message);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const hexSignature = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+  return `CEA algorithm=HmacSHA256, access-key=${accessKey}, signed-date=${datetime}, signature=${hexSignature}`;
+}
+
+// 쿠팡 AFFSDP URL → 모바일 호환 단축 URL 변환
+async function convertCoupangToMobileUrl(productUrl: string, subId?: string): Promise<string | null> {
+  const accessKey = Deno.env.get('COUPANG_ACCESS_KEY');
+  const secretKey = Deno.env.get('COUPANG_SECRET_KEY');
+  if (!accessKey || !secretKey) return null;
+
+  // AFFSDP URL에서 pageKey + itemId + vendorItemId 추출하여 원본 URL 재구성
+  let targetUrl = productUrl;
+  try {
+    const affUrl = new URL(productUrl);
+    const pageKey = affUrl.searchParams.get('pageKey');
+    const itemId = affUrl.searchParams.get('itemId');
+    const vendorItemId = affUrl.searchParams.get('vendorItemId');
+    if (pageKey) {
+      const params = new URLSearchParams();
+      if (itemId) params.set('itemId', itemId);
+      if (vendorItemId) params.set('vendorItemId', vendorItemId);
+      const queryStr = params.toString();
+      targetUrl = `https://www.coupang.com/vp/products/${pageKey}${queryStr ? '?' + queryStr : ''}`;
+    }
+  } catch { /* use as-is */ }
+
+  const apiPath = "/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink";
+  const authorization = await generateCoupangHmacSignature("POST", apiPath, accessKey, secretKey);
+
+  try {
+    const response = await fetch(`https://api-gateway.coupang.com${apiPath}`, {
+      method: "POST",
+      headers: { "Authorization": authorization, "Content-Type": "application/json" },
+      body: JSON.stringify({ coupangUrls: [targetUrl], subId: subId || undefined }),
+    });
+    const data = await response.json();
+    if (data.rCode === "0" && data.data?.[0]?.shortenUrl) {
+      return data.data[0].shortenUrl;
+    }
+  } catch (error) {
+    console.error('[generateAffiliateUrl] Coupang API error:', error);
+  }
+  return null;
+}
+
 async function generateAffiliateUrl(
   product: CachedProduct, 
   merchants: any[], 
   affiliateId: string
 ): Promise<string | null> {
   if (!product.product_url) return null;
+
+  // 쿠팡 URL은 파트너스 API로 모바일 호환 단축 URL 생성
+  if (product.product_url.includes('coupang.com') || product.product_url.includes('coupa.ng')) {
+    if (product.product_url.includes('coupa.ng')) return product.product_url; // already mobile-ready
+    const mobileUrl = await convertCoupangToMobileUrl(product.product_url);
+    if (mobileUrl) return mobileUrl;
+    return product.product_url; // fallback to original
+  }
 
   if (product.merchant_id) {
     const merchant = merchants.find(m => m.id === product.merchant_id);
