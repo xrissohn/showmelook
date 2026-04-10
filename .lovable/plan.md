@@ -1,40 +1,52 @@
 
 
-## 쿠팡 배치 pg_cron 스케줄 업데이트
+## 품절 상품 자동 감지 및 삭제 시스템 (Layer 2 + Layer 3)
 
-### 문제
-현재 크론 잡(jobid: 5)의 body가 `{"limit": 20}`으로 고정되어 있어, `coupang-batch` 함수 내 카테고리별 limit 설정(여성패션 100, 남성패션 100, 신발 50, 가방 30)이 무시됩니다.
+### 구현 범위
+- **Layer 2**: 구매 클릭 시 HTTP HEAD로 URL 유효성 검증 → 404/410이면 `products_cache`에서 삭제 + 사용자에게 안내
+- **Layer 3**: 매일 새벽 배치로 전체 상품 URL HEAD 검사 → 품절/단종 상품 자동 삭제
 
-### 변경 사항
+### 변경 파일
 
-**1. 기존 크론 잡 삭제 후 재생성**
+**1. 새 Edge Function: `supabase/functions/product-health-check/index.ts`**
+- **단건 모드** (`{ url, productId }`): 구매 클릭 시 호출. HEAD 요청으로 URL 확인 → 404/410/5xx이면 해당 상품을 `products_cache`에서 DELETE하고 `{ alive: false }` 반환
+- **배치 모드** (`{ batch: true }`): pg_cron에서 호출. `products_cache`에서 활성 상품 100개씩 HEAD 검사 → 죽은 URL의 상품 DELETE. 남은 상품이 있으면 자동 반복 (최대 50회, ~5,000개)
+- HEAD 요청 시 3초 타임아웃, 리다이렉트는 허용하되 최종 응답이 404/410이면 품절 판정
 
-기존 `coupang-batch-hourly`(jobid 5)를 삭제하고, limit 파라미터를 제거한 새 잡을 생성합니다.
+**2. 프론트엔드 수정: `src/pages/StyleGenerator.tsx`**
+- `handlePurchase` 및 `handleProductPurchase` 함수에 구매 전 `product-health-check` 단건 호출 추가
+- `alive: false`이면 빈 창을 닫고, 토스트로 "해당 상품은 더 이상 판매되지 않습니다" 안내
+- 해당 상품을 현재 추천 결과에서 UI상으로도 즉시 제거 (상태에서 필터링)
 
-```sql
--- 기존 잡 삭제
-SELECT cron.unschedule('coupang-batch-hourly');
+**3. pg_cron 스케줄 등록 (SQL insert)**
+- `product-health-batch`: 매일 04:00 KST(19:00 UTC) 실행
+- `product-health-check` 함수를 `{ "batch": true }` body로 호출
 
--- 새 잡 생성 (limit 제거 → 카테고리별 기본값 사용)
-SELECT cron.schedule(
-  'coupang-batch-hourly',
-  '0 */2 * * *',  -- 2시간마다 (API rate limit 고려)
-  $$
-  SELECT net.http_post(
-    url := 'https://mggedvvzpwxlgrhatrau.supabase.co/functions/v1/coupang-batch',
-    headers := '{"Content-Type": "application/json", "Authorization": "Bearer ..."}'::jsonb,
-    body := '{"scheduled": true}'::jsonb
-  ) AS request_id;
-  $$
-);
+**4. `supabase/config.toml` 업데이트**
+- `[functions.product-health-check]` verify_jwt = false 추가
+
+### 처리 흐름
+
+```text
+[Layer 2 - 클릭 시]
+구매 버튼 클릭 
+  → product-health-check({ url, productId }) 
+  → HEAD 요청 
+  → 404? → DELETE FROM products_cache → "품절" 토스트
+  → 200? → 딥링크 변환 → 구매 페이지 이동
+
+[Layer 3 - 배치]
+pg_cron 04:00 KST 
+  → product-health-check({ batch: true })
+  → SELECT 100개 (is_active = true)
+  → 각 URL HEAD 요청
+  → 404/410 → DELETE FROM products_cache
+  → 반복 (남은 상품 있으면 계속)
 ```
 
-### 주요 변경점
-- **limit 파라미터 제거**: Edge Function 내 카테고리별 기본 limit(100/50/30)이 자동 적용됨
-- **스케줄 변경**: 매시간 → 2시간마다 (6개 카테고리 × 최대 100개 = API 호출량 증가 반영)
-- `{"scheduled": true}`만 전달하여 향후 카테고리 추가/변경 시 함수 코드만 수정하면 크론은 자동 반영
-
 ### 기술 세부사항
-- `cron.unschedule` → `cron.schedule` 순서로 SQL 실행 (insert tool 사용)
-- 기존 다른 크론 잡(DNA batch, cleanup 등)은 변경 없음
+- 품절 판정 기준: HTTP 404, 410, 연속 3회 타임아웃
+- DELETE 처리: `is_active = false`가 아닌 실제 DELETE로 상품 수에서 완전 제거
+- 배치 처리 시 동시 요청 10개씩 (Promise.allSettled)으로 Edge Function 타임아웃 방지
+- 쿠팡 상품은 URL 패턴이 다를 수 있으므로 리다이렉트 후 최종 상태코드로 판정
 
