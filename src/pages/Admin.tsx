@@ -2701,6 +2701,11 @@ const Admin = () => {
             <BrightDataPanel />
           </TabsContent>
 
+          {/* Product Health Check Tab */}
+          <TabsContent value="health-check" className="space-y-4">
+            <ProductHealthPanel />
+          </TabsContent>
+
           {/* User Analytics Tab */}
           <TabsContent value="user-analytics" className="space-y-4">
             <UserAnalyticsPanel />
