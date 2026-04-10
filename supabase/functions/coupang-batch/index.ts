@@ -90,7 +90,13 @@ function inferCategory(name: string, catName: string): { category: string; subCa
   // 가방
   if (/가방|백|bag|토트|숄더|크로스|클러치|백팩/.test(n) || cn.includes('가방')) return { category: "가방", subCategory: "가방" };
   
-  // 액세서리
+  // 겨울 방한 액세서리
+  if (/장갑|글러브(?!.*야구)/.test(n)) return { category: "액세서리", subCategory: "장갑" };
+  if (/바라클라바|넥워머|넥게이터|목토시/.test(n)) return { category: "액세서리", subCategory: "넥워머" };
+  if (/귀마개|귀달이|이어밴드|이어머프/.test(n)) return { category: "액세서리", subCategory: "귀마개" };
+  if (/방한.*마스크/.test(n)) return { category: "액세서리", subCategory: "방한마스크" };
+
+  // 일반 액세서리
   if (/목걸이|귀걸이|반지|팔찌|시계|주얼리|모자|캡|벨트|선글라스|스카프|머플러/.test(n)) return { category: "액세서리", subCategory: "액세서리" };
   
   // 카테고리 이름으로 최종 추론
