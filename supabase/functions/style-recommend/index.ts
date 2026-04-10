@@ -1573,7 +1573,11 @@ TPO 분석 결과 (Stage 1):
 - 컨셉: ${stage1Result.concepts.join(', ')}
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
-${dressForceNote}${subStyleForceNote}
+${dressForceNote}${subStyleForceNote}${merchantPref && (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) 
+    ? `\n🏪🏪🏪 **[중요] 사용자가 "${merchantPref.brandKeywords.join(', ')}" 관련 상품을 요청했습니다!**
+- 🏷️ 태그가 붙은 상품은 사용자가 요청한 쇼핑몰/브랜드의 상품입니다.
+- ${merchantPref.isExclusive ? '**반드시 🏷️ 태그 상품만 선택하세요! 다른 쇼핑몰 상품 선택 금지!**' : '🏷️ 태그 상품을 우선적으로 선택하되, 해당 쇼핑몰에 적합한 상품이 부족하면 다른 상품도 조합 가능합니다.'}` 
+    : ''}
 
 🚨 **사용 가능한 브랜드 목록 (이 브랜드들만 언급하세요!):**
 ${availableBrands.join(', ')}
