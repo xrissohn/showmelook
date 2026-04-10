@@ -1395,12 +1395,26 @@ function detectMerchantPreference(userRequest: string, merchantsFromDB?: { id: s
     }
   }
   
-  // 독점 요청 감지
+  // 독점 요청 감지 - "쿠팡에서", "아르켓에서" 등 "~에서"도 독점으로 판단
   const exclusivePatterns = ['에서만', '만 사용', '만으로', '제품만', '상품만', '것만', '에서 파는', '에서 팔고', '에서 판매'];
-  const isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
+  const semiExclusivePatterns = ['에서 ', '에서\n', '에서.', '에서 추천', '에서 찾', '에서 골라', '에서 보여'];
   
+  let isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
+  
+  // "쿠팡에서 추천해줘" 같은 패턴도 독점으로 판단 (특정 쇼핑몰을 지정한 것이므로)
+  if (!isExclusive && detectedMerchants.length > 0) {
+    const hasFromPattern = semiExclusivePatterns.some(p => requestLower.includes(p));
+    if (hasFromPattern) {
+      isExclusive = true;
+      console.log(`[style-recommend] 🏪 Semi-exclusive pattern detected ("~에서"), treating as exclusive`);
+    }
+  }
+  
+  // 항상 로그 출력 (감지 실패 시에도)
   if (detectedMerchants.length > 0 || detectedBrands.length > 0) {
     console.log(`[style-recommend] 🏪 머천트/브랜드 선호 감지: merchants=${detectedMerchants.join(',')}, brands=${detectedBrands.join(',')}, exclusive=${isExclusive}`);
+  } else {
+    console.log(`[style-recommend] 🏪 머천트/브랜드 선호 미감지. 요청 텍스트: "${userRequest.slice(0, 80)}"`);
   }
   
   return { merchantIds: detectedMerchants, brandKeywords: detectedBrands, isExclusive };
