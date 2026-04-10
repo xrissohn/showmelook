@@ -1528,7 +1528,11 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       
       if (error) throw error;
       
-      const targetUrl = (data?.success && data?.affiliate_url) ? data.affiliate_url : product.product_url;
+      // 모바일 기기에서 쿠팡 상품인 경우 mobile_web_url 우선 사용
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const targetUrl = (data?.success && data?.affiliate_url) 
+        ? ((isMobile && data.mobile_web_url) ? data.mobile_web_url : data.affiliate_url)
+        : product.product_url;
       if (newWindow) {
         newWindow.location.href = targetUrl;
       } else {
@@ -3425,11 +3429,14 @@ const StyleGenerator = () => {
       if (error) throw error;
 
       if (data?.success && data?.affiliate_url) {
-        console.log('[handlePurchase] Opening affiliate URL:', data.affiliate_url);
+        // 모바일 기기에서 쿠팡 상품인 경우 mobile_web_url 우선 사용 (구매 섹션 직접 이동)
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const finalUrl = (isMobile && data.mobile_web_url) ? data.mobile_web_url : data.affiliate_url;
+        console.log('[handlePurchase] Opening URL:', finalUrl, isMobile ? '(mobile)' : '(desktop)');
         if (newWindow) {
-          newWindow.location.href = data.affiliate_url;
+          newWindow.location.href = finalUrl;
         } else {
-          window.location.href = data.affiliate_url;
+          window.location.href = finalUrl;
         }
         toast({
           title: '구매 페이지 이동',

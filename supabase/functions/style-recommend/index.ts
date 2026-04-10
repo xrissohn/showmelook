@@ -1395,12 +1395,26 @@ function detectMerchantPreference(userRequest: string, merchantsFromDB?: { id: s
     }
   }
   
-  // 독점 요청 감지
+  // 독점 요청 감지 - "쿠팡에서", "아르켓에서" 등 "~에서"도 독점으로 판단
   const exclusivePatterns = ['에서만', '만 사용', '만으로', '제품만', '상품만', '것만', '에서 파는', '에서 팔고', '에서 판매'];
-  const isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
+  const semiExclusivePatterns = ['에서 ', '에서\n', '에서.', '에서 추천', '에서 찾', '에서 골라', '에서 보여'];
   
+  let isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
+  
+  // "쿠팡에서 추천해줘" 같은 패턴도 독점으로 판단 (특정 쇼핑몰을 지정한 것이므로)
+  if (!isExclusive && detectedMerchants.length > 0) {
+    const hasFromPattern = semiExclusivePatterns.some(p => requestLower.includes(p));
+    if (hasFromPattern) {
+      isExclusive = true;
+      console.log(`[style-recommend] 🏪 Semi-exclusive pattern detected ("~에서"), treating as exclusive`);
+    }
+  }
+  
+  // 항상 로그 출력 (감지 실패 시에도)
   if (detectedMerchants.length > 0 || detectedBrands.length > 0) {
     console.log(`[style-recommend] 🏪 머천트/브랜드 선호 감지: merchants=${detectedMerchants.join(',')}, brands=${detectedBrands.join(',')}, exclusive=${isExclusive}`);
+  } else {
+    console.log(`[style-recommend] 🏪 머천트/브랜드 선호 미감지. 요청 텍스트: "${userRequest.slice(0, 80)}"`);
   }
   
   return { merchantIds: detectedMerchants, brandKeywords: detectedBrands, isExclusive };
@@ -1737,17 +1751,28 @@ async function convertCoupangToMobileUrl(productUrl: string, subId?: string): Pr
 
   // AFFSDP URL에서 pageKey + itemId + vendorItemId 추출하여 원본 URL 재구성
   let targetUrl = productUrl;
+  let pageKey: string | null = null;
+  let itemId: string | null = null;
+  let vendorItemId: string | null = null;
   try {
     const affUrl = new URL(productUrl);
-    const pageKey = affUrl.searchParams.get('pageKey');
-    const itemId = affUrl.searchParams.get('itemId');
-    const vendorItemId = affUrl.searchParams.get('vendorItemId');
+    pageKey = affUrl.searchParams.get('pageKey');
+    itemId = affUrl.searchParams.get('itemId');
+    vendorItemId = affUrl.searchParams.get('vendorItemId');
     if (pageKey) {
       const params = new URLSearchParams();
       if (itemId) params.set('itemId', itemId);
       if (vendorItemId) params.set('vendorItemId', vendorItemId);
       const queryStr = params.toString();
       targetUrl = `https://www.coupang.com/vp/products/${pageKey}${queryStr ? '?' + queryStr : ''}`;
+    } else {
+      // vp/products/{pageKey} 형식에서 추출
+      const pathMatch = new URL(productUrl).pathname.match(/\/vp\/products\/(\d+)/);
+      if (pathMatch) {
+        pageKey = pathMatch[1];
+        itemId = affUrl.searchParams.get('itemId');
+        vendorItemId = affUrl.searchParams.get('vendorItemId');
+      }
     }
   } catch { /* use as-is */ }
 
@@ -1761,8 +1786,9 @@ async function convertCoupangToMobileUrl(productUrl: string, subId?: string): Pr
       body: JSON.stringify({ coupangUrls: [targetUrl], subId: subId || undefined }),
     });
     const data = await response.json();
-    if (data.rCode === "0" && data.data?.[0]?.shortenUrl) {
-      return data.data[0].shortenUrl;
+    if (data.rCode === "0" && data.data?.[0]) {
+      // landingUrl(AFFSDP 형식) 사용 - 어필리에이트 추적 + 모바일 호환
+      return data.data[0].landingUrl || data.data[0].shortenUrl;
     }
   } catch (error) {
     console.error('[generateAffiliateUrl] Coupang API error:', error);
@@ -2195,7 +2221,7 @@ serve(async (req) => {
       const merchantFiltered = allProducts.filter(p => 
         merchantPref.merchantIds.includes(p.merchant_id || '')
       );
-      if (merchantFiltered.length >= 4) {
+      if (merchantFiltered.length >= 2) {
         allProducts = merchantFiltered;
         console.log(`[style-recommend] 🏪 Exclusive merchant filter applied: ${allProducts.length} products from ${merchantPref.merchantIds.join(',')}`);
       } else {
@@ -2209,7 +2235,7 @@ serve(async (req) => {
         const pBrand = (p.brand || '').toLowerCase();
         return merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()));
       });
-      if (brandFiltered.length >= 4) {
+      if (brandFiltered.length >= 2) {
         allProducts = brandFiltered;
         console.log(`[style-recommend] 🏪 Exclusive brand filter applied: ${allProducts.length} products`);
       } else {
@@ -2348,14 +2374,14 @@ serve(async (req) => {
       // 🏪 머천트/브랜드 선호 보너스 (사용자가 특정 쇼핑몰이나 브랜드를 요청한 경우)
       let merchantBonus = 0;
       if (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) {
-        // 머천트 매칭
+        // 머천트 매칭 - 비독점도 0.80으로 강화
         if (merchantPref.merchantIds.includes(p.merchant_id || '')) {
-          merchantBonus = merchantPref.isExclusive ? 0.80 : 0.60;
+          merchantBonus = merchantPref.isExclusive ? 1.00 : 0.80;
         }
         // 브랜드 매칭
         const pBrand = (p.brand || '').toLowerCase();
         if (merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()))) {
-          merchantBonus = Math.max(merchantBonus, merchantPref.isExclusive ? 0.80 : 0.60);
+          merchantBonus = Math.max(merchantBonus, merchantPref.isExclusive ? 1.00 : 0.80);
         }
       }
       
@@ -2396,7 +2422,31 @@ serve(async (req) => {
     };
     console.log(`[style-recommend] Products: 상의=${productsByPriority['상의']?.length}, 하의=${productsByPriority['하의']?.length}, 아우터=${productsByPriority['아우터']?.length}, 기타=${productsByPriority['기타']?.length}`);
 
-    const topScoredProducts = scoredProducts.slice(0, 50);
+    // 🏪 강제 슬롯 확보: 머천트 선호가 감지되었지만 상위 50개에 해당 머천트 상품이 없으면 강제 삽입
+    let topScoredProducts = scoredProducts.slice(0, 50);
+    if (merchantPref.merchantIds.length > 0) {
+      const merchantInTop = topScoredProducts.filter(s => 
+        merchantPref.merchantIds.includes(s.product.merchant_id || '')
+      );
+      if (merchantInTop.length < 2) {
+        // 전체 스코어 목록에서 해당 머천트 상품을 찾아 강제 삽입
+        const merchantProducts = scoredProducts.filter(s => 
+          merchantPref.merchantIds.includes(s.product.merchant_id || '') &&
+          !topScoredProducts.some(t => t.product.id === s.product.id)
+        ).slice(0, 2 - merchantInTop.length);
+        
+        if (merchantProducts.length > 0) {
+          // 하위 슬롯을 교체
+          topScoredProducts = [
+            ...topScoredProducts.slice(0, 50 - merchantProducts.length),
+            ...merchantProducts
+          ];
+          console.log(`[style-recommend] 🏪 Forced ${merchantProducts.length} merchant products into top-50 (had ${merchantInTop.length})`);
+        }
+      } else {
+        console.log(`[style-recommend] 🏪 Merchant products in top-50: ${merchantInTop.length}`);
+      }
+    }
     const uniqueProducts = topScoredProducts.map(s => s.product);
     
     if (uniqueProducts.length === 0) {
