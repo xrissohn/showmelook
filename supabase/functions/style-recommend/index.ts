@@ -1910,7 +1910,13 @@ serve(async (req) => {
     const requestedConcepts = extractConcepts(userRequest);
     const requestedOccasions = extractOccasions(userRequest);
     const requestedSubStyles = extractSubStyleKeywords(userRequest);
-    const merchantPref = detectMerchantPreference(userRequest);
+    
+    // DB에서 활성 머천트 목록 로드 → 동적 키워드 매핑
+    const { data: merchantsData } = await supabase
+      .from('merchants')
+      .select('id, name, name_ko')
+      .eq('is_active', true);
+    const merchantPref = detectMerchantPreference(userRequest, merchantsData || undefined);
     const occasion = requestedOccasions[0] || '캐주얼';
     const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
     const patternKey = generatePatternKey(gender, occasion, requestedConcepts, budget);
