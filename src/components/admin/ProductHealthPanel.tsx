@@ -335,9 +335,10 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
           ) : (
             <div className="text-center py-6 text-muted-foreground">
               <History className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p>아직 실행 이력이 없습니다.</p>
+              <p>{logFilter === "all" ? "아직 실행 이력이 없습니다." : `${logFilter === "manual" ? "수동" : "자동"} 실행 이력이 없습니다.`}</p>
             </div>
-          )}
+          );
+          })()}
         </CardContent>
       </Card>
     </div>
