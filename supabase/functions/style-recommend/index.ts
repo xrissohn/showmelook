@@ -2154,6 +2154,34 @@ serve(async (req) => {
     });
     console.log(`[style-recommend] After season filter: ${allProducts.length}`);
     
+    // ============= 🏪 머천트/브랜드 필터링 =============
+    if (merchantPref.isExclusive && merchantPref.merchantIds.length > 0) {
+      // 독점 요청: 해당 머천트 상품만 남기기
+      const merchantFiltered = allProducts.filter(p => 
+        merchantPref.merchantIds.includes(p.merchant_id || '')
+      );
+      if (merchantFiltered.length >= 4) {
+        allProducts = merchantFiltered;
+        console.log(`[style-recommend] 🏪 Exclusive merchant filter applied: ${allProducts.length} products from ${merchantPref.merchantIds.join(',')}`);
+      } else {
+        console.log(`[style-recommend] 🏪 Exclusive filter too strict (${merchantFiltered.length}), keeping all products with boost`);
+      }
+    }
+    
+    if (merchantPref.isExclusive && merchantPref.brandKeywords.length > 0 && merchantPref.merchantIds.length === 0) {
+      // 브랜드 독점 요청: 해당 브랜드 상품만 남기기
+      const brandFiltered = allProducts.filter(p => {
+        const pBrand = (p.brand || '').toLowerCase();
+        return merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()));
+      });
+      if (brandFiltered.length >= 4) {
+        allProducts = brandFiltered;
+        console.log(`[style-recommend] 🏪 Exclusive brand filter applied: ${allProducts.length} products`);
+      } else {
+        console.log(`[style-recommend] 🏪 Brand filter too strict (${brandFiltered.length}), keeping all with boost`);
+      }
+    }
+    
     // ============= Stage 1 결과 기반 필터링 =============
     
     // Formality 필터
