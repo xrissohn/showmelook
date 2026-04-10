@@ -283,7 +283,9 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
           </div>
         </CardHeader>
         <CardContent>
-          {logs.length > 0 ? (
+          {(() => {
+            const filteredLogs = logFilter === "all" ? logs : logs.filter(l => l.run_type === logFilter);
+            return filteredLogs.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
               <div className="max-h-96 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -298,7 +300,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {logs.map((log) => (
+                    {filteredLogs.map((log) => (
                       <tr key={log.id} className="border-t hover:bg-muted/50">
                         <td className="p-3 whitespace-nowrap">{formatDate(log.created_at)}</td>
                         <td className="p-3">
