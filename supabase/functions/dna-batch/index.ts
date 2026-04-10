@@ -1202,12 +1202,14 @@ serve(async (req) => {
     }
 
     // 기본 모드: dna_meta가 없는 상품만
-    const { data: products, error: fetchError } = await supabase
+    let defaultQuery = supabase
       .from('products_cache')
       .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
       .eq('is_active', true)
       .is('dna_meta', null)
       .limit(effectiveBatchSize);
+    if (merchantId) defaultQuery = defaultQuery.eq('merchant_id', merchantId);
+    const { data: products, error: fetchError } = await defaultQuery;
 
     if (fetchError) throw new Error(`Failed to fetch products: ${fetchError.message}`);
 
