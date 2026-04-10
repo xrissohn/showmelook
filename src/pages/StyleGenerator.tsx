@@ -1528,7 +1528,11 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       
       if (error) throw error;
       
-      const targetUrl = (data?.success && data?.affiliate_url) ? data.affiliate_url : product.product_url;
+      // 모바일 기기에서 쿠팡 상품인 경우 mobile_web_url 우선 사용
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const targetUrl = (data?.success && data?.affiliate_url) 
+        ? ((isMobile && data.mobile_web_url) ? data.mobile_web_url : data.affiliate_url)
+        : product.product_url;
       if (newWindow) {
         newWindow.location.href = targetUrl;
       } else {
