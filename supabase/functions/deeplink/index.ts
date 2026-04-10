@@ -231,14 +231,21 @@ serve(async (req) => {
     if (product_url.includes('link.coupang.com')) {
       console.log('[deeplink] Coupang AFFSDP link detected, re-converting for mobile compatibility');
       
-      // AFFSDP URL에서 원본 상품 페이지 키 추출 시도
+      // AFFSDP URL에서 원본 상품 페이지 키 + itemId/vendorItemId 추출
       let targetUrl = product_url;
       try {
         const affUrl = new URL(product_url);
         const pageKey = affUrl.searchParams.get('pageKey');
+        const itemId = affUrl.searchParams.get('itemId');
+        const vendorItemId = affUrl.searchParams.get('vendorItemId');
         if (pageKey) {
-          targetUrl = `https://www.coupang.com/vp/products/${pageKey}`;
-          console.log('[deeplink] Extracted pageKey, using product URL:', targetUrl);
+          // itemId/vendorItemId를 포함해야 상세 페이지로 직접 이동
+          const params = new URLSearchParams();
+          if (itemId) params.set('itemId', itemId);
+          if (vendorItemId) params.set('vendorItemId', vendorItemId);
+          const queryStr = params.toString();
+          targetUrl = `https://www.coupang.com/vp/products/${pageKey}${queryStr ? '?' + queryStr : ''}`;
+          console.log('[deeplink] Extracted product URL with item details:', targetUrl);
         }
       } catch {
         console.log('[deeplink] Could not parse AFFSDP URL, using as-is');
