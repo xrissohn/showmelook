@@ -17,36 +17,13 @@ interface CategoryConfig {
 }
 
 const FASHION_CATEGORIES: CategoryConfig[] = [
-  // 여성패션 대분류 + 세부
-  { id: 1001, name: "여성패션", gender: "female", limit: 50 },
-  { id: 50000804, name: "여성 티셔츠", gender: "female", limit: 30 },
-  { id: 50000805, name: "여성 니트/스웨터", gender: "female", limit: 30 },
-  { id: 50000806, name: "여성 블라우스/셔츠", gender: "female", limit: 30 },
-  { id: 50000807, name: "여성 원피스", gender: "female", limit: 30 },
-  { id: 50000808, name: "여성 스커트", gender: "female", limit: 20 },
-  { id: 50000809, name: "여성 바지/팬츠", gender: "female", limit: 30 },
-  { id: 50000810, name: "여성 코트", gender: "female", limit: 20 },
-  { id: 50000811, name: "여성 재킷", gender: "female", limit: 20 },
-  { id: 50000812, name: "여성 점퍼", gender: "female", limit: 20 },
-  { id: 50000813, name: "여성 가디건", gender: "female", limit: 20 },
-  { id: 50000814, name: "여성 청바지", gender: "female", limit: 20 },
-  // 남성패션 대분류 + 세부
-  { id: 1002, name: "남성패션", gender: "male", limit: 50 },
-  { id: 50000830, name: "남성 티셔츠", gender: "male", limit: 30 },
-  { id: 50000831, name: "남성 셔츠", gender: "male", limit: 30 },
-  { id: 50000832, name: "남성 니트/스웨터", gender: "male", limit: 30 },
-  { id: 50000833, name: "남성 바지/팬츠", gender: "male", limit: 30 },
-  { id: 50000834, name: "남성 코트", gender: "male", limit: 20 },
-  { id: 50000835, name: "남성 재킷", gender: "male", limit: 20 },
-  { id: 50000836, name: "남성 점퍼", gender: "male", limit: 20 },
-  { id: 50000837, name: "남성 청바지", gender: "male", limit: 20 },
-  { id: 50000838, name: "남성 맨투맨/후드", gender: "male", limit: 30 },
-  // 신발
-  { id: 50000825, name: "여성 신발", gender: "female", limit: 30 },
-  { id: 50000851, name: "남성 신발", gender: "male", limit: 30 },
-  // 가방
-  { id: 50000826, name: "여성 가방", gender: "female", limit: 20 },
-  { id: 50000852, name: "남성 가방", gender: "male", limit: 20 },
+  // 대분류 카테고리 (쿠팡 API 지원)
+  { id: 1001, name: "여성패션", gender: "female", limit: 100 },
+  { id: 1002, name: "남성패션", gender: "male", limit: 100 },
+  { id: 1010, name: "여성신발", gender: "female", limit: 50 },
+  { id: 1011, name: "남성신발", gender: "male", limit: 50 },
+  { id: 1012, name: "여성가방", gender: "female", limit: 30 },
+  { id: 1013, name: "남성가방", gender: "male", limit: 30 },
 ];
 
 // ═══════════════════════════════════════════════════════════════
