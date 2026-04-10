@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,7 @@ import { ErrorLogPanel } from "@/components/admin/ErrorLogPanel";
 import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
 import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 import { DNAClassificationManager } from "@/components/admin/DNAClassificationManager";
+import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
