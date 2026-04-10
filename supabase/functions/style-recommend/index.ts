@@ -2671,6 +2671,7 @@ ${matchDetails.join('\n')}
           ageGroupLabel,
           occasion,
           LOVABLE_API_KEY,
+          merchantPref,
         );
         
         if (ragResponse) {
