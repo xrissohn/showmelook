@@ -156,3 +156,6 @@ verify_jwt = false
 
 [functions.analyze-style-image]
 verify_jwt = false
+
+[functions.product-health-check]
+verify_jwt = false
