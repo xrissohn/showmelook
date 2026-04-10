@@ -2310,12 +2310,26 @@ serve(async (req) => {
       // 🎯 세부 스타일 매칭 보너스 (사용자가 후드집업 등 특정 스타일을 요청한 경우)
       const subStyleBonus = calculateSubStyleBonus(p);
       
+      // 🏪 머천트/브랜드 선호 보너스 (사용자가 특정 쇼핑몰이나 브랜드를 요청한 경우)
+      let merchantBonus = 0;
+      if (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) {
+        // 머천트 매칭
+        if (merchantPref.merchantIds.includes(p.merchant_id || '')) {
+          merchantBonus = merchantPref.isExclusive ? 0.80 : 0.60;
+        }
+        // 브랜드 매칭
+        const pBrand = (p.brand || '').toLowerCase();
+        if (merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()))) {
+          merchantBonus = Math.max(merchantBonus, merchantPref.isExclusive ? 0.80 : 0.60);
+        }
+      }
+      
       // 🎲 강화된 랜덤 다양성 (0~0.25 범위) - 매 요청마다 완전히 다른 결과
       const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const diversityBonus = ((idHash ^ randomSeed) % 1000) / 4000;  // 0 ~ 0.25 범위
       
-      // 가중치 조정: sub_style 매칭이 있으면 가장 높은 가중치
-      const totalScore = subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
+      // 가중치 조정: merchant/sub_style 매칭이 있으면 가장 높은 가중치
+      const totalScore = merchantBonus + subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
       
       return { product: p, score: totalScore };
     });
