@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 100;
-const MAX_ITERATIONS = 50;
+const MAX_ITERATIONS_PER_CALL = 5; // ~500 products per invocation (fits in ~50s)
 const HEAD_TIMEOUT = 5000;
 const CONCURRENCY = 10;
 
@@ -16,16 +16,11 @@ interface SingleCheckRequest {
   productId: string;
 }
 
-interface BatchCheckRequest {
-  batch: true;
-}
-
 async function checkUrl(url: string): Promise<{ alive: boolean; status: number }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), HEAD_TIMEOUT);
 
   try {
-    // Try HEAD first
     const res = await fetch(url, {
       method: "HEAD",
       signal: controller.signal,
@@ -34,10 +29,9 @@ async function checkUrl(url: string): Promise<{ alive: boolean; status: number }
     clearTimeout(timeout);
     const dead = [404, 410].includes(res.status) || res.status >= 500;
     return { alive: !dead, status: res.status };
-  } catch (headErr) {
+  } catch {
     clearTimeout(timeout);
 
-    // Some servers block HEAD, fall back to GET with range
     const controller2 = new AbortController();
     const timeout2 = setTimeout(() => controller2.abort(), HEAD_TIMEOUT);
     try {
@@ -48,13 +42,11 @@ async function checkUrl(url: string): Promise<{ alive: boolean; status: number }
         headers: { Range: "bytes=0-0" },
       });
       clearTimeout(timeout2);
-      // Consume body to prevent leak
       await res.text();
       const dead = [404, 410].includes(res.status) || res.status >= 500;
       return { alive: !dead, status: res.status };
     } catch {
       clearTimeout(timeout2);
-      // Network error / timeout → treat as alive (don't delete on transient errors)
       return { alive: true, status: 0 };
     }
   }
@@ -78,15 +70,10 @@ Deno.serve(async (req) => {
       const result = await checkUrl(url);
 
       if (!result.alive) {
-        // Delete the dead product
         const { error } = await supabase
           .from("products_cache")
           .delete()
           .eq("id", productId);
-
-        if (error) {
-          console.error("Delete error:", error);
-        }
 
         return new Response(
           JSON.stringify({
@@ -105,21 +92,27 @@ Deno.serve(async (req) => {
       );
     }
 
-    // === Batch check (Layer 3) ===
+    // === Batch check (Layer 3) with auto-chain ===
     if (body.batch === true) {
+      const offset = body.offset ?? 0;
+      const cumulativeChecked = body.cumulativeChecked ?? 0;
+      const cumulativeDeleted = body.cumulativeDeleted ?? 0;
+
       let totalChecked = 0;
       let totalDeleted = 0;
       let iteration = 0;
+      let hasMore = false;
 
-      while (iteration < MAX_ITERATIONS) {
+      while (iteration < MAX_ITERATIONS_PER_CALL) {
         iteration++;
+        const rangeStart = offset + (iteration - 1) * BATCH_SIZE;
+        const rangeEnd = rangeStart + BATCH_SIZE - 1;
 
-        // Get a batch of active products
         const { data: products, error } = await supabase
           .from("products_cache")
           .select("id, product_url")
           .eq("is_active", true)
-          .range((iteration - 1) * BATCH_SIZE, iteration * BATCH_SIZE - 1);
+          .range(rangeStart, rangeEnd);
 
         if (error) {
           console.error("Query error:", error);
@@ -128,7 +121,6 @@ Deno.serve(async (req) => {
 
         if (!products || products.length === 0) break;
 
-        // Check URLs in parallel with concurrency limit
         const deadIds: string[] = [];
 
         for (let i = 0; i < products.length; i += CONCURRENCY) {
@@ -136,7 +128,7 @@ Deno.serve(async (req) => {
           const results = await Promise.allSettled(
             chunk.map(async (p) => {
               const result = await checkUrl(p.product_url);
-              return { id: p.id, alive: result.alive, status: result.status };
+              return { id: p.id, alive: result.alive };
             })
           );
 
@@ -149,41 +141,76 @@ Deno.serve(async (req) => {
 
         totalChecked += products.length;
 
-        // Delete dead products
         if (deadIds.length > 0) {
           const { error: delError } = await supabase
             .from("products_cache")
             .delete()
             .in("id", deadIds);
 
-          if (delError) {
-            console.error("Batch delete error:", delError);
-          } else {
+          if (!delError) {
             totalDeleted += deadIds.length;
           }
         }
 
         console.log(
-          `Batch iteration ${iteration}: checked=${products.length}, dead=${deadIds.length}, totalDeleted=${totalDeleted}`
+          `Batch offset=${rangeStart}: checked=${products.length}, dead=${deadIds.length}`
         );
 
-        // If we got fewer than BATCH_SIZE, we've checked everything
-        if (products.length < BATCH_SIZE) break;
+        if (products.length < BATCH_SIZE) {
+          break;
+        }
+
+        // If this is the last iteration of this call, there's more to process
+        if (iteration === MAX_ITERATIONS_PER_CALL) {
+          hasMore = true;
+        }
+      }
+
+      const grandChecked = cumulativeChecked + totalChecked;
+      const grandDeleted = cumulativeDeleted + totalDeleted;
+
+      // Auto-chain: self-invoke for remaining products
+      if (hasMore) {
+        const nextOffset = offset + iteration * BATCH_SIZE;
+        console.log(
+          `Self-chaining: nextOffset=${nextOffset}, checked so far=${grandChecked}, deleted so far=${grandDeleted}`
+        );
+
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
+
+        // Fire-and-forget: don't await to avoid cascading timeout
+        fetch(`${supabaseUrl}/functions/v1/product-health-check`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${anonKey}`,
+          },
+          body: JSON.stringify({
+            batch: true,
+            offset: nextOffset,
+            cumulativeChecked: grandChecked,
+            cumulativeDeleted: grandDeleted,
+          }),
+        }).catch((e) => console.error("Chain invoke error:", e));
       }
 
       return new Response(
         JSON.stringify({
           success: true,
-          totalChecked,
-          totalDeleted,
+          totalChecked: grandChecked,
+          totalDeleted: grandDeleted,
           iterations: iteration,
+          hasMore,
+          message: hasMore
+            ? `${grandChecked}개 검사 완료, ${grandDeleted}개 삭제. 나머지 자동 처리 중...`
+            : `완료: ${grandChecked}개 검사, ${grandDeleted}개 삭제.`,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     return new Response(
-      JSON.stringify({ error: "Invalid request. Use {url, productId} or {batch: true}" }),
+      JSON.stringify({ error: "Invalid request" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
