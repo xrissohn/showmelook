@@ -1737,17 +1737,28 @@ async function convertCoupangToMobileUrl(productUrl: string, subId?: string): Pr
 
   // AFFSDP URL에서 pageKey + itemId + vendorItemId 추출하여 원본 URL 재구성
   let targetUrl = productUrl;
+  let pageKey: string | null = null;
+  let itemId: string | null = null;
+  let vendorItemId: string | null = null;
   try {
     const affUrl = new URL(productUrl);
-    const pageKey = affUrl.searchParams.get('pageKey');
-    const itemId = affUrl.searchParams.get('itemId');
-    const vendorItemId = affUrl.searchParams.get('vendorItemId');
+    pageKey = affUrl.searchParams.get('pageKey');
+    itemId = affUrl.searchParams.get('itemId');
+    vendorItemId = affUrl.searchParams.get('vendorItemId');
     if (pageKey) {
       const params = new URLSearchParams();
       if (itemId) params.set('itemId', itemId);
       if (vendorItemId) params.set('vendorItemId', vendorItemId);
       const queryStr = params.toString();
       targetUrl = `https://www.coupang.com/vp/products/${pageKey}${queryStr ? '?' + queryStr : ''}`;
+    } else {
+      // vp/products/{pageKey} 형식에서 추출
+      const pathMatch = new URL(productUrl).pathname.match(/\/vp\/products\/(\d+)/);
+      if (pathMatch) {
+        pageKey = pathMatch[1];
+        itemId = affUrl.searchParams.get('itemId');
+        vendorItemId = affUrl.searchParams.get('vendorItemId');
+      }
     }
   } catch { /* use as-is */ }
 
@@ -1761,8 +1772,9 @@ async function convertCoupangToMobileUrl(productUrl: string, subId?: string): Pr
       body: JSON.stringify({ coupangUrls: [targetUrl], subId: subId || undefined }),
     });
     const data = await response.json();
-    if (data.rCode === "0" && data.data?.[0]?.shortenUrl) {
-      return data.data[0].shortenUrl;
+    if (data.rCode === "0" && data.data?.[0]) {
+      // landingUrl(AFFSDP 형식) 사용 - 어필리에이트 추적 + 모바일 호환
+      return data.data[0].landingUrl || data.data[0].shortenUrl;
     }
   } catch (error) {
     console.error('[generateAffiliateUrl] Coupang API error:', error);
