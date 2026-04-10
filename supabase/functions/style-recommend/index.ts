@@ -1486,6 +1486,7 @@ async function runStage2WithModel(
   ageGroupLabel: string,
   occasion: string,
   LOVABLE_API_KEY: string,
+  merchantPref?: MerchantPreference,
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
