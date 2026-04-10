@@ -1324,22 +1324,37 @@ interface MerchantPreference {
   isExclusive: boolean;    // "~에서만", "~만" 등 독점 요청 여부
 }
 
-function detectMerchantPreference(userRequest: string): MerchantPreference {
+function detectMerchantPreference(userRequest: string, merchantsFromDB?: { id: string; name: string; name_ko: string }[]): MerchantPreference {
   const requestLower = userRequest.toLowerCase();
   
-  // 머천트(쇼핑몰) 매핑: 사용자가 말할 수 있는 키워드 → merchant_id
-  const MERCHANT_KEYWORD_MAP: Record<string, string[]> = {
-    'coupang': ['쿠팡', 'coupang', '쿠팡에서', '쿠팡에', '쿠팡의'],
-    'wconcept': ['더블유컨셉', 'w컨셉', 'wconcept', 'w concept', '더블유 컨셉'],
-    'hfashion': ['한섬', 'h패션', 'hfashion', 'h fashion', '에이치패션', 'hfashionmall'],
+  // 기본 하드코딩 키워드 (DB 로드 실패 시 폴백)
+  const FALLBACK_MERCHANT_KEYWORDS: Record<string, string[]> = {
+    'coupang': ['쿠팡', 'coupang'],
+    'wconcept': ['더블유컨셉', 'w컨셉', 'wconcept', 'w concept'],
+    'hfashion': ['한섬', 'h패션', 'hfashion', 'h fashion', '에이치패션'],
     'arket': ['아르켓', 'arket'],
-    'stories': ['앤아더스토리즈', '앤 아더 스토리즈', '& other stories', 'other stories', 'stories'],
+    'stories': ['앤아더스토리즈', '앤 아더 스토리즈', '& other stories', 'other stories'],
     'stockx': ['스탁엑스', 'stockx', 'stock x'],
     'posty': ['포스티', 'posty'],
-    'jestina': ['제이에스티나', 'jestina', 'j.estina'],
+    'jestina': ['제이에스티나', 'jestina', 'j.estina', '제스티나'],
     'paulsmith': ['폴스미스', 'paul smith', 'paulsmith'],
     'benetton1': ['베네통', 'benetton', '유나이티드 컬러즈'],
   };
+
+  // DB에서 로드된 머천트 정보로 동적 키워드 맵 생성
+  const MERCHANT_KEYWORD_MAP: Record<string, string[]> = { ...FALLBACK_MERCHANT_KEYWORDS };
+  
+  if (merchantsFromDB && merchantsFromDB.length > 0) {
+    for (const m of merchantsFromDB) {
+      const keywords = new Set<string>(MERCHANT_KEYWORD_MAP[m.id] || []);
+      // DB의 name, name_ko를 자동으로 키워드에 추가
+      if (m.name_ko) keywords.add(m.name_ko.toLowerCase());
+      if (m.name) keywords.add(m.name.toLowerCase());
+      // 짧은 id도 추가 (예: 'arket', 'posty')
+      keywords.add(m.id.toLowerCase());
+      MERCHANT_KEYWORD_MAP[m.id] = [...keywords];
+    }
+  }
   
   const detectedMerchants: string[] = [];
   const detectedBrands: string[] = [];
@@ -1347,7 +1362,7 @@ function detectMerchantPreference(userRequest: string): MerchantPreference {
   for (const [merchantId, keywords] of Object.entries(MERCHANT_KEYWORD_MAP)) {
     if (keywords.some(kw => requestLower.includes(kw))) {
       detectedMerchants.push(merchantId);
-      detectedBrands.push(keywords[0]); // 첫 번째 키워드(한국어)를 브랜드명으로
+      detectedBrands.push(keywords[0]);
     }
   }
   
@@ -1364,6 +1379,15 @@ function detectMerchantPreference(userRequest: string): MerchantPreference {
     '캉골': ['캉골', 'kangol'],
     '폴로': ['폴로', 'polo', 'ralph lauren'],
   };
+
+  // DB에서 가져온 머천트의 brand도 브랜드 감지에 활용
+  if (merchantsFromDB) {
+    for (const m of merchantsFromDB) {
+      // 이미 머천트로 감지된 경우 중복 방지
+      if (detectedMerchants.includes(m.id)) continue;
+      // brand 필드가 상품에 있으므로, 여기서는 머천트 이름을 브랜드로도 간주
+    }
+  }
   
   for (const [brand, keywords] of Object.entries(BRAND_KEYWORD_MAP)) {
     if (keywords.some(kw => requestLower.includes(kw))) {
@@ -1371,7 +1395,7 @@ function detectMerchantPreference(userRequest: string): MerchantPreference {
     }
   }
   
-  // 독점 요청 감지 ("~에서만", "~만 사용", "~만으로", "~제품만", "~상품만")
+  // 독점 요청 감지
   const exclusivePatterns = ['에서만', '만 사용', '만으로', '제품만', '상품만', '것만', '에서 파는', '에서 팔고', '에서 판매'];
   const isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
   
