@@ -613,6 +613,36 @@ export type Database = {
         }
         Relationships: []
       }
+      health_check_logs: {
+        Row: {
+          checked_count: number
+          created_at: string
+          deleted_count: number
+          duration_seconds: number | null
+          error_count: number
+          id: string
+          run_type: string
+        }
+        Insert: {
+          checked_count?: number
+          created_at?: string
+          deleted_count?: number
+          duration_seconds?: number | null
+          error_count?: number
+          id?: string
+          run_type?: string
+        }
+        Update: {
+          checked_count?: number
+          created_at?: string
+          deleted_count?: number
+          duration_seconds?: number | null
+          error_count?: number
+          id?: string
+          run_type?: string
+        }
+        Relationships: []
+      }
       inference_metrics: {
         Row: {
           concepts: string[] | null

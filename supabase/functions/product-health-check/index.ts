@@ -168,6 +168,7 @@ Deno.serve(async (req) => {
 
       const grandChecked = cumulativeChecked + totalChecked;
       const grandDeleted = cumulativeDeleted + totalDeleted;
+      const startTime = body.startTime ?? Date.now();
 
       // Auto-chain: self-invoke for remaining products
       if (hasMore) {
@@ -190,13 +191,28 @@ Deno.serve(async (req) => {
             offset: nextOffset,
             cumulativeChecked: grandChecked,
             cumulativeDeleted: grandDeleted,
+            startTime,
+            runType: body.runType || "batch",
           }),
         }).catch((e) => console.error("Chain invoke error:", e));
+      } else {
+        // Final chain — log to health_check_logs
+        const durationSeconds = Math.round((Date.now() - startTime) / 1000);
+        await supabase.from("health_check_logs").insert({
+          run_type: body.runType || "batch",
+          checked_count: grandChecked,
+          deleted_count: grandDeleted,
+          error_count: 0,
+          duration_seconds: durationSeconds,
+        });
+        console.log(`Health check complete: checked=${grandChecked}, deleted=${grandDeleted}, duration=${durationSeconds}s`);
       }
 
       return new Response(
         JSON.stringify({
           success: true,
+          checked: totalChecked,
+          deleted: totalDeleted,
           totalChecked: grandChecked,
           totalDeleted: grandDeleted,
           iterations: iteration,
