@@ -1123,31 +1123,33 @@ serve(async (req) => {
 
     // forceRegenerate 모드
     if (forceRegenerate) {
-      // Use a session timestamp to track which products were already processed
-      // Products updated after this timestamp are considered "done" in this session
-      const sessionStart = new Date(Date.now() - 5000).toISOString(); // 5s buffer for clock skew
+      const sessionStart = new Date(Date.now() - 5000).toISOString();
 
-      // Count total first
-      const { count: totalCount } = await supabase
+      // Count total
+      let totalQuery = supabase
         .from('products_cache')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
+      if (merchantId) totalQuery = totalQuery.eq('merchant_id', merchantId);
+      const { count: totalCount } = await totalQuery;
 
-      // Fetch products NOT yet updated in this session (dna_generated_at < sessionStart or null)
-      const { data: allProducts, error: allError } = await supabase
+      // Fetch products NOT yet updated in this session
+      let fetchQuery = supabase
         .from('products_cache')
         .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
         .eq('is_active', true)
         .or(`dna_generated_at.is.null,dna_generated_at.lt.${sessionStart}`)
         .order('dna_generated_at', { ascending: true, nullsFirst: true })
         .limit(effectiveBatchSize);
+      if (merchantId) fetchQuery = fetchQuery.eq('merchant_id', merchantId);
+      const { data: allProducts, error: allError } = await fetchQuery;
 
       if (allError) throw new Error(`Failed to fetch products: ${allError.message}`);
 
       if (!allProducts || allProducts.length === 0) {
         return new Response(JSON.stringify({
           success: true,
-          message: '모든 상품 DNA 재생성 완료!',
+          message: merchantId ? `${merchantId} 상품 DNA 재생성 완료!` : '모든 상품 DNA 재생성 완료!',
           processed: 0,
           remaining: 0,
           total: totalCount || 0,
