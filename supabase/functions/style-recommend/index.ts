@@ -2221,7 +2221,7 @@ serve(async (req) => {
       const merchantFiltered = allProducts.filter(p => 
         merchantPref.merchantIds.includes(p.merchant_id || '')
       );
-      if (merchantFiltered.length >= 4) {
+      if (merchantFiltered.length >= 2) {
         allProducts = merchantFiltered;
         console.log(`[style-recommend] 🏪 Exclusive merchant filter applied: ${allProducts.length} products from ${merchantPref.merchantIds.join(',')}`);
       } else {
@@ -2235,7 +2235,7 @@ serve(async (req) => {
         const pBrand = (p.brand || '').toLowerCase();
         return merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()));
       });
-      if (brandFiltered.length >= 4) {
+      if (brandFiltered.length >= 2) {
         allProducts = brandFiltered;
         console.log(`[style-recommend] 🏪 Exclusive brand filter applied: ${allProducts.length} products`);
       } else {
