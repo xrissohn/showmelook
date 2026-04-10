@@ -1007,7 +1007,7 @@ serve(async (req) => {
     }
 
     const effectiveBatchSize = Math.min(batchSize, 200);
-    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize}, force=${forceRegenerate})`);
+    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize}, force=${forceRegenerate}, merchantId=${merchantId})`);
 
     // 특정 productIds
     if (productIds && productIds.length > 0) {
