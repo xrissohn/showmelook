@@ -6,14 +6,125 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 수집 대상 카테고리 (패션만)
-const FASHION_CATEGORIES = [
-  { id: 1001, name: "여성패션" },
-  { id: 1002, name: "남성패션" },
-  { id: 1030, name: "유아동패션" },
+// ═══════════════════════════════════════════════════════════════
+// 1. 수집 대상 카테고리 (세부 카테고리 확장)
+// ═══════════════════════════════════════════════════════════════
+interface CategoryConfig {
+  id: number;
+  name: string;
+  gender: string;
+  limit: number;
+}
+
+const FASHION_CATEGORIES: CategoryConfig[] = [
+  // 여성패션 대분류 + 세부
+  { id: 1001, name: "여성패션", gender: "female", limit: 50 },
+  { id: 50000804, name: "여성 티셔츠", gender: "female", limit: 30 },
+  { id: 50000805, name: "여성 니트/스웨터", gender: "female", limit: 30 },
+  { id: 50000806, name: "여성 블라우스/셔츠", gender: "female", limit: 30 },
+  { id: 50000807, name: "여성 원피스", gender: "female", limit: 30 },
+  { id: 50000808, name: "여성 스커트", gender: "female", limit: 20 },
+  { id: 50000809, name: "여성 바지/팬츠", gender: "female", limit: 30 },
+  { id: 50000810, name: "여성 코트", gender: "female", limit: 20 },
+  { id: 50000811, name: "여성 재킷", gender: "female", limit: 20 },
+  { id: 50000812, name: "여성 점퍼", gender: "female", limit: 20 },
+  { id: 50000813, name: "여성 가디건", gender: "female", limit: 20 },
+  { id: 50000814, name: "여성 청바지", gender: "female", limit: 20 },
+  // 남성패션 대분류 + 세부
+  { id: 1002, name: "남성패션", gender: "male", limit: 50 },
+  { id: 50000830, name: "남성 티셔츠", gender: "male", limit: 30 },
+  { id: 50000831, name: "남성 셔츠", gender: "male", limit: 30 },
+  { id: 50000832, name: "남성 니트/스웨터", gender: "male", limit: 30 },
+  { id: 50000833, name: "남성 바지/팬츠", gender: "male", limit: 30 },
+  { id: 50000834, name: "남성 코트", gender: "male", limit: 20 },
+  { id: 50000835, name: "남성 재킷", gender: "male", limit: 20 },
+  { id: 50000836, name: "남성 점퍼", gender: "male", limit: 20 },
+  { id: 50000837, name: "남성 청바지", gender: "male", limit: 20 },
+  { id: 50000838, name: "남성 맨투맨/후드", gender: "male", limit: 30 },
+  // 신발
+  { id: 50000825, name: "여성 신발", gender: "female", limit: 30 },
+  { id: 50000851, name: "남성 신발", gender: "male", limit: 30 },
+  // 가방
+  { id: 50000826, name: "여성 가방", gender: "female", limit: 20 },
+  { id: 50000852, name: "남성 가방", gender: "male", limit: 20 },
 ];
 
-// HMAC-SHA256 signature generation
+// ═══════════════════════════════════════════════════════════════
+// 2. 비패션 상품 필터 (강화)
+// ═══════════════════════════════════════════════════════════════
+const NON_FASHION_BLOCK_LIST = /충전기|케이블|배터리|이어폰|헤드폰|스피커|마우스|키보드|USB|HDMI|어댑터|컨버터|메모리|SD카드|보조배터리|휴대폰|스마트폰|태블릿|노트북|PC|컴퓨터|모니터|TV|세탁기|냉장고|에어컨|청소기|밥솥|전자레인지|커피머신|믹서기|토스터|드라이기|고데기|면도기|칫솔|화장품|스킨|로션|에센스|크림|마스크팩|선크림|향수|영양제|비타민|프로틴|식품|간식|음료|커피|차|라면|과자|캔디|젤리|반려동물|사료|장난감|레고|블록|인형|완구|게임|피규어|카시트|유모차|젖병|기저귀|물티슈|세제|섬유유연제|주방세제|휴지|치약|샴푸|린스|바디워시|핸드크림|손소독제|마스크|의료기기|혈압계|체온계|보청기|안마기|운동기구|덤벨|요가|필라테스|캠핑|텐트|침낭|랜턴|버너|쿨러|아이스박스|낚시|골프공|골프채|자전거|킥보드|스케이트|보드|공구|드릴|망치|드라이버|렌치|페인트|벽지|타일|조명|전구|콘센트|멀티탭|정수기|가습기|공기청정기|선풍기|히터|온풍기|제습기|문구|펜|연필|노트|다이어리|스티커|테이프|가위|풀|클립|파일|바인더|책|도서|만화|잡지|음반|CD|DVD|악기|기타|피아노|드럼|바이올린|플루트|우쿨렐레|화분|식물|씨앗|비료|원예|공예|뜨개질|십자수|비즈|레진|캔버스|물감|붓|이젤/i;
+
+// 코디 추천에 부적합한 아이템 (양말, 속옷, 실내화 등)
+const NON_COORDI_BLOCK_LIST = /양말|스타킹|팬티|브라|속옷|언더웨어|내의|런닝|드로즈|사각팬티|삼각팬티|보정|거들|실내화|슬리퍼(?!.*패션)|방한용품|귀마개|이어머프|핫팩|발열|넥워머|장갑(?!.*패션)|마스크(?!.*패션)|수건|타올|인솔|깔창|구두약|신발건조|제습제|방향제|발매트|욕실|주방|수납|정리|세트.*켤레|세트.*족|켤레.*세트|족.*세트/i;
+
+function isFashionProduct(name: string): boolean {
+  if (NON_FASHION_BLOCK_LIST.test(name)) return false;
+  if (NON_COORDI_BLOCK_LIST.test(name)) return false;
+  
+  // 가격이 너무 낮은 묶음 상품 제외 (상품명으로 판단)
+  if (/\d+켤레|\d+족|\d+장|\d+매|\d+개.*세트/.test(name) && !/코디|세트.*룩/.test(name)) return false;
+  
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 3. 카테고리 추론
+// ═══════════════════════════════════════════════════════════════
+function inferCategory(name: string, catName: string): { category: string; subCategory: string } | null {
+  if (!isFashionProduct(name)) return null;
+  
+  const n = name.toLowerCase();
+  const cn = catName.toLowerCase();
+  
+  // 아우터
+  if (/코트|coat/.test(n) || cn.includes('코트')) return { category: "아우터", subCategory: "코트" };
+  if (/재킷|jacket|블레이저|blazer/.test(n) || cn.includes('재킷')) return { category: "아우터", subCategory: "재킷" };
+  if (/패딩|다운|puffer/.test(n)) return { category: "아우터", subCategory: "패딩" };
+  if (/점퍼|jumper|야상|바람막이|집업/.test(n) || cn.includes('점퍼')) return { category: "아우터", subCategory: "점퍼" };
+  if (/가디건|cardigan/.test(n) || cn.includes('가디건')) return { category: "아우터", subCategory: "가디건" };
+  
+  // 상의
+  if (/맨투맨|스웨트|후드|hoodie|sweatshirt/.test(n) || cn.includes('맨투맨') || cn.includes('후드')) return { category: "상의", subCategory: "맨투맨/후디" };
+  if (/니트|스웨터|knit|sweater/.test(n) || cn.includes('니트')) return { category: "상의", subCategory: "니트" };
+  if (/셔츠|shirt|블라우스|blouse/.test(n) || cn.includes('셔츠') || cn.includes('블라우스')) return { category: "상의", subCategory: "셔츠" };
+  if (/티셔츠|t-shirt|tee|반팔|긴팔/.test(n) || cn.includes('티셔츠')) return { category: "상의", subCategory: "티셔츠" };
+  if (/폴로|polo/.test(n)) return { category: "상의", subCategory: "폴로" };
+  if (/탱크탑|나시|민소매/.test(n)) return { category: "상의", subCategory: "민소매" };
+  
+  // 하의
+  if (/청바지|데님|진|jeans|denim/.test(n) || cn.includes('청바지')) return { category: "하의", subCategory: "데님" };
+  if (/슬랙스|slacks/.test(n)) return { category: "하의", subCategory: "슬랙스" };
+  if (/반바지|쇼츠|shorts/.test(n)) return { category: "하의", subCategory: "반바지" };
+  if (/스커트|치마|skirt/.test(n) || cn.includes('스커트')) return { category: "하의", subCategory: "스커트" };
+  if (/레깅스|leggings/.test(n)) return { category: "하의", subCategory: "레깅스" };
+  if (/팬츠|바지|pants|트레이닝|조거/.test(n) || cn.includes('바지') || cn.includes('팬츠')) return { category: "하의", subCategory: "팬츠" };
+  
+  // 원피스
+  if (/원피스|드레스|dress/.test(n) || cn.includes('원피스')) return { category: "원피스", subCategory: "원피스" };
+  
+  // 신발
+  if (/스니커즈|sneaker|운동화/.test(n)) return { category: "신발", subCategory: "스니커즈" };
+  if (/부츠|boots/.test(n)) return { category: "신발", subCategory: "부츠" };
+  if (/로퍼|loafer/.test(n)) return { category: "신발", subCategory: "로퍼" };
+  if (/구두|펌프스|힐|heel/.test(n)) return { category: "신발", subCategory: "구두" };
+  if (/샌들|sandal/.test(n)) return { category: "신발", subCategory: "샌들" };
+  if (/신발|슈즈|shoes/.test(n) || cn.includes('신발')) return { category: "신발", subCategory: "신발" };
+  
+  // 가방
+  if (/가방|백|bag|토트|숄더|크로스|클러치|백팩/.test(n) || cn.includes('가방')) return { category: "가방", subCategory: "가방" };
+  
+  // 액세서리
+  if (/목걸이|귀걸이|반지|팔찌|시계|주얼리|모자|캡|벨트|선글라스|스카프|머플러/.test(n)) return { category: "액세서리", subCategory: "액세서리" };
+  
+  // 카테고리 이름으로 최종 추론
+  if (cn.includes('여성') || cn.includes('남성')) return { category: "상의", subCategory: "기타 상의" };
+  
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 4. HMAC-SHA256 서명
+// ═══════════════════════════════════════════════════════════════
 async function generateHmacSignature(
   method: string,
   url: string,
@@ -21,214 +132,50 @@ async function generateHmacSignature(
   secretKey: string
 ): Promise<string> {
   const [path, query = ""] = url.split("?");
-  
   const now = new Date();
-  const datetime = now.toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d{3}/, "")
-    .slice(2);
-  
+  const datetime = now.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "").slice(2);
   const message = datetime + method + path + query;
-  
+
   const encoder = new TextEncoder();
-  const keyData = encoder.encode(secretKey);
-  const messageData = encoder.encode(message);
-  
   const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
+    "raw", encoder.encode(secretKey),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
   );
-  
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
-  const hexSignature = Array.from(new Uint8Array(signature))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-  
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, encoder.encode(message));
+  const hexSignature = Array.from(new Uint8Array(signature)).map(b => b.toString(16).padStart(2, "0")).join("");
+
   return `CEA algorithm=HmacSHA256, access-key=${accessKey}, signed-date=${datetime}, signature=${hexSignature}`;
 }
 
-// DNA 생성 함수
-interface DNAMeta {
-  target: string;
-  item_slot: string;
-  color_family: string;
-  formality: number;
-  season_fit: string[];
-  concepts: string[];
-  occasions: string[];
-  pair_slots: string[];
-}
-
-// 패션 상품인지 확인하는 함수
-function isFashionProduct(name: string, categoryName?: string): boolean {
-  // 명확한 비패션 키워드 (전자기기, 생활용품 등)
-  const nonFashionKeywords = /충전기|케이블|배터리|이어폰|헤드폰|스피커|마우스|키보드|USB|HDMI|어댑터|컨버터|메모리|SD카드|보조배터리|휴대폰|스마트폰|태블릿|노트북|PC|컴퓨터|모니터|TV|세탁기|냉장고|에어컨|청소기|밥솥|전자레인지|커피머신|믹서기|토스터|드라이기|고데기|면도기|칫솔|화장품|스킨|로션|에센스|크림|마스크팩|선크림|향수|영양제|비타민|프로틴|식품|간식|음료|커피|차|라면|과자|캔디|젤리|반려동물|사료|장난감|레고|블록|인형|완구|게임|피규어|카시트|유모차|젖병|기저귀|물티슈|세제|섬유유연제|주방세제|휴지|치약|샴푸|린스|바디워시|핸드크림|손소독제|마스크|의료기기|혈압계|체온계|보청기|안마기|운동기구|덤벨|요가|필라테스|캠핑|텐트|침낭|랜턴|버너|쿨러|아이스박스|낚시|골프공|골프채|자전거|킥보드|스케이트|보드|등산|트레킹폴|배낭|공구|드릴|망치|드라이버|렌치|페인트|벽지|타일|조명|전구|콘센트|멀티탭|정수기|가습기|공기청정기|선풍기|히터|온풍기|제습기|문구|펜|연필|노트|다이어리|스티커|테이프|가위|풀|클립|파일|바인더|책|도서|만화|잡지|음반|CD|DVD|악기|기타|피아노|드럼|바이올린|플루트|우쿨렐레|화분|식물|씨앗|비료|원예|공예|뜨개질|십자수|비즈|레진|캔버스|물감|붓|이젤/i;
-  
-  if (nonFashionKeywords.test(name)) {
-    return false;
-  }
-  
-  // 패션 관련 키워드
-  const fashionKeywords = /자켓|재킷|블레이저|코트|패딩|점퍼|야상|무스탕|바람막이|집업|아우터|티셔츠|티|맨투맨|후드|스웨트|니트|가디건|셔츠|블라우스|상의|탑|팬츠|바지|진|청바지|데님|슬랙스|조거|트레이닝|레깅스|반바지|숏|하의|원피스|드레스|스커트|치마|신발|스니커즈|운동화|구두|로퍼|부츠|샌들|슬리퍼|가방|백|토트|숄더|크로스|클러치|백팩|목걸이|귀걸이|반지|팔찌|시계|주얼리|액세서리|넥워머|머플러|스카프|모자|장갑|벨트|지갑|양말|스타킹|언더웨어|속옷|브라|팬티|수영복|비키니|래시가드|정장|수트|블레이저|베스트|조끼|카디건|풀오버|크롭|오버핏|슬림핏|와이드|스트레이트|부츠컷|스키니|테이퍼드|플레어|미니|미디|맥시|롱|숏|캐주얼|포멀|스포츠|애슬레저|골프웨어|등산복|트레이닝복|운동복|홈웨어|파자마|잠옷|가운|슬립|캐미솔|탱크탑|나시|민소매|반팔|긴팔|7부|9부|루즈핏|레귤러핏|타이트|배기|조거팬츠|카고|치노|면바지|린넨|실크|울|캐시미어|코듀로이|벨벳|새틴|시폰|레이스|트위드|헤링본|체크|스트라이프|도트|플로럴|프린트|그래픽|자수|패치|워싱|빈티지|레트로|모던|클래식|미니멀|맥시멀|페미닌|매니시|유니섹스|키즈|아동|유아|베이비|주니어|여성|남성|우먼|맨|걸|보이|레이디|미씨/i;
-  
-  return fashionKeywords.test(name);
-}
-
-function inferCategory(name: string): { category: string; subCategory: string } | null {
-  // 먼저 패션 상품인지 확인
-  if (!isFashionProduct(name)) {
-    return null; // 패션 상품이 아니면 null 반환
-  }
-  
-  if (/자켓|재킷|블레이저|코트|패딩|점퍼|야상|무스탕|바람막이|집업|아우터/.test(name)) {
-    if (/패딩|다운/.test(name)) return { category: "아우터", subCategory: "패딩" };
-    if (/코트/.test(name)) return { category: "아우터", subCategory: "코트" };
-    return { category: "아우터", subCategory: "자켓" };
-  }
-  if (/티셔츠|티|맨투맨|후드|스웨트|니트|가디건|셔츠|블라우스|상의|탑/.test(name)) {
-    if (/맨투맨|스웨트/.test(name)) return { category: "상의", subCategory: "맨투맨" };
-    if (/후드/.test(name)) return { category: "상의", subCategory: "후드" };
-    if (/니트/.test(name)) return { category: "상의", subCategory: "니트" };
-    if (/셔츠|블라우스/.test(name)) return { category: "상의", subCategory: "셔츠" };
-    return { category: "상의", subCategory: "티셔츠" };
-  }
-  if (/팬츠|바지|진|청바지|데님|슬랙스|조거|트레이닝|레깅스|반바지|숏|하의/.test(name)) {
-    if (/청바지|데님|진/.test(name)) return { category: "하의", subCategory: "데님" };
-    if (/슬랙스/.test(name)) return { category: "하의", subCategory: "슬랙스" };
-    return { category: "하의", subCategory: "팬츠" };
-  }
-  if (/원피스|드레스/.test(name)) {
-    return { category: "원피스", subCategory: "원피스" };
-  }
-  if (/스커트|치마/.test(name)) {
-    return { category: "하의", subCategory: "스커트" };
-  }
-  if (/신발|스니커즈|운동화|구두|로퍼|부츠|샌들|슬리퍼/.test(name)) {
-    return { category: "신발", subCategory: "신발" };
-  }
-  if (/가방|백|토트|숄더|크로스|클러치|백팩/.test(name)) {
-    return { category: "가방", subCategory: "가방" };
-  }
-  if (/목걸이|귀걸이|반지|팔찌|시계|주얼리|액세서리|넥워머|머플러|스카프|모자|장갑|벨트/.test(name)) {
-    return { category: "액세서리", subCategory: "액세서리" };
-  }
-  
-  // 패션 키워드가 있지만 구체적 분류가 안되면 기본값
-  return { category: "기타", subCategory: "기타" };
-}
-
-function inferGender(categoryId: number, name: string): string {
-  if (categoryId === 1001) return "female";
-  if (categoryId === 1002) return "male";
-  if (categoryId === 1030) return "kids";
-  
-  // 상품명에서 성별 추론
-  if (/여성|우먼|레이디|걸|미씨/.test(name)) return "female";
-  if (/남성|맨|보이즈/.test(name)) return "male";
-  if (/아동|키즈|주니어|베이비/.test(name)) return "kids";
-  
-  return "unisex";
-}
-
-function generateDNA(product: {
-  name: string;
-  price: number;
-  brand?: string;
-  categoryId: number;
-}): { dna_meta: DNAMeta; dna_text: string; category: string; subCategory: string } | null {
-  const categoryInfo = inferCategory(product.name);
-  
-  // 패션 상품이 아니면 null 반환
-  if (!categoryInfo) {
-    return null;
-  }
-  
-  const { category, subCategory } = categoryInfo;
-  const gender = inferGender(product.categoryId, product.name);
-  
-  const dna_meta: DNAMeta = {
-    target: gender === "kids" ? "kids_unisex" : `adult_${gender}`,
-    item_slot: category === "아우터" ? "outer" :
-               category === "상의" ? "top" :
-               category === "하의" ? "bottom" :
-               category === "원피스" ? "onepiece" :
-               category === "신발" ? "shoes" :
-               category === "가방" ? "bag" : "accessory",
-    color_family: "neutral",
-    formality: 5,
-    season_fit: ["spring", "fall"],
-    concepts: ["casual"],
-    occasions: ["daily"],
-    pair_slots: [],
-  };
-  
-  // 가격대에 따른 포멀리티 조정
-  if (product.price > 200000) {
-    dna_meta.formality = 7;
-    dna_meta.concepts = ["premium", "modern"];
-  } else if (product.price > 100000) {
-    dna_meta.formality = 6;
-    dna_meta.concepts = ["smart", "casual"];
-  } else if (product.price < 30000) {
-    dna_meta.formality = 3;
-    dna_meta.concepts = ["casual", "basic"];
-  }
-  
-  // 시즌 추론
-  if (/패딩|다운|코트|무스탕|기모|털|퍼/.test(product.name)) {
-    dna_meta.season_fit = ["winter"];
-  } else if (/반팔|반바지|린넨|여름/.test(product.name)) {
-    dna_meta.season_fit = ["summer"];
-  }
-  
-  // 스포츠 카테고리
-  if (product.categoryId === 1017) {
-    dna_meta.concepts = ["sporty", "athletic"];
-    dna_meta.occasions = ["sports", "outdoor"];
-  }
-  
-  const dna_text = `${product.brand || "브랜드"} ${subCategory}. ` +
-    `${dna_meta.concepts.join(", ")} 스타일. ` +
-    `${dna_meta.season_fit.join("/")} 시즌 적합. ` +
-    `포멀리티 ${dna_meta.formality}/10.`;
-  
-  return { dna_meta, dna_text, category, subCategory };
-}
-
-// BestCategories API 호출
+// ═══════════════════════════════════════════════════════════════
+// 5. BestCategories API 호출
+// ═══════════════════════════════════════════════════════════════
 async function fetchBestProducts(
-  categoryId: number,
-  limit: number,
-  accessKey: string,
-  secretKey: string
+  categoryId: number, limit: number, accessKey: string, secretKey: string
 ): Promise<any[]> {
   const apiPath = `/v2/providers/affiliate_open_api/apis/openapi/v1/products/bestcategories/${categoryId}`;
   const queryParams = `limit=${limit}`;
   const fullPath = `${apiPath}?${queryParams}`;
-  
   const authorization = await generateHmacSignature("GET", fullPath, accessKey, secretKey);
-  
+
   const response = await fetch(`https://api-gateway.coupang.com${fullPath}`, {
     method: "GET",
-    headers: {
-      "Authorization": authorization,
-      "Content-Type": "application/json",
-    },
+    headers: { "Authorization": authorization, "Content-Type": "application/json" },
   });
-  
+
   if (!response.ok) {
     const text = await response.text();
     console.error(`API Error for category ${categoryId}:`, response.status, text);
     return [];
   }
-  
+
   const data = await response.json();
   return data.data || [];
 }
 
+// ═══════════════════════════════════════════════════════════════
+// 6. 메인 핸들러
+// ═══════════════════════════════════════════════════════════════
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -239,7 +186,7 @@ serve(async (req) => {
     const secretKey = Deno.env.get("COUPANG_SECRET_KEY");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    
+
     if (!accessKey || !secretKey) {
       return new Response(
         JSON.stringify({ success: false, error: "쿠팡 API 키가 설정되지 않았습니다." }),
@@ -248,123 +195,125 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // 요청 파라미터
     const body = await req.json().catch(() => ({}));
-    const limitPerCategory = body.limit || 20;
-    const categoryIds = body.categoryIds || FASHION_CATEGORIES.map(c => c.id);
     
-    console.log(`Starting batch collection for categories: ${categoryIds.join(", ")}`);
-    
+    // 파라미터: genderFilter로 특정 성별만, categoryFilter로 특정 카테고리만 수집 가능
+    const genderFilter: string | null = body.genderFilter || null;
+    const categoryFilter: number[] | null = body.categoryIds || null;
+    const limitOverride: number | null = body.limit || null;
+
+    let targetCategories = FASHION_CATEGORIES;
+    if (genderFilter) {
+      targetCategories = targetCategories.filter(c => c.gender === genderFilter);
+    }
+    if (categoryFilter && categoryFilter.length > 0) {
+      targetCategories = targetCategories.filter(c => categoryFilter.includes(c.id));
+    }
+
+    console.log(`[coupang-batch] Starting: ${targetCategories.length} categories, gender=${genderFilter || 'all'}`);
+
     const results: { categoryId: number; categoryName: string; collected: number; saved: number; skipped: number; errors: number }[] = [];
-    
-    for (const catId of categoryIds) {
-      const categoryInfo = FASHION_CATEGORIES.find(c => c.id === catId);
-      const categoryName = categoryInfo?.name || `카테고리 ${catId}`;
-      
-      console.log(`Fetching category ${catId} (${categoryName})...`);
-      
-      // API 호출 간 딜레이 (rate limit 방지)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const products = await fetchBestProducts(catId, limitPerCategory, accessKey, secretKey);
-      
-      let saved = 0;
-      let errors = 0;
-      
-      let skipped = 0;
-      
+    const seenProductIds = new Set<string>();
+
+    for (const cat of targetCategories) {
+      const effectiveLimit = limitOverride || cat.limit;
+      console.log(`[coupang-batch] Fetching ${cat.name} (id=${cat.id}, limit=${effectiveLimit})...`);
+
+      // API rate limit 방지
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const products = await fetchBestProducts(cat.id, effectiveLimit, accessKey, secretKey);
+      let saved = 0, skipped = 0, errors = 0;
+
       for (const item of products) {
         try {
-          const product = {
-            name: item.productName || "상품명 없음",
-            price: item.productPrice || 0,
-            brand: item.vendorName || "쿠팡",
-            categoryId: catId,
-          };
+          const productId = String(item.productId);
           
-          const dnaResult = generateDNA(product);
-          
-          // 패션 상품이 아니면 건너뛰기
-          if (!dnaResult) {
-            console.log(`Skipped non-fashion product: ${product.name}`);
+          // 중복 제거 (같은 배치 내)
+          if (seenProductIds.has(productId)) { skipped++; continue; }
+          seenProductIds.add(productId);
+
+          const name = item.productName || "상품명 없음";
+          const categoryResult = inferCategory(name, cat.name);
+
+          if (!categoryResult) {
+            console.log(`[coupang-batch] Skip non-fashion: ${name.substring(0, 40)}`);
             skipped++;
             continue;
           }
-          
-          const { dna_meta, dna_text, category } = dnaResult;
-          const gender = inferGender(catId, product.name);
-          
+
+          const { category, subCategory } = categoryResult;
+
           const { error } = await supabase
             .from("products_cache")
             .upsert({
-              name: product.name,
-              price: product.price,
-              brand: product.brand,
+              name,
+              price: item.productPrice || 0,
+              brand: item.vendorName || "쿠팡",
               image_url: item.productImage,
               product_url: item.productUrl,
-              category: category, // 추론된 카테고리 사용
-              gender: gender,
+              category,
+              sub_category: subCategory,
+              gender: cat.gender,
               merchant_id: "coupang",
-              external_id: `coupang_${item.productId}`,
-              dna_meta,
-              dna_text,
-              dna_generated_at: new Date().toISOString(),
+              external_id: `coupang_${productId}`,
               is_active: true,
               is_in_stock: true,
-            }, { 
-              onConflict: "external_id",
-              ignoreDuplicates: false 
-            });
-          
+            }, { onConflict: "external_id", ignoreDuplicates: false });
+
           if (error) {
-            console.error(`Save error for ${product.name}:`, error.message);
+            console.error(`[coupang-batch] Save error: ${error.message}`);
             errors++;
           } else {
             saved++;
           }
         } catch (e) {
-          console.error(`Processing error:`, e);
+          console.error(`[coupang-batch] Processing error:`, e);
           errors++;
         }
       }
-      
-      results.push({
-        categoryId: catId,
-        categoryName,
-        collected: products.length,
-        saved,
-        skipped,
-        errors,
-      });
-      
-      console.log(`Category ${categoryName}: collected=${products.length}, saved=${saved}, skipped=${skipped}, errors=${errors}`);
+
+      results.push({ categoryId: cat.id, categoryName: cat.name, collected: products.length, saved, skipped, errors });
+      console.log(`[coupang-batch] ${cat.name}: collected=${products.length}, saved=${saved}, skipped=${skipped}, errors=${errors}`);
     }
-    
-    const totalCollected = results.reduce((sum, r) => sum + r.collected, 0);
-    const totalSaved = results.reduce((sum, r) => sum + r.saved, 0);
-    const totalSkipped = results.reduce((sum, r) => sum + r.skipped, 0);
-    const totalErrors = results.reduce((sum, r) => sum + r.errors, 0);
-    
-    console.log(`Batch complete: total collected=${totalCollected}, saved=${totalSaved}, skipped=${totalSkipped}, errors=${totalErrors}`);
-    
+
+    const totalCollected = results.reduce((s, r) => s + r.collected, 0);
+    const totalSaved = results.reduce((s, r) => s + r.saved, 0);
+    const totalSkipped = results.reduce((s, r) => s + r.skipped, 0);
+    const totalErrors = results.reduce((s, r) => s + r.errors, 0);
+
+    console.log(`[coupang-batch] Done: collected=${totalCollected}, saved=${totalSaved}, skipped=${totalSkipped}, errors=${totalErrors}`);
+
+    // 저장된 새 상품에 DNA 자동 생성 트리거 (dna_meta가 없는 것만)
+    if (totalSaved > 0) {
+      console.log(`[coupang-batch] Triggering DNA generation for new products...`);
+      try {
+        const dnaResponse = await fetch(`${supabaseUrl}/functions/v1/dna-batch`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${supabaseKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ batchSize: 200, merchantId: "coupang" }),
+        });
+        const dnaResult = await dnaResponse.json();
+        console.log(`[coupang-batch] DNA batch result:`, JSON.stringify(dnaResult).substring(0, 200));
+      } catch (dnaErr) {
+        console.warn(`[coupang-batch] DNA trigger failed (will run separately):`, dnaErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        summary: {
-          totalCollected,
-          totalSaved,
-          totalSkipped,
-          totalErrors,
-          timestamp: new Date().toISOString(),
-        },
+        summary: { totalCollected, totalSaved, totalSkipped, totalErrors, categoriesProcessed: results.length, timestamp: new Date().toISOString() },
         results,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (error: unknown) {
-    console.error("Batch error:", error);
+    console.error("[coupang-batch] Error:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
