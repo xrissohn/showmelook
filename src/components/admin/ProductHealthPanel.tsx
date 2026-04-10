@@ -269,7 +269,18 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
               새로고침
             </Button>
           </div>
-          <CardDescription>최근 20건의 헬스체크 실행 기록</CardDescription>
+          <div className="flex items-center gap-2 mt-2">
+            {(["all", "manual", "batch"] as const).map((f) => (
+              <Button
+                key={f}
+                variant={logFilter === f ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLogFilter(f)}
+              >
+                {f === "all" ? "전체" : f === "manual" ? "수동" : "자동"}
+              </Button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
           {logs.length > 0 ? (
