@@ -210,9 +210,9 @@ serve(async (req) => {
     // Use service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // 쿠팡 제휴 링크인지 확인 (이미 유효한 딥링크)
-    if (product_url.includes('link.coupang.com') || product_url.includes('coupa.ng')) {
-      console.log('[deeplink] Already a Coupang affiliate link, returning as-is');
+    // coupa.ng 단축 URL은 모바일 호환 → 그대로 반환
+    if (product_url.includes('coupa.ng')) {
+      console.log('[deeplink] Already a mobile-compatible Coupang short link');
       return new Response(
         JSON.stringify({
           success: true,
@@ -222,6 +222,83 @@ serve(async (req) => {
           affiliate_url: product_url,
           mobile_supported: true,
           source: 'coupang_direct'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // link.coupang.com/re/AFFSDP 형식은 모바일에서 동작하지 않음 → API로 재변환
+    if (product_url.includes('link.coupang.com')) {
+      console.log('[deeplink] Coupang AFFSDP link detected, re-converting for mobile compatibility');
+      
+      // AFFSDP URL에서 원본 상품 페이지 키 추출 시도
+      let targetUrl = product_url;
+      try {
+        const affUrl = new URL(product_url);
+        const pageKey = affUrl.searchParams.get('pageKey');
+        if (pageKey) {
+          targetUrl = `https://www.coupang.com/vp/products/${pageKey}`;
+          console.log('[deeplink] Extracted pageKey, using product URL:', targetUrl);
+        }
+      } catch {
+        console.log('[deeplink] Could not parse AFFSDP URL, using as-is');
+      }
+      
+      const trackingId = userId ? generateTrackingId(userId) : undefined;
+      const coupangResult = await convertCoupangToDeeplink(targetUrl, trackingId);
+      
+      if (coupangResult.success && coupangResult.shortenUrl) {
+        console.log('[deeplink] Re-converted to mobile-compatible URL:', coupangResult.shortenUrl);
+        
+        if (userId && trackingId) {
+          try {
+            await supabase
+              .from('purchase_intents')
+              .insert({
+                tracking_id: trackingId,
+                user_id: userId,
+                product_id: product_id || null,
+                merchant_id: 'coupang',
+                product_url: targetUrl,
+                product_name: product_name || null,
+                product_price: product_price || 0,
+                clicked_at: new Date().toISOString(),
+                status: 'pending',
+                confirmation_status: 'pending',
+              });
+          } catch (intentError) {
+            console.error('[deeplink] Failed to record purchase intent:', intentError);
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            merchant_id: 'coupang',
+            merchant_name: 'coupang',
+            original_url: product_url,
+            affiliate_url: coupangResult.shortenUrl,
+            landing_url: coupangResult.landingUrl,
+            tracking_id: trackingId,
+            mobile_supported: true,
+            source: 'coupang_partners_api_reconvert'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // API 재변환 실패 시 원본 반환 (PC에서는 동작하므로)
+      console.warn('[deeplink] Re-conversion failed, returning original AFFSDP URL');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          merchant_id: 'coupang',
+          merchant_name: 'coupang',
+          original_url: product_url,
+          affiliate_url: product_url,
+          mobile_supported: false,
+          source: 'coupang_direct_fallback',
+          warning: 'Mobile redirect may not work with this URL format'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
