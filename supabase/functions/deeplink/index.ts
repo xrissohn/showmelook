@@ -227,17 +227,20 @@ serve(async (req) => {
       );
     }
 
-    // link.coupang.com/re/AFFSDP 형식은 모바일에서 동작하지 않음 → API로 재변환
+    // link.coupang.com/re/AFFSDP 형식은 모바일에서 동작하지 않음 → landingUrl(AFFSDP) 사용 + 모바일 웹 URL 생성
     if (product_url.includes('link.coupang.com')) {
       console.log('[deeplink] Coupang AFFSDP link detected, re-converting for mobile compatibility');
       
       // AFFSDP URL에서 원본 상품 페이지 키 + itemId/vendorItemId 추출
       let targetUrl = product_url;
+      let pageKey: string | null = null;
+      let itemId: string | null = null;
+      let vendorItemId: string | null = null;
       try {
         const affUrl = new URL(product_url);
-        const pageKey = affUrl.searchParams.get('pageKey');
-        const itemId = affUrl.searchParams.get('itemId');
-        const vendorItemId = affUrl.searchParams.get('vendorItemId');
+        pageKey = affUrl.searchParams.get('pageKey');
+        itemId = affUrl.searchParams.get('itemId');
+        vendorItemId = affUrl.searchParams.get('vendorItemId');
         if (pageKey) {
           // itemId/vendorItemId를 포함해야 상세 페이지로 직접 이동
           const params = new URLSearchParams();
@@ -254,8 +257,23 @@ serve(async (req) => {
       const trackingId = userId ? generateTrackingId(userId) : undefined;
       const coupangResult = await convertCoupangToDeeplink(targetUrl, trackingId);
       
-      if (coupangResult.success && coupangResult.shortenUrl) {
-        console.log('[deeplink] Re-converted to mobile-compatible URL:', coupangResult.shortenUrl);
+      if (coupangResult.success && coupangResult.landingUrl) {
+        // 모바일 웹 URL 생성: m.coupang.com/vm/products/{pageKey}?itemId=...&vendorItemId=...
+        // 이 URL은 옵션이 미리 선택된 상태로 구매 섹션으로 바로 이동
+        let mobileWebUrl = coupangResult.landingUrl; // fallback to landingUrl (AFFSDP)
+        if (pageKey) {
+          const mobileParams = new URLSearchParams();
+          if (itemId) mobileParams.set('itemId', itemId);
+          if (vendorItemId) mobileParams.set('vendorItemId', vendorItemId);
+          mobileParams.set('sourceType', 'SDP');
+          mobileWebUrl = `https://m.coupang.com/vm/products/${pageKey}?${mobileParams.toString()}`;
+          console.log('[deeplink] Generated mobile web URL:', mobileWebUrl);
+        }
+        
+        // 최종 URL: 어필리에이트 추적을 위해 landingUrl(AFFSDP) 사용
+        // landingUrl에는 subId/traceid가 포함되어 있어 구매 추적 가능
+        const finalUrl = coupangResult.landingUrl;
+        console.log('[deeplink] Using landingUrl for affiliate tracking:', finalUrl);
         
         if (userId && trackingId) {
           try {
@@ -284,7 +302,8 @@ serve(async (req) => {
             merchant_id: 'coupang',
             merchant_name: 'coupang',
             original_url: product_url,
-            affiliate_url: coupangResult.shortenUrl,
+            affiliate_url: finalUrl,
+            mobile_web_url: mobileWebUrl,
             landing_url: coupangResult.landingUrl,
             tracking_id: trackingId,
             mobile_supported: true,
@@ -294,18 +313,29 @@ serve(async (req) => {
         );
       }
       
-      // API 재변환 실패 시 원본 반환 (PC에서는 동작하므로)
-      console.warn('[deeplink] Re-conversion failed, returning original AFFSDP URL');
+      // API 재변환 실패 시 모바일 웹 URL로 직접 이동 (어필리에이트 추적 없음)
+      let fallbackUrl = product_url;
+      if (pageKey) {
+        const mobileParams = new URLSearchParams();
+        if (itemId) mobileParams.set('itemId', itemId);
+        if (vendorItemId) mobileParams.set('vendorItemId', vendorItemId);
+        mobileParams.set('sourceType', 'SDP');
+        fallbackUrl = `https://m.coupang.com/vm/products/${pageKey}?${mobileParams.toString()}`;
+        console.log('[deeplink] API failed, using mobile web URL fallback:', fallbackUrl);
+      } else {
+        console.warn('[deeplink] Re-conversion failed, returning original AFFSDP URL');
+      }
+      
       return new Response(
         JSON.stringify({
           success: true,
           merchant_id: 'coupang',
           merchant_name: 'coupang',
           original_url: product_url,
-          affiliate_url: product_url,
-          mobile_supported: false,
-          source: 'coupang_direct_fallback',
-          warning: 'Mobile redirect may not work with this URL format'
+          affiliate_url: fallbackUrl,
+          mobile_supported: !!pageKey,
+          source: pageKey ? 'coupang_mobile_web_fallback' : 'coupang_direct_fallback',
+          warning: pageKey ? undefined : 'Mobile redirect may not work with this URL format'
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -320,8 +350,27 @@ serve(async (req) => {
       
       const coupangResult = await convertCoupangToDeeplink(product_url, trackingId);
       
-      if (coupangResult.success && coupangResult.shortenUrl) {
-        console.log('[deeplink] Coupang deeplink generated:', coupangResult.shortenUrl);
+      if (coupangResult.success && coupangResult.landingUrl) {
+        // landingUrl(AFFSDP) 사용하여 어필리에이트 추적 보장
+        const finalUrl = coupangResult.landingUrl;
+        console.log('[deeplink] Coupang deeplink generated (landingUrl):', finalUrl);
+        
+        // 모바일 웹 URL도 생성
+        let mobileWebUrl: string | undefined;
+        try {
+          const prodUrl = new URL(product_url);
+          const pathMatch = prodUrl.pathname.match(/\/vp\/products\/(\d+)/);
+          if (pathMatch) {
+            const pk = pathMatch[1];
+            const iid = prodUrl.searchParams.get('itemId');
+            const vid = prodUrl.searchParams.get('vendorItemId');
+            const mp = new URLSearchParams();
+            if (iid) mp.set('itemId', iid);
+            if (vid) mp.set('vendorItemId', vid);
+            mp.set('sourceType', 'SDP');
+            mobileWebUrl = `https://m.coupang.com/vm/products/${pk}?${mp.toString()}`;
+          }
+        } catch { /* ignore */ }
         
         // userId가 있으면 purchase_intents에 기록
         if (userId && trackingId) {
@@ -352,7 +401,8 @@ serve(async (req) => {
             merchant_id: 'coupang',
             merchant_name: 'coupang',
             original_url: product_url,
-            affiliate_url: coupangResult.shortenUrl,
+            affiliate_url: finalUrl,
+            mobile_web_url: mobileWebUrl,
             landing_url: coupangResult.landingUrl,
             tracking_id: trackingId,
             mobile_supported: true,
