@@ -1,52 +1,49 @@
 
 
-## 품절 상품 자동 감지 및 삭제 시스템 (Layer 2 + Layer 3)
+## 원인 분석 결과
 
-### 구현 범위
-- **Layer 2**: 구매 클릭 시 HTTP HEAD로 URL 유효성 검증 → 404/410이면 `products_cache`에서 삭제 + 사용자에게 안내
-- **Layer 3**: 매일 새벽 배치로 전체 상품 URL HEAD 검사 → 품절/단종 상품 자동 삭제
+### 문제 1: 쿠팡 모바일 구매 버튼 → 상세 페이지 구매 섹션으로 이동하지 않음
 
-### 변경 파일
-
-**1. 새 Edge Function: `supabase/functions/product-health-check/index.ts`**
-- **단건 모드** (`{ url, productId }`): 구매 클릭 시 호출. HEAD 요청으로 URL 확인 → 404/410/5xx이면 해당 상품을 `products_cache`에서 DELETE하고 `{ alive: false }` 반환
-- **배치 모드** (`{ batch: true }`): pg_cron에서 호출. `products_cache`에서 활성 상품 100개씩 HEAD 검사 → 죽은 URL의 상품 DELETE. 남은 상품이 있으면 자동 반복 (최대 50회, ~5,000개)
-- HEAD 요청 시 3초 타임아웃, 리다이렉트는 허용하되 최종 응답이 404/410이면 품절 판정
-
-**2. 프론트엔드 수정: `src/pages/StyleGenerator.tsx`**
-- `handlePurchase` 및 `handleProductPurchase` 함수에 구매 전 `product-health-check` 단건 호출 추가
-- `alive: false`이면 빈 창을 닫고, 토스트로 "해당 상품은 더 이상 판매되지 않습니다" 안내
-- 해당 상품을 현재 추천 결과에서 UI상으로도 즉시 제거 (상태에서 필터링)
-
-**3. pg_cron 스케줄 등록 (SQL insert)**
-- `product-health-batch`: 매일 04:00 KST(19:00 UTC) 실행
-- `product-health-check` 함수를 `{ "batch": true }` body로 호출
-
-**4. `supabase/config.toml` 업데이트**
-- `[functions.product-health-check]` verify_jwt = false 추가
-
-### 처리 흐름
-
-```text
-[Layer 2 - 클릭 시]
-구매 버튼 클릭 
-  → product-health-check({ url, productId }) 
-  → HEAD 요청 
-  → 404? → DELETE FROM products_cache → "품절" 토스트
-  → 200? → 딥링크 변환 → 구매 페이지 이동
-
-[Layer 3 - 배치]
-pg_cron 04:00 KST 
-  → product-health-check({ batch: true })
-  → SELECT 100개 (is_active = true)
-  → 각 URL HEAD 요청
-  → 404/410 → DELETE FROM products_cache
-  → 반복 (남은 상품 있으면 계속)
+**로그 분석:**
+```
+[deeplink] Re-converted to mobile-compatible URL: https://link.coupang.com/a/el6MNH
+[deeplink] Coupang API response: {"rCode":"0", "data":[{"shortenUrl":"https://link.coupang.com/a/el6MNH", ...}]}
 ```
 
-### 기술 세부사항
-- 품절 판정 기준: HTTP 404, 410, 연속 3회 타임아웃
-- DELETE 처리: `is_active = false`가 아닌 실제 DELETE로 상품 수에서 완전 제거
-- 배치 처리 시 동시 요청 10개씩 (Promise.allSettled)으로 Edge Function 타임아웃 방지
-- 쿠팡 상품은 URL 패턴이 다를 수 있으므로 리다이렉트 후 최종 상태코드로 판정
+**원인:** DB에 저장된 쿠팡 `product_url`이 `link.coupang.com/re/AFFSDP?...` 형식이고, deeplink 함수가 이를 `coupang.com/vp/products/{pageKey}?itemId=...&vendorItemId=...`로 복원 후 API를 호출하여 `link.coupang.com/a/...` 단축 URL을 생성한다. 하지만 이 단축 URL은 쿠팡 앱에서 **상품 상세 페이지 최상단**으로 이동하며, 특정 옵션(사이즈/색상)이 선택된 구매 섹션으로 바로 스크롤되지 않는다.
+
+**해결 방안:** 쿠팡 파트너스 API의 단축 URL은 구매 섹션 직접 이동을 지원하지 않으므로, 모바일 웹 브라우저에서 `m.coupang.com` URL로 직접 열리도록 대체 전략을 적용한다. `itemId`와 `vendorItemId`를 포함한 모바일 웹 URL(`https://m.coupang.com/vm/products/{pageKey}?itemId=...&vendorItemId=...`)을 생성하면 옵션이 미리 선택된 상태로 페이지가 열린다.
+
+### 문제 2: "쿠팡에서 추천해줘"라고 해도 다른 쇼핑몰 상품만 추천
+
+**로그 분석:**
+```
+[style-recommend] Request: "..."  ← 사용자 요청 텍스트
+[style-recommend] Selected IDs: 43f4aa7f..., fa16aba3..., 76763551..., 2f03e944...
+```
+→ 선택된 4개 상품 조회 결과: **wconcept 3개, hfashion 1개** — 쿠팡 0개.
+→ 로그에 "🏪 머천트/브랜드 선호 감지" 메시지가 **전혀 없음**.
+
+**원인:** `detectMerchantPreference` 함수 자체는 '쿠팡' 키워드를 올바르게 감지하지만, 감지 결과가 Stage 2 AI 프롬프트에 전달될 때 **비독점(isExclusive=false) 모드에서 단순 가점(+0.60)만 부여**한다. 그런데 쿠팡 제품은 전체 4,800여 개 중 261개(약 5.4%)에 불과하고, 대부분이 키친타월/장갑 등 비패션 아이템이다. 따라서 Stage 1 필터링(카테고리/시즌/성별)을 통과하는 쿠팡 패션 상품이 극소수여서 가점이 있어도 다른 머천트 상품에 밀린다. 또한 로그에 감지 메시지가 없으므로, 해당 요청의 `userRequest` 텍스트에 실제로 '쿠팡'이 포함되지 않았을 가능성도 있다.
+
+---
+
+## 수정 계획
+
+### 1. 쿠팡 모바일 딥링크 개선 (deeplink + style-recommend)
+- `convertCoupangToMobileUrl` 함수에서 API 단축 URL 대신 **모바일 웹 URL 우선 전략** 적용
+- `m.coupang.com/vm/products/{pageKey}?itemId={itemId}&vendorItemId={vendorItemId}&sourceType=SDP` 형식으로 생성
+- 어필리에이트 추적을 위해 API 호출은 유지하되, 최종 사용자에게는 `shortenUrl`이 아닌 `landingUrl`(AFFSDP 형식) 또는 모바일 웹 URL 사용
+- 테스트: 안드로이드/iOS 모바일에서 상품 옵션이 선택된 상태로 열리는지 확인
+
+### 2. 쿠팡 머천트 선호 감지 강화 (style-recommend)
+- 머천트 감지 로그를 **항상** 출력하도록 변경 (감지 실패 시에도 요청 텍스트와 함께 로그)
+- 쿠팡 감지 시 `isExclusive` 판단 로직 완화: "쿠팡에서"만으로도 독점으로 판단
+- 독점 필터 최소 상품 수 조건(현재 4개)을 2개로 완화
+- Stage 2 AI 프롬프트에서 머천트 선호 상품의 가점을 0.60 → 0.80으로 상향 (비독점 모드)
+- 쿠팡 패션 상품 비율이 낮은 경우에도 최소 1-2개는 포함되도록 강제 슬롯 확보 로직 추가
+
+### 수정 파일
+- `supabase/functions/deeplink/index.ts` — 모바일 URL 생성 전략 변경
+- `supabase/functions/style-recommend/index.ts` — 머천트 감지 강화 + 강제 슬롯 확보
 
