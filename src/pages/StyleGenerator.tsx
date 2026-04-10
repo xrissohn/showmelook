@@ -1502,6 +1502,24 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     setPurchasingProductId(product.id);
     
     try {
+      // Layer 2: URL 유효성 검증
+      const { data: healthData } = await supabase.functions.invoke('product-health-check', {
+        body: { url: product.product_url, productId: product.id },
+      });
+
+      if (healthData && !healthData.alive) {
+        // 품절 상품 → 창 닫기 + UI에서 제거
+        if (newWindow) newWindow.close();
+        setLookProducts(prev => prev.filter(p => p.id !== product.id));
+        toast({
+          title: '판매 종료',
+          description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+          variant: 'destructive',
+        });
+        setPurchasingProductId(null);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
         body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
@@ -3333,8 +3351,28 @@ const StyleGenerator = () => {
     };
     trackClick(product.id, feedbackContext, lastRecommendationId || undefined);
     
-    // affiliate_url이 이미 있으면 바로 이동
+    // affiliate_url이 이미 있으면 바로 이동 (health check 후)
     if (product.affiliate_url) {
+      // 빠른 health check
+      try {
+        const { data: healthData } = await supabase.functions.invoke('product-health-check', {
+          body: { url: product.product_url || product.affiliate_url, productId: product.id },
+        });
+        if (healthData && !healthData.alive) {
+          // 품절 → UI에서 제거
+          if (customResult) {
+            setCustomResult(prev => prev ? { ...prev, items: prev.items.filter(p => p.id !== product.id) } : null);
+          }
+          toast({
+            title: '판매 종료',
+            description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('[handlePurchase] Health check failed, proceeding:', e);
+      }
       console.log('[handlePurchase] Using cached affiliate_url:', product.affiliate_url);
       window.open(product.affiliate_url, '_blank', 'noopener,noreferrer');
       return;
@@ -3356,6 +3394,26 @@ const StyleGenerator = () => {
     console.log('[handlePurchase] Calling deeplink for:', product.product_url);
 
     try {
+      // Layer 2: URL 유효성 검증
+      const { data: healthData } = await supabase.functions.invoke('product-health-check', {
+        body: { url: product.product_url, productId: product.id },
+      });
+
+      if (healthData && !healthData.alive) {
+        if (newWindow) newWindow.close();
+        // 품절 → UI에서 제거
+        if (customResult) {
+          setCustomResult(prev => prev ? { ...prev, items: prev.items.filter(p => p.id !== product.id) } : null);
+        }
+        toast({
+          title: '판매 종료',
+          description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+          variant: 'destructive',
+        });
+        setPurchasingProductId(null);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
         body: { product_url: product.product_url, product_name: product.name, product_price: product.price },
