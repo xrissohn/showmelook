@@ -2636,7 +2636,13 @@ ${matchDetails.join('\n')}
           })
         );
         const starTag = isRequestedStyle ? '⭐필수' : '';
-        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}`;
+        // 🏪 사용자가 요청한 머천트/브랜드 상품에 🏷️ 표시
+        const isMerchantMatch = (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) && (
+          merchantPref.merchantIds.includes(p.merchant_id || '') ||
+          merchantPref.brandKeywords.some(bk => (p.brand || '').toLowerCase().includes(bk.toLowerCase()))
+        );
+        const merchantTag = isMerchantMatch ? '🏷️' : '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}${merchantTag ? '|' + merchantTag : ''}`;
       }).join('\n');
 
       // 1차: Primary 모델
@@ -2649,6 +2655,7 @@ ${matchDetails.join('\n')}
         ageGroupLabel,
         occasion,
         LOVABLE_API_KEY,
+        merchantPref,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
