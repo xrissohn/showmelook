@@ -88,6 +88,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
       setLastRunResult({ ...run });
 
       if (run.status === "completed") {
+        onStatsUpdate?.();
         toast({
           title: "헬스체크 완료",
           description: `${run.totalChecked}개 검사, ${run.totalDeleted}개 품절 삭제`,
