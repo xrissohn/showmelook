@@ -30,7 +30,11 @@ interface RunSummary {
   status: "idle" | "running" | "completed" | "error";
 }
 
-export function ProductHealthPanel() {
+interface ProductHealthPanelProps {
+  onStatsUpdate?: () => void;
+}
+
+export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
   const { toast } = useToast();
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [isRunning, setIsRunning] = useState(false);
