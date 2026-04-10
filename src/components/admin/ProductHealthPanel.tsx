@@ -40,6 +40,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<HealthCheckLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logFilter, setLogFilter] = useState<"all" | "manual" | "batch">("all");
 
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -268,10 +269,23 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
               새로고침
             </Button>
           </div>
-          <CardDescription>최근 20건의 헬스체크 실행 기록</CardDescription>
+          <div className="flex items-center gap-2 mt-2">
+            {(["all", "manual", "batch"] as const).map((f) => (
+              <Button
+                key={f}
+                variant={logFilter === f ? "default" : "outline"}
+                size="sm"
+                onClick={() => setLogFilter(f)}
+              >
+                {f === "all" ? "전체" : f === "manual" ? "수동" : "자동"}
+              </Button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
-          {logs.length > 0 ? (
+          {(() => {
+            const filteredLogs = logFilter === "all" ? logs : logs.filter(l => l.run_type === logFilter);
+            return filteredLogs.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
               <div className="max-h-96 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -286,7 +300,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
                     </tr>
                   </thead>
                   <tbody>
-                    {logs.map((log) => (
+                    {filteredLogs.map((log) => (
                       <tr key={log.id} className="border-t hover:bg-muted/50">
                         <td className="p-3 whitespace-nowrap">{formatDate(log.created_at)}</td>
                         <td className="p-3">
@@ -321,9 +335,10 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
           ) : (
             <div className="text-center py-6 text-muted-foreground">
               <History className="w-10 h-10 mx-auto mb-3 opacity-20" />
-              <p>아직 실행 이력이 없습니다.</p>
+              <p>{logFilter === "all" ? "아직 실행 이력이 없습니다." : `${logFilter === "manual" ? "수동" : "자동"} 실행 이력이 없습니다.`}</p>
             </div>
-          )}
+          );
+          })()}
         </CardContent>
       </Card>
     </div>
