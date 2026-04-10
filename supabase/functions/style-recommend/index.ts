@@ -2374,14 +2374,14 @@ serve(async (req) => {
       // 🏪 머천트/브랜드 선호 보너스 (사용자가 특정 쇼핑몰이나 브랜드를 요청한 경우)
       let merchantBonus = 0;
       if (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) {
-        // 머천트 매칭
+        // 머천트 매칭 - 비독점도 0.80으로 강화
         if (merchantPref.merchantIds.includes(p.merchant_id || '')) {
-          merchantBonus = merchantPref.isExclusive ? 0.80 : 0.60;
+          merchantBonus = merchantPref.isExclusive ? 1.00 : 0.80;
         }
         // 브랜드 매칭
         const pBrand = (p.brand || '').toLowerCase();
         if (merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()))) {
-          merchantBonus = Math.max(merchantBonus, merchantPref.isExclusive ? 0.80 : 0.60);
+          merchantBonus = Math.max(merchantBonus, merchantPref.isExclusive ? 1.00 : 0.80);
         }
       }
       
