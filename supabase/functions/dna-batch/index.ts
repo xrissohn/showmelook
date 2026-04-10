@@ -1181,11 +1181,13 @@ serve(async (req) => {
       }
 
       // Count remaining: products still with old dna_generated_at
-      const { count: remainingCount } = await supabase
+      let remainQuery = supabase
         .from('products_cache')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true)
         .or(`dna_generated_at.is.null,dna_generated_at.lt.${sessionStart}`);
+      if (merchantId) remainQuery = remainQuery.eq('merchant_id', merchantId);
+      const { count: remainingCount } = await remainQuery;
 
       const remaining = Math.max(0, (remainingCount || 0) - updatedCount);
 
