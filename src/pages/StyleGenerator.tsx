@@ -3156,6 +3156,16 @@ const StyleGenerator = () => {
       }
     }
 
+    // 모바일에서 쿠팡 상품이면 m.coupang.com URL로 변환
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile && (product.merchant_id === 'coupang' || affiliateUrl.includes('coupang.com'))) {
+      const mobileUrl = convertCoupangToMobileUrl(affiliateUrl) 
+        || (product.product_url ? convertCoupangToMobileUrl(product.product_url) : null);
+      if (mobileUrl) {
+        affiliateUrl = mobileUrl;
+      }
+    }
+
     window.open(affiliateUrl, '_blank');
   };
 
