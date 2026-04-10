@@ -32,7 +32,7 @@ async function checkUrl(url: string): Promise<{ alive: boolean; status: number }
       redirect: "follow",
     });
     clearTimeout(timeout);
-    const dead = [404, 410, 403].includes(res.status) || res.status >= 500;
+    const dead = [404, 410].includes(res.status) || res.status >= 500;
     return { alive: !dead, status: res.status };
   } catch (headErr) {
     clearTimeout(timeout);
@@ -50,7 +50,7 @@ async function checkUrl(url: string): Promise<{ alive: boolean; status: number }
       clearTimeout(timeout2);
       // Consume body to prevent leak
       await res.text();
-      const dead = [404, 410, 403].includes(res.status) || res.status >= 500;
+      const dead = [404, 410].includes(res.status) || res.status >= 500;
       return { alive: !dead, status: res.status };
     } catch {
       clearTimeout(timeout2);
