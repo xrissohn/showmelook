@@ -40,6 +40,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
   const [isRunning, setIsRunning] = useState(false);
   const [logs, setLogs] = useState<HealthCheckLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logFilter, setLogFilter] = useState<"all" | "manual" | "batch">("all");
 
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
