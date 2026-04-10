@@ -275,7 +275,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
               새로고침
             </Button>
           </div>
-          <div className="flex items-center gap-2 mt-2">
+           <div className="flex flex-wrap items-center gap-2 mt-2">
             {(["all", "manual", "batch"] as const).map((f) => (
               <Button
                 key={f}
@@ -286,6 +286,50 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
                 {f === "all" ? "전체" : f === "manual" ? "수동" : "자동"}
               </Button>
             ))}
+            <span className="text-muted-foreground text-sm mx-1">|</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn(!dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+                  {dateFrom ? format(dateFrom, "MM/dd") : "시작일"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  disabled={(d) => (dateTo ? d > dateTo : d > new Date())}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground text-sm">~</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn(!dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+                  {dateTo ? format(dateTo, "MM/dd") : "종료일"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  disabled={(d) => (dateFrom ? d < dateFrom : false) || d > new Date()}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
+                <X className="w-3.5 h-3.5 mr-1" />
+                초기화
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
