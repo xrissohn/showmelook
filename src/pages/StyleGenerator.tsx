@@ -3346,6 +3346,43 @@ const StyleGenerator = () => {
     });
   };
   // 딥링크 변환 후 구매 페이지로 이동하는 함수 - pre-open window to avoid popup blocking
+  // 쿠팡 AFFSDP URL에서 모바일 웹 URL을 클라이언트에서 직접 생성
+  const convertCoupangToMobileUrl = (url: string): string | null => {
+    try {
+      const urlObj = new URL(url);
+      // link.coupang.com/re/AFFSDP?...pageKey=XXX&itemId=YYY&vendorItemId=ZZZ 형태
+      if (urlObj.hostname === 'link.coupang.com' && url.includes('AFFSDP')) {
+        const pageKey = urlObj.searchParams.get('pageKey');
+        const itemId = urlObj.searchParams.get('itemId');
+        const vendorItemId = urlObj.searchParams.get('vendorItemId');
+        if (pageKey) {
+          let mobileUrl = `https://m.coupang.com/vm/products/${pageKey}`;
+          const params: string[] = [];
+          if (itemId) params.push(`itemId=${itemId}`);
+          if (vendorItemId) params.push(`vendorItemId=${vendorItemId}`);
+          params.push('sourceType=SDP');
+          mobileUrl += '?' + params.join('&');
+          return mobileUrl;
+        }
+      }
+      // coupang.com/vp/products/XXX 형태
+      const vpMatch = url.match(/coupang\.com\/vp\/products\/(\d+)/);
+      if (vpMatch) {
+        const pageKey = vpMatch[1];
+        const itemId = urlObj.searchParams.get('itemId');
+        const vendorItemId = urlObj.searchParams.get('vendorItemId');
+        let mobileUrl = `https://m.coupang.com/vm/products/${pageKey}`;
+        const params: string[] = [];
+        if (itemId) params.push(`itemId=${itemId}`);
+        if (vendorItemId) params.push(`vendorItemId=${vendorItemId}`);
+        params.push('sourceType=SDP');
+        mobileUrl += '?' + params.join('&');
+        return mobileUrl;
+      }
+    } catch { /* ignore */ }
+    return null;
+  };
+
   const handlePurchase = async (product: CachedProduct) => {
     // 클릭 피드백 수집
     const feedbackContext = {
@@ -3377,8 +3414,21 @@ const StyleGenerator = () => {
       } catch (e) {
         console.warn('[handlePurchase] Health check failed, proceeding:', e);
       }
-      console.log('[handlePurchase] Using cached affiliate_url:', product.affiliate_url);
-      window.open(product.affiliate_url, '_blank', 'noopener,noreferrer');
+      
+      // 모바일에서 쿠팡 상품이면 m.coupang.com URL로 변환하여 상세 페이지 구매 섹션으로 이동
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      let finalUrl = product.affiliate_url;
+      if (isMobile && (product.merchant_id === 'coupang' || product.affiliate_url.includes('coupang.com'))) {
+        const mobileUrl = convertCoupangToMobileUrl(product.affiliate_url) 
+          || (product.product_url ? convertCoupangToMobileUrl(product.product_url) : null);
+        if (mobileUrl) {
+          finalUrl = mobileUrl;
+          console.log('[handlePurchase] Converted to mobile Coupang URL:', mobileUrl);
+        }
+      }
+      
+      console.log('[handlePurchase] Using affiliate_url:', finalUrl, isMobile ? '(mobile)' : '(desktop)');
+      window.open(finalUrl, '_blank', 'noopener,noreferrer');
       return;
     }
 
