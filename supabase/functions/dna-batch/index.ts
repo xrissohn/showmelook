@@ -986,7 +986,7 @@ serve(async (req) => {
   }
 
   try {
-    const { batchSize = 50, scheduled = false, maxIterations = 10, forceRegenerate = false, productIds = [], subStyleOnly = false } = await req.json().catch(() => ({}));
+    const { batchSize = 50, scheduled = false, maxIterations = 10, forceRegenerate = false, productIds = [], subStyleOnly = false, merchantId = null } = await req.json().catch(() => ({}));
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -1007,7 +1007,7 @@ serve(async (req) => {
     }
 
     const effectiveBatchSize = Math.min(batchSize, 200);
-    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize}, force=${forceRegenerate})`);
+    console.log(`[dna-batch] DNA 2.0 생성 시작 (scheduled=${scheduled}, batchSize=${effectiveBatchSize}, force=${forceRegenerate}, merchantId=${merchantId})`);
 
     // 특정 productIds
     if (productIds && productIds.length > 0) {
@@ -1123,31 +1123,33 @@ serve(async (req) => {
 
     // forceRegenerate 모드
     if (forceRegenerate) {
-      // Use a session timestamp to track which products were already processed
-      // Products updated after this timestamp are considered "done" in this session
-      const sessionStart = new Date(Date.now() - 5000).toISOString(); // 5s buffer for clock skew
+      const sessionStart = new Date(Date.now() - 5000).toISOString();
 
-      // Count total first
-      const { count: totalCount } = await supabase
+      // Count total
+      let totalQuery = supabase
         .from('products_cache')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
+      if (merchantId) totalQuery = totalQuery.eq('merchant_id', merchantId);
+      const { count: totalCount } = await totalQuery;
 
-      // Fetch products NOT yet updated in this session (dna_generated_at < sessionStart or null)
-      const { data: allProducts, error: allError } = await supabase
+      // Fetch products NOT yet updated in this session
+      let fetchQuery = supabase
         .from('products_cache')
         .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
         .eq('is_active', true)
         .or(`dna_generated_at.is.null,dna_generated_at.lt.${sessionStart}`)
         .order('dna_generated_at', { ascending: true, nullsFirst: true })
         .limit(effectiveBatchSize);
+      if (merchantId) fetchQuery = fetchQuery.eq('merchant_id', merchantId);
+      const { data: allProducts, error: allError } = await fetchQuery;
 
       if (allError) throw new Error(`Failed to fetch products: ${allError.message}`);
 
       if (!allProducts || allProducts.length === 0) {
         return new Response(JSON.stringify({
           success: true,
-          message: '모든 상품 DNA 재생성 완료!',
+          message: merchantId ? `${merchantId} 상품 DNA 재생성 완료!` : '모든 상품 DNA 재생성 완료!',
           processed: 0,
           remaining: 0,
           total: totalCount || 0,
@@ -1179,11 +1181,13 @@ serve(async (req) => {
       }
 
       // Count remaining: products still with old dna_generated_at
-      const { count: remainingCount } = await supabase
+      let remainQuery = supabase
         .from('products_cache')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true)
         .or(`dna_generated_at.is.null,dna_generated_at.lt.${sessionStart}`);
+      if (merchantId) remainQuery = remainQuery.eq('merchant_id', merchantId);
+      const { count: remainingCount } = await remainQuery;
 
       const remaining = Math.max(0, (remainingCount || 0) - updatedCount);
 
@@ -1198,12 +1202,14 @@ serve(async (req) => {
     }
 
     // 기본 모드: dna_meta가 없는 상품만
-    const { data: products, error: fetchError } = await supabase
+    let defaultQuery = supabase
       .from('products_cache')
       .select('id, name, brand, category, sub_category, price, style_tags, gender, color')
       .eq('is_active', true)
       .is('dna_meta', null)
       .limit(effectiveBatchSize);
+    if (merchantId) defaultQuery = defaultQuery.eq('merchant_id', merchantId);
+    const { data: products, error: fetchError } = await defaultQuery;
 
     if (fetchError) throw new Error(`Failed to fetch products: ${fetchError.message}`);
 
