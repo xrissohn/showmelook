@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
+import { format, startOfDay, endOfDay } from "date-fns";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { 
   HeartPulse, Play, Loader2, CheckCircle, Trash2, RefreshCw, 
-  AlertTriangle, Clock, Shield, History
+  AlertTriangle, Clock, Shield, History, CalendarIcon, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +45,8 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
   const [logs, setLogs] = useState<HealthCheckLog[]>([]);
   const [logsLoading, setLogsLoading] = useState(false);
   const [logFilter, setLogFilter] = useState<"all" | "manual" | "batch">("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   const loadLogs = useCallback(async () => {
     setLogsLoading(true);
@@ -269,7 +275,7 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
               새로고침
             </Button>
           </div>
-          <div className="flex items-center gap-2 mt-2">
+           <div className="flex flex-wrap items-center gap-2 mt-2">
             {(["all", "manual", "batch"] as const).map((f) => (
               <Button
                 key={f}
@@ -280,11 +286,60 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
                 {f === "all" ? "전체" : f === "manual" ? "수동" : "자동"}
               </Button>
             ))}
+            <span className="text-muted-foreground text-sm mx-1">|</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn(!dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+                  {dateFrom ? format(dateFrom, "MM/dd") : "시작일"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateFrom}
+                  onSelect={setDateFrom}
+                  disabled={(d) => (dateTo ? d > dateTo : d > new Date())}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground text-sm">~</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn(!dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+                  {dateTo ? format(dateTo, "MM/dd") : "종료일"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateTo}
+                  onSelect={setDateTo}
+                  disabled={(d) => (dateFrom ? d < dateFrom : false) || d > new Date()}
+                  initialFocus
+                  className="p-3 pointer-events-auto"
+                />
+              </PopoverContent>
+            </Popover>
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
+                <X className="w-3.5 h-3.5 mr-1" />
+                초기화
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           {(() => {
-            const filteredLogs = logFilter === "all" ? logs : logs.filter(l => l.run_type === logFilter);
+            const filteredLogs = logs.filter(l => {
+              if (logFilter !== "all" && l.run_type !== logFilter) return false;
+              if (dateFrom && new Date(l.created_at) < startOfDay(dateFrom)) return false;
+              if (dateTo && new Date(l.created_at) > endOfDay(dateTo)) return false;
+              return true;
+            });
             return filteredLogs.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
               <div className="max-h-96 overflow-y-auto">
