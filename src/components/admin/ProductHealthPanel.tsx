@@ -30,7 +30,11 @@ interface RunSummary {
   status: "idle" | "running" | "completed" | "error";
 }
 
-export function ProductHealthPanel() {
+interface ProductHealthPanelProps {
+  onStatsUpdate?: () => void;
+}
+
+export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
   const { toast } = useToast();
   const [summary, setSummary] = useState<RunSummary | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -84,6 +88,7 @@ export function ProductHealthPanel() {
       setLastRunResult({ ...run });
 
       if (run.status === "completed") {
+        onStatsUpdate?.();
         toast({
           title: "헬스체크 완료",
           description: `${run.totalChecked}개 검사, ${run.totalDeleted}개 품절 삭제`,

@@ -2703,7 +2703,7 @@ const Admin = () => {
 
           {/* Product Health Check Tab */}
           <TabsContent value="health-check" className="space-y-4">
-            <ProductHealthPanel />
+            <ProductHealthPanel onStatsUpdate={() => { loadProductStats(); loadDnaStats(); }} />
           </TabsContent>
 
           {/* User Analytics Tab */}
