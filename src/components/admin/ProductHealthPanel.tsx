@@ -334,7 +334,12 @@ export function ProductHealthPanel({ onStatsUpdate }: ProductHealthPanelProps) {
         </CardHeader>
         <CardContent>
           {(() => {
-            const filteredLogs = logFilter === "all" ? logs : logs.filter(l => l.run_type === logFilter);
+            const filteredLogs = logs.filter(l => {
+              if (logFilter !== "all" && l.run_type !== logFilter) return false;
+              if (dateFrom && new Date(l.created_at) < startOfDay(dateFrom)) return false;
+              if (dateTo && new Date(l.created_at) > endOfDay(dateTo)) return false;
+              return true;
+            });
             return filteredLogs.length > 0 ? (
             <div className="border rounded-lg overflow-hidden">
               <div className="max-h-96 overflow-y-auto">
