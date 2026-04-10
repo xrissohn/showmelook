@@ -1316,6 +1316,72 @@ JSON 응답:
   }
 }
 
+// ============= 🏪 머천트/브랜드 선호 감지 =============
+
+interface MerchantPreference {
+  merchantIds: string[];   // 감지된 merchant_id 목록
+  brandKeywords: string[]; // 감지된 브랜드 키워드
+  isExclusive: boolean;    // "~에서만", "~만" 등 독점 요청 여부
+}
+
+function detectMerchantPreference(userRequest: string): MerchantPreference {
+  const requestLower = userRequest.toLowerCase();
+  
+  // 머천트(쇼핑몰) 매핑: 사용자가 말할 수 있는 키워드 → merchant_id
+  const MERCHANT_KEYWORD_MAP: Record<string, string[]> = {
+    'coupang': ['쿠팡', 'coupang', '쿠팡에서', '쿠팡에', '쿠팡의'],
+    'wconcept': ['더블유컨셉', 'w컨셉', 'wconcept', 'w concept', '더블유 컨셉'],
+    'hfashion': ['한섬', 'h패션', 'hfashion', 'h fashion', '에이치패션', 'hfashionmall'],
+    'arket': ['아르켓', 'arket'],
+    'stories': ['앤아더스토리즈', '앤 아더 스토리즈', '& other stories', 'other stories', 'stories'],
+    'stockx': ['스탁엑스', 'stockx', 'stock x'],
+    'posty': ['포스티', 'posty'],
+    'jestina': ['제이에스티나', 'jestina', 'j.estina'],
+    'paulsmith': ['폴스미스', 'paul smith', 'paulsmith'],
+    'benetton1': ['베네통', 'benetton', '유나이티드 컬러즈'],
+  };
+  
+  const detectedMerchants: string[] = [];
+  const detectedBrands: string[] = [];
+  
+  for (const [merchantId, keywords] of Object.entries(MERCHANT_KEYWORD_MAP)) {
+    if (keywords.some(kw => requestLower.includes(kw))) {
+      detectedMerchants.push(merchantId);
+      detectedBrands.push(keywords[0]); // 첫 번째 키워드(한국어)를 브랜드명으로
+    }
+  }
+  
+  // 브랜드명 직접 감지 (나이키, 아디다스 등)
+  const BRAND_KEYWORD_MAP: Record<string, string[]> = {
+    '나이키': ['나이키', 'nike'],
+    '아디다스': ['아디다스', 'adidas'],
+    '뉴발란스': ['뉴발란스', 'new balance', '뉴발'],
+    '노스페이스': ['노스페이스', 'north face', 'the north face'],
+    '유니클로': ['유니클로', 'uniqlo'],
+    '자라': ['자라', 'zara'],
+    '토미힐피거': ['토미힐피거', 'tommy hilfiger', '토미 힐피거', '타미힐피거'],
+    '토미진스': ['토미진스', 'tommy jeans', '토미 진스'],
+    '캉골': ['캉골', 'kangol'],
+    '폴로': ['폴로', 'polo', 'ralph lauren'],
+  };
+  
+  for (const [brand, keywords] of Object.entries(BRAND_KEYWORD_MAP)) {
+    if (keywords.some(kw => requestLower.includes(kw))) {
+      detectedBrands.push(brand);
+    }
+  }
+  
+  // 독점 요청 감지 ("~에서만", "~만 사용", "~만으로", "~제품만", "~상품만")
+  const exclusivePatterns = ['에서만', '만 사용', '만으로', '제품만', '상품만', '것만', '에서 파는', '에서 팔고', '에서 판매'];
+  const isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
+  
+  if (detectedMerchants.length > 0 || detectedBrands.length > 0) {
+    console.log(`[style-recommend] 🏪 머천트/브랜드 선호 감지: merchants=${detectedMerchants.join(',')}, brands=${detectedBrands.join(',')}, exclusive=${isExclusive}`);
+  }
+  
+  return { merchantIds: detectedMerchants, brandKeywords: detectedBrands, isExclusive };
+}
+
 // ============= 규칙 기반 Fallback 조건 생성 =============
 
 function generateRuleBasedConditions(
