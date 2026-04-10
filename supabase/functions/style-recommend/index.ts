@@ -1316,6 +1316,72 @@ JSON 응답:
   }
 }
 
+// ============= 🏪 머천트/브랜드 선호 감지 =============
+
+interface MerchantPreference {
+  merchantIds: string[];   // 감지된 merchant_id 목록
+  brandKeywords: string[]; // 감지된 브랜드 키워드
+  isExclusive: boolean;    // "~에서만", "~만" 등 독점 요청 여부
+}
+
+function detectMerchantPreference(userRequest: string): MerchantPreference {
+  const requestLower = userRequest.toLowerCase();
+  
+  // 머천트(쇼핑몰) 매핑: 사용자가 말할 수 있는 키워드 → merchant_id
+  const MERCHANT_KEYWORD_MAP: Record<string, string[]> = {
+    'coupang': ['쿠팡', 'coupang', '쿠팡에서', '쿠팡에', '쿠팡의'],
+    'wconcept': ['더블유컨셉', 'w컨셉', 'wconcept', 'w concept', '더블유 컨셉'],
+    'hfashion': ['한섬', 'h패션', 'hfashion', 'h fashion', '에이치패션', 'hfashionmall'],
+    'arket': ['아르켓', 'arket'],
+    'stories': ['앤아더스토리즈', '앤 아더 스토리즈', '& other stories', 'other stories', 'stories'],
+    'stockx': ['스탁엑스', 'stockx', 'stock x'],
+    'posty': ['포스티', 'posty'],
+    'jestina': ['제이에스티나', 'jestina', 'j.estina'],
+    'paulsmith': ['폴스미스', 'paul smith', 'paulsmith'],
+    'benetton1': ['베네통', 'benetton', '유나이티드 컬러즈'],
+  };
+  
+  const detectedMerchants: string[] = [];
+  const detectedBrands: string[] = [];
+  
+  for (const [merchantId, keywords] of Object.entries(MERCHANT_KEYWORD_MAP)) {
+    if (keywords.some(kw => requestLower.includes(kw))) {
+      detectedMerchants.push(merchantId);
+      detectedBrands.push(keywords[0]); // 첫 번째 키워드(한국어)를 브랜드명으로
+    }
+  }
+  
+  // 브랜드명 직접 감지 (나이키, 아디다스 등)
+  const BRAND_KEYWORD_MAP: Record<string, string[]> = {
+    '나이키': ['나이키', 'nike'],
+    '아디다스': ['아디다스', 'adidas'],
+    '뉴발란스': ['뉴발란스', 'new balance', '뉴발'],
+    '노스페이스': ['노스페이스', 'north face', 'the north face'],
+    '유니클로': ['유니클로', 'uniqlo'],
+    '자라': ['자라', 'zara'],
+    '토미힐피거': ['토미힐피거', 'tommy hilfiger', '토미 힐피거', '타미힐피거'],
+    '토미진스': ['토미진스', 'tommy jeans', '토미 진스'],
+    '캉골': ['캉골', 'kangol'],
+    '폴로': ['폴로', 'polo', 'ralph lauren'],
+  };
+  
+  for (const [brand, keywords] of Object.entries(BRAND_KEYWORD_MAP)) {
+    if (keywords.some(kw => requestLower.includes(kw))) {
+      detectedBrands.push(brand);
+    }
+  }
+  
+  // 독점 요청 감지 ("~에서만", "~만 사용", "~만으로", "~제품만", "~상품만")
+  const exclusivePatterns = ['에서만', '만 사용', '만으로', '제품만', '상품만', '것만', '에서 파는', '에서 팔고', '에서 판매'];
+  const isExclusive = exclusivePatterns.some(p => requestLower.includes(p)) && (detectedMerchants.length > 0 || detectedBrands.length > 0);
+  
+  if (detectedMerchants.length > 0 || detectedBrands.length > 0) {
+    console.log(`[style-recommend] 🏪 머천트/브랜드 선호 감지: merchants=${detectedMerchants.join(',')}, brands=${detectedBrands.join(',')}, exclusive=${isExclusive}`);
+  }
+  
+  return { merchantIds: detectedMerchants, brandKeywords: detectedBrands, isExclusive };
+}
+
 // ============= 규칙 기반 Fallback 조건 생성 =============
 
 function generateRuleBasedConditions(
@@ -1420,6 +1486,7 @@ async function runStage2WithModel(
   ageGroupLabel: string,
   occasion: string,
   LOVABLE_API_KEY: string,
+  merchantPref?: MerchantPreference,
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
@@ -1506,7 +1573,11 @@ TPO 분석 결과 (Stage 1):
 - 컨셉: ${stage1Result.concepts.join(', ')}
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
-${dressForceNote}${subStyleForceNote}
+${dressForceNote}${subStyleForceNote}${merchantPref && (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) 
+    ? `\n🏪🏪🏪 **[중요] 사용자가 "${merchantPref.brandKeywords.join(', ')}" 관련 상품을 요청했습니다!**
+- 🏷️ 태그가 붙은 상품은 사용자가 요청한 쇼핑몰/브랜드의 상품입니다.
+- ${merchantPref.isExclusive ? '**반드시 🏷️ 태그 상품만 선택하세요! 다른 쇼핑몰 상품 선택 금지!**' : '🏷️ 태그 상품을 우선적으로 선택하되, 해당 쇼핑몰에 적합한 상품이 부족하면 다른 상품도 조합 가능합니다.'}` 
+    : ''}
 
 🚨 **사용 가능한 브랜드 목록 (이 브랜드들만 언급하세요!):**
 ${availableBrands.join(', ')}
@@ -1815,6 +1886,7 @@ serve(async (req) => {
     const requestedConcepts = extractConcepts(userRequest);
     const requestedOccasions = extractOccasions(userRequest);
     const requestedSubStyles = extractSubStyleKeywords(userRequest);
+    const merchantPref = detectMerchantPreference(userRequest);
     const occasion = requestedOccasions[0] || '캐주얼';
     const cacheKey = generateCacheKey(gender, userRequest.substring(0, 20), occasion, budget);
     const patternKey = generatePatternKey(gender, occasion, requestedConcepts, budget);
@@ -1826,6 +1898,9 @@ serve(async (req) => {
     console.log(`[style-recommend] Gender: ${gender}, Budget: ${budget}, Pattern: ${patternKey}`);
     if (requestedSubStyles.length > 0) {
       console.log(`[style-recommend] 🎯 요청된 세부 스타일: ${requestedSubStyles.join(', ')}`);
+    }
+    if (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) {
+      console.log(`[style-recommend] 🏪 머천트/브랜드 선호: ${merchantPref.merchantIds.join(',') || merchantPref.brandKeywords.join(',')}, exclusive=${merchantPref.isExclusive}`);
     }
     console.log(`[style-recommend] Models: Stage1=${stage1Primary}/${stage1Backup}, Stage2=${stage2Primary}/${stage2Backup}`);
     if (hasPhotoAnalysis) {
@@ -2084,6 +2159,34 @@ serve(async (req) => {
     });
     console.log(`[style-recommend] After season filter: ${allProducts.length}`);
     
+    // ============= 🏪 머천트/브랜드 필터링 =============
+    if (merchantPref.isExclusive && merchantPref.merchantIds.length > 0) {
+      // 독점 요청: 해당 머천트 상품만 남기기
+      const merchantFiltered = allProducts.filter(p => 
+        merchantPref.merchantIds.includes(p.merchant_id || '')
+      );
+      if (merchantFiltered.length >= 4) {
+        allProducts = merchantFiltered;
+        console.log(`[style-recommend] 🏪 Exclusive merchant filter applied: ${allProducts.length} products from ${merchantPref.merchantIds.join(',')}`);
+      } else {
+        console.log(`[style-recommend] 🏪 Exclusive filter too strict (${merchantFiltered.length}), keeping all products with boost`);
+      }
+    }
+    
+    if (merchantPref.isExclusive && merchantPref.brandKeywords.length > 0 && merchantPref.merchantIds.length === 0) {
+      // 브랜드 독점 요청: 해당 브랜드 상품만 남기기
+      const brandFiltered = allProducts.filter(p => {
+        const pBrand = (p.brand || '').toLowerCase();
+        return merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()));
+      });
+      if (brandFiltered.length >= 4) {
+        allProducts = brandFiltered;
+        console.log(`[style-recommend] 🏪 Exclusive brand filter applied: ${allProducts.length} products`);
+      } else {
+        console.log(`[style-recommend] 🏪 Brand filter too strict (${brandFiltered.length}), keeping all with boost`);
+      }
+    }
+    
     // ============= Stage 1 결과 기반 필터링 =============
     
     // Formality 필터
@@ -2212,12 +2315,26 @@ serve(async (req) => {
       // 🎯 세부 스타일 매칭 보너스 (사용자가 후드집업 등 특정 스타일을 요청한 경우)
       const subStyleBonus = calculateSubStyleBonus(p);
       
+      // 🏪 머천트/브랜드 선호 보너스 (사용자가 특정 쇼핑몰이나 브랜드를 요청한 경우)
+      let merchantBonus = 0;
+      if (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) {
+        // 머천트 매칭
+        if (merchantPref.merchantIds.includes(p.merchant_id || '')) {
+          merchantBonus = merchantPref.isExclusive ? 0.80 : 0.60;
+        }
+        // 브랜드 매칭
+        const pBrand = (p.brand || '').toLowerCase();
+        if (merchantPref.brandKeywords.some(bk => pBrand.includes(bk.toLowerCase()))) {
+          merchantBonus = Math.max(merchantBonus, merchantPref.isExclusive ? 0.80 : 0.60);
+        }
+      }
+      
       // 🎲 강화된 랜덤 다양성 (0~0.25 범위) - 매 요청마다 완전히 다른 결과
       const idHash = p.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const diversityBonus = ((idHash ^ randomSeed) % 1000) / 4000;  // 0 ~ 0.25 범위
       
-      // 가중치 조정: sub_style 매칭이 있으면 가장 높은 가중치
-      const totalScore = subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
+      // 가중치 조정: merchant/sub_style 매칭이 있으면 가장 높은 가중치
+      const totalScore = merchantBonus + subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
       
       return { product: p, score: totalScore };
     });
@@ -2519,7 +2636,13 @@ ${matchDetails.join('\n')}
           })
         );
         const starTag = isRequestedStyle ? '⭐필수' : '';
-        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}`;
+        // 🏪 사용자가 요청한 머천트/브랜드 상품에 🏷️ 표시
+        const isMerchantMatch = (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) && (
+          merchantPref.merchantIds.includes(p.merchant_id || '') ||
+          merchantPref.brandKeywords.some(bk => (p.brand || '').toLowerCase().includes(bk.toLowerCase()))
+        );
+        const merchantTag = isMerchantMatch ? '🏷️' : '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}${merchantTag ? '|' + merchantTag : ''}`;
       }).join('\n');
 
       // 1차: Primary 모델
@@ -2532,6 +2655,7 @@ ${matchDetails.join('\n')}
         ageGroupLabel,
         occasion,
         LOVABLE_API_KEY,
+        merchantPref,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -2547,6 +2671,7 @@ ${matchDetails.join('\n')}
           ageGroupLabel,
           occasion,
           LOVABLE_API_KEY,
+          merchantPref,
         );
         
         if (ragResponse) {
