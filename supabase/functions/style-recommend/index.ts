@@ -2422,7 +2422,31 @@ serve(async (req) => {
     };
     console.log(`[style-recommend] Products: 상의=${productsByPriority['상의']?.length}, 하의=${productsByPriority['하의']?.length}, 아우터=${productsByPriority['아우터']?.length}, 기타=${productsByPriority['기타']?.length}`);
 
-    const topScoredProducts = scoredProducts.slice(0, 50);
+    // 🏪 강제 슬롯 확보: 머천트 선호가 감지되었지만 상위 50개에 해당 머천트 상품이 없으면 강제 삽입
+    let topScoredProducts = scoredProducts.slice(0, 50);
+    if (merchantPref.merchantIds.length > 0) {
+      const merchantInTop = topScoredProducts.filter(s => 
+        merchantPref.merchantIds.includes(s.product.merchant_id || '')
+      );
+      if (merchantInTop.length < 2) {
+        // 전체 스코어 목록에서 해당 머천트 상품을 찾아 강제 삽입
+        const merchantProducts = scoredProducts.filter(s => 
+          merchantPref.merchantIds.includes(s.product.merchant_id || '') &&
+          !topScoredProducts.some(t => t.product.id === s.product.id)
+        ).slice(0, 2 - merchantInTop.length);
+        
+        if (merchantProducts.length > 0) {
+          // 하위 슬롯을 교체
+          topScoredProducts = [
+            ...topScoredProducts.slice(0, 50 - merchantProducts.length),
+            ...merchantProducts
+          ];
+          console.log(`[style-recommend] 🏪 Forced ${merchantProducts.length} merchant products into top-50 (had ${merchantInTop.length})`);
+        }
+      } else {
+        console.log(`[style-recommend] 🏪 Merchant products in top-50: ${merchantInTop.length}`);
+      }
+    }
     const uniqueProducts = topScoredProducts.map(s => s.product);
     
     if (uniqueProducts.length === 0) {
