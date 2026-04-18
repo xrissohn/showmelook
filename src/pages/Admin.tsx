@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse, Crosshair
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +33,7 @@ import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
 import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 import { DNAClassificationManager } from "@/components/admin/DNAClassificationManager";
 import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
+import { TagCorrectionAnalytics } from "@/components/admin/TagCorrectionAnalytics";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1420,6 +1421,10 @@ const Admin = () => {
                 <TrendingUp className="w-4 h-4 mr-1" />
                 유저 통계
               </TabsTrigger>
+              <TabsTrigger value="tag-corrections" className="flex-shrink-0 whitespace-nowrap">
+                <Crosshair className="w-4 h-4 mr-1" />
+                태그 보정 분석
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -2709,6 +2714,11 @@ const Admin = () => {
           {/* User Analytics Tab */}
           <TabsContent value="user-analytics" className="space-y-4">
             <UserAnalyticsPanel />
+          </TabsContent>
+
+          {/* Tag Correction Analytics Tab */}
+          <TabsContent value="tag-corrections" className="space-y-4">
+            <TagCorrectionAnalytics />
           </TabsContent>
 
         </Tabs>
