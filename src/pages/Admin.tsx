@@ -2716,6 +2716,11 @@ const Admin = () => {
             <UserAnalyticsPanel />
           </TabsContent>
 
+          {/* Tag Correction Analytics Tab */}
+          <TabsContent value="tag-corrections" className="space-y-4">
+            <TagCorrectionAnalytics />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
