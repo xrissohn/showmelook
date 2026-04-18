@@ -4526,6 +4526,7 @@ const StyleGenerator = () => {
           // 생성 시점 tag_positions 포함
           const generationTagPositions = genData.tagPositions || null;
           console.log('[StyleGenerator] Tag positions from generation:', generationTagPositions?.length || 0);
+          setGeneratedTagPositions(generationTagPositions);
           
           const { data: insertedLook, error: insertError } = await supabase.from('generated_looks').insert({
             user_id: user.id,
@@ -4780,6 +4781,7 @@ const StyleGenerator = () => {
           // 생성 시점 tag_positions 포함
           const generationTagPositions2 = data.tagPositions || null;
           console.log('[generateStyle] Tag positions from generation:', generationTagPositions2?.length || 0);
+          setGeneratedTagPositions(generationTagPositions2);
           
           const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
@@ -6005,8 +6007,11 @@ const StyleGenerator = () => {
                         image_url: p.image_url,
                         product_url: p.product_url,
                         category: p.category,
+                        sub_category: (p as any).sub_category ?? null,
+                        merchant_id: (p as any).merchant_id ?? null,
                         affiliate_url: p.affiliate_url,
                       }))}
+                      cachedTagPositions={generatedTagPositions || undefined}
                       onProductPurchase={(product) => handlePurchase(product as CachedProduct)}
                       onProductAddToCart={(product) => addCachedProductToCart(product as CachedProduct)}
                       onProductLike={(product) => toggleLike(product as CachedProduct)}
