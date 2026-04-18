@@ -923,6 +923,8 @@ interface GeneratedStyleImageProduct {
   image_url: string | null;
   product_url: string;
   category: string;
+  sub_category?: string | null;
+  merchant_id?: string | null;
   affiliate_url?: string;
 }
 
@@ -6105,6 +6107,7 @@ const StyleGenerator = () => {
                         setGeneratedImage('');
                         setGeneratedLookId(null);
                         setGeneratedLookIsPublic(false);
+                        setGeneratedTagPositions(null);
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
