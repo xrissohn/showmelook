@@ -105,9 +105,8 @@ function inferCategory(name: string, catName: string): { category: string; subCa
   // 일반 액세서리
   if (/목걸이|귀걸이|반지|팔찌|시계|주얼리|모자|캡|벨트|선글라스|스카프|머플러/.test(n)) return { category: "액세서리", subCategory: "액세서리" };
   
-  // 카테고리 이름으로 최종 추론
-  if (cn.includes('여성') || cn.includes('남성')) return { category: "상의", subCategory: "기타 상의" };
-  
+  // 화이트리스트는 통과했지만 카테고리가 매칭 안 되는 경우 → 안전하게 거부 (오분류 방지)
+  console.log(`[inferCategory] 카테고리 매칭 실패, 거부: ${name.substring(0, 50)}`);
   return null;
 }
 
