@@ -423,7 +423,13 @@ async function processJob(
 
     await updateJobStatus(supabase, job.id, 'generating_image', 90);
 
-    // Step 3: Save to generated_looks
+    // Capture generation-time tag positions for accurate product tag overlays
+    const tagPositions = Array.isArray(genData.tagPositions) ? genData.tagPositions : null;
+    if (tagPositions) {
+      console.log(`[process-queue] Job ${job.id}: captured ${tagPositions.length} tag positions`);
+    }
+
+    // Step 3: Save to generated_looks (including tag_positions for gallery rendering)
     const { data: insertedLook, error: insertError } = await supabase
       .from('generated_looks')
       .insert({
@@ -432,6 +438,7 @@ async function processJob(
         prompt_used: recData.look.styleConcept || styleDesc,
         product_ids: productsWithDetails.map((p: any) => p.id),
         style_reasoning: recData.look.styleReasoning || null,
+        tag_positions: tagPositions,
       })
       .select('id')
       .single();
@@ -440,13 +447,14 @@ async function processJob(
       console.error('[process-queue] Failed to save look:', insertError);
     }
 
-    // Complete!
+    // Complete! Include tagPositions so the frontend can render tags immediately on the first screen
     await updateJobStatus(supabase, job.id, 'completed', 100, {
       result_url: genData.imageUrl,
       result_payload: {
         lookId: insertedLook?.id,
         look: recData.look,
         imageUrl: genData.imageUrl,
+        tagPositions,
       },
     });
 
