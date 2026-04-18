@@ -923,6 +923,8 @@ interface GeneratedStyleImageProduct {
   image_url: string | null;
   product_url: string;
   category: string;
+  sub_category?: string | null;
+  merchant_id?: string | null;
   affiliate_url?: string;
 }
 
@@ -2672,6 +2674,7 @@ const StyleGenerator = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedLookId, setGeneratedLookId] = useState<string | null>(null);
   const [generatedLookIsPublic, setGeneratedLookIsPublic] = useState(false);
+  const [generatedTagPositions, setGeneratedTagPositions] = useState<any[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
@@ -4525,6 +4528,7 @@ const StyleGenerator = () => {
           // 생성 시점 tag_positions 포함
           const generationTagPositions = genData.tagPositions || null;
           console.log('[StyleGenerator] Tag positions from generation:', generationTagPositions?.length || 0);
+          setGeneratedTagPositions(generationTagPositions);
           
           const { data: insertedLook, error: insertError } = await supabase.from('generated_looks').insert({
             user_id: user.id,
@@ -4779,6 +4783,7 @@ const StyleGenerator = () => {
           // 생성 시점 tag_positions 포함
           const generationTagPositions2 = data.tagPositions || null;
           console.log('[generateStyle] Tag positions from generation:', generationTagPositions2?.length || 0);
+          setGeneratedTagPositions(generationTagPositions2);
           
           const { data: insertedLook } = await supabase.from('generated_looks').insert({
             user_id: user.id,
@@ -6004,8 +6009,11 @@ const StyleGenerator = () => {
                         image_url: p.image_url,
                         product_url: p.product_url,
                         category: p.category,
+                        sub_category: (p as any).sub_category ?? null,
+                        merchant_id: (p as any).merchant_id ?? null,
                         affiliate_url: p.affiliate_url,
                       }))}
+                      cachedTagPositions={generatedTagPositions || undefined}
                       onProductPurchase={(product) => handlePurchase(product as CachedProduct)}
                       onProductAddToCart={(product) => addCachedProductToCart(product as CachedProduct)}
                       onProductLike={(product) => toggleLike(product as CachedProduct)}
@@ -6099,6 +6107,7 @@ const StyleGenerator = () => {
                         setGeneratedImage('');
                         setGeneratedLookId(null);
                         setGeneratedLookIsPublic(false);
+                        setGeneratedTagPositions(null);
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
