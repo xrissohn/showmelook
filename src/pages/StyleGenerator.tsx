@@ -2672,6 +2672,7 @@ const StyleGenerator = () => {
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedLookId, setGeneratedLookId] = useState<string | null>(null);
   const [generatedLookIsPublic, setGeneratedLookIsPublic] = useState(false);
+  const [generatedTagPositions, setGeneratedTagPositions] = useState<any[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const resultRef = useRef<HTMLDivElement>(null);
   const [myLooks, setMyLooks] = useState<GeneratedLook[]>([]);
