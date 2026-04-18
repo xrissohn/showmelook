@@ -1421,6 +1421,10 @@ const Admin = () => {
                 <TrendingUp className="w-4 h-4 mr-1" />
                 유저 통계
               </TabsTrigger>
+              <TabsTrigger value="tag-corrections" className="flex-shrink-0 whitespace-nowrap">
+                <Crosshair className="w-4 h-4 mr-1" />
+                태그 보정 분석
+              </TabsTrigger>
             </TabsList>
           </div>
 
