@@ -33,6 +33,7 @@ import { BrightDataPanel } from "@/components/admin/BrightDataPanel";
 import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 import { DNAClassificationManager } from "@/components/admin/DNAClassificationManager";
 import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
+import { TagCorrectionAnalytics } from "@/components/admin/TagCorrectionAnalytics";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
