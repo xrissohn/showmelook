@@ -57,40 +57,59 @@ interface DNAMeta {
   pair_slots: string[];
 }
 
-function inferCategory(name: string): { category: string; subCategory: string } {
-  const lowerName = name.toLowerCase();
+// 비패션 차단 + 패션 화이트리스트 (coupang-batch와 동기화)
+const NON_FASHION_BLOCK_LIST_TEST = /충전기|케이블|배터리|이어폰|헤드폰|전자|가전|화장품|영양제|비타민|식품|음료|커피|차\b|라면|과자|반려동물|장난감|세제|휴지|치약|샴푸|마스크(?!.*방한)|운동기구|캠핑|텐트|공구|페인트|문구|악기|화분|식물|세척천|클리너|광택제|변색제거|클리닝|리무버|수세미|식기|그릇|머그|텀블러|보온병|냄비|프라이팬|키친타올|일회용|디퓨저|캔들|우유|두유|어묵|식초|아메리카노|식빵|설탕|소금|밀가루|식자재|식재료|시리얼|꿀\b|잼\b|훈제|다짐육|냉장|냉동|상추|시금치|버섯|당근|오이|무\b|호박|배추|감자|쌀\b|토마토|아보카도|두부|복사용지|샘물|생수|마그네슘|종근당|박토킬|악취|발냄새|무좀|즙\b|캐리어|여행가방|기내용.*캐리어|하드.*캐리어|장우산|3단.*우산|자동.*우산|비닐우산|우산|우비|판초우의|레인코트|골프우산|제골기|슈트리|발볼확장|수선패드|뒤꿈치|옷걸이|버블건|신주머니|보조가방|짐색|머리핀|토슈즈|신발주머니|복주머니|용돈주머니|짜파게티|너구리|소스|육수|콜라|사이다|펩시|아몬드.*음료|아몬드브리즈|니트릴장갑|위생장갑/i;
+
+const FASHION_WHITELIST_TEST = /티셔츠|셔츠|블라우스|니트(?!릴)|스웨터|가디건|맨투맨|후드(?!.*우산)|후디|폴로|나시|민소매|반팔|긴팔|t-shirt|tee\b|바지(?!걸이)|팬츠|청바지|데님|슬랙스|조거|레깅스|반바지|숏팬츠|숏츠|치마|스커트|원피스|드레스(?!하우스|싱)|자켓|재킷|블레이저|코트(?!\.|로|니스)|패딩|점퍼|야상|무스탕|바람막이|집업|아노락|플리스(?!.*그릇|.*용기)|운동화|스니커즈|로퍼|구두|부츠|샌들|슬리퍼|아쿠아슈즈|크록스|컨버스|어그|첼시|sneaker|loafer|sandal|boots|shoes|나이키|아디다스|뉴발란스|푸마|반스|아식스|호카|살로몬|백팩|토트백|숄더백|크로스백|클러치|에코백|메신저백|힙색|장갑|글러브(?!.*야구|.*골프)|넥워머|바라클라바|귀마개|이어머프|방한.*마스크|버킷햇|볼캡|비니|페도라|모자(?!걸이)|두건|헤어밴드|선캡|벨트(?!.*수선|.*공구)|선글라스|스카프|머플러|목걸이|귀걸이|반지|팔찌|시계|주얼리|jacket|blazer|coat|hoodie|knit|sweater|jeans|denim|pants|shorts|skirt|dress|bag/i;
+
+function isFashionProductTest(name: string): boolean {
+  if (NON_FASHION_BLOCK_LIST_TEST.test(name)) return false;
+  if (!FASHION_WHITELIST_TEST.test(name)) return false;
+  return true;
+}
+
+function inferCategory(name: string): { category: string; subCategory: string } | null {
+  if (!isFashionProductTest(name)) return null;
   
-  if (/자켓|재킷|블레이저|코트|패딩|점퍼|야상|무스탕|바람막이|집업/.test(name)) {
+  if (/자켓|재킷|블레이저|코트(?!\.|로|니스)|패딩|점퍼|야상|무스탕|바람막이|집업/.test(name)) {
     if (/패딩|다운/.test(name)) return { category: "아우터", subCategory: "패딩" };
-    if (/코트/.test(name)) return { category: "아우터", subCategory: "코트" };
+    if (/코트(?!\.|로|니스)/.test(name)) return { category: "아우터", subCategory: "코트" };
     return { category: "아우터", subCategory: "자켓" };
   }
-  if (/티셔츠|티|맨투맨|후드|스웨트|니트|가디건|셔츠|블라우스/.test(name)) {
+  if (/티셔츠|^티 |맨투맨|후드(?!.*우산)|스웨트|니트(?!릴)|가디건|셔츠|블라우스|폴로|나시|민소매/.test(name)) {
     if (/맨투맨|스웨트/.test(name)) return { category: "상의", subCategory: "맨투맨" };
     if (/후드/.test(name)) return { category: "상의", subCategory: "후드" };
-    if (/니트/.test(name)) return { category: "상의", subCategory: "니트" };
+    if (/니트|스웨터/.test(name)) return { category: "상의", subCategory: "니트" };
+    if (/가디건/.test(name)) return { category: "아우터", subCategory: "가디건" };
     if (/셔츠|블라우스/.test(name)) return { category: "상의", subCategory: "셔츠" };
     return { category: "상의", subCategory: "티셔츠" };
   }
-  if (/팬츠|바지|진|청바지|데님|슬랙스|조거|트레이닝|레깅스|반바지|숏/.test(name)) {
+  if (/팬츠|바지(?!걸이)|진|청바지|데님|슬랙스|조거|트레이닝|레깅스|반바지|숏/.test(name)) {
     if (/청바지|데님|진/.test(name)) return { category: "하의", subCategory: "데님" };
     if (/슬랙스/.test(name)) return { category: "하의", subCategory: "슬랙스" };
     return { category: "하의", subCategory: "팬츠" };
   }
-  if (/원피스|드레스/.test(name)) {
+  if (/원피스|드레스(?!하우스|싱)/.test(name)) {
     return { category: "원피스", subCategory: "원피스" };
   }
   if (/스커트|치마/.test(name)) {
     return { category: "하의", subCategory: "스커트" };
   }
-  if (/신발|스니커즈|운동화|구두|로퍼|부츠|샌들|슬리퍼/.test(name)) {
+  if (/장갑|글러브(?!.*야구)/.test(name)) return { category: "액세서리", subCategory: "장갑" };
+  if (/바라클라바|넥워머|넥게이터|목토시/.test(name)) return { category: "액세서리", subCategory: "넥워머" };
+  if (/귀마개|귀달이|이어밴드|이어머프/.test(name)) return { category: "액세서리", subCategory: "귀마개" };
+  if (/방한.*마스크/.test(name)) return { category: "액세서리", subCategory: "방한마스크" };
+  if (/스니커즈|운동화|구두|로퍼|부츠|샌들|슬리퍼|아쿠아슈즈/.test(name)) {
     return { category: "신발", subCategory: "신발" };
   }
   if (/가방|백|토트|숄더|크로스|클러치|백팩/.test(name)) {
     return { category: "가방", subCategory: "가방" };
   }
+  if (/모자|캡|벨트(?!.*수선)|선글라스|스카프|머플러|목걸이|귀걸이|반지|팔찌|시계/.test(name)) {
+    return { category: "액세서리", subCategory: "액세서리" };
+  }
   
-  return { category: "기타", subCategory: "기타" };
+  return null;
 }
 
 function generateDNA(product: {
