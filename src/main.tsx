@@ -28,6 +28,26 @@ if (document.readyState === 'complete') {
 
 createRoot(document.getElementById("root")!).render(<App />);
 
+// Auto-recover from stale chunk references (after redeploys)
+// When a dynamic import fails because the old chunk no longer exists,
+// unregister the service worker and reload once to fetch the fresh index.html.
+window.addEventListener('error', (event) => {
+  const message = event?.message || '';
+  if (message.includes('Failed to fetch dynamically imported module') || message.includes('Importing a module script failed')) {
+    const reloadKey = '__chunk_reload_attempted__';
+    if (!sessionStorage.getItem(reloadKey)) {
+      sessionStorage.setItem(reloadKey, '1');
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          Promise.all(regs.map((r) => r.unregister())).finally(() => window.location.reload());
+        }).catch(() => window.location.reload());
+      } else {
+        window.location.reload();
+      }
+    }
+  }
+});
+
 // Register service worker after initial render (non-blocking)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
