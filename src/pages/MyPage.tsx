@@ -19,7 +19,7 @@ import { PLAN_CONFIG } from "@/lib/planConfig";
 import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
 import { TierHistorySection } from "@/components/mypage/TierHistorySection";
-import { TIER_CONFIG, TierType } from "@/lib/tierConfig";
+import { TIER_CONFIG, TierType, getTierName } from "@/lib/tierConfig";
 import { SEOHead } from "@/components/SEOHead";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { 
@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MyPage = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
@@ -68,34 +68,37 @@ const MyPage = () => {
   useEffect(() => {
     if (purchaseStats.recentTierChange) {
       const { previousTier, newTier, changeReason } = purchaseStats.recentTierChange;
-      const prevConfig = TIER_CONFIG[previousTier];
-      const newConfig = TIER_CONFIG[newTier];
-      
+      const prevName = getTierName(previousTier, language);
+      const newName = getTierName(newTier, language);
+
       if (changeReason === 'purchase' || changeReason === 'admin') {
         toast({
-          title: `🎉 ${newConfig.nameKo} ${t('mypage.tierUpgrade')}`,
-          description: `${prevConfig.nameKo} → ${newConfig.nameKo} ${t('mypage.tierUpgradeDesc')}`,
+          title: `🎉 ${newName} ${t('mypage.tierUpgrade')}`,
+          description: `${prevName} → ${newName} ${t('mypage.tierUpgradeDesc')}`,
           duration: 5000,
         });
       } else if (changeReason === 'refund') {
         toast({
           title: t('mypage.tierDowngrade'),
-          description: `${prevConfig.nameKo} → ${newConfig.nameKo} ${t('mypage.tierDowngradeDesc')}`,
+          description: `${prevName} → ${newName} ${t('mypage.tierDowngradeDesc')}`,
           variant: "destructive",
           duration: 5000,
         });
       }
-      
+
       purchaseStats.clearRecentTierChange();
     }
-  }, [purchaseStats.recentTierChange, purchaseStats.clearRecentTierChange, toast, t]);
+  }, [purchaseStats.recentTierChange, purchaseStats.clearRecentTierChange, toast, t, language]);
 
   const formatPrice = (price: number) => {
+    if (language === 'en') {
+      return `₩${new Intl.NumberFormat('en-US').format(price)}`;
+    }
     return new Intl.NumberFormat('ko-KR').format(price) + t('common.won');
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ko-KR', {
+    return new Date(dateString).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -407,7 +410,7 @@ const MyPage = () => {
                                 {formatDate(rec.created_at)} · {rec.gender === 'female' ? t('profileSetup.genderOptions.female') : t('profileSetup.genderOptions.male')}
                               </p>
                               <p className="text-sm font-medium text-primary mt-1">
-                                {formatPrice(rec.total_price)} ({rec.items.length} items)
+                                {formatPrice(rec.total_price)} ({rec.items.length} {t('mypage.items')})
                               </p>
                               {rec.style_reasoning && (
                                 <p className="text-xs text-muted-foreground mt-2 line-clamp-2">💡 {rec.style_reasoning}</p>
@@ -486,7 +489,12 @@ const MyPage = () => {
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground font-korean">
-                      {userProfile?.gender && <span>{userProfile.gender}</span>}
+                      {userProfile?.gender && <span>{
+                        userProfile.gender === 'male' || userProfile.gender === '남성' ? t('profileSetup.genderOptions.male') :
+                        userProfile.gender === 'female' || userProfile.gender === '여성' ? t('profileSetup.genderOptions.female') :
+                        userProfile.gender === 'unisex' || userProfile.gender === '유니섹스' ? t('profileSetup.genderOptions.unisex') :
+                        userProfile.gender
+                      }</span>}
                       {userProfile?.height && <span> · {userProfile.height}cm</span>}
                       {userProfile?.weight && <span> · {userProfile.weight}kg</span>}
                       {userProfile?.body_type && <span> · {

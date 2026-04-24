@@ -17,59 +17,61 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Users, Pencil, Trash2, Camera, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FamilyProfileManagerProps {
   userId: string;
   maxProfiles?: number;
 }
 
-const relationships = [
-  { value: '뮤즈', label: '뮤즈', emoji: '✨' },
-  { value: '파트너', label: '파트너', emoji: '💫' },
-  { value: '베스티', label: '베스티', emoji: '👯' },
-  { value: '스타일 메이트', label: '스타일 메이트', emoji: '🔥' },
-  { value: '패밀리', label: '패밀리', emoji: '🏠' },
-];
-
-const genders = [
-  { value: '남성', label: '남성', emoji: '👨' },
-  { value: '여성', label: '여성', emoji: '👩' },
-  { value: '유니섹스', label: '유니섹스', emoji: '🧑' },
-  { value: '선택안함', label: '선택 안함', emoji: '🔒' },
-];
-
-const bodyTypes = [
-  { value: 'slim', label: '마른 체형' },
-  { value: 'average', label: '보통 체형' },
-  { value: 'muscular', label: '근육질' },
-  { value: 'curvy', label: '볼륨 체형' },
-];
-
-const ageGroupOptions = [
-  { value: 'child', label: '아동 (12세 이하)' },
-  { value: 'teen', label: '10대' },
-  { value: '20s', label: '20대' },
-  { value: '30s', label: '30대' },
-  { value: '40s', label: '40대' },
-  { value: '50s', label: '50대' },
-  { value: '60plus', label: '60대 이상' },
-];
-
-const styleOptions = [
-  { value: 'casual', label: '캐주얼' },
-  { value: 'minimal', label: '미니멀' },
-  { value: 'street', label: '스트릿' },
-  { value: 'sporty', label: '스포티' },
-  { value: 'classic', label: '클래식' },
-  { value: 'romantic', label: '로맨틱' },
-  { value: 'modern', label: '모던' },
-  { value: 'vintage', label: '빈티지' },
-];
-
 export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileManagerProps) => {
   const { profiles, isLoading, canAddMore, currentCount, addProfile, updateProfile, deleteProfile, refetch } = useFamilyProfiles(userId, maxProfiles);
   const { toast } = useToast();
-  
+  const { t } = useLanguage();
+
+  const relationships = [
+    { value: '뮤즈', label: t('familyProfile.relationships.muse'), emoji: '✨' },
+    { value: '파트너', label: t('familyProfile.relationships.partner'), emoji: '💫' },
+    { value: '베스티', label: t('familyProfile.relationships.bestie'), emoji: '👯' },
+    { value: '스타일 메이트', label: t('familyProfile.relationships.styleMate'), emoji: '🔥' },
+    { value: '패밀리', label: t('familyProfile.relationships.family'), emoji: '🏠' },
+  ];
+
+  const genders = [
+    { value: '남성', label: t('familyProfile.genders.male'), emoji: '👨' },
+    { value: '여성', label: t('familyProfile.genders.female'), emoji: '👩' },
+    { value: '유니섹스', label: t('familyProfile.genders.unisex'), emoji: '🧑' },
+    { value: '선택안함', label: t('familyProfile.genders.preferNotToSay'), emoji: '🔒' },
+  ];
+
+  const bodyTypes = [
+    { value: 'slim', label: t('profileSetup.bodyTypes.slim') },
+    { value: 'average', label: t('profileSetup.bodyTypes.average') },
+    { value: 'muscular', label: t('profileSetup.bodyTypes.muscular') },
+    { value: 'curvy', label: t('profileSetup.bodyTypes.curvy') },
+  ];
+
+  const ageGroupOptions = [
+    { value: 'child', label: t('profileSetup.ageGroups.child') },
+    { value: 'teen', label: t('profileSetup.ageGroups.teen') },
+    { value: '20s', label: t('profileSetup.ageGroups.twenties') },
+    { value: '30s', label: t('profileSetup.ageGroups.thirties') },
+    { value: '40s', label: t('profileSetup.ageGroups.forties') },
+    { value: '50s', label: t('profileSetup.ageGroups.fifties') },
+    { value: '60plus', label: t('profileSetup.ageGroups.sixtyPlus') },
+  ];
+
+  const styleOptions = [
+    { value: 'casual', label: t('profileSetup.styles.casual') },
+    { value: 'minimal', label: t('profileSetup.styles.minimal') },
+    { value: 'street', label: t('profileSetup.styles.street') },
+    { value: 'sporty', label: t('profileSetup.styles.sporty') },
+    { value: 'classic', label: t('profileSetup.styles.classic') },
+    { value: 'romantic', label: 'Romantic' },
+    { value: 'modern', label: 'Modern' },
+    { value: 'vintage', label: 'Vintage' },
+  ];
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -122,7 +124,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
-        title: '이미지 파일만 업로드 가능해요',
+        title: t('familyProfile.onlyImage'),
         variant: 'destructive',
       });
       return;
@@ -131,7 +133,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: '파일 크기는 5MB 이하여야 해요',
+        title: t('familyProfile.maxFileSize'),
         variant: 'destructive',
       });
       return;
@@ -175,7 +177,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     // 🔥 필수 필드 검증: 이름, 성별, 연령대
     if (!formData.full_name.trim()) {
       toast({
-        title: '이름을 입력해주세요',
+        title: t('familyProfile.enterName'),
         variant: 'destructive',
       });
       return;
@@ -183,8 +185,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     
     if (!formData.gender) {
       toast({
-        title: '성별을 선택해주세요',
-        description: '정확한 스타일 추천을 위해 필요해요.',
+        title: t('familyProfile.selectGender'),
+        description: t('familyProfile.selectGenderDesc'),
         variant: 'destructive',
       });
       return;
@@ -192,8 +194,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     
     if (!formData.age_group) {
       toast({
-        title: '연령대를 선택해주세요',
-        description: '연령에 맞는 스타일을 추천해드려요.',
+        title: t('familyProfile.selectAge'),
+        description: t('familyProfile.selectAgeDesc'),
         variant: 'destructive',
       });
       return;
@@ -233,7 +235,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
   const handleEditAvatarUpload = async (profileId: string, file: File) => {
     if (!file.type.startsWith('image/')) {
       toast({
-        title: '이미지 파일만 업로드 가능해요',
+        title: t('familyProfile.onlyImage'),
         variant: 'destructive',
       });
       return;
@@ -241,7 +243,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: '파일 크기는 5MB 이하여야 해요',
+        title: t('familyProfile.maxFileSize'),
         variant: 'destructive',
       });
       return;
@@ -265,16 +267,16 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
       await updateProfile(profileId, { avatar_url: filePath });
       
       toast({
-        title: '사진 업로드 완료',
-        description: '프로필 사진이 업데이트되었어요.',
+        title: t('familyProfile.photoUpdated'),
+        description: t('familyProfile.photoUpdatedDesc'),
       });
 
       refetch();
     } catch (error) {
       console.error('Avatar upload error:', error);
       toast({
-        title: '사진 업로드 실패',
-        description: '다시 시도해주세요.',
+        title: t('familyProfile.photoUploadFailed'),
+        description: t('familyProfile.tryAgain'),
         variant: 'destructive',
       });
     } finally {
@@ -303,7 +305,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
   };
 
   const handleDelete = async (profileId: string) => {
-    if (!confirm('정말 삭제하시겠어요?')) return;
+    if (!confirm(t('familyProfile.confirmDelete'))) return;
     await deleteProfile(profileId);
   };
 
@@ -384,14 +386,14 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            <CardTitle className="font-korean text-base">추가 모델</CardTitle>
+            <CardTitle className="font-korean text-base">{t('familyProfile.additionalModels')}</CardTitle>
           </div>
           <Badge variant="secondary">
-            {currentCount}/{maxProfiles}명
+            {currentCount}/{maxProfiles}
           </Badge>
         </div>
         <CardDescription className="font-korean">
-          소중한 사람을 위한 스타일도 함께 만들어보세요
+          {t('familyProfile.addModelsDesc')}
         </CardDescription>
       </CardHeader>
       
@@ -443,7 +445,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               {!profile.avatar_url && (
                 <div className="flex items-center gap-1 mt-1 text-xs text-amber-600 dark:text-amber-400">
                   <AlertCircle className="w-3 h-3" />
-                  <span className="font-korean">얼굴 합성에는 사진이 필요해요</span>
+                  <span className="font-korean">{t('familyProfile.needPhoto')}</span>
                 </div>
               )}
             </div>
@@ -471,8 +473,8 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
         {profiles.length === 0 && (
           <div className="text-center py-8 text-muted-foreground">
             <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p className="font-korean">아직 등록된 모델이 없어요</p>
-            <p className="text-sm font-korean">소중한 사람을 위한 스타일도 만들어보세요!</p>
+            <p className="font-korean">{t('familyProfile.noModels')}</p>
+            <p className="text-sm font-korean">{t('familyProfile.noModelsDesc')}</p>
           </div>
         )}
 
@@ -485,15 +487,15 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               disabled={!canAddMore}
             >
               <Plus className="w-4 h-4 mr-2" />
-              {canAddMore ? '모델 추가하기' : `최대 ${maxProfiles}명까지 추가 가능`}
+              {canAddMore ? t('familyProfile.addModel') : t('familyProfile.maxReached').replace('{n}', String(maxProfiles))}
             </Button>
           </DialogTrigger>
           
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-korean">모델 추가</DialogTitle>
+              <DialogTitle className="font-korean">{t('familyProfile.addTitle')}</DialogTitle>
               <DialogDescription className="font-korean">
-                스타일을 만들어줄 분의 정보를 입력해주세요
+                {t('familyProfile.addDesc')}
               </DialogDescription>
             </DialogHeader>
             
@@ -525,28 +527,28 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   onChange={handleFileSelect}
                 />
                 <p className="text-xs text-muted-foreground font-korean text-center">
-                  프로필 사진을 등록하면 얼굴 합성이 가능해요
+                  {t('familyProfile.avatarHint')}
                 </p>
               </div>
 
               <div>
-                <Label className="font-korean">이름 *</Label>
+                <Label className="font-korean">{t('familyProfile.name')} *</Label>
                 <Input
                   value={formData.full_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                  placeholder="이름을 입력하세요"
+                  placeholder={t('familyProfile.namePlaceholder')}
                   className="mt-1"
                 />
               </div>
               
               <div>
-                <Label className="font-korean">관계</Label>
+                <Label className="font-korean">{t('familyProfile.relationship')}</Label>
                 <Select
                   value={formData.relationship}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, relationship: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="관계 선택" />
+                    <SelectValue placeholder={t('familyProfile.relationshipSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {relationships.map((r) => (
@@ -559,13 +561,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
               
               <div>
-                <Label className="font-korean">성별 <span className="text-destructive">*</span></Label>
+                <Label className="font-korean">{t('familyProfile.gender')} <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.gender}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="성별 선택" />
+                    <SelectValue placeholder={t('familyProfile.genderSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {genders.map((g) => (
@@ -579,7 +581,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="font-korean">키 (cm)</Label>
+                  <Label className="font-korean">{t('familyProfile.height')}</Label>
                   <Input
                     type="number"
                     value={formData.height || ''}
@@ -589,7 +591,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   />
                 </div>
                 <div>
-                  <Label className="font-korean">몸무게 (kg)</Label>
+                  <Label className="font-korean">{t('familyProfile.weight')}</Label>
                   <Input
                     type="number"
                     value={formData.weight || ''}
@@ -601,13 +603,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
               
               <div>
-                <Label className="font-korean">체형</Label>
+                <Label className="font-korean">{t('familyProfile.bodyType')}</Label>
                 <Select
                   value={formData.body_type}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, body_type: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="체형 선택" />
+                    <SelectValue placeholder={t('familyProfile.bodyTypeSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {bodyTypes.map((b) => (
@@ -620,13 +622,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
 
               <div>
-                <Label className="font-korean">연령대 <span className="text-destructive">*</span></Label>
+                <Label className="font-korean">{t('familyProfile.ageGroup')} <span className="text-destructive">*</span></Label>
                 <Select
                   value={formData.age_group}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, age_group: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="연령대 선택" />
+                    <SelectValue placeholder={t('familyProfile.ageGroupSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {ageGroupOptions.map((a) => (
@@ -639,7 +641,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
 
               <div>
-                <Label className="font-korean">선호 스타일</Label>
+                <Label className="font-korean">{t('familyProfile.stylePref')}</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {styleOptions.map((style) => (
                     <button
@@ -668,7 +670,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   }}
                   disabled={isUploading}
                 >
-                  취소
+                  {t('familyProfile.cancel')}
                 </Button>
                 <Button
                   variant="hero"
@@ -679,10 +681,10 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   {isUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      업로드 중...
+                      {t('familyProfile.uploading')}
                     </>
                   ) : (
-                    '추가하기'
+                    t('familyProfile.add')
                   )}
                 </Button>
               </div>
@@ -694,9 +696,9 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
         <Dialog open={!!editingProfile} onOpenChange={(open) => !open && setEditingProfile(null)}>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="font-korean">프로필 수정</DialogTitle>
+              <DialogTitle className="font-korean">{t('familyProfile.editTitle')}</DialogTitle>
               <DialogDescription className="font-korean">
-                프로필 정보를 수정해주세요
+                {t('familyProfile.editDesc')}
               </DialogDescription>
             </DialogHeader>
             
@@ -728,28 +730,28 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   onChange={handleFileSelect}
                 />
                 <p className="text-xs text-muted-foreground font-korean text-center">
-                  프로필 사진을 등록하면 얼굴 합성이 가능해요
+                  {t('familyProfile.avatarHint')}
                 </p>
               </div>
 
               <div>
-                <Label className="font-korean">이름 *</Label>
+                <Label className="font-korean">{t('familyProfile.name')} *</Label>
                 <Input
                   value={formData.full_name}
                   onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
-                  placeholder="이름을 입력하세요"
+                  placeholder={t('familyProfile.namePlaceholder')}
                   className="mt-1"
                 />
               </div>
               
               <div>
-                <Label className="font-korean">관계</Label>
+                <Label className="font-korean">{t('familyProfile.relationship')}</Label>
                 <Select
                   value={formData.relationship}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, relationship: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="관계 선택" />
+                    <SelectValue placeholder={t('familyProfile.relationshipSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {relationships.map((r) => (
@@ -762,13 +764,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
               
               <div>
-                <Label className="font-korean">성별</Label>
+                <Label className="font-korean">{t('familyProfile.gender')}</Label>
                 <Select
                   value={formData.gender}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="성별 선택" />
+                    <SelectValue placeholder={t('familyProfile.genderSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {genders.map((g) => (
@@ -782,7 +784,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="font-korean">키 (cm)</Label>
+                  <Label className="font-korean">{t('familyProfile.height')}</Label>
                   <Input
                     type="number"
                     value={formData.height || ''}
@@ -792,7 +794,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   />
                 </div>
                 <div>
-                  <Label className="font-korean">몸무게 (kg)</Label>
+                  <Label className="font-korean">{t('familyProfile.weight')}</Label>
                   <Input
                     type="number"
                     value={formData.weight || ''}
@@ -804,13 +806,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
               
               <div>
-                <Label className="font-korean">체형</Label>
+                <Label className="font-korean">{t('familyProfile.bodyType')}</Label>
                 <Select
                   value={formData.body_type}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, body_type: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="체형 선택" />
+                    <SelectValue placeholder={t('familyProfile.bodyTypeSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {bodyTypes.map((b) => (
@@ -823,13 +825,13 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
 
               <div>
-                <Label className="font-korean">연령대</Label>
+                <Label className="font-korean">{t('familyProfile.ageGroup')}</Label>
                 <Select
                   value={formData.age_group}
                   onValueChange={(value) => setFormData(prev => ({ ...prev, age_group: value }))}
                 >
                   <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="연령대 선택" />
+                    <SelectValue placeholder={t('familyProfile.ageGroupSelect')} />
                   </SelectTrigger>
                   <SelectContent>
                     {ageGroupOptions.map((a) => (
@@ -842,7 +844,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
               </div>
 
               <div>
-                <Label className="font-korean">선호 스타일</Label>
+                <Label className="font-korean">{t('familyProfile.stylePref')}</Label>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {styleOptions.map((style) => (
                     <button
@@ -871,7 +873,7 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   }}
                   disabled={isUploading}
                 >
-                  취소
+                  {t('familyProfile.cancel')}
                 </Button>
                 <Button
                   variant="hero"
@@ -882,10 +884,10 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                   {isUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      업로드 중...
+                      {t('familyProfile.uploading')}
                     </>
                   ) : (
-                    '저장하기'
+                    t('familyProfile.save')
                   )}
                 </Button>
               </div>

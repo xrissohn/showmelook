@@ -195,6 +195,30 @@ export const formatAmountKo = (amount: number): string => {
   return `${amount.toLocaleString()}원`;
 };
 
+// 금액 포맷팅 (영어)
+export const formatAmountEn = (amount: number): string => {
+  if (amount >= 1000000) {
+    const m = amount / 1000000;
+    return `₩${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}M`;
+  }
+  if (amount >= 1000) {
+    const k = amount / 1000;
+    return `₩${k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)}K`;
+  }
+  return `₩${amount.toLocaleString()}`;
+};
+
+// 언어별 금액 포맷팅
+export const formatAmount = (amount: number, language: 'ko' | 'en'): string => {
+  return language === 'en' ? formatAmountEn(amount) : formatAmountKo(amount);
+};
+
+// 등급명 (언어별)
+export const getTierName = (tier: TierType, language: 'ko' | 'en'): string => {
+  const config = TIER_CONFIG[tier];
+  return language === 'en' ? config.name : config.nameKo;
+};
+
 // 등급별 혜택 요약 (업그레이드 모달용)
 export const getTierBenefitsSummary = (tier: TierType): string[] => {
   switch (tier) {
