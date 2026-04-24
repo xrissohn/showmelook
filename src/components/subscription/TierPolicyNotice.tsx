@@ -5,16 +5,19 @@
 
 import { Info, AlertTriangle, Clock, ArrowDownUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TierPolicyNoticeProps {
   variant?: 'default' | 'compact' | 'detailed';
   className?: string;
 }
 
-export const TierPolicyNotice = ({ 
-  variant = 'default', 
-  className 
+export const TierPolicyNotice = ({
+  variant = 'default',
+  className,
 }: TierPolicyNoticeProps) => {
+  const { t } = useLanguage();
+
   if (variant === 'compact') {
     return (
       <div className={cn(
@@ -22,9 +25,7 @@ export const TierPolicyNotice = ({
         className
       )}>
         <Info className="w-3 h-3 flex-shrink-0" />
-        <span className="font-korean">
-          구매 확인 후 1~24시간 내 등급 적용 · 취소/환불 시 변동 가능
-        </span>
+        <span className="font-korean">{t('subscription.policyCompact')}</span>
       </div>
     );
   }
@@ -37,31 +38,31 @@ export const TierPolicyNotice = ({
       )}>
         <h4 className="font-semibold text-foreground font-korean flex items-center gap-2">
           <Info className="w-4 h-4 text-primary" />
-          등급 적용 안내
+          {t('subscription.tierBenefitsTitle')}
         </h4>
-        
+
         <div className="space-y-3 text-sm text-muted-foreground">
           <div className="flex items-start gap-3">
             <Clock className="w-4 h-4 mt-0.5 text-blue-500 flex-shrink-0" />
             <div className="font-korean">
-              <p className="font-medium text-foreground">등급 적용 시점</p>
-              <p>구매 확인 후 1~24시간 이내에 등급이 자동으로 적용됩니다.</p>
+              <p className="font-medium text-foreground">{t('subscription.policyApplyTime')}</p>
+              <p>{t('subscription.policyApplyTimeDesc')}</p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-3">
             <ArrowDownUp className="w-4 h-4 mt-0.5 text-orange-500 flex-shrink-0" />
             <div className="font-korean">
-              <p className="font-medium text-foreground">등급 변동</p>
-              <p>주문 취소 또는 환불 시 누적 금액이 조정되어 등급이 변동될 수 있습니다.</p>
+              <p className="font-medium text-foreground">{t('subscription.policyChange')}</p>
+              <p>{t('subscription.policyChangeDesc')}</p>
             </div>
           </div>
-          
+
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-4 h-4 mt-0.5 text-yellow-500 flex-shrink-0" />
             <div className="font-korean">
-              <p className="font-medium text-foreground">모델 프로필 유예</p>
-              <p>등급 변동으로 모델 프로필 슬롯이 줄어들 경우, 3일간의 유예 기간이 주어집니다.</p>
+              <p className="font-medium text-foreground">{t('subscription.policyGracePeriod')}</p>
+              <p>{t('subscription.policyGracePeriodDesc')}</p>
             </div>
           </div>
         </div>
@@ -77,12 +78,12 @@ export const TierPolicyNotice = ({
     )}>
       <h4 className="font-medium mb-2 text-foreground font-korean flex items-center gap-2">
         <Info className="w-4 h-4 text-primary" />
-        등급 적용 안내
+        {t('subscription.tierBenefitsTitle')}
       </h4>
       <ul className="list-disc list-inside space-y-1 font-korean">
-        <li>구매 확인 후 1~24시간 이내에 등급이 자동 적용됩니다.</li>
-        <li>주문 취소 또는 환불 시 누적 금액이 조정되어 등급이 변동될 수 있습니다.</li>
-        <li>등급 변동 시 모델 프로필은 3일간의 유예 기간이 주어집니다.</li>
+        <li>{t('subscription.policyDefault1')}</li>
+        <li>{t('subscription.policyDefault2')}</li>
+        <li>{t('subscription.policyDefault3')}</li>
       </ul>
     </div>
   );
@@ -129,11 +130,11 @@ export const getTierChangeToastConfig = (
 };
 
 // 구매 버튼 근처 안내 텍스트 컴포넌트
-export const TierBenefitHint = ({ className }: { className?: string }) => (
-  <p className={cn(
-    "text-xs text-muted-foreground font-korean",
-    className
-  )}>
-    ✨ 구매 시 등급 혜택이 적용됩니다 (1~24시간 소요)
-  </p>
-);
+export const TierBenefitHint = ({ className }: { className?: string }) => {
+  const { t } = useLanguage();
+  return (
+    <p className={cn("text-xs text-muted-foreground font-korean", className)}>
+      {t('subscription.benefitHint')}
+    </p>
+  );
+};
