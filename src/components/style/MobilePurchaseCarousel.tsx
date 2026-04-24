@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShoppingBag, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CachedProduct {
   id: string;
