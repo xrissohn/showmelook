@@ -32,6 +32,7 @@ export const MobilePurchaseCarousel = ({
   onPurchase,
   purchasingProductId,
 }: MobilePurchaseCarouselProps) => {
+  const { language } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
