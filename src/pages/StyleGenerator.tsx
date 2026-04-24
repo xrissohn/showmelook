@@ -4989,9 +4989,9 @@ const StyleGenerator = () => {
                   <div className="p-4 rounded-2xl border-2 border-border bg-secondary/30 flex items-center justify-between transition-all duration-200 hover:bg-secondary/50">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-5 h-5 text-accent" />
-                      <span className="font-korean text-base font-medium text-foreground">스타일 설정</span>
+                      <span className="font-korean text-base font-medium text-foreground">{t('styleGen.settingsTitle')}</span>
                       {customStylePrompt && (
-                        <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">입력됨</span>
+                        <span className="px-2 py-0.5 bg-accent/20 text-accent text-xs rounded-full">{t('styleGen.entered')}</span>
                       )}
                     </div>
                     <ChevronDown className="w-5 h-5 text-muted-foreground transition-transform duration-300 group-data-[state=open]:rotate-180" />
@@ -5002,14 +5002,14 @@ const StyleGenerator = () => {
                   <div className="p-3 sm:p-5 rounded-2xl border-2 border-border bg-secondary/30 w-full overflow-hidden">
                     <div className="hidden lg:flex items-center gap-2 mb-4">
                       <Sparkles className="w-5 h-5 text-accent" />
-                      <h2 className="font-korean text-lg font-medium text-foreground">원하는 스타일 설명</h2>
+                      <h2 className="font-korean text-lg font-medium text-foreground">{t('styleGen.describeStyle')}</h2>
                     </div>
                     
                     <div className="space-y-4">
                       {/* 스타일 프롬프트 */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Label className="font-korean text-sm">스타일 프롬프트</Label>
+                          <Label className="font-korean text-sm">{t('styleGen.stylePrompt')}</Label>
                           <button
                             type="button"
                             onClick={() => styleImageInputRef.current?.click()}
@@ -5017,9 +5017,9 @@ const StyleGenerator = () => {
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-korean font-medium bg-accent/10 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50"
                           >
                             {isAnalyzingImage ? (
-                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> 사진 분석 중...</>
+                              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('styleGen.analyzingPhoto')}</>
                             ) : (
-                              <><Camera className="w-3.5 h-3.5" /> 사진으로 스타일 찾기</>
+                              <><Camera className="w-3.5 h-3.5" /> {t('styleGen.findByPhoto')}</>
                             )}
                           </button>
                           <input
@@ -5055,7 +5055,7 @@ const StyleGenerator = () => {
                         )}
                         
                         <Textarea
-                          placeholder="예: 봄 데이트룩, 화사하고 로맨틱한 느낌으로 원피스나 블라우스 위주로 추천해줘"
+                          placeholder={t('styleGen.promptPlaceholder')}
                           value={customStylePrompt}
                           onChange={(e) => {
                             setCustomStylePrompt(e.target.value);
@@ -5083,7 +5083,7 @@ const StyleGenerator = () => {
                           {isLoadingKeywords ? (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground h-full">
                               <Loader2 className="w-3 h-3 animate-spin" />
-                              <span>인기 키워드 분석 중...</span>
+                              <span>{t('styleGen.analyzingKeywords')}</span>
                             </div>
                           ) : (
                             <div 
@@ -5165,7 +5165,7 @@ const StyleGenerator = () => {
 
                       {/* 성별 선택 (키즈 포함) */}
                       <div className="space-y-2 w-full">
-                        <Label className="font-korean text-sm">누구를 위한 스타일인가요?</Label>
+                        <Label className="font-korean text-sm">{t('styleGen.forWhom')}</Label>
                         <RadioGroup
                           value={customGender}
                           onValueChange={(value) => {
@@ -5199,7 +5199,7 @@ const StyleGenerator = () => {
                       {/* 나이 입력 (키즈 선택 시 표시) */}
                       {customGender === 'kids' && (
                         <div className="space-y-2">
-                          <Label className="font-korean text-sm">아이 나이</Label>
+                          <Label className="font-korean text-sm">{t('styleGen.childAge')}</Label>
                           <div className="flex items-center gap-3">
                             <Input
                               type="number"
@@ -5207,11 +5207,11 @@ const StyleGenerator = () => {
                               max={12}
                               value={customAge || ''}
                               onChange={(e) => setCustomAge(parseInt(e.target.value) || undefined)}
-                              placeholder="예: 8"
+                              placeholder={t('styleGen.agePlaceholder')}
                               className="w-20 font-korean"
                               disabled={isCustomSearching}
                             />
-                            <span className="text-sm text-muted-foreground font-korean">세</span>
+                            <span className="text-sm text-muted-foreground font-korean">{t('styleGen.ageUnit')}</span>
                           </div>
                         </div>
                       )}
@@ -5229,7 +5229,7 @@ const StyleGenerator = () => {
                           disabled={isCustomSearching || !customStylePrompt.trim()}
                         >
                           <Sparkles className="w-3 h-3 mr-1" />
-                          {customResult ? '새로운 추천 받기' : '상품 추천만 먼저 보기'}
+                          {customResult ? t('styleGen.recommendNew') : t('styleGen.recommendFirst')}
                         </Button>
                       )}
                       
@@ -5248,7 +5248,7 @@ const StyleGenerator = () => {
                           }}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
-                          새로운 스타일 시작
+                          {t('styleGen.startNewStyle')}
                         </Button>
                       )}
                     </div>
@@ -5788,22 +5788,22 @@ const StyleGenerator = () => {
                 {isGenerating || isCustomSearching ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '생성 중...'}
+                    {isCustomSearching && !isGenerating ? t('styleGen.analyzingStyle') : t('styleGen.generating')}
                   </>
                 ) : !isProfileDataReady ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    프로필 로딩 중...
+                    {t('styleGen.profileLoading')}
                   </>
                 ) : !canGenerate ? (
                   <>
                     <Crown className="w-5 h-5" />
-                    한도 도달 - 쇼핑으로 등급 UP!
+                    {t('styleGen.limitReachedShop')}
                   </>
                 ) : (
                   <>
                     <img src={showmelookLogo} alt="" className="w-5 h-5 object-contain" />
-                    스타일 생성
+                    {t('styleGen.generateStyle')}
                   </>
                 )}
               </Button>
@@ -5814,9 +5814,9 @@ const StyleGenerator = () => {
                   <div className="flex items-start gap-3">
                     <Crown className="w-5 h-5 text-primary mt-0.5" />
                     <div>
-                      <p className="font-medium text-foreground text-sm font-korean">등급이 높아지면 더 많이!</p>
+                      <p className="font-medium text-foreground text-sm font-korean">{t('styleGen.upgradeMore')}</p>
                       <p className="text-xs text-muted-foreground mt-1 font-korean">
-                        쇼미룩에서 상품을 구매하면 등급이 올라가고 일일 한도가 늘어나요.
+                        {t('styleGen.upgradeMoreDesc')}
                       </p>
                     </div>
                   </div>
@@ -6572,22 +6572,22 @@ const StyleGenerator = () => {
             {isGenerating || isCustomSearching ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                {isCustomSearching && !isGenerating ? 'AI가 스타일을 분석중...' : '생성 중...'}
+                {isCustomSearching && !isGenerating ? t('styleGen.analyzingStyle') : t('styleGen.generating')}
               </>
             ) : !isProfileDataReady ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                프로필 로딩 중...
+                {t('styleGen.profileLoading')}
               </>
             ) : !canGenerate ? (
               <>
                 <Crown className="w-5 h-5" />
-                한도 도달 - 쇼핑으로 등급 UP!
+                {t('styleGen.limitReachedShop')}
               </>
             ) : (
               <>
                 <img src={showmelookLogo} alt="" className="w-5 h-5 object-contain" />
-                스타일 생성
+                {t('styleGen.generateStyle')}
               </>
             )}
           </Button>
@@ -6595,10 +6595,10 @@ const StyleGenerator = () => {
           {!isPremium && (
             <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
               {!isProfileDataReady 
-                ? '프로필 정보를 불러오는 중...'
+                ? t('styleGen.profileLoadingShort')
                 : bonusCredits > 0 
-                  ? `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회` 
-                  : `오늘 ${remainingCount}회 남음`}
+                  ? t('styleGen.baseBonus').replace('{base}', String(remainingCount)).replace('{bonus}', String(bonusCredits))
+                  : t('styleGen.todayRemaining').replace('{count}', String(remainingCount))}
             </p>
           )}
         </div>
