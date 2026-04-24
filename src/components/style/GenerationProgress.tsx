@@ -97,7 +97,7 @@ export const GenerationProgress = ({
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-secondary/50 hover:bg-secondary flex items-center justify-center transition-colors z-10"
-          aria-label="취소"
+          aria-label={t('generationProgress.cancel')}
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>
