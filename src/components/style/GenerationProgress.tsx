@@ -53,9 +53,11 @@ export const GenerationProgress = ({
   queueStatus,
   onCancel 
 }: GenerationProgressProps) => {
+  const { t } = useLanguage();
   if (!isVisible) return null;
 
-  const statusInfo = statusMessages[status] || { label: '처리 중...', emoji: '⏳' };
+  const statusMessages = getStatusMessages(t);
+  const statusInfo = statusMessages[status] || { label: t('generationProgress.defaultStatus'), emoji: '⏳' };
   const circumference = 2 * Math.PI * 42;
   const strokeDashoffset = circumference * (1 - progress / 100);
 
@@ -252,7 +254,7 @@ export const GenerationProgress = ({
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Users className="w-4 h-4" />
                 <span className="font-korean">
-                  앞에 <span className="text-foreground font-semibold">{aheadCount}명</span> 대기 중
+                  {t('generationProgress.waitingAhead')} <span className="text-foreground font-semibold">{aheadCount}</span>{t('generationProgress.people')}
                 </span>
               </div>
             )}
@@ -262,7 +264,7 @@ export const GenerationProgress = ({
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-4 h-4" />
                 <span className="font-korean">
-                  약 <span className="text-foreground font-semibold">{waitMinutes}분</span> 후 처리 예정
+                  {t('generationProgress.estimatedWait')} <span className="text-foreground font-semibold">{waitMinutes}</span>{t('generationProgress.minutes')}
                 </span>
               </div>
             )}
@@ -270,7 +272,7 @@ export const GenerationProgress = ({
             {/* 처리 중인 경우 (position === 0) */}
             {position === 0 && (
               <div className="flex items-center justify-center gap-2 text-sm text-primary">
-                <span className="font-korean font-semibold">🚀 곧 처리가 시작됩니다!</span>
+                <span className="font-korean font-semibold">{t('generationProgress.startingSoon')}</span>
               </div>
             )}
           </div>
@@ -278,18 +280,10 @@ export const GenerationProgress = ({
 
         {/* 안내 메시지 */}
         <div className="mt-6 p-3 bg-secondary/50 rounded-xl relative z-10">
-          <p className="text-xs text-muted-foreground text-center font-korean">
-            {isQueued && aheadCount > 0 ? (
-              <>
-                많은 사용자가 이용 중입니다.<br />
-                잠시만 기다려주세요 🙏
-              </>
-            ) : (
-              <>
-                AI가 당신만을 위한 스타일을 만들고 있어요.<br />
-                잠시만 기다려주세요 ✨
-              </>
-            )}
+          <p className="text-xs text-muted-foreground text-center font-korean whitespace-pre-line">
+            {isQueued && aheadCount > 0
+              ? t('generationProgress.busyMessage')
+              : t('generationProgress.creatingMessage')}
           </p>
         </div>
 
@@ -299,7 +293,7 @@ export const GenerationProgress = ({
           onClick={onCancel} 
           className="mt-6 w-full font-korean text-muted-foreground hover:text-foreground relative z-10"
         >
-          취소하기
+          {t('generationProgress.cancelBtn')}
         </Button>
       </div>
     </div>
