@@ -27,7 +27,51 @@ interface FamilyProfileManagerProps {
 export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileManagerProps) => {
   const { profiles, isLoading, canAddMore, currentCount, addProfile, updateProfile, deleteProfile, refetch } = useFamilyProfiles(userId, maxProfiles);
   const { toast } = useToast();
-  
+  const { t } = useLanguage();
+
+  const relationships = [
+    { value: '뮤즈', label: t('familyProfile.relationships.muse'), emoji: '✨' },
+    { value: '파트너', label: t('familyProfile.relationships.partner'), emoji: '💫' },
+    { value: '베스티', label: t('familyProfile.relationships.bestie'), emoji: '👯' },
+    { value: '스타일 메이트', label: t('familyProfile.relationships.styleMate'), emoji: '🔥' },
+    { value: '패밀리', label: t('familyProfile.relationships.family'), emoji: '🏠' },
+  ];
+
+  const genders = [
+    { value: '남성', label: t('familyProfile.genders.male'), emoji: '👨' },
+    { value: '여성', label: t('familyProfile.genders.female'), emoji: '👩' },
+    { value: '유니섹스', label: t('familyProfile.genders.unisex'), emoji: '🧑' },
+    { value: '선택안함', label: t('familyProfile.genders.preferNotToSay'), emoji: '🔒' },
+  ];
+
+  const bodyTypes = [
+    { value: 'slim', label: t('profileSetup.bodyTypes.slim') },
+    { value: 'average', label: t('profileSetup.bodyTypes.average') },
+    { value: 'muscular', label: t('profileSetup.bodyTypes.muscular') },
+    { value: 'curvy', label: t('profileSetup.bodyTypes.curvy') },
+  ];
+
+  const ageGroupOptions = [
+    { value: 'child', label: t('profileSetup.ageGroups.child') },
+    { value: 'teen', label: t('profileSetup.ageGroups.teen') },
+    { value: '20s', label: t('profileSetup.ageGroups.twenties') },
+    { value: '30s', label: t('profileSetup.ageGroups.thirties') },
+    { value: '40s', label: t('profileSetup.ageGroups.forties') },
+    { value: '50s', label: t('profileSetup.ageGroups.fifties') },
+    { value: '60plus', label: t('profileSetup.ageGroups.sixtyPlus') },
+  ];
+
+  const styleOptions = [
+    { value: 'casual', label: t('profileSetup.styles.casual') },
+    { value: 'minimal', label: t('profileSetup.styles.minimal') },
+    { value: 'street', label: t('profileSetup.styles.street') },
+    { value: 'sporty', label: t('profileSetup.styles.sporty') },
+    { value: 'classic', label: t('profileSetup.styles.classic') },
+    { value: 'romantic', label: 'Romantic' },
+    { value: 'modern', label: 'Modern' },
+    { value: 'vintage', label: 'Vintage' },
+  ];
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
