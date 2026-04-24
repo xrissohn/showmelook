@@ -17,54 +17,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Users, Pencil, Trash2, Camera, AlertCircle, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FamilyProfileManagerProps {
   userId: string;
   maxProfiles?: number;
 }
-
-const relationships = [
-  { value: '뮤즈', label: '뮤즈', emoji: '✨' },
-  { value: '파트너', label: '파트너', emoji: '💫' },
-  { value: '베스티', label: '베스티', emoji: '👯' },
-  { value: '스타일 메이트', label: '스타일 메이트', emoji: '🔥' },
-  { value: '패밀리', label: '패밀리', emoji: '🏠' },
-];
-
-const genders = [
-  { value: '남성', label: '남성', emoji: '👨' },
-  { value: '여성', label: '여성', emoji: '👩' },
-  { value: '유니섹스', label: '유니섹스', emoji: '🧑' },
-  { value: '선택안함', label: '선택 안함', emoji: '🔒' },
-];
-
-const bodyTypes = [
-  { value: 'slim', label: '마른 체형' },
-  { value: 'average', label: '보통 체형' },
-  { value: 'muscular', label: '근육질' },
-  { value: 'curvy', label: '볼륨 체형' },
-];
-
-const ageGroupOptions = [
-  { value: 'child', label: '아동 (12세 이하)' },
-  { value: 'teen', label: '10대' },
-  { value: '20s', label: '20대' },
-  { value: '30s', label: '30대' },
-  { value: '40s', label: '40대' },
-  { value: '50s', label: '50대' },
-  { value: '60plus', label: '60대 이상' },
-];
-
-const styleOptions = [
-  { value: 'casual', label: '캐주얼' },
-  { value: 'minimal', label: '미니멀' },
-  { value: 'street', label: '스트릿' },
-  { value: 'sporty', label: '스포티' },
-  { value: 'classic', label: '클래식' },
-  { value: 'romantic', label: '로맨틱' },
-  { value: 'modern', label: '모던' },
-  { value: 'vintage', label: '빈티지' },
-];
 
 export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileManagerProps) => {
   const { profiles, isLoading, canAddMore, currentCount, addProfile, updateProfile, deleteProfile, refetch } = useFamilyProfiles(userId, maxProfiles);
