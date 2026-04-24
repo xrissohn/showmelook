@@ -410,7 +410,7 @@ const MyPage = () => {
                                 {formatDate(rec.created_at)} · {rec.gender === 'female' ? t('profileSetup.genderOptions.female') : t('profileSetup.genderOptions.male')}
                               </p>
                               <p className="text-sm font-medium text-primary mt-1">
-                                {formatPrice(rec.total_price)} ({rec.items.length} items)
+                                {formatPrice(rec.total_price)} ({rec.items.length} {t('mypage.items')})
                               </p>
                               {rec.style_reasoning && (
                                 <p className="text-xs text-muted-foreground mt-2 line-clamp-2">💡 {rec.style_reasoning}</p>
@@ -489,7 +489,12 @@ const MyPage = () => {
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground font-korean">
-                      {userProfile?.gender && <span>{userProfile.gender}</span>}
+                      {userProfile?.gender && <span>{
+                        userProfile.gender === 'male' || userProfile.gender === '남성' ? t('profileSetup.genderOptions.male') :
+                        userProfile.gender === 'female' || userProfile.gender === '여성' ? t('profileSetup.genderOptions.female') :
+                        userProfile.gender === 'unisex' || userProfile.gender === '유니섹스' ? t('profileSetup.genderOptions.unisex') :
+                        userProfile.gender
+                      }</span>}
                       {userProfile?.height && <span> · {userProfile.height}cm</span>}
                       {userProfile?.weight && <span> · {userProfile.weight}kg</span>}
                       {userProfile?.body_type && <span> · {
