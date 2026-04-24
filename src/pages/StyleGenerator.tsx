@@ -38,6 +38,7 @@ import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 import { GenerationProgress } from '@/components/style/GenerationProgress';
 import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarousel';
 import { WatermarkOverlay, GalleryWatermarkOverlay, ModalWatermarkOverlay } from '@/components/style/WatermarkOverlay';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { SEOHead } from '@/components/SEOHead';
 interface StyleTrend {
   id: string;
@@ -2624,6 +2625,7 @@ const StyleGenerator = () => {
   const [searchParams] = useSearchParams();
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useLanguage();
   // 구독 상태 (스타일 추천 먼저 받기 제한용)
   const subscription = useSubscription(user?.id);
   // 구매 기반 등급 정보
