@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { X, Users, Clock } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import { useMemo } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QueueStatus {
   totalQueued: number;
@@ -19,14 +20,14 @@ interface GenerationProgressProps {
   onCancel: () => void;
 }
 
-const statusMessages: Record<string, { label: string; emoji: string }> = {
-  queued: { label: '대기 중...', emoji: '⏳' },
-  processing: { label: '처리 시작...', emoji: '🔄' },
-  generating_style: { label: '스타일 분석 중...', emoji: '🎨' },
-  generating_image: { label: '이미지 생성 중...', emoji: '✨' },
-  completed: { label: '완료!', emoji: '🎉' },
-  failed: { label: '실패', emoji: '❌' },
-};
+const getStatusMessages = (t: (key: string) => string): Record<string, { label: string; emoji: string }> => ({
+  queued: { label: t('generationProgress.queued'), emoji: '⏳' },
+  processing: { label: t('generationProgress.processing'), emoji: '🔄' },
+  generating_style: { label: t('generationProgress.generatingStyle'), emoji: '🎨' },
+  generating_image: { label: t('generationProgress.generatingImage'), emoji: '✨' },
+  completed: { label: t('generationProgress.completed'), emoji: '🎉' },
+  failed: { label: t('generationProgress.failed'), emoji: '❌' },
+});
 
 // Pre-calculated particle positions for consistent rendering
 const PARTICLES = Array.from({ length: 12 }, (_, i) => ({
@@ -52,9 +53,11 @@ export const GenerationProgress = ({
   queueStatus,
   onCancel 
 }: GenerationProgressProps) => {
+  const { t } = useLanguage();
   if (!isVisible) return null;
 
-  const statusInfo = statusMessages[status] || { label: '처리 중...', emoji: '⏳' };
+  const statusMessages = getStatusMessages(t);
+  const statusInfo = statusMessages[status] || { label: t('generationProgress.defaultStatus'), emoji: '⏳' };
   const circumference = 2 * Math.PI * 42;
   const strokeDashoffset = circumference * (1 - progress / 100);
 
@@ -96,7 +99,7 @@ export const GenerationProgress = ({
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 w-8 h-8 rounded-full bg-secondary/50 hover:bg-secondary flex items-center justify-center transition-colors z-10"
-          aria-label="취소"
+          aria-label={t('generationProgress.cancel')}
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>
@@ -251,7 +254,7 @@ export const GenerationProgress = ({
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Users className="w-4 h-4" />
                 <span className="font-korean">
-                  앞에 <span className="text-foreground font-semibold">{aheadCount}명</span> 대기 중
+                  {t('generationProgress.waitingAhead')} <span className="text-foreground font-semibold">{aheadCount}</span>{t('generationProgress.people')}
                 </span>
               </div>
             )}
@@ -261,7 +264,7 @@ export const GenerationProgress = ({
               <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                 <Clock className="w-4 h-4" />
                 <span className="font-korean">
-                  약 <span className="text-foreground font-semibold">{waitMinutes}분</span> 후 처리 예정
+                  {t('generationProgress.estimatedWait')} <span className="text-foreground font-semibold">{waitMinutes}</span>{t('generationProgress.minutes')}
                 </span>
               </div>
             )}
@@ -269,7 +272,7 @@ export const GenerationProgress = ({
             {/* 처리 중인 경우 (position === 0) */}
             {position === 0 && (
               <div className="flex items-center justify-center gap-2 text-sm text-primary">
-                <span className="font-korean font-semibold">🚀 곧 처리가 시작됩니다!</span>
+                <span className="font-korean font-semibold">{t('generationProgress.startingSoon')}</span>
               </div>
             )}
           </div>
@@ -277,18 +280,10 @@ export const GenerationProgress = ({
 
         {/* 안내 메시지 */}
         <div className="mt-6 p-3 bg-secondary/50 rounded-xl relative z-10">
-          <p className="text-xs text-muted-foreground text-center font-korean">
-            {isQueued && aheadCount > 0 ? (
-              <>
-                많은 사용자가 이용 중입니다.<br />
-                잠시만 기다려주세요 🙏
-              </>
-            ) : (
-              <>
-                AI가 당신만을 위한 스타일을 만들고 있어요.<br />
-                잠시만 기다려주세요 ✨
-              </>
-            )}
+          <p className="text-xs text-muted-foreground text-center font-korean whitespace-pre-line">
+            {isQueued && aheadCount > 0
+              ? t('generationProgress.busyMessage')
+              : t('generationProgress.creatingMessage')}
           </p>
         </div>
 
@@ -298,7 +293,7 @@ export const GenerationProgress = ({
           onClick={onCancel} 
           className="mt-6 w-full font-korean text-muted-foreground hover:text-foreground relative z-10"
         >
-          취소하기
+          {t('generationProgress.cancelBtn')}
         </Button>
       </div>
     </div>

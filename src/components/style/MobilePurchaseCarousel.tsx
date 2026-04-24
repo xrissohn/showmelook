@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ShoppingBag, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CachedProduct {
   id: string;
@@ -31,6 +32,7 @@ export const MobilePurchaseCarousel = ({
   onPurchase,
   purchasingProductId,
 }: MobilePurchaseCarouselProps) => {
+  const { language } = useLanguage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -70,7 +72,7 @@ export const MobilePurchaseCarousel = ({
         <button
           onClick={() => scroll('left')}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-background/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center border border-border"
-          aria-label="이전"
+          aria-label={language === 'en' ? 'Previous' : '이전'}
         >
           <ChevronLeft className="w-4 h-4 text-foreground" />
         </button>
@@ -79,7 +81,7 @@ export const MobilePurchaseCarousel = ({
         <button
           onClick={() => scroll('right')}
           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-background/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center border border-border"
-          aria-label="다음"
+          aria-label={language === 'en' ? 'Next' : '다음'}
         >
           <ChevronRight className="w-4 h-4 text-foreground" />
         </button>
@@ -158,7 +160,7 @@ export const MobilePurchaseCarousel = ({
       {products.length > 2 && (
         <div className="flex items-center justify-center gap-1.5 mt-1">
           <ChevronLeft className="w-3 h-3 text-muted-foreground" />
-          <p className="text-[10px] text-muted-foreground font-korean">스와이프</p>
+          <p className="text-[10px] text-muted-foreground font-korean">{language === 'en' ? 'Swipe' : '스와이프'}</p>
           <ChevronRight className="w-3 h-3 text-muted-foreground" />
         </div>
       )}

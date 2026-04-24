@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +75,7 @@ interface LookDetailModalProps {
   hasWatermark?: boolean;
 }
 
-const tagOptions = ['데일리', '특별한 날', '데이트', '출근룩', '주말', '파티', '여행', '계절감'];
+const DEFAULT_TAG_OPTIONS = ['데일리', '특별한 날', '데이트', '출근룩', '주말', '파티', '여행', '계절감'];
 
 export const LookDetailModal = ({
   look,
@@ -95,8 +96,10 @@ export const LookDetailModal = ({
 }: LookDetailModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const isOwner = user?.id === look.user_id;
+  const tagOptions = (t('lookDetail.tagOptions') as unknown as string[]) || DEFAULT_TAG_OPTIONS;
 
   const [isFlipped, setIsFlipped] = useState(false);
   const [lookProducts, setLookProducts] = useState<CachedProduct[]>([]);
@@ -270,11 +273,11 @@ export const LookDetailModal = ({
 
   const handleShareResult = (_platform: string, result: { success: boolean; message?: string }) => {
     if (result.message) {
-      toast({ title: result.success ? '공유' : '오류', description: result.message, variant: result.success ? 'default' : 'destructive' });
+      toast({ title: result.success ? t('lookDetail.shareSuccess') : t('lookDetail.shareError'), description: result.message, variant: result.success ? 'default' : 'destructive' });
     }
   };
 
-  const displayName = look.user_name || '스타일리스트';
+  const displayName = look.user_name || t('lookDetail.stylist');
 
   // Map products for InteractiveProductTags
   const taggedProducts = lookProducts.map(p => ({
@@ -387,14 +390,14 @@ export const LookDetailModal = ({
               {/* Product loading indicator */}
               {isLoadingProducts && look.product_ids?.length && (
                 <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-foreground text-xs rounded-full flex items-center gap-1.5">
-                  <Loader2 className="w-3 h-3 animate-spin" />상품 정보 로딩 중...
+                  <Loader2 className="w-3 h-3 animate-spin" />{t('lookDetail.productLoading')}
                 </div>
               )}
 
               {/* Flip hint */}
               {!isFlipped && (
                 <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean backface-hidden">
-                  <RotateCcw className="w-3.5 h-3.5" />탭하여 상세 정보 보기
+                  <RotateCcw className="w-3.5 h-3.5" />{t('lookDetail.tapForDetails')}
                 </div>
               )}
             </div>
@@ -420,7 +423,7 @@ export const LookDetailModal = ({
                     <div className="w-4 h-4 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                       <Sparkles className="w-2.5 h-2.5 text-white" />
                     </div>
-                    <span className="text-[10px] font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                    <span className="text-[10px] font-semibold text-accent tracking-wide">{t('lookDetail.aiStylistRecommend')}</span>
                   </div>
                   
                   {look.prompt_used && (
@@ -433,8 +436,8 @@ export const LookDetailModal = ({
                     <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
                       {look.style_reasoning || (
                         lookProducts.length > 0 
-                          ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`
-                          : '스타일리시한 코디가 완성되었어요!'
+                          ? t('lookDetail.brandReasoning').replace('{brands}', lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × '))
+                          : t('lookDetail.defaultReasoning')
                       )}
                     </p>
                   </div>
@@ -445,7 +448,7 @@ export const LookDetailModal = ({
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                     <h4 className="text-sm font-semibold text-white font-korean mb-3 flex items-center gap-1.5">
                       <ShoppingBag className="w-4 h-4 text-accent" />
-                      추천 상품 ({lookProducts.length}개)
+                      {t('lookDetail.recommendedProducts')} ({lookProducts.length})
                     </h4>
                     <div className="space-y-2 max-h-36 overflow-y-auto scrollbar-hide">
                       {lookProducts.map((product) => (
@@ -458,7 +461,7 @@ export const LookDetailModal = ({
                               {product.brand && <span className="text-accent font-medium">{product.brand} </span>}
                               {product.name}
                             </span>
-                            <span className="text-white font-semibold text-sm">{product.price?.toLocaleString()}원</span>
+                            <span className="text-white font-semibold text-sm">{language === 'en' ? `₩${product.price?.toLocaleString()}` : `${product.price?.toLocaleString()}원`}</span>
                             <span className="text-white/50 block text-[8px] mt-0.5 leading-tight">
                               {getProductAffiliateDisclosure(product.product_url, product.merchant_id)}
                             </span>
@@ -466,16 +469,16 @@ export const LookDetailModal = ({
                           <Button variant="outline" size="sm"
                             className="flex-shrink-0 h-8 px-2.5 text-xs bg-accent/20 border-accent/50 text-white hover:bg-accent hover:text-white transition-all opacity-80 group-hover:opacity-100"
                             onClick={(e) => { e.stopPropagation(); handleProductPurchase(product); }}>
-                            <ExternalLink className="w-3 h-3 mr-1" />구매
+                            <ExternalLink className="w-3 h-3 mr-1" />{t('lookDetail.purchase')}
                           </Button>
                         </div>
                       ))}
                     </div>
                     <div className="border-t border-white/20 pt-3 mt-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-sm font-semibold text-white font-korean">총 가격</span>
+                        <span className="text-sm font-semibold text-white font-korean">{t('lookDetail.totalPrice')}</span>
                         <span className="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                          {lookProducts.reduce((s, p) => s + (p.price || 0), 0).toLocaleString()}원
+                          {language === 'en' ? '₩' : ''}{lookProducts.reduce((s, p) => s + (p.price || 0), 0).toLocaleString()}{language === 'ko' ? '원' : ''}
                         </span>
                       </div>
                     </div>
@@ -485,7 +488,7 @@ export const LookDetailModal = ({
                 {/* Tags */}
                 {look.tags && look.tags.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-semibold text-white font-korean mb-2">태그</h4>
+                    <h4 className="text-sm font-semibold text-white font-korean mb-2">{t('lookDetail.tags')}</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {look.tags.map((tag, i) => (
                         <span key={i} className="text-xs bg-gradient-to-r from-accent/30 to-primary/30 text-white border border-accent/40 px-2.5 py-1 rounded-full font-korean">#{tag}</span>
@@ -498,7 +501,7 @@ export const LookDetailModal = ({
                 {look.memo && (
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                     <h4 className="text-sm font-semibold text-white font-korean mb-1.5 flex items-center gap-1.5">
-                      <MessageCircle className="w-4 h-4 text-muted-foreground" />메모
+                      <MessageCircle className="w-4 h-4 text-muted-foreground" />{t('lookDetail.memo')}
                     </h4>
                     <p className="text-sm text-white/70 font-korean italic">"{look.memo}"</p>
                   </div>
@@ -508,10 +511,10 @@ export const LookDetailModal = ({
               {/* Bottom info */}
               <div className="relative border-t border-white/10 px-5 py-3 flex items-center justify-between bg-black/30 backdrop-blur-sm">
                 <div className="flex items-center gap-1.5 text-xs text-white/60 font-korean cursor-pointer hover:text-white/80 transition-colors">
-                  <RotateCcw className="w-3.5 h-3.5" />탭하여 이미지로
+                  <RotateCcw className="w-3.5 h-3.5" />{t('lookDetail.tapForImage')}
                 </div>
                 <span className="text-xs text-white/60 font-korean">
-                  {new Date(look.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  {new Date(look.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </span>
               </div>
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent" />
@@ -522,7 +525,7 @@ export const LookDetailModal = ({
         {/* Swipe hint - mobile */}
         {(hasPrevious || hasNext) && (
           <div className="sm:hidden text-center mt-2">
-            <p className="text-white/40 text-xs font-korean">← 스와이프하여 탐색 →</p>
+            <p className="text-white/40 text-xs font-korean">{t('lookDetail.swipeHint')}</p>
           </div>
         )}
 
@@ -545,7 +548,7 @@ export const LookDetailModal = ({
 
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-4">
               <p className="text-white/80 text-sm font-korean">
-                {new Date(look.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                {new Date(look.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
 
               {currentIndex !== undefined && totalCount !== undefined && (
@@ -563,21 +566,21 @@ export const LookDetailModal = ({
                   {onUpdateMemoTags && (
                     <button onClick={startEditingMemo} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                       <Tag className="w-4 h-4 text-white" />
-                      <span className="text-white text-sm font-korean hidden sm:inline">{look.memo || look.tags?.length ? '편집' : '메모/태그'}</span>
+                      <span className="text-white text-sm font-korean hidden sm:inline">{look.memo || look.tags?.length ? t('lookDetail.edit') : t('lookDetail.memoTags')}</span>
                     </button>
                   )}
                   
                   {onToggleFavorite && (
                     <button onClick={() => onToggleFavorite(look.id, !look.is_favorite)} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                       <Heart className={`w-4 h-4 ${look.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
-                      <span className="text-white text-sm font-korean hidden sm:inline">{look.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}</span>
+                      <span className="text-white text-sm font-korean hidden sm:inline">{look.is_favorite ? t('lookDetail.favorited') : t('lookDetail.favorite')}</span>
                     </button>
                   )}
 
                   {onTogglePublic && (
                     <button onClick={() => onTogglePublic(look.id, !look.is_public)} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                       {look.is_public ? <Globe className="w-4 h-4 text-green-400" /> : <LockKeyhole className="w-4 h-4 text-white" />}
-                      <span className="text-white text-sm font-korean hidden sm:inline">{look.is_public ? '공개' : '비공개'}</span>
+                      <span className="text-white text-sm font-korean hidden sm:inline">{look.is_public ? t('lookDetail.public') : t('lookDetail.private')}</span>
                     </button>
                   )}
                 </>
@@ -629,15 +632,15 @@ export const LookDetailModal = ({
       {isEditingMemo && isOwner && (
         <div className="fixed inset-0 z-[120] bg-black/80 flex items-center justify-center p-4" onClick={(e) => { e.stopPropagation(); setIsEditingMemo(false); }}>
           <div className="bg-card rounded-2xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-foreground font-korean mb-4">메모/태그 편집</h3>
+            <h3 className="text-lg font-bold text-foreground font-korean mb-4">{t('lookDetail.editMemoTags')}</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-foreground font-korean mb-2 block">메모</label>
-                <Textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} placeholder="이 룩에 대한 메모를 입력하세요..." className="resize-none h-20 font-korean" maxLength={200} />
+                <label className="text-sm font-medium text-foreground font-korean mb-2 block">{t('lookDetail.memoLabel')}</label>
+                <Textarea value={editMemo} onChange={(e) => setEditMemo(e.target.value)} placeholder={t('lookDetail.memoPlaceholder')} className="resize-none h-20 font-korean" maxLength={200} />
                 <p className="text-xs text-muted-foreground mt-1 text-right">{editMemo.length}/200</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground font-korean mb-2 block">태그</label>
+                <label className="text-sm font-medium text-foreground font-korean mb-2 block">{t('lookDetail.tagsLabel')}</label>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {editTags.map((tag, i) => (
                     <span key={i} className="inline-flex items-center gap-1 text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full">
@@ -647,8 +650,8 @@ export const LookDetailModal = ({
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))} placeholder="태그 입력..." className="flex-1 h-8 text-sm" maxLength={20} />
-                  <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>추가</Button>
+                  <Input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))} placeholder={t('lookDetail.tagPlaceholder')} className="flex-1 h-8 text-sm" maxLength={20} />
+                  <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>{t('lookDetail.add')}</Button>
                 </div>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {tagOptions.filter(t => !editTags.includes(t)).map((tag) => (
@@ -658,9 +661,9 @@ export const LookDetailModal = ({
               </div>
             </div>
             <div className="flex gap-2 mt-6">
-              <Button variant="outline" className="flex-1 font-korean" onClick={() => setIsEditingMemo(false)}>취소</Button>
+              <Button variant="outline" className="flex-1 font-korean" onClick={() => setIsEditingMemo(false)}>{t('lookDetail.cancel')}</Button>
               <Button className="flex-1 font-korean" onClick={saveMemoAndTags} disabled={isSavingMemo}>
-                {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}저장
+                {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}{t('lookDetail.save')}
               </Button>
             </div>
           </div>
@@ -671,12 +674,12 @@ export const LookDetailModal = ({
       {showDeleteConfirm && isOwner && (
         <div className="fixed inset-0 z-[110] bg-black/80 flex items-center justify-center p-4" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}>
           <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-center font-korean mb-2">룩 삭제</h3>
-            <p className="text-sm text-muted-foreground text-center font-korean mb-6">이 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.</p>
+            <h3 className="text-lg font-bold text-center font-korean mb-2">{t('lookDetail.deleteTitle')}</h3>
+            <p className="text-sm text-muted-foreground text-center font-korean mb-6 whitespace-pre-line">{t('lookDetail.deleteConfirm')}</p>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 font-korean" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>취소</Button>
+              <Button variant="outline" className="flex-1 font-korean" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>{t('lookDetail.cancel')}</Button>
               <Button variant="destructive" className="flex-1 font-korean" onClick={handleDelete} disabled={isDeleting}>
-                {isDeleting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />삭제 중...</> : <><Trash2 className="w-4 h-4 mr-2" />삭제</>}
+                {isDeleting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('lookDetail.deleting')}</> : <><Trash2 className="w-4 h-4 mr-2" />{t('lookDetail.delete')}</>}
               </Button>
             </div>
           </div>

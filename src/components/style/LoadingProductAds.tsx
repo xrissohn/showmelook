@@ -3,6 +3,7 @@ import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
 import { ExternalLink, ImageOff } from 'lucide-react';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface CachedProduct {
   id: string;
@@ -29,6 +30,7 @@ const ProductSlide = ({
   product: CachedProduct; 
   onClick: () => void;
 }) => {
+  const { t } = useLanguage();
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
 
@@ -49,7 +51,7 @@ const ProductSlide = ({
       {/* 광고 라벨 */}
       <div className="absolute top-2 right-2 z-10">
         <span className="text-[9px] px-1.5 py-0.5 bg-muted/80 text-muted-foreground rounded">
-          광고
+          {t('loadingAds.adLabel')}
         </span>
       </div>
 
@@ -108,6 +110,7 @@ const ProductSlide = ({
 };
 
 export const LoadingProductAds = ({ products, onProductClick }: LoadingProductAdsProps) => {
+  const { t } = useLanguage();
   const [emblaRef] = useEmblaCarousel(
     { loop: true, align: 'center' },
     [Autoplay({ delay: 4000, stopOnInteraction: false })]
@@ -120,9 +123,9 @@ export const LoadingProductAds = ({ products, onProductClick }: LoadingProductAd
   return (
     <div className="w-full max-w-xs sm:max-w-sm mt-6 sm:mt-8 z-10 px-4">
       <p className="text-xs text-muted-foreground text-center mb-2 font-korean">
-        ✨ 이런 상품은 어떠세요?
+        {t('loadingAds.suggestion')}
       </p>
-      
+
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
           {products.map((product) => (

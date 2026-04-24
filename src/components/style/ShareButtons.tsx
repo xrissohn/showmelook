@@ -3,6 +3,7 @@
  * Extracted from StyleGenerator for use across LookDetailModal, galleries, etc.
  */
 import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Download, Share2, Loader2, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -242,6 +243,7 @@ export const ShareButtons = ({
   tags,
   showDownload = true,
 }: ShareButtonsProps) => {
+  const { t } = useLanguage();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const shouldAddWatermark = hasWatermark ?? true;
@@ -251,8 +253,8 @@ export const ShareButtons = ({
     const success = await downloadImage(imageUrl, `showmelook-style-${Date.now()}.png`, shouldAddWatermark, logoUrl);
     setIsDownloading(false);
     const message = success
-      ? !shouldAddWatermark ? '이미지가 저장되었습니다!' : '이미지가 저장되었습니다! (워터마크 포함)'
-      : '저장에 실패했습니다.';
+      ? !shouldAddWatermark ? t('shareUI.saveSuccess') : t('shareUI.saveSuccessWatermark')
+      : t('shareUI.saveFailed');
     onShare?.('download', { success, message });
   };
 
@@ -270,7 +272,7 @@ export const ShareButtons = ({
             onClick={handleDownload}
             disabled={isDownloading}
             className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-            title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+            title={!shouldAddWatermark ? t('shareUI.saveTitle') : t('shareUI.saveTitleWatermark')}
           >
             {isDownloading ? <Loader2 className="w-5 h-5 animate-spin text-foreground" /> : <Download className="w-5 h-5 text-foreground" />}
           </button>
@@ -279,28 +281,28 @@ export const ShareButtons = ({
           <button
             onClick={() => setIsShareOpen(!isShareOpen)}
             className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-            title="공유하기"
+            title={t('shareUI.share')}
           >
             <Share2 className="w-5 h-5 text-foreground" />
           </button>
           <Popover open={isShareOpen} onOpenChange={setIsShareOpen}>
             <PopoverTrigger asChild>
-              <span className="sr-only">공유 메뉴 열기</span>
+              <span className="sr-only">{t('shareUI.shareMenu')}</span>
             </PopoverTrigger>
             <PopoverContent align="end" side="bottom" sideOffset={8} className="w-[180px] p-2 z-[9999]" onOpenAutoFocus={(e) => e.preventDefault()}>
               {shouldAddWatermark && (
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
-                    <Crown className="w-3 h-3" />첫 구매 시 워터마크 없이 저장
+                    <Crown className="w-3 h-3" />{t('shareUI.watermarkHint')}
                   </p>
                 </div>
               )}
               <ShareMenuItem emoji="📸" label="Instagram" onClick={() => handleShare('instagram')} />
               <ShareMenuItem emoji="🐦" label="Twitter" onClick={() => handleShare('twitter')} />
               <ShareMenuItem emoji="📘" label="Facebook" onClick={() => handleShare('facebook')} />
-              <ShareMenuItem emoji="💬" label="카카오톡" onClick={() => handleShare('kakao')} />
+              <ShareMenuItem emoji="💬" label="KakaoTalk" onClick={() => handleShare('kakao')} />
               <div className="my-1 border-t border-border" />
-              <ShareMenuItem emoji="🔗" label="링크 복사" onClick={() => handleShare('copy')} />
+              <ShareMenuItem emoji="🔗" label={t('shareUI.copyLink')} onClick={() => handleShare('copy')} />
             </PopoverContent>
           </Popover>
         </div>
@@ -312,14 +314,14 @@ export const ShareButtons = ({
     <div className={`flex gap-2 ${className}`}>
       {showDownload && (
         <Button variant="outline" size="sm" onClick={handleDownload} disabled={isDownloading} className="font-korean"
-          title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}>
+          title={!shouldAddWatermark ? t('shareUI.saveTitle') : t('shareUI.saveTitleWatermark')}>
           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Download className="w-4 h-4 mr-1.5" />}
-          저장{shouldAddWatermark && ' 🏷️'}
+          {t('shareUI.save')}{shouldAddWatermark && ' 🏷️'}
         </Button>
       )}
       <div className="relative">
         <Button variant="outline" size="sm" onClick={() => setIsShareOpen(!isShareOpen)} className="font-korean">
-          <Share2 className="w-4 h-4 mr-1.5" />공유
+          <Share2 className="w-4 h-4 mr-1.5" />{t('shareUI.share')}
         </Button>
         {isShareOpen && (
           <>
@@ -328,16 +330,16 @@ export const ShareButtons = ({
               {shouldAddWatermark && (
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
-                    <Crown className="w-3 h-3" />첫 구매 시 워터마크 없이 저장
+                    <Crown className="w-3 h-3" />{t('shareUI.watermarkHint')}
                   </p>
                 </div>
               )}
               <ShareMenuItem emoji="📸" label="Instagram" onClick={() => handleShare('instagram')} />
               <ShareMenuItem emoji="🐦" label="Twitter" onClick={() => handleShare('twitter')} />
               <ShareMenuItem emoji="📘" label="Facebook" onClick={() => handleShare('facebook')} />
-              <ShareMenuItem emoji="💬" label="카카오톡" onClick={() => handleShare('kakao')} />
+              <ShareMenuItem emoji="💬" label="KakaoTalk" onClick={() => handleShare('kakao')} />
               <div className="my-1 border-t border-border" />
-              <ShareMenuItem emoji="🔗" label="링크 복사" onClick={() => handleShare('copy')} />
+              <ShareMenuItem emoji="🔗" label={t('shareUI.copyLink')} onClick={() => handleShare('copy')} />
             </div>
           </>
         )}
