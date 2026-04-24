@@ -13,7 +13,7 @@ import { Loader2, Images, Heart, Globe, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const UserGallery = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { userId } = useParams<{ userId: string }>();
   const { data, isLoading, isOwner, filter, setFilter, filteredLooks, togglePublic, bulkToggle } = useUserGallery(userId);
 
