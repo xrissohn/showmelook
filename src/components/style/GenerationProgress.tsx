@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { X, Users, Clock } from 'lucide-react';
 import showmelookLogo from '@/assets/showmelook-logo.webp';
 import { useMemo } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface QueueStatus {
   totalQueued: number;
@@ -19,14 +20,14 @@ interface GenerationProgressProps {
   onCancel: () => void;
 }
 
-const statusMessages: Record<string, { label: string; emoji: string }> = {
-  queued: { label: '대기 중...', emoji: '⏳' },
-  processing: { label: '처리 시작...', emoji: '🔄' },
-  generating_style: { label: '스타일 분석 중...', emoji: '🎨' },
-  generating_image: { label: '이미지 생성 중...', emoji: '✨' },
-  completed: { label: '완료!', emoji: '🎉' },
-  failed: { label: '실패', emoji: '❌' },
-};
+const getStatusMessages = (t: (key: string) => string): Record<string, { label: string; emoji: string }> => ({
+  queued: { label: t('generationProgress.queued'), emoji: '⏳' },
+  processing: { label: t('generationProgress.processing'), emoji: '🔄' },
+  generating_style: { label: t('generationProgress.generatingStyle'), emoji: '🎨' },
+  generating_image: { label: t('generationProgress.generatingImage'), emoji: '✨' },
+  completed: { label: t('generationProgress.completed'), emoji: '🎉' },
+  failed: { label: t('generationProgress.failed'), emoji: '❌' },
+});
 
 // Pre-calculated particle positions for consistent rendering
 const PARTICLES = Array.from({ length: 12 }, (_, i) => ({
