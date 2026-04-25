@@ -836,7 +836,8 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-image-preview',
+          // Nano Banana 2 (Gemini 3.1 Flash Image) - pro-level quality with faster face preservation
+          model: 'google/gemini-3.1-flash-image-preview',
           messages: messages,
           modalities: ['image', 'text']
         }),
