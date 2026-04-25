@@ -782,13 +782,43 @@ Generate a VERTICAL/PORTRAIT orientation image (aspect ratio 3:4). Full body fas
         });
 
         // Add product images AFTER avatar (color/material references only)
+        // Convert to base64 if format is unsupported (e.g. AVIF) — Gemini only accepts PNG/JPEG/WebP/GIF
         if (productImageUrls && Array.isArray(productImageUrls)) {
           for (const imgUrl of productImageUrls) {
-            if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
+            if (!imgUrl || typeof imgUrl !== 'string' || !imgUrl.startsWith('http')) continue;
+
+            const lowerUrl = imgUrl.toLowerCase();
+            const needsConversion = lowerUrl.includes('.avif') || lowerUrl.includes('.heic') || lowerUrl.includes('.heif') || lowerUrl.includes('.bmp') || lowerUrl.includes('.tiff');
+
+            if (!needsConversion) {
               fullContentArray.push({
                 type: 'image_url',
                 image_url: { url: imgUrl }
               });
+              continue;
+            }
+
+            // Fetch and convert unsupported format to base64 with JPEG mime type
+            try {
+              const imgRes = await fetch(imgUrl);
+              if (!imgRes.ok) {
+                console.warn(`[generate-style] Skipping product image (fetch failed ${imgRes.status}): ${imgUrl.substring(0, 80)}`);
+                continue;
+              }
+              const buffer = await imgRes.arrayBuffer();
+              const bytes = new Uint8Array(buffer);
+              let binary = '';
+              for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+              const base64 = btoa(binary);
+              // Use jpeg mime — Gemini will decode it. Most CDNs serve avif as a substitute for jpeg anyway.
+              const dataUrl = `data:image/jpeg;base64,${base64}`;
+              fullContentArray.push({
+                type: 'image_url',
+                image_url: { url: dataUrl }
+              });
+              console.log(`[generate-style] Converted unsupported image format to base64: ${imgUrl.substring(0, 80)}`);
+            } catch (err) {
+              console.error(`[generate-style] Failed to convert product image, skipping: ${imgUrl.substring(0, 80)}`, err);
             }
           }
         }
