@@ -135,7 +135,7 @@ serve(async (req) => {
 
     console.log(`[og-image-gen] Generated PNG ${OG_WIDTH}x${OG_HEIGHT} for ${lookId}`);
 
-    return new Response(pngBytes, {
+    return new Response(pngBytes as BodyInit, {
       headers: {
         ...corsHeaders,
         "Content-Type": "image/png",
