@@ -768,12 +768,20 @@ Generate a VERTICAL/PORTRAIT orientation image (aspect ratio 3:4). Full body fas
       }
       
       if (avatarFetchSuccess) {
-        // Rebuild content array: prompt + product images + avatar
+        // 🔥 IMPORTANT: For Nano Banana, the FIRST image gets the strongest identity weight.
+        // Order: prompt → AVATAR (face reference) → product images (color reference)
+        // This matches the prompt instruction "The FIRST image attached below is the FACE REFERENCE PHOTO"
         const fullContentArray: any[] = [
           { type: 'text', text: prompt }
         ];
-        
-        // Add product images first
+
+        // Add AVATAR FIRST (face identity reference)
+        fullContentArray.push({
+          type: 'image_url',
+          image_url: { url: avatarDataUrl }
+        });
+
+        // Add product images AFTER avatar (color/material references only)
         if (productImageUrls && Array.isArray(productImageUrls)) {
           for (const imgUrl of productImageUrls) {
             if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
@@ -784,15 +792,9 @@ Generate a VERTICAL/PORTRAIT orientation image (aspect ratio 3:4). Full body fas
             }
           }
         }
-        
-        // Add avatar last (reference photo)
-        fullContentArray.push({
-          type: 'image_url',
-          image_url: { url: avatarDataUrl }
-        });
-        
-        console.log('[generate-style] Avatar included in request');
-        
+
+        console.log('[generate-style] Avatar included as FIRST image (face identity priority)');
+
         messages[0] = {
           role: 'user',
           content: fullContentArray
