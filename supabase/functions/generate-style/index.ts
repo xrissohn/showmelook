@@ -616,10 +616,16 @@ Note: The person is in their 40s. Show mature, sophisticated features matching t
         
         const faceCompositeAgeHint = getAdultFaceCompositeAgeHint(ageInfo.category, gender);
         
-        prompt = `CRITICAL INSTRUCTION: You MUST use the face from the reference photo I'm providing. Create a fashion image where the model has EXACTLY the same face as the person in the reference photo.
+        prompt = `🚨 ABSOLUTE TOP PRIORITY — FACE IDENTITY PRESERVATION 🚨
+The FIRST image attached below is the FACE REFERENCE PHOTO of the actual person.
+You MUST generate the model's face to be IDENTICAL to this first reference photo:
+- Preserve EVERY facial feature exactly: eye shape, eye color, eyebrow shape, nose shape, lip shape, jawline, face shape, skin tone, ethnicity, hairstyle, hair color
+- Do NOT beautify, slim, smooth, age-down, or "improve" the face — keep it exactly as in the reference
+- Do NOT swap the face with a generic model face — this is a real person who must be recognizable
+- The remaining images (after the first one) are PRODUCT photos used ONLY as color/material references for clothing — IGNORE any people or faces shown in those product images
 ${faceCompositeAgeHint}
 
-Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}${weight ? `, ${weight}kg` : ''}.
+Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}${weight ? `, ${weight}kg` : ''}, with the EXACT face from the first reference photo.
 
 ${bodyProportionHint}
 
@@ -628,11 +634,11 @@ Style concept: ${style}
 Wearing these items with EXACT colors specified:
 ${productsWithColors}
 
-COLOR CRITICAL: Each item MUST match its real-world color exactly. If a color is specified, use it. If it says "match from product image", refer to the product images for accurate color. Do NOT substitute colors.
+COLOR CRITICAL: Each clothing item MUST match its real-world color exactly from the corresponding product image. Do NOT substitute colors.
 
-IMPORTANT: The model's face MUST match the reference photo exactly - same facial features, expression style, age appearance, and overall look. The body should reflect the specified build (${bodyDescription}). Blend the face naturally with the outfit while maintaining the person's identity from the reference photo.
+FACE FIDELITY CHECK: Before finalizing, verify the generated face is a clear, recognizable match to the FIRST reference photo. Same person, same identity, no alterations to facial structure.
 
-CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspect ratio 3:4 or 2:3). Full body fashion photoshoot, professional studio lighting, clean white background, high fashion editorial style, sharp focus, 8k quality, showcasing the complete outfit from head to toe.`;
+Generate a VERTICAL/PORTRAIT orientation image (aspect ratio 3:4). Full body fashion photoshoot from head to toe, professional studio lighting, clean white background, sharp focus, 8k quality, high fashion editorial style.`;
       }
     }
 
@@ -762,12 +768,20 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
       }
       
       if (avatarFetchSuccess) {
-        // Rebuild content array: prompt + product images + avatar
+        // 🔥 IMPORTANT: For Nano Banana, the FIRST image gets the strongest identity weight.
+        // Order: prompt → AVATAR (face reference) → product images (color reference)
+        // This matches the prompt instruction "The FIRST image attached below is the FACE REFERENCE PHOTO"
         const fullContentArray: any[] = [
           { type: 'text', text: prompt }
         ];
-        
-        // Add product images first
+
+        // Add AVATAR FIRST (face identity reference)
+        fullContentArray.push({
+          type: 'image_url',
+          image_url: { url: avatarDataUrl }
+        });
+
+        // Add product images AFTER avatar (color/material references only)
         if (productImageUrls && Array.isArray(productImageUrls)) {
           for (const imgUrl of productImageUrls) {
             if (imgUrl && typeof imgUrl === 'string' && imgUrl.startsWith('http')) {
@@ -778,15 +792,9 @@ CRITICAL: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, aspe
             }
           }
         }
-        
-        // Add avatar last (reference photo)
-        fullContentArray.push({
-          type: 'image_url',
-          image_url: { url: avatarDataUrl }
-        });
-        
-        console.log('[generate-style] Avatar included in request');
-        
+
+        console.log('[generate-style] Avatar included as FIRST image (face identity priority)');
+
         messages[0] = {
           role: 'user',
           content: fullContentArray
@@ -836,7 +844,8 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-image-preview',
+          // Nano Banana 2 (Gemini 3.1 Flash Image) - pro-level quality with faster face preservation
+          model: 'google/gemini-3.1-flash-image-preview',
           messages: messages,
           modalities: ['image', 'text']
         }),
@@ -914,7 +923,7 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-image-preview',
+            model: 'google/gemini-3.1-flash-image-preview',
             messages: [{ role: 'user', content: fallbackPrompt }],
             modalities: ['image', 'text']
           }),
