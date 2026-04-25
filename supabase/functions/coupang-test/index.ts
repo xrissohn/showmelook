@@ -118,7 +118,8 @@ function generateDNA(product: {
   brand?: string;
   category?: string;
 }): { dna_meta: DNAMeta; dna_text: string } {
-  const { category, subCategory } = inferCategory(product.name);
+  const inferred = inferCategory(product.name) ?? { category: "기타", subCategory: "" };
+  const { category, subCategory } = inferred;
   
   // 기본 DNA 생성
   const dna_meta: DNAMeta = {
