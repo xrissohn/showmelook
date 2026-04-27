@@ -1089,6 +1089,30 @@ const SUB_STYLE_KEYWORDS: Record<string, string[]> = {
   '토트백': ['토트', 'tote', '토트백'],
   '크로스백': ['크로스백', 'crossbody', '크로스'],
   '백팩': ['백팩', 'backpack', '배낭'],
+  '숄더백': ['숄더백', 'shoulder bag', '숄더'],
+  '클러치': ['클러치', 'clutch'],
+  '미니백': ['미니백', 'mini bag', '미니 백'],
+  '에코백': ['에코백', 'eco bag', '캔버스백'],
+  // 모자
+  '모자': ['모자', 'hat', '햇'],
+  '비니': ['비니', 'beanie', '니트모자', '니트 모자'],
+  '버킷햇': ['버킷햇', '버킷 햇', 'bucket hat', '버킷'],
+  '볼캡': ['볼캡', '야구모자', '야구 모자', 'baseball cap', '캡모자', '캡 모자'],
+  '스냅백': ['스냅백', 'snapback'],
+  '페도라': ['페도라', 'fedora'],
+  '베레모': ['베레모', 'beret', '베레'],
+  // 주얼리/액세서리
+  '목걸이': ['목걸이', 'necklace', '네크리스'],
+  '귀걸이': ['귀걸이', 'earring', '이어링'],
+  '반지': ['반지', 'ring'],
+  '팔찌': ['팔찌', 'bracelet'],
+  '시계': ['시계', 'watch', '워치'],
+  '안경': ['안경', '안경테', 'glasses', 'eyewear'],
+  '선글라스': ['선글라스', 'sunglass', 'sunglasses', '썬글라스'],
+  '벨트': ['벨트', 'belt'],
+  '스카프': ['스카프', 'scarf', '머플러', 'muffler'],
+  '장갑': ['장갑', 'glove', 'gloves'],
+  '양말': ['양말', '삭스', 'socks'],
 };
 
 // 사용자 요청에서 구체적 제품 스타일명 추출
@@ -2447,6 +2471,33 @@ serve(async (req) => {
         console.log(`[style-recommend] 🏪 Merchant products in top-50: ${merchantInTop.length}`);
       }
     }
+
+    // 🎯 강제 슬롯 확보: sub_style 요청이 감지됐는데 상위 50개에 매칭 상품이 부족하면 강제 삽입
+    if (requestedSubStyles.length > 0) {
+      const subStyleInTop = topScoredProducts.filter(s => calculateSubStyleBonus(s.product) > 0);
+      const MIN_SUB_STYLE_SLOTS = 3;
+      if (subStyleInTop.length < MIN_SUB_STYLE_SLOTS) {
+        const needed = MIN_SUB_STYLE_SLOTS - subStyleInTop.length;
+        const subStyleProducts = scoredProducts.filter(s =>
+          calculateSubStyleBonus(s.product) > 0 &&
+          !topScoredProducts.some(t => t.product.id === s.product.id)
+        ).slice(0, needed);
+
+        if (subStyleProducts.length > 0) {
+          // 하위 슬롯을 교체 (머천트 강제 삽입과 동일 패턴)
+          topScoredProducts = [
+            ...topScoredProducts.slice(0, topScoredProducts.length - subStyleProducts.length),
+            ...subStyleProducts
+          ];
+          console.log(`[style-recommend] 🎯 Forced ${subStyleProducts.length} sub_style products (${requestedSubStyles.join(',')}) into top-50 (had ${subStyleInTop.length})`);
+        } else {
+          console.log(`[style-recommend] ⚠️ sub_style "${requestedSubStyles.join(',')}" 매칭 상품이 DB에 없음`);
+        }
+      } else {
+        console.log(`[style-recommend] 🎯 sub_style products in top-50: ${subStyleInTop.length}`);
+      }
+    }
+
     const uniqueProducts = topScoredProducts.map(s => s.product);
     
     if (uniqueProducts.length === 0) {
@@ -2498,6 +2549,28 @@ serve(async (req) => {
         }
         console.log(`[style-recommend] 🚨 dress 상품 ${dressCount}개 우선 배치 완료`);
       }
+
+      // 🎯 sub_style 요청 모드: 매칭 상품을 맨 앞에 우선 배치 (최대 4개, 브랜드 다양성 유지)
+      if (requestedSubStyles.length > 0) {
+        const subStyleMatched = scoredProducts
+          .filter(s => calculateSubStyleBonus(s.product) > 0)
+          .map(s => s.product);
+        let subStyleCount = 0;
+        for (const p of subStyleMatched) {
+          if (subStyleCount >= 4) break;
+          if (result.some(r => r.id === p.id)) continue;
+          const brand = p.brand || 'unknown';
+          const brandCount = usedBrands.get(brand) || 0;
+          if (brandCount < 2) {
+            result.push(p);
+            usedBrands.set(brand, brandCount + 1);
+            subStyleCount++;
+          }
+        }
+        if (subStyleCount > 0) {
+          console.log(`[style-recommend] 🎯 sub_style "${requestedSubStyles.join(',')}" 매칭 상품 ${subStyleCount}개 우선 배치`);
+        }
+      }
       
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
@@ -2511,8 +2584,8 @@ serve(async (req) => {
         
         for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
-          // 원피스 필수 모드에서 이미 추가된 dress 상품은 스킵
-          if (requiresDress && result.some(r => r.id === p.id)) continue;
+          // 이미 우선 배치된 상품(원피스/sub_style 매칭)은 스킵
+          if (result.some(r => r.id === p.id)) continue;
           
           const brand = p.brand || 'unknown';
           const brandCount = usedBrands.get(brand) || 0;
@@ -2940,7 +3013,46 @@ ${matchDetails.join('\n')}
           console.log(`[style-recommend] ⚠️ dress 상품 풀이 비어있어 강제 교체 불가`);
         }
       }
-      
+
+      // 🎯 sub_style 강제 보장: AI가 매칭 상품을 하나도 안 골랐으면 강제 교체
+      if (requestedSubStyles.length > 0) {
+        const hasMatchedSubStyle = sortedProducts.some(p => calculateSubStyleBonus(p) > 0);
+        if (!hasMatchedSubStyle) {
+          // 전체 후보 풀에서 sub_style 매칭 상품 1개 추출 (점수 높은 순)
+          const subStyleCandidate = scoredProducts
+            .filter(s => calculateSubStyleBonus(s.product) > 0)
+            .map(s => s.product)[0];
+
+          if (subStyleCandidate) {
+            // 교체 대상 결정: 같은 슬롯의 상품을 우선 교체, 없으면 가장 마지막 슬롯 교체
+            const candidateSlot = subStyleCandidate.dna_meta?.item_slot || 'accessory';
+            let replaceIdx = sortedProducts.findIndex(p => (p.dna_meta?.item_slot || '') === candidateSlot);
+
+            // 같은 슬롯이 없고 4개 이하면 추가, 4개면 마지막 교체
+            if (replaceIdx < 0) {
+              if (sortedProducts.length < 4) {
+                sortedProducts.push(subStyleCandidate);
+                console.log(`[style-recommend] 🎯 sub_style 강제 추가: ${subStyleCandidate.brand} ${subStyleCandidate.name} (slot=${candidateSlot})`);
+              } else {
+                replaceIdx = sortedProducts.length - 1;
+                console.log(`[style-recommend] 🎯 sub_style 강제 교체: "${sortedProducts[replaceIdx].name}" → "${subStyleCandidate.name}" (마지막 슬롯)`);
+                sortedProducts[replaceIdx] = subStyleCandidate;
+              }
+            } else {
+              console.log(`[style-recommend] 🎯 sub_style 강제 교체: "${sortedProducts[replaceIdx].name}" → "${subStyleCandidate.name}" (slot=${candidateSlot})`);
+              sortedProducts[replaceIdx] = subStyleCandidate;
+            }
+
+            // ragResponse.selectedProductIds 갱신 (다운스트림 로직과 일치)
+            ragResponse.selectedProductIds = sortedProducts.map(p => p.id);
+          } else {
+            console.log(`[style-recommend] ⚠️ sub_style "${requestedSubStyles.join(',')}" 매칭 상품이 없어 강제 교체 불가`);
+          }
+        } else {
+          console.log(`[style-recommend] 🎯 sub_style 매칭 상품이 결과에 포함됨 ✓`);
+        }
+      }
+
       // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
       const actualBrands = sortedProducts.map(p => p.brand?.toLowerCase()).filter(Boolean);
       
