@@ -2549,6 +2549,28 @@ serve(async (req) => {
         }
         console.log(`[style-recommend] 🚨 dress 상품 ${dressCount}개 우선 배치 완료`);
       }
+
+      // 🎯 sub_style 요청 모드: 매칭 상품을 맨 앞에 우선 배치 (최대 4개, 브랜드 다양성 유지)
+      if (requestedSubStyles.length > 0) {
+        const subStyleMatched = scoredProducts
+          .filter(s => calculateSubStyleBonus(s.product) > 0)
+          .map(s => s.product);
+        let subStyleCount = 0;
+        for (const p of subStyleMatched) {
+          if (subStyleCount >= 4) break;
+          if (result.some(r => r.id === p.id)) continue;
+          const brand = p.brand || 'unknown';
+          const brandCount = usedBrands.get(brand) || 0;
+          if (brandCount < 2) {
+            result.push(p);
+            usedBrands.set(brand, brandCount + 1);
+            subStyleCount++;
+          }
+        }
+        if (subStyleCount > 0) {
+          console.log(`[style-recommend] 🎯 sub_style "${requestedSubStyles.join(',')}" 매칭 상품 ${subStyleCount}개 우선 배치`);
+        }
+      }
       
       for (const cat of CATEGORY_PRIORITY) {
         const catProducts = productsByPriority[cat] || [];
