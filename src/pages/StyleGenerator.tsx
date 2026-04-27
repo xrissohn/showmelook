@@ -4117,6 +4117,11 @@ const StyleGenerator = () => {
     setIsCustomSearching(true);
     setCustomResult(null);
     setSelectedTrendProducts([]);
+    // 새 추천 시작 시 이전 생성 결과 즉시 초기화
+    setGeneratedImage(null);
+    setGeneratedLookId(null);
+    setGeneratedLookIsPublic(false);
+    setGeneratedTagPositions(null);
 
     try {
       // 성별 매핑
@@ -4284,6 +4289,11 @@ const StyleGenerator = () => {
     // 생성 시작 - 두 작업 동시 시작
     setIsGenerating(true);
     setIsCustomSearching(true);
+    // 새 추천 시작 시 이전 생성 결과 즉시 초기화
+    setGeneratedImage(null);
+    setGeneratedLookId(null);
+    setGeneratedLookIsPublic(false);
+    setGeneratedTagPositions(null);
     
     // 생성 시작 시 결과 영역으로 스크롤
     setTimeout(() => {
@@ -4655,6 +4665,11 @@ const StyleGenerator = () => {
     }
 
     setIsGenerating(true);
+    // 새 스타일 생성 시작 시 이전 결과 즉시 초기화
+    setGeneratedImage(null);
+    setGeneratedLookId(null);
+    setGeneratedLookIsPublic(false);
+    setGeneratedTagPositions(null);
     
     // 생성 시작 시 결과 영역으로 스크롤
     setTimeout(() => {
@@ -5244,7 +5259,10 @@ const StyleGenerator = () => {
                             setSelectedTrendProducts([]);
                             setCustomStylePrompt('');
                             setFeedbackGiven(null);
-                            setGeneratedImage('');
+                            setGeneratedImage(null);
+                            setGeneratedLookId(null);
+                            setGeneratedLookIsPublic(false);
+                            setGeneratedTagPositions(null);
                           }}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
@@ -6106,7 +6124,7 @@ const StyleGenerator = () => {
                         setSelectedTrendProducts([]);
                         setCustomStylePrompt('');
                         setFeedbackGiven(null);
-                        setGeneratedImage('');
+                        setGeneratedImage(null);
                         setGeneratedLookId(null);
                         setGeneratedLookIsPublic(false);
                         setGeneratedTagPositions(null);
