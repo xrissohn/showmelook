@@ -6124,7 +6124,7 @@ const StyleGenerator = () => {
                         setSelectedTrendProducts([]);
                         setCustomStylePrompt('');
                         setFeedbackGiven(null);
-                        setGeneratedImage('');
+                        setGeneratedImage(null);
                         setGeneratedLookId(null);
                         setGeneratedLookIsPublic(false);
                         setGeneratedTagPositions(null);
