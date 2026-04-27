@@ -4117,6 +4117,11 @@ const StyleGenerator = () => {
     setIsCustomSearching(true);
     setCustomResult(null);
     setSelectedTrendProducts([]);
+    // 새 추천 시작 시 이전 생성 결과 즉시 초기화
+    setGeneratedImage(null);
+    setGeneratedLookId(null);
+    setGeneratedLookIsPublic(false);
+    setGeneratedTagPositions(null);
 
     try {
       // 성별 매핑
