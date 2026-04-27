@@ -4665,6 +4665,11 @@ const StyleGenerator = () => {
     }
 
     setIsGenerating(true);
+    // 새 스타일 생성 시작 시 이전 결과 즉시 초기화
+    setGeneratedImage(null);
+    setGeneratedLookId(null);
+    setGeneratedLookIsPublic(false);
+    setGeneratedTagPositions(null);
     
     // 생성 시작 시 결과 영역으로 스크롤
     setTimeout(() => {
