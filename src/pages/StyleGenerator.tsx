@@ -5259,7 +5259,10 @@ const StyleGenerator = () => {
                             setSelectedTrendProducts([]);
                             setCustomStylePrompt('');
                             setFeedbackGiven(null);
-                            setGeneratedImage('');
+                            setGeneratedImage(null);
+                            setGeneratedLookId(null);
+                            setGeneratedLookIsPublic(false);
+                            setGeneratedTagPositions(null);
                           }}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
