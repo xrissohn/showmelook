@@ -1,49 +1,50 @@
+## 문제
 
+새 프롬프트로 "추천받기"를 누르면 AI 스타일 생성 단계에서 **이전에 생성된 룩 이미지가 결과 영역에 잠깐 다시 표시**되는 현상.
 
-## 원인 분석 결과
+## 원인
 
-### 문제 1: 쿠팡 모바일 구매 버튼 → 상세 페이지 구매 섹션으로 이동하지 않음
-
-**로그 분석:**
+`StyleGenerator.tsx`의 결과 렌더 조건은:
 ```
-[deeplink] Re-converted to mobile-compatible URL: https://link.coupang.com/a/el6MNH
-[deeplink] Coupang API response: {"rCode":"0", "data":[{"shortenUrl":"https://link.coupang.com/a/el6MNH", ...}]}
+{isGenerating/Searching ? <로딩> : generatedImage ? <이전 이미지> : <빈 상태>}
 ```
 
-**원인:** DB에 저장된 쿠팡 `product_url`이 `link.coupang.com/re/AFFSDP?...` 형식이고, deeplink 함수가 이를 `coupang.com/vp/products/{pageKey}?itemId=...&vendorItemId=...`로 복원 후 API를 호출하여 `link.coupang.com/a/...` 단축 URL을 생성한다. 하지만 이 단축 URL은 쿠팡 앱에서 **상품 상세 페이지 최상단**으로 이동하며, 특정 옵션(사이즈/색상)이 선택된 구매 섹션으로 바로 스크롤되지 않는다.
+세 곳의 생성 시작 핸들러 모두 이전 결과 상태(`generatedImage`, `generatedLookId`, `generatedTagPositions`, `generatedLookIsPublic`)를 **초기화하지 않은 채** 새 작업을 시작합니다. 따라서 로딩 게이트가 false로 잠깐 떨어지는 구간(예: 추천만 완료되고 합성은 시작 전, 또는 폴백 분기)에서 **직전 생성된 룩이 다시 노출**됩니다.
 
-**해결 방안:** 쿠팡 파트너스 API의 단축 URL은 구매 섹션 직접 이동을 지원하지 않으므로, 모바일 웹 브라우저에서 `m.coupang.com` URL로 직접 열리도록 대체 전략을 적용한다. `itemId`와 `vendorItemId`를 포함한 모바일 웹 URL(`https://m.coupang.com/vm/products/{pageKey}?itemId=...&vendorItemId=...`)을 생성하면 옵션이 미리 선택된 상태로 페이지가 열린다.
+## 해결 방안
 
-### 문제 2: "쿠팡에서 추천해줘"라고 해도 다른 쇼핑몰 상품만 추천
+세 함수의 **첫 줄(생성 시작 시점, validation 통과 직후)** 에서 이전 결과 상태를 모두 초기화합니다.
 
-**로그 분석:**
-```
-[style-recommend] Request: "..."  ← 사용자 요청 텍스트
-[style-recommend] Selected IDs: 43f4aa7f..., fa16aba3..., 76763551..., 2f03e944...
-```
-→ 선택된 4개 상품 조회 결과: **wconcept 3개, hfashion 1개** — 쿠팡 0개.
-→ 로그에 "🏪 머천트/브랜드 선호 감지" 메시지가 **전혀 없음**.
+### 수정 대상 파일
+- `src/pages/StyleGenerator.tsx`
 
-**원인:** `detectMerchantPreference` 함수 자체는 '쿠팡' 키워드를 올바르게 감지하지만, 감지 결과가 Stage 2 AI 프롬프트에 전달될 때 **비독점(isExclusive=false) 모드에서 단순 가점(+0.60)만 부여**한다. 그런데 쿠팡 제품은 전체 4,800여 개 중 261개(약 5.4%)에 불과하고, 대부분이 키친타월/장갑 등 비패션 아이템이다. 따라서 Stage 1 필터링(카테고리/시즌/성별)을 통과하는 쿠팡 패션 상품이 극소수여서 가점이 있어도 다른 머천트 상품에 밀린다. 또한 로그에 감지 메시지가 없으므로, 해당 요청의 `userRequest` 텍스트에 실제로 '쿠팡'이 포함되지 않았을 가능성도 있다.
+### 변경 내용
 
----
+**1) `handleCustomStyleSearch` (line 4117 부근)**
+- `setIsCustomSearching(true)` 직후 다음 4줄 추가:
+  ```ts
+  setGeneratedImage(null);
+  setGeneratedLookId(null);
+  setGeneratedLookIsPublic(false);
+  setGeneratedTagPositions(null);
+  ```
 
-## 수정 계획
+**2) `generateStyleWithRecommendation` (line 4285 부근)**
+- `setIsGenerating(true); setIsCustomSearching(true);` 직후 동일한 4줄 초기화 추가.
 
-### 1. 쿠팡 모바일 딥링크 개선 (deeplink + style-recommend)
-- `convertCoupangToMobileUrl` 함수에서 API 단축 URL 대신 **모바일 웹 URL 우선 전략** 적용
-- `m.coupang.com/vm/products/{pageKey}?itemId={itemId}&vendorItemId={vendorItemId}&sourceType=SDP` 형식으로 생성
-- 어필리에이트 추적을 위해 API 호출은 유지하되, 최종 사용자에게는 `shortenUrl`이 아닌 `landingUrl`(AFFSDP 형식) 또는 모바일 웹 URL 사용
-- 테스트: 안드로이드/iOS 모바일에서 상품 옵션이 선택된 상태로 열리는지 확인
+**3) `generateStyle` (line 4657 부근)**
+- `setIsGenerating(true);` 직후 동일한 4줄 초기화 추가.
 
-### 2. 쿠팡 머천트 선호 감지 강화 (style-recommend)
-- 머천트 감지 로그를 **항상** 출력하도록 변경 (감지 실패 시에도 요청 텍스트와 함께 로그)
-- 쿠팡 감지 시 `isExclusive` 판단 로직 완화: "쿠팡에서"만으로도 독점으로 판단
-- 독점 필터 최소 상품 수 조건(현재 4개)을 2개로 완화
-- Stage 2 AI 프롬프트에서 머천트 선호 상품의 가점을 0.60 → 0.80으로 상향 (비독점 모드)
-- 쿠팡 패션 상품 비율이 낮은 경우에도 최소 1-2개는 포함되도록 강제 슬롯 확보 로직 추가
+**4) 타입 통일 (작은 정리)**
+- 기존 코드 5247, 6109줄에서 `setGeneratedImage('')` 로 빈 문자열을 쓰는 부분을 `setGeneratedImage(null)`로 변경 (타입은 `string | null`이며 truthy 체크와 일관되도록).
 
-### 수정 파일
-- `supabase/functions/deeplink/index.ts` — 모바일 URL 생성 전략 변경
-- `supabase/functions/style-recommend/index.ts` — 머천트 감지 강화 + 강제 슬롯 확보
+## 영향 범위
 
+- 결과 영역의 렌더 게이트는 그대로 유지 (`isGenerating ? 로딩 : generatedImage ? 결과 : 빈상태`).
+- 이전 룩은 `myLooks` 배열과 갤러리에 그대로 보존됨 (DB/캐시 영향 없음).
+- 메모리상 표시 상태만 즉시 비우므로, 새 추천 진행 중에는 **로딩 → 빈 상태 → 새 결과** 순서로만 노출됨.
+- 다른 핸들러/하위 컴포넌트 로직 변경 없음. 안전한 4줄짜리 패치.
+
+## 위험 요소
+
+- StyleGenerator는 6,400줄+ 거대 파일이며 리팩토링 금지 대상이지만, 본 변경은 **3곳에 동일한 4줄 추가 + 2곳 빈 문자열 → null 치환**뿐이라 스코프가 매우 좁고 사이드 이펙트 위험이 낮음.
