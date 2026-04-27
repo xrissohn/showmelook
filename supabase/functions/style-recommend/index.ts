@@ -2584,8 +2584,8 @@ serve(async (req) => {
         
         for (const p of shuffledCandidates) {
           if (selectedFromCat >= maxPerCategory) break;
-          // 원피스 필수 모드에서 이미 추가된 dress 상품은 스킵
-          if (requiresDress && result.some(r => r.id === p.id)) continue;
+          // 이미 우선 배치된 상품(원피스/sub_style 매칭)은 스킵
+          if (result.some(r => r.id === p.id)) continue;
           
           const brand = p.brand || 'unknown';
           const brandCount = usedBrands.get(brand) || 0;
