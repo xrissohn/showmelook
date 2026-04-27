@@ -2471,6 +2471,33 @@ serve(async (req) => {
         console.log(`[style-recommend] 🏪 Merchant products in top-50: ${merchantInTop.length}`);
       }
     }
+
+    // 🎯 강제 슬롯 확보: sub_style 요청이 감지됐는데 상위 50개에 매칭 상품이 부족하면 강제 삽입
+    if (requestedSubStyles.length > 0) {
+      const subStyleInTop = topScoredProducts.filter(s => calculateSubStyleBonus(s.product) > 0);
+      const MIN_SUB_STYLE_SLOTS = 3;
+      if (subStyleInTop.length < MIN_SUB_STYLE_SLOTS) {
+        const needed = MIN_SUB_STYLE_SLOTS - subStyleInTop.length;
+        const subStyleProducts = scoredProducts.filter(s =>
+          calculateSubStyleBonus(s.product) > 0 &&
+          !topScoredProducts.some(t => t.product.id === s.product.id)
+        ).slice(0, needed);
+
+        if (subStyleProducts.length > 0) {
+          // 하위 슬롯을 교체 (머천트 강제 삽입과 동일 패턴)
+          topScoredProducts = [
+            ...topScoredProducts.slice(0, topScoredProducts.length - subStyleProducts.length),
+            ...subStyleProducts
+          ];
+          console.log(`[style-recommend] 🎯 Forced ${subStyleProducts.length} sub_style products (${requestedSubStyles.join(',')}) into top-50 (had ${subStyleInTop.length})`);
+        } else {
+          console.log(`[style-recommend] ⚠️ sub_style "${requestedSubStyles.join(',')}" 매칭 상품이 DB에 없음`);
+        }
+      } else {
+        console.log(`[style-recommend] 🎯 sub_style products in top-50: ${subStyleInTop.length}`);
+      }
+    }
+
     const uniqueProducts = topScoredProducts.map(s => s.product);
     
     if (uniqueProducts.length === 0) {
