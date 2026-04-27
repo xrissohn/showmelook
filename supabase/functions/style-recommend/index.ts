@@ -3013,7 +3013,46 @@ ${matchDetails.join('\n')}
           console.log(`[style-recommend] ⚠️ dress 상품 풀이 비어있어 강제 교체 불가`);
         }
       }
-      
+
+      // 🎯 sub_style 강제 보장: AI가 매칭 상품을 하나도 안 골랐으면 강제 교체
+      if (requestedSubStyles.length > 0) {
+        const hasMatchedSubStyle = sortedProducts.some(p => calculateSubStyleBonus(p) > 0);
+        if (!hasMatchedSubStyle) {
+          // 전체 후보 풀에서 sub_style 매칭 상품 1개 추출 (점수 높은 순)
+          const subStyleCandidate = scoredProducts
+            .filter(s => calculateSubStyleBonus(s.product) > 0)
+            .map(s => s.product)[0];
+
+          if (subStyleCandidate) {
+            // 교체 대상 결정: 같은 슬롯의 상품을 우선 교체, 없으면 가장 마지막 슬롯 교체
+            const candidateSlot = subStyleCandidate.dna_meta?.item_slot || 'accessory';
+            let replaceIdx = sortedProducts.findIndex(p => (p.dna_meta?.item_slot || '') === candidateSlot);
+
+            // 같은 슬롯이 없고 4개 이하면 추가, 4개면 마지막 교체
+            if (replaceIdx < 0) {
+              if (sortedProducts.length < 4) {
+                sortedProducts.push(subStyleCandidate);
+                console.log(`[style-recommend] 🎯 sub_style 강제 추가: ${subStyleCandidate.brand} ${subStyleCandidate.name} (slot=${candidateSlot})`);
+              } else {
+                replaceIdx = sortedProducts.length - 1;
+                console.log(`[style-recommend] 🎯 sub_style 강제 교체: "${sortedProducts[replaceIdx].name}" → "${subStyleCandidate.name}" (마지막 슬롯)`);
+                sortedProducts[replaceIdx] = subStyleCandidate;
+              }
+            } else {
+              console.log(`[style-recommend] 🎯 sub_style 강제 교체: "${sortedProducts[replaceIdx].name}" → "${subStyleCandidate.name}" (slot=${candidateSlot})`);
+              sortedProducts[replaceIdx] = subStyleCandidate;
+            }
+
+            // ragResponse.selectedProductIds 갱신 (다운스트림 로직과 일치)
+            ragResponse.selectedProductIds = sortedProducts.map(p => p.id);
+          } else {
+            console.log(`[style-recommend] ⚠️ sub_style "${requestedSubStyles.join(',')}" 매칭 상품이 없어 강제 교체 불가`);
+          }
+        } else {
+          console.log(`[style-recommend] 🎯 sub_style 매칭 상품이 결과에 포함됨 ✓`);
+        }
+      }
+
       // AI가 잘못된 브랜드/상품을 언급했을 경우 교정
       const actualBrands = sortedProducts.map(p => p.brand?.toLowerCase()).filter(Boolean);
       
