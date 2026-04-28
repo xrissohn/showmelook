@@ -914,10 +914,41 @@ async function registerProduct(supabase: any, product: ProductInput, skipDuplica
 }
 
 // ============= HTTP Handler =============
+async function requireAdminOrService(req: Request): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const authHeader = req.headers.get('Authorization') || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return { ok: false, response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) };
+  }
+  const token = authHeader.replace('Bearer ', '').trim();
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  if (token === serviceKey) return { ok: true };
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+  let userId: string | null = claimsData?.claims?.sub ?? null;
+  if (claimsError || !userId) {
+    const { data: { user } } = await userClient.auth.getUser();
+    userId = user?.id ?? null;
+  }
+  if (!userId) {
+    return { ok: false, response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) };
+  }
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  const { data: role } = await adminClient.from('user_roles').select('role').eq('user_id', userId).eq('role', 'admin').maybeSingle();
+  if (!role) {
+    return { ok: false, response: new Response(JSON.stringify({ error: 'Admin access required' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }) };
+  }
+  return { ok: true };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAdminOrService(req);
+  if (!auth.ok) return auth.response;
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
