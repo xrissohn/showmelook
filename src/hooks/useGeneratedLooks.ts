@@ -50,7 +50,7 @@ export function useGeneratedLooks() {
       // 1. Fetch all looks
       const { data: looksData, error: looksError } = await supabase
         .from('generated_looks')
-        .select('id, image_url, prompt_used, is_favorite, is_public, created_at, style_trend_id, product_ids, memo, tags, like_count, caption, tag_positions')
+        .select('id, image_url, prompt_used, is_favorite, is_public, created_at, style_trend_id, product_ids, memo, tags, like_count, caption, tag_positions, style_reasoning')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
