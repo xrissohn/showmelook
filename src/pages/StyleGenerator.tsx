@@ -1133,6 +1133,9 @@ const GeneratedStyleImage = ({
               enableAIPositioning={true}
               cachedPositions={cachedTagPositions}
               onPositionsAnalyzed={onTagPositionsAnalyzed}
+              isEditable={!!lookId}
+              lookId={lookId}
+              onTagPositionsSaved={onTagPositionsAnalyzed}
             />
           )}
           {/* 저장/공유 버튼 오버레이 */}
