@@ -113,12 +113,24 @@ serve(async (req) => {
         );
       }
 
-      // HMAC 검증 (있으면 검증, 실패 시 경고 로그만 남기고 진행)
-      // 카페24 테스트 환경에서는 HMAC 형식이 다를 수 있으므로 차단하지 않음
-      if (hmac) {
+      // HMAC 검증 — Cafe24 설치 진입점은 반드시 서명을 요구한다
+      // (CAFE24_SKIP_HMAC=true 환경변수가 설정된 테스트 환경에서만 우회 가능)
+      const skipHmac = Deno.env.get('CAFE24_SKIP_HMAC') === 'true';
+      if (!skipHmac) {
+        if (!hmac) {
+          console.error('HMAC missing for mall:', mallId);
+          return new Response(
+            renderErrorPage('인증 실패', 'HMAC 서명이 누락되었습니다.'),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' } }
+          );
+        }
         const isValid = await verifyHmac(url.searchParams, hmac);
         if (!isValid) {
-          console.warn('HMAC verification warning for mall:', mallId, '- proceeding anyway');
+          console.error('HMAC verification FAILED for mall:', mallId);
+          return new Response(
+            renderErrorPage('인증 실패', 'HMAC 서명이 일치하지 않습니다.'),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' } }
+          );
         }
       }
 
