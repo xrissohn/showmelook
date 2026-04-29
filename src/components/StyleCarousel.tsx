@@ -211,7 +211,7 @@ const StyleCarousel = () => {
     if (!containerRef.current) return;
     setIsDragging(true);
     isDraggingRef.current = true;
-    setStartX(e.pageX - containerRef.current.offsetLeft);
+    setStartX(e.pageX - offsetLeftRef.current);
     setScrollLeft(containerRef.current.scrollLeft);
     containerRef.current.style.cursor = 'grabbing';
   };
@@ -219,10 +219,11 @@ const StyleCarousel = () => {
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingRef.current || !containerRef.current) return;
     e.preventDefault();
-    const x = e.pageX - containerRef.current.offsetLeft;
+    const x = e.pageX - offsetLeftRef.current;
     const walk = (x - startX) * 1.5;
-    containerRef.current.scrollLeft = scrollLeft - walk;
-    scrollPositionRef.current = containerRef.current.scrollLeft;
+    const newScroll = scrollLeft - walk;
+    containerRef.current.scrollLeft = newScroll;
+    scrollPositionRef.current = newScroll;
   };
 
   const handleMouseUp = () => {
