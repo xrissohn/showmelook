@@ -68,13 +68,12 @@ export function useLookLikes(lookIds: string[]) {
         if (error) throw error;
       }
 
-      // Recalculate actual count from look_likes table
-      const { count } = await supabase
-        .from('look_likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('look_id', lookId);
+      // Recalculate actual count via security-definer RPC (look_likes is now private)
+      const { data: countData } = await supabase
+        .rpc('get_look_like_count', { _look_id: lookId });
 
-      const actualCount = count ?? Math.max(0, newCount);
+      const actualCount = typeof countData === 'number' ? countData : Math.max(0, newCount);
+
 
       await supabase
         .from('generated_looks')
