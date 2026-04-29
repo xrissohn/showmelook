@@ -68,6 +68,9 @@ const StyleCarousel = () => {
   const animationRef = useRef<number | null>(null);
   const scrollPositionRef = useRef(0);
   const isDraggingRef = useRef(false);
+  // Cache geometry to avoid forced reflow on every animation frame
+  const singleSetWidthRef = useRef(0);
+  const offsetLeftRef = useRef(0);
 
   // Card rotation states - accumulates 180 degrees each flip
   const [cardRotations, setCardRotations] = useState<number[]>(
