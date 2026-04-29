@@ -131,6 +131,22 @@ async function fetchWithRetry(
 }
 
 // Error logging helper
+function sanitizePayload(payload: any): any {
+  if (!payload || typeof payload !== 'object') return null;
+  try {
+    return {
+      userRequest: typeof payload.userRequest === 'string' ? payload.userRequest.slice(0, 80) : undefined,
+      gender: payload.gender,
+      ageGroup: payload.ageGroup,
+      budget: payload.budget,
+      forceRefresh: payload.forceRefresh,
+      photoAnalysisItemCount: Array.isArray(payload.photoAnalysisItems) ? payload.photoAnalysisItems.length : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function logError(
   supabase: any,
   functionName: string,
@@ -146,7 +162,7 @@ async function logError(
       error_code: errorCode,
       error_message: errorMessage,
       user_id: userId,
-      request_payload: requestPayload,
+      request_payload: sanitizePayload(requestPayload),
       execution_time_ms: executionTimeMs,
     });
     console.log(`[style-recommend] Error logged: ${errorCode} - ${errorMessage.slice(0, 100)}`);
