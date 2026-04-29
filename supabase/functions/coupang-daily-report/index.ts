@@ -175,6 +175,38 @@ serve(async (req) => {
   // deno-lint-ignore no-explicit-any
   const supabase = createClient(supabaseUrl, supabaseKey) as any;
 
+  // Authentication: allow service role key (cron) or admin JWT
+  const authHeader = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || '';
+  let authorized = false;
+  if (authHeader && authHeader === supabaseKey) {
+    authorized = true;
+  } else if (authHeader) {
+    try {
+      const userClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+        global: { headers: { Authorization: `Bearer ${authHeader}` } },
+      });
+      const { data: userData } = await userClient.auth.getUser();
+      if (userData?.user) {
+        const { data: roleRow } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userData.user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+        if (roleRow) authorized = true;
+      }
+    } catch (e) {
+      console.error('[coupang-daily-report] Auth check failed:', e);
+    }
+  }
+  if (!authorized) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+
   try {
     let body: { date?: string; records?: ManualReportItem[] } = {};
     try {
