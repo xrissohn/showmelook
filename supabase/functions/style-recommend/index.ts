@@ -1596,7 +1596,7 @@ async function runStage2WithModel(
   occasion: string,
   LOVABLE_API_KEY: string,
   merchantPref?: MerchantPreference,
-  photoForceContext?: { required: string; items: PhotoAnalysisItem[] } | null,
+  photoForceContext?: { required: string; items: PhotoAnalysisItem[]; slotMatchLines?: string; requiredSlots?: string[] } | null,
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
