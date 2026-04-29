@@ -910,8 +910,10 @@ function filterProductsByPhotoAnalysis(
   allProducts: CachedProduct[],
   photoItems: PhotoAnalysisItem[],
   productsByPriority: Record<string, CachedProduct[]>
-): void {
-  // 각 분석 아이템에 대해 매칭 점수 계산 후 카테고리별로 정렬
+): Map<string, { score: number; analysisItem: PhotoAnalysisItem }> {
+  // 사진과 매칭된 상품 ID → 매칭 점수/원본 분석 아이템 맵 (Stage 2 프롬프트에서 📷 표시용)
+  const photoMatchedMap = new Map<string, { score: number; analysisItem: PhotoAnalysisItem }>();
+
   for (const analysisItem of photoItems) {
     const targetSlot = analysisItem.type;
     const targetCategory = targetSlot === 'top' ? '상의' 
@@ -927,16 +929,25 @@ function filterProductsByPhotoAnalysis(
     
     console.log(`[style-recommend] Photo match for ${targetCategory} (${analysisItem.color} ${analysisItem.category}): ${scoredProducts.length} candidates, top score: ${scoredProducts[0]?.score.toFixed(3) || 'N/A'}`);
     
-    // 기존 카테고리 목록에 점수순으로 재배치 (높은 점수 우선)
     if (scoredProducts.length > 0 && productsByPriority[targetCategory]) {
-      const photoMatchedIds = new Set(scoredProducts.slice(0, 15).map(sp => sp.product.id));
+      const top15 = scoredProducts.slice(0, 15);
+      // 매칭 맵에 기록 (이미 있으면 더 높은 점수 유지)
+      for (const sp of top15) {
+        const prev = photoMatchedMap.get(sp.product.id);
+        if (!prev || prev.score < sp.score) {
+          photoMatchedMap.set(sp.product.id, { score: sp.score, analysisItem });
+        }
+      }
+      const photoMatchedIds = new Set(top15.map(sp => sp.product.id));
       const existing = productsByPriority[targetCategory].filter(p => !photoMatchedIds.has(p.id));
       productsByPriority[targetCategory] = [
-        ...scoredProducts.slice(0, 15).map(sp => sp.product),
+        ...top15.map(sp => sp.product),
         ...existing
       ];
     }
   }
+
+  return photoMatchedMap;
 }
 
 // ============= DNA 2.0 필터링 함수들 =============
@@ -1565,6 +1576,7 @@ async function runStage2WithModel(
   occasion: string,
   LOVABLE_API_KEY: string,
   merchantPref?: MerchantPreference,
+  photoForceContext?: { required: string; items: PhotoAnalysisItem[] } | null,
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
@@ -1641,7 +1653,17 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
 - ⭐필수 상품이 없으면 상품명에서 "${subStyles.join(', ')}" 키워드가 포함된 것을 우선 선택하세요.`
     : '';
 
-  const stage2UserPrompt = `요청: "${userRequest.slice(0, 80)}"
+  // 📷 사진 분석 강제 노트 - 사진에 있던 카테고리/색상/소재의 상품을 반드시 포함
+  const photoForceNote = photoForceContext
+    ? `\n📷📷📷 **[최우선] 사용자가 사진을 업로드했습니다! 사진과 비슷한 룩을 추천하세요!**
+- 사진 속 아이템: ${photoForceContext.required}
+- 📷매칭 태그가 붙은 상품은 사진과 카테고리/색상/소재가 일치하는 상품입니다 (점수가 높을수록 유사).
+- ⚠️ **반드시 📷매칭 태그가 붙은 상품을 우선적으로 1~2개 이상 선택하세요!**
+- ⚠️ **사진에 있던 카테고리(예: 아우터/상의/하의/신발)는 반드시 같은 카테고리의 상품을 포함하세요!** 사진에 데님 재킷이 있으면 반드시 아우터를 포함, 데님 팬츠가 있으면 반드시 하의를 포함.
+- 가장 유사한 상품이 없으면 색상/소재가 비슷한 대체품을 선택하되, 카테고리는 사진과 일치시키세요.`
+    : '';
+
+  const stage2UserPrompt = `요청: "${(userRequest || '').slice(0, 400)}"
 타겟: ${gender} ${ageGroupLabel}
 상황: ${occasion}
 
@@ -1651,7 +1673,7 @@ TPO 분석 결과 (Stage 1):
 - 컨셉: ${stage1Result.concepts.join(', ')}
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
-${dressForceNote}${subStyleForceNote}${merchantPref && (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) 
+${dressForceNote}${subStyleForceNote}${photoForceNote}${merchantPref && (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) 
     ? `\n🏪🏪🏪 **[중요] 사용자가 "${merchantPref.brandKeywords.join(', ')}" 관련 상품을 요청했습니다!**
 - 🏷️ 태그가 붙은 상품은 사용자가 요청한 쇼핑몰/브랜드의 상품입니다.
 - ${merchantPref.isExclusive ? '**반드시 🏷️ 태그 상품만 선택하세요! 다른 쇼핑몰 상품 선택 금지!**' : '🏷️ 태그 상품을 우선적으로 선택하되, 해당 쇼핑몰에 적합한 상품이 부족하면 다른 상품도 조합 가능합니다.'}` 
@@ -2450,10 +2472,11 @@ serve(async (req) => {
     }
     
     // 📷 사진 분석 모드: 카테고리별 상품을 매칭 점수로 재정렬
+    let photoMatchedMap: Map<string, { score: number; analysisItem: PhotoAnalysisItem }> = new Map();
     if (hasPhotoAnalysis) {
       const photoData = photoAnalysisItems as PhotoAnalysisData;
-      filterProductsByPhotoAnalysis(allProducts, photoData.items, productsByPriority);
-      console.log(`[style-recommend] 📷 Photo matching applied - products re-ranked by similarity`);
+      photoMatchedMap = filterProductsByPhotoAnalysis(allProducts, photoData.items, productsByPriority);
+      console.log(`[style-recommend] 📷 Photo matching applied - ${photoMatchedMap.size} products tagged as photo-matched`);
     }
     
     const dnaStats = {
@@ -2671,8 +2694,23 @@ serve(async (req) => {
           merchantPref.brandKeywords.some(bk => (p.brand || '').toLowerCase().includes(bk.toLowerCase()))
         );
         const merchantTag = isMerchantMatch ? '🏷️' : '';
-        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}${merchantTag ? '|' + merchantTag : ''}`;
+        // 📷 사진 분석으로 매칭된 상품에 📷 표시 (높은 점수 우선 추천)
+        const photoMatch = photoMatchedMap.get(p.id);
+        const photoTag = photoMatch ? `📷매칭(${photoMatch.score.toFixed(2)})` : '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}${merchantTag ? '|' + merchantTag : ''}${photoTag ? '|' + photoTag : ''}`;
       }).join('\n');
+
+      // 📷 사진 분석 정보 요약 (Stage 2 프롬프트에 강제 주입)
+      const photoForceContext = hasPhotoAnalysis
+        ? (() => {
+            const photoData = photoAnalysisItems as PhotoAnalysisData;
+            const required = photoData.items.map((it: PhotoAnalysisItem) => {
+              const slotKr = it.type === 'top' ? '상의' : it.type === 'bottom' ? '하의' : it.type === 'outer' ? '아우터' : it.type === 'shoes' ? '신발' : it.type === 'bag' ? '가방' : '액세서리';
+              return `${slotKr}=${it.color || ''} ${it.category || ''}`.trim();
+            }).join(' / ');
+            return { required, items: photoData.items };
+          })()
+        : null;
 
       // 1차: Primary 모델
       ragResponse = await runStage2WithModel(
@@ -2685,6 +2723,7 @@ serve(async (req) => {
         occasion,
         LOVABLE_API_KEY,
         merchantPref,
+        photoForceContext,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -2701,6 +2740,7 @@ serve(async (req) => {
           occasion,
           LOVABLE_API_KEY,
           merchantPref,
+          photoForceContext,
         );
         
         if (ragResponse) {
