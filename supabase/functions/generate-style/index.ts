@@ -181,6 +181,23 @@ async function fetchWithRetry(
 }
 
 // Error logging helper
+// Strip PII from error log payloads (no full_name, height, weight, body_type, age_group, image URLs)
+function sanitizePayload(payload: any): any {
+  if (!payload || typeof payload !== 'object') return null;
+  try {
+    return {
+      style: typeof payload.style === 'string' ? payload.style.slice(0, 80) : undefined,
+      productCount: Array.isArray(payload.products) ? payload.products.length : undefined,
+      productImageCount: Array.isArray(payload.productImageUrls) ? payload.productImageUrls.length : undefined,
+      hasUserAvatar: Boolean(payload.userAvatarUrl),
+      gender: payload.userProfile?.gender,
+      hasProfile: Boolean(payload.userProfile),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function logError(
   supabase: any,
   functionName: string,
@@ -196,7 +213,7 @@ async function logError(
       error_code: errorCode,
       error_message: errorMessage,
       user_id: userId,
-      request_payload: requestPayload,
+      request_payload: sanitizePayload(requestPayload),
       execution_time_ms: executionTimeMs,
     });
     console.log(`[generate-style] Error logged: ${errorCode} - ${errorMessage.slice(0, 100)}`);
