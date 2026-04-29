@@ -908,8 +908,10 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Nano Banana 2 (Gemini 3.1 Flash Image) - pro-level quality with faster face preservation
-          model: 'google/gemini-3.1-flash-image-preview',
+          // 얼굴 합성 시: Nano Banana Pro (최고 얼굴 fidelity), 외엔: Nano Banana 2 (속도)
+          model: (useFaceComposite && avatarFetchSuccess)
+            ? 'google/gemini-3-pro-image-preview'
+            : 'google/gemini-3.1-flash-image-preview',
           messages: messages,
           modalities: ['image', 'text']
         }),
