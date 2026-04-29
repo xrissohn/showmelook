@@ -2683,8 +2683,23 @@ serve(async (req) => {
           merchantPref.brandKeywords.some(bk => (p.brand || '').toLowerCase().includes(bk.toLowerCase()))
         );
         const merchantTag = isMerchantMatch ? '🏷️' : '';
-        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}${merchantTag ? '|' + merchantTag : ''}`;
+        // 📷 사진 분석으로 매칭된 상품에 📷 표시 (높은 점수 우선 추천)
+        const photoMatch = photoMatchedMap.get(p.id);
+        const photoTag = photoMatch ? `📷매칭(${photoMatch.score.toFixed(2)})` : '';
+        return `${p.id}|${p.brand || ''}|${p.name.slice(0, 30)}|${slot}${subStyleTag}|₩${Math.floor(p.price/1000)}k|F${p.dna_meta?.formality || 5}|${concepts}|${colorInfo}${newTag ? '|' + newTag : ''}${starTag ? '|' + starTag : ''}${merchantTag ? '|' + merchantTag : ''}${photoTag ? '|' + photoTag : ''}`;
       }).join('\n');
+
+      // 📷 사진 분석 정보 요약 (Stage 2 프롬프트에 강제 주입)
+      const photoForceContext = hasPhotoAnalysis
+        ? (() => {
+            const photoData = photoAnalysisItems as PhotoAnalysisData;
+            const required = photoData.items.map((it: PhotoAnalysisItem) => {
+              const slotKr = it.type === 'top' ? '상의' : it.type === 'bottom' ? '하의' : it.type === 'outer' ? '아우터' : it.type === 'shoes' ? '신발' : it.type === 'bag' ? '가방' : '액세서리';
+              return `${slotKr}=${it.color || ''} ${it.category || ''}`.trim();
+            }).join(' / ');
+            return { required, items: photoData.items };
+          })()
+        : null;
 
       // 1차: Primary 모델
       ragResponse = await runStage2WithModel(
