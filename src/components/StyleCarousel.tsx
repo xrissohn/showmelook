@@ -86,54 +86,70 @@ const StyleCarousel = () => {
   // Duplicate styles for seamless infinite scroll
   const duplicatedStyles = [...styles, ...styles, ...styles];
 
-  // Auto-scroll animation
+  // Auto-scroll animation - uses cached geometry to avoid layout thrashing
   const animate = useCallback(() => {
     if (!containerRef.current) {
       animationRef.current = requestAnimationFrame(animate);
       return;
     }
 
-    // isDragging 중에는 스크롤 위치만 동기화하고 자동 스크롤은 하지 않음
     if (isDraggingRef.current) {
       animationRef.current = requestAnimationFrame(animate);
       return;
     }
 
-    scrollPositionRef.current += 0.5; // Speed of scroll
-    const container = containerRef.current;
-    const singleSetWidth = container.scrollWidth / 3;
+    const singleSetWidth = singleSetWidthRef.current;
+    if (singleSetWidth > 0) {
+      scrollPositionRef.current += 0.5;
 
-    // Reset position for seamless loop
-    if (scrollPositionRef.current >= singleSetWidth * 2) {
-      scrollPositionRef.current = singleSetWidth;
-    }
-    if (scrollPositionRef.current < singleSetWidth) {
-      scrollPositionRef.current = singleSetWidth * 2 - (singleSetWidth - scrollPositionRef.current);
-    }
+      if (scrollPositionRef.current >= singleSetWidth * 2) {
+        scrollPositionRef.current = singleSetWidth;
+      }
+      if (scrollPositionRef.current < singleSetWidth) {
+        scrollPositionRef.current = singleSetWidth * 2 - (singleSetWidth - scrollPositionRef.current);
+      }
 
-    container.scrollLeft = scrollPositionRef.current;
+      // Write only - no read after this in the same frame
+      containerRef.current.scrollLeft = scrollPositionRef.current;
+    }
     animationRef.current = requestAnimationFrame(animate);
   }, []);
 
   // 초기화는 한 번만 실행
   const isInitializedRef = useRef(false);
-  
+
   useEffect(() => {
     if (isInitializedRef.current) return;
-    
-    // Initialize scroll position to middle set
+
+    // Measure once at init, cache the result
     if (containerRef.current) {
-      const singleSetWidth = containerRef.current.scrollWidth / 3;
-      scrollPositionRef.current = singleSetWidth;
-      containerRef.current.scrollLeft = singleSetWidth;
+      const container = containerRef.current;
+      singleSetWidthRef.current = container.scrollWidth / 3;
+      offsetLeftRef.current = container.offsetLeft;
+      scrollPositionRef.current = singleSetWidthRef.current;
+      container.scrollLeft = singleSetWidthRef.current;
       isInitializedRef.current = true;
     }
+
+    // Recompute cached geometry on resize (debounced via rAF)
+    let resizeRaf = 0;
+    const onResize = () => {
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        if (!containerRef.current) return;
+        singleSetWidthRef.current = containerRef.current.scrollWidth / 3;
+        offsetLeftRef.current = containerRef.current.offsetLeft;
+      });
+    };
+    window.addEventListener('resize', onResize, { passive: true });
 
     animationRef.current = requestAnimationFrame(animate);
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
+      if (resizeRaf) cancelAnimationFrame(resizeRaf);
+      window.removeEventListener('resize', onResize);
     };
   }, [animate]);
 
