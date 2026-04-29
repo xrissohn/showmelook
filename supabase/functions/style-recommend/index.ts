@@ -2695,7 +2695,7 @@ serve(async (req) => {
           stage2Backup,
           stage1Result,
           productListContext,
-          userRequest,
+          effectiveUserRequest,
           gender,
           ageGroupLabel,
           occasion,
