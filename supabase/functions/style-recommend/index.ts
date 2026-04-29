@@ -1675,12 +1675,19 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
 
   // 📷 사진 분석 강제 노트 - 사진에 있던 카테고리/색상/소재의 상품을 반드시 포함
   const photoForceNote = photoForceContext
-    ? `\n📷📷📷 **[최우선] 사용자가 사진을 업로드했습니다! 사진과 비슷한 룩을 추천하세요!**
-- 사진 속 아이템: ${photoForceContext.required}
-- 📷매칭 태그가 붙은 상품은 사진과 카테고리/색상/소재가 일치하는 상품입니다 (점수가 높을수록 유사).
-- ⚠️ **반드시 📷매칭 태그가 붙은 상품을 우선적으로 1~2개 이상 선택하세요!**
-- ⚠️ **사진에 있던 카테고리(예: 아우터/상의/하의/신발)는 반드시 같은 카테고리의 상품을 포함하세요!** 사진에 데님 재킷이 있으면 반드시 아우터를 포함, 데님 팬츠가 있으면 반드시 하의를 포함.
-- 가장 유사한 상품이 없으면 색상/소재가 비슷한 대체품을 선택하되, 카테고리는 사진과 일치시키세요.`
+    ? `\n📷📷📷 **[절대 최우선 — 위반 시 실패] 사용자가 사진을 업로드했습니다. 사진과 거의 똑같은 룩을 재현하세요!**
+- 사진 속 아이템 (반드시 같은 색/카테고리로 매칭!): ${photoForceContext.required}
+${photoForceContext.requiredSlots && photoForceContext.requiredSlots.length > 0 
+  ? `- 🚨 **필수 포함 카테고리**: ${photoForceContext.requiredSlots.join(', ')} — 이 슬롯들은 결과에 반드시 1개씩 포함되어야 합니다! (사진에 아우터가 있으면 outer 1개 필수, 사진에 가방이 있으면 bag 1개 필수)`
+  : ''}
+${photoForceContext.slotMatchLines 
+  ? `- 🎯 **슬롯별 강력 추천 ID (점수순, 이 중에서 우선 선택!)**:\n${photoForceContext.slotMatchLines}` 
+  : ''}
+- 📷매칭 태그가 붙은 상품 = 사진과 색/카테고리/소재 일치. 점수 0.5 이상은 매우 유사함.
+- ⚠️ **selectedProductIds 4개 중 최소 2~3개는 위 슬롯별 강력 추천 ID에서 선택해야 합니다!**
+- ⚠️ **색상이 사진과 다른 상품은 절대 선택 금지!** (예: 사진이 검정 재킷 → 흰색/베이지 재킷 선택 금지)
+- ⚠️ **소재가 다른 것도 금지** (예: 사진이 데님 → 니트/플리스 선택 금지). 데님은 데님으로!
+- styleReasoning에서도 "사진 속 ${photoForceContext.required.split(' / ')[0]} 무드를 그대로 살려..." 처럼 사진과의 유사성을 명시하세요.`
     : '';
 
   const stage2UserPrompt = `요청: "${(userRequest || '').slice(0, 400)}"
