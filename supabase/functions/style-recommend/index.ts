@@ -2723,6 +2723,7 @@ serve(async (req) => {
         occasion,
         LOVABLE_API_KEY,
         merchantPref,
+        photoForceContext,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -2739,6 +2740,7 @@ serve(async (req) => {
           occasion,
           LOVABLE_API_KEY,
           merchantPref,
+          photoForceContext,
         );
         
         if (ragResponse) {
