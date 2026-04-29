@@ -910,8 +910,10 @@ function filterProductsByPhotoAnalysis(
   allProducts: CachedProduct[],
   photoItems: PhotoAnalysisItem[],
   productsByPriority: Record<string, CachedProduct[]>
-): void {
-  // 각 분석 아이템에 대해 매칭 점수 계산 후 카테고리별로 정렬
+): Map<string, { score: number; analysisItem: PhotoAnalysisItem }> {
+  // 사진과 매칭된 상품 ID → 매칭 점수/원본 분석 아이템 맵 (Stage 2 프롬프트에서 📷 표시용)
+  const photoMatchedMap = new Map<string, { score: number; analysisItem: PhotoAnalysisItem }>();
+
   for (const analysisItem of photoItems) {
     const targetSlot = analysisItem.type;
     const targetCategory = targetSlot === 'top' ? '상의' 
@@ -927,16 +929,25 @@ function filterProductsByPhotoAnalysis(
     
     console.log(`[style-recommend] Photo match for ${targetCategory} (${analysisItem.color} ${analysisItem.category}): ${scoredProducts.length} candidates, top score: ${scoredProducts[0]?.score.toFixed(3) || 'N/A'}`);
     
-    // 기존 카테고리 목록에 점수순으로 재배치 (높은 점수 우선)
     if (scoredProducts.length > 0 && productsByPriority[targetCategory]) {
-      const photoMatchedIds = new Set(scoredProducts.slice(0, 15).map(sp => sp.product.id));
+      const top15 = scoredProducts.slice(0, 15);
+      // 매칭 맵에 기록 (이미 있으면 더 높은 점수 유지)
+      for (const sp of top15) {
+        const prev = photoMatchedMap.get(sp.product.id);
+        if (!prev || prev.score < sp.score) {
+          photoMatchedMap.set(sp.product.id, { score: sp.score, analysisItem });
+        }
+      }
+      const photoMatchedIds = new Set(top15.map(sp => sp.product.id));
       const existing = productsByPriority[targetCategory].filter(p => !photoMatchedIds.has(p.id));
       productsByPriority[targetCategory] = [
-        ...scoredProducts.slice(0, 15).map(sp => sp.product),
+        ...top15.map(sp => sp.product),
         ...existing
       ];
     }
   }
+
+  return photoMatchedMap;
 }
 
 // ============= DNA 2.0 필터링 함수들 =============
