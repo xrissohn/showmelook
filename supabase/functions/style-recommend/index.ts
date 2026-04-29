@@ -2724,11 +2724,37 @@ serve(async (req) => {
       const photoForceContext = hasPhotoAnalysis
         ? (() => {
             const photoData = photoAnalysisItems as PhotoAnalysisData;
+            const slotKrFn = (t: string) => t === 'top' ? '상의' : t === 'bottom' ? '하의' : t === 'outer' ? '아우터' : t === 'shoes' ? '신발' : t === 'bag' ? '가방' : '액세서리';
             const required = photoData.items.map((it: PhotoAnalysisItem) => {
-              const slotKr = it.type === 'top' ? '상의' : it.type === 'bottom' ? '하의' : it.type === 'outer' ? '아우터' : it.type === 'shoes' ? '신발' : it.type === 'bag' ? '가방' : '액세서리';
-              return `${slotKr}=${it.color || ''} ${it.category || ''}`.trim();
+              return `${slotKrFn(it.type)}=${it.color || ''} ${it.category || ''}`.trim();
             }).join(' / ');
-            return { required, items: photoData.items };
+
+            // 슬롯별 photo-matched 상품 ID Top 5 (점수 순)
+            const bySlot: Record<string, Array<{ id: string; name: string; brand: string; color: string; score: number }>> = {};
+            for (const [pid, info] of photoMatchedMap.entries()) {
+              const product = allProducts.find(p => p.id === pid);
+              if (!product) continue;
+              const slot = slotKrFn(info.analysisItem.type);
+              if (!bySlot[slot]) bySlot[slot] = [];
+              bySlot[slot].push({
+                id: pid,
+                name: (product.name || '').slice(0, 24),
+                brand: product.brand || '',
+                color: product.color || '',
+                score: info.score,
+              });
+            }
+            const slotMatchLines = Object.entries(bySlot)
+              .map(([slot, arr]) => {
+                const top = arr.sort((a, b) => b.score - a.score).slice(0, 5);
+                return `  • ${slot}: ${top.map(t => `${t.id}(${t.brand}/${t.color},${t.score.toFixed(2)})`).join(', ')}`;
+              })
+              .join('\n');
+
+            // 사진에 등장한 카테고리 슬롯 (반드시 결과에 포함되어야 함)
+            const requiredSlots = [...new Set(photoData.items.map(it => slotKrFn(it.type)))];
+
+            return { required, items: photoData.items, slotMatchLines, requiredSlots };
           })()
         : null;
 
