@@ -772,6 +772,7 @@ function calculatePhotoMatchScore(
   }
   
   // 직접/동의어 색상 매칭
+  let colorMismatch = false;
   if (analysisColor) {
     if (areColorsSimilar(analysisColor, productColor)) {
       colorScore = 1.0;
@@ -794,7 +795,26 @@ function calculatePhotoMatchScore(
         }
       }
     }
+
+    // 🚨 색상 정반대 페널티: 사진 색과 다른 색상군이 명확히 검출되면 매칭 제외
+    if (colorScore === 0 && (productColor || combined)) {
+      // 사진 분석 색이 속한 그룹 찾기
+      let analysisGroup: string[] | null = null;
+      for (const group of COLOR_SYNONYMS) {
+        if (group.some(g => analysisColor.includes(g))) { analysisGroup = group; break; }
+      }
+      if (analysisGroup) {
+        // 다른 색상 그룹이 상품에 명시적으로 있으면 mismatch
+        for (const group of COLOR_SYNONYMS) {
+          if (group === analysisGroup) continue;
+          const productInOther = group.some(g => productColor.includes(g) || combined.includes(g));
+          if (productInOther) { colorMismatch = true; break; }
+        }
+      }
+    }
   }
+  // 색상 mismatch면 매칭에서 제외 (점수 0 반환)
+  if (colorMismatch) return 0;
   score += colorScore * 0.30;
   
   // 3. 카테고리 키워드 매칭 (0.35) - 강화: 동의어 사전 활용
@@ -1576,7 +1596,7 @@ async function runStage2WithModel(
   occasion: string,
   LOVABLE_API_KEY: string,
   merchantPref?: MerchantPreference,
-  photoForceContext?: { required: string; items: PhotoAnalysisItem[] } | null,
+  photoForceContext?: { required: string; items: PhotoAnalysisItem[]; slotMatchLines?: string; requiredSlots?: string[] } | null,
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
@@ -1655,12 +1675,19 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
 
   // 📷 사진 분석 강제 노트 - 사진에 있던 카테고리/색상/소재의 상품을 반드시 포함
   const photoForceNote = photoForceContext
-    ? `\n📷📷📷 **[최우선] 사용자가 사진을 업로드했습니다! 사진과 비슷한 룩을 추천하세요!**
-- 사진 속 아이템: ${photoForceContext.required}
-- 📷매칭 태그가 붙은 상품은 사진과 카테고리/색상/소재가 일치하는 상품입니다 (점수가 높을수록 유사).
-- ⚠️ **반드시 📷매칭 태그가 붙은 상품을 우선적으로 1~2개 이상 선택하세요!**
-- ⚠️ **사진에 있던 카테고리(예: 아우터/상의/하의/신발)는 반드시 같은 카테고리의 상품을 포함하세요!** 사진에 데님 재킷이 있으면 반드시 아우터를 포함, 데님 팬츠가 있으면 반드시 하의를 포함.
-- 가장 유사한 상품이 없으면 색상/소재가 비슷한 대체품을 선택하되, 카테고리는 사진과 일치시키세요.`
+    ? `\n📷📷📷 **[절대 최우선 — 위반 시 실패] 사용자가 사진을 업로드했습니다. 사진과 거의 똑같은 룩을 재현하세요!**
+- 사진 속 아이템 (반드시 같은 색/카테고리로 매칭!): ${photoForceContext.required}
+${photoForceContext.requiredSlots && photoForceContext.requiredSlots.length > 0 
+  ? `- 🚨 **필수 포함 카테고리**: ${photoForceContext.requiredSlots.join(', ')} — 이 슬롯들은 결과에 반드시 1개씩 포함되어야 합니다! (사진에 아우터가 있으면 outer 1개 필수, 사진에 가방이 있으면 bag 1개 필수)`
+  : ''}
+${photoForceContext.slotMatchLines 
+  ? `- 🎯 **슬롯별 강력 추천 ID (점수순, 이 중에서 우선 선택!)**:\n${photoForceContext.slotMatchLines}` 
+  : ''}
+- 📷매칭 태그가 붙은 상품 = 사진과 색/카테고리/소재 일치. 점수 0.5 이상은 매우 유사함.
+- ⚠️ **selectedProductIds 4개 중 최소 2~3개는 위 슬롯별 강력 추천 ID에서 선택해야 합니다!**
+- ⚠️ **색상이 사진과 다른 상품은 절대 선택 금지!** (예: 사진이 검정 재킷 → 흰색/베이지 재킷 선택 금지)
+- ⚠️ **소재가 다른 것도 금지** (예: 사진이 데님 → 니트/플리스 선택 금지). 데님은 데님으로!
+- styleReasoning에서도 "사진 속 ${photoForceContext.required.split(' / ')[0]} 무드를 그대로 살려..." 처럼 사진과의 유사성을 명시하세요.`
     : '';
 
   const stage2UserPrompt = `요청: "${(userRequest || '').slice(0, 400)}"
@@ -2704,11 +2731,37 @@ serve(async (req) => {
       const photoForceContext = hasPhotoAnalysis
         ? (() => {
             const photoData = photoAnalysisItems as PhotoAnalysisData;
+            const slotKrFn = (t: string) => t === 'top' ? '상의' : t === 'bottom' ? '하의' : t === 'outer' ? '아우터' : t === 'shoes' ? '신발' : t === 'bag' ? '가방' : '액세서리';
             const required = photoData.items.map((it: PhotoAnalysisItem) => {
-              const slotKr = it.type === 'top' ? '상의' : it.type === 'bottom' ? '하의' : it.type === 'outer' ? '아우터' : it.type === 'shoes' ? '신발' : it.type === 'bag' ? '가방' : '액세서리';
-              return `${slotKr}=${it.color || ''} ${it.category || ''}`.trim();
+              return `${slotKrFn(it.type)}=${it.color || ''} ${it.category || ''}`.trim();
             }).join(' / ');
-            return { required, items: photoData.items };
+
+            // 슬롯별 photo-matched 상품 ID Top 5 (점수 순)
+            const bySlot: Record<string, Array<{ id: string; name: string; brand: string; color: string; score: number }>> = {};
+            for (const [pid, info] of photoMatchedMap.entries()) {
+              const product = allProducts.find(p => p.id === pid);
+              if (!product) continue;
+              const slot = slotKrFn(info.analysisItem.type);
+              if (!bySlot[slot]) bySlot[slot] = [];
+              bySlot[slot].push({
+                id: pid,
+                name: (product.name || '').slice(0, 24),
+                brand: product.brand || '',
+                color: product.color || '',
+                score: info.score,
+              });
+            }
+            const slotMatchLines = Object.entries(bySlot)
+              .map(([slot, arr]) => {
+                const top = arr.sort((a, b) => b.score - a.score).slice(0, 5);
+                return `  • ${slot}: ${top.map(t => `${t.id}(${t.brand}/${t.color},${t.score.toFixed(2)})`).join(', ')}`;
+              })
+              .join('\n');
+
+            // 사진에 등장한 카테고리 슬롯 (반드시 결과에 포함되어야 함)
+            const requiredSlots = [...new Set(photoData.items.map(it => slotKrFn(it.type)))];
+
+            return { required, items: photoData.items, slotMatchLines, requiredSlots };
           })()
         : null;
 

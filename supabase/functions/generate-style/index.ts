@@ -857,7 +857,14 @@ Generate a VERTICAL/PORTRAIT orientation image (aspect ratio 3:4). Full body fas
           }
         }
 
-        console.log('[generate-style] Avatar included as FIRST image (face identity priority)');
+        // 🔥 FACE FIDELITY BOOST: Avatar를 마지막에 한 번 더 첨부
+        // Gemini는 반복된 이미지에 더 높은 가중치를 부여하므로 얼굴 정확도가 향상됨
+        fullContentArray.push({
+          type: 'image_url',
+          image_url: { url: avatarDataUrl }
+        });
+
+        console.log('[generate-style] Avatar included as FIRST + LAST image (double-weight for face identity)');
 
         messages[0] = {
           role: 'user',
