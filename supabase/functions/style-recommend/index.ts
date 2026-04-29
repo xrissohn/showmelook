@@ -2679,7 +2679,7 @@ serve(async (req) => {
         stage2Primary,
         stage1Result,
         productListContext,
-        userRequest,
+        effectiveUserRequest,
         gender,
         ageGroupLabel,
         occasion,
