@@ -28,6 +28,28 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Shared-secret authentication for purchase postbacks
+  const expectedSecret = Deno.env.get('LINKPRICE_WEBHOOK_SECRET');
+  if (!expectedSecret) {
+    console.error('[linkprice-postback] LINKPRICE_WEBHOOK_SECRET not configured');
+    return new Response(
+      JSON.stringify({ error: 'Server misconfigured' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  const url0 = new URL(req.url);
+  const providedSecret =
+    req.headers.get('x-webhook-secret') ||
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') ||
+    url0.searchParams.get('secret');
+  if (providedSecret !== expectedSecret) {
+    console.warn('[linkprice-postback] Unauthorized postback attempt');
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const supabase = createClient(supabaseUrl, supabaseKey);

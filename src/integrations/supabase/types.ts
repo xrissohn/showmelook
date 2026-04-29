@@ -1802,6 +1802,7 @@ export type Database = {
       cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_inference_metrics: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }
+      get_look_like_count: { Args: { _look_id: string }; Returns: number }
       get_products_without_sub_style: {
         Args: { batch_limit?: number }
         Returns: {
@@ -1824,6 +1825,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_user_liked_look: { Args: { _look_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
