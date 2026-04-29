@@ -1653,7 +1653,17 @@ const stage2SystemPrompt = `당신은 세계 최고의 패션 스타일리스트
 - ⭐필수 상품이 없으면 상품명에서 "${subStyles.join(', ')}" 키워드가 포함된 것을 우선 선택하세요.`
     : '';
 
-  const stage2UserPrompt = `요청: "${userRequest.slice(0, 80)}"
+  // 📷 사진 분석 강제 노트 - 사진에 있던 카테고리/색상/소재의 상품을 반드시 포함
+  const photoForceNote = photoForceContext
+    ? `\n📷📷📷 **[최우선] 사용자가 사진을 업로드했습니다! 사진과 비슷한 룩을 추천하세요!**
+- 사진 속 아이템: ${photoForceContext.required}
+- 📷매칭 태그가 붙은 상품은 사진과 카테고리/색상/소재가 일치하는 상품입니다 (점수가 높을수록 유사).
+- ⚠️ **반드시 📷매칭 태그가 붙은 상품을 우선적으로 1~2개 이상 선택하세요!**
+- ⚠️ **사진에 있던 카테고리(예: 아우터/상의/하의/신발)는 반드시 같은 카테고리의 상품을 포함하세요!** 사진에 데님 재킷이 있으면 반드시 아우터를 포함, 데님 팬츠가 있으면 반드시 하의를 포함.
+- 가장 유사한 상품이 없으면 색상/소재가 비슷한 대체품을 선택하되, 카테고리는 사진과 일치시키세요.`
+    : '';
+
+  const stage2UserPrompt = `요청: "${(userRequest || '').slice(0, 400)}"
 타겟: ${gender} ${ageGroupLabel}
 상황: ${occasion}
 
@@ -1663,7 +1673,7 @@ TPO 분석 결과 (Stage 1):
 - 컨셉: ${stage1Result.concepts.join(', ')}
 - 필수 아이템: ${stage1Result.requiredItems.join(', ')}${excludeNote}
 - 분석 의견: ${stage1Result.reasoning}
-${dressForceNote}${subStyleForceNote}${merchantPref && (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) 
+${dressForceNote}${subStyleForceNote}${photoForceNote}${merchantPref && (merchantPref.merchantIds.length > 0 || merchantPref.brandKeywords.length > 0) 
     ? `\n🏪🏪🏪 **[중요] 사용자가 "${merchantPref.brandKeywords.join(', ')}" 관련 상품을 요청했습니다!**
 - 🏷️ 태그가 붙은 상품은 사용자가 요청한 쇼핑몰/브랜드의 상품입니다.
 - ${merchantPref.isExclusive ? '**반드시 🏷️ 태그 상품만 선택하세요! 다른 쇼핑몰 상품 선택 금지!**' : '🏷️ 태그 상품을 우선적으로 선택하되, 해당 쇼핑몰에 적합한 상품이 부족하면 다른 상품도 조합 가능합니다.'}` 
