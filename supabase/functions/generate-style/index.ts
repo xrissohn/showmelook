@@ -633,16 +633,30 @@ Note: The person is in their 40s. Show mature, sophisticated features matching t
         
         const faceCompositeAgeHint = getAdultFaceCompositeAgeHint(ageInfo.category, gender);
         
-        prompt = `🚨 ABSOLUTE TOP PRIORITY — FACE IDENTITY PRESERVATION 🚨
-The FIRST image attached below is the FACE REFERENCE PHOTO of the actual person.
-You MUST generate the model's face to be IDENTICAL to this first reference photo:
-- Preserve EVERY facial feature exactly: eye shape, eye color, eyebrow shape, nose shape, lip shape, jawline, face shape, skin tone, ethnicity, hairstyle, hair color
-- Do NOT beautify, slim, smooth, age-down, or "improve" the face — keep it exactly as in the reference
-- Do NOT swap the face with a generic model face — this is a real person who must be recognizable
-- The remaining images (after the first one) are PRODUCT photos used ONLY as color/material references for clothing — IGNORE any people or faces shown in those product images
+        prompt = `🚨🚨🚨 ABSOLUTE TOP PRIORITY — EXACT FACE REPLICATION 🚨🚨🚨
+The FIRST image attached is the USER'S ACTUAL SELFIE. You are doing FACE TRANSFER, not face generation.
+
+MANDATORY FACE RULES (violation = total failure):
+1. COPY the face from the FIRST reference image PIXEL-BY-PIXEL onto the model in the output.
+2. The output face MUST be instantly recognizable as the SAME PERSON in the reference photo.
+3. Preserve EVERY facial feature with photographic accuracy:
+   - Eye shape, eye color, eye spacing, eyelid shape
+   - Eyebrow shape, thickness, color, arch
+   - Nose shape, nose bridge, nostril shape, nose width
+   - Lip shape, lip thickness, mouth width, philtrum
+   - Jawline, chin shape, cheekbone structure
+   - Face shape (round/oval/square), face proportions
+   - Skin tone, skin texture, freckles, moles, scars
+   - Ethnicity (do NOT change ethnicity under any circumstance)
+   - Hairstyle, hair color, hairline shape, hair texture
+   - Age (match the apparent age in the reference; do NOT make younger or older)
+4. DO NOT beautify, slim, smooth, "fix", or "improve" the face in any way.
+5. DO NOT replace with a generic/idealized model face.
+6. DO NOT blend the user's face with a different face — copy ONLY the user's face.
+7. The remaining images (after the first) are PRODUCT photos — use them ONLY for clothing color/material reference. IGNORE any people, faces, or models shown in those product images.
 ${faceCompositeAgeHint}
 
-Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}${weight ? `, ${weight}kg` : ''}, with the EXACT face from the first reference photo.
+Fashion photography of a ${modelDescription}${fullName ? ` (${fullName})` : ''}${height ? `, ${height}cm tall` : ''}${weight ? `, ${weight}kg` : ''}, with the EXACT face transferred from the FIRST reference photo (selfie).
 
 ${bodyProportionHint}
 
@@ -653,7 +667,10 @@ ${productsWithColors}
 
 COLOR CRITICAL: Each clothing item MUST match its real-world color exactly from the corresponding product image. Do NOT substitute colors.
 
-FACE FIDELITY CHECK: Before finalizing, verify the generated face is a clear, recognizable match to the FIRST reference photo. Same person, same identity, no alterations to facial structure.
+🔍 FINAL FACE FIDELITY VERIFICATION (must pass before output):
+- Place the generated face side-by-side with the FIRST reference photo mentally.
+- The two faces MUST be the SAME PERSON. If they look like different people, REGENERATE.
+- If you cannot perfectly replicate the face, prioritize face accuracy over clothing details.
 
 Generate a VERTICAL/PORTRAIT orientation image (aspect ratio 3:4). Full body fashion photoshoot from head to toe, professional studio lighting, clean white background, sharp focus, 8k quality, high fashion editorial style.`;
       }
