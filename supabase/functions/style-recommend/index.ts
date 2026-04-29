@@ -772,6 +772,7 @@ function calculatePhotoMatchScore(
   }
   
   // 직접/동의어 색상 매칭
+  let colorMismatch = false;
   if (analysisColor) {
     if (areColorsSimilar(analysisColor, productColor)) {
       colorScore = 1.0;
@@ -794,7 +795,26 @@ function calculatePhotoMatchScore(
         }
       }
     }
+
+    // 🚨 색상 정반대 페널티: 사진 색과 다른 색상군이 명확히 검출되면 매칭 제외
+    if (colorScore === 0 && (productColor || combined)) {
+      // 사진 분석 색이 속한 그룹 찾기
+      let analysisGroup: string[] | null = null;
+      for (const group of COLOR_SYNONYMS) {
+        if (group.some(g => analysisColor.includes(g))) { analysisGroup = group; break; }
+      }
+      if (analysisGroup) {
+        // 다른 색상 그룹이 상품에 명시적으로 있으면 mismatch
+        for (const group of COLOR_SYNONYMS) {
+          if (group === analysisGroup) continue;
+          const productInOther = group.some(g => productColor.includes(g) || combined.includes(g));
+          if (productInOther) { colorMismatch = true; break; }
+        }
+      }
+    }
   }
+  // 색상 mismatch면 매칭에서 제외 (점수 0 반환)
+  if (colorMismatch) return 0;
   score += colorScore * 0.30;
   
   // 3. 카테고리 키워드 매칭 (0.35) - 강화: 동의어 사전 활용
