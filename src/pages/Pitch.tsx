@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 import screenLanding from '@/assets/pitch-screens/landing.png';
+import screenOnboarding from '@/assets/pitch-screens/onboarding-profile.jpg';
 import screenStyle from '@/assets/pitch-screens/style-generator-left.png';
 import screenCommunity from '@/assets/pitch-screens/community.png';
 import screenAdmin from '@/assets/pitch-screens/admin.png';
