@@ -160,13 +160,13 @@ const slides = [
     title: '쇼미룩',
     subtitle: 'AI Virtual Fitting & Style Recommendation Platform',
     content: (
-      <div className="absolute inset-0 -m-8 md:-m-12 overflow-hidden rounded-2xl">
+      <div className="relative w-full h-[78vh] min-h-[600px] overflow-hidden rounded-3xl shadow-2xl border border-primary/20">
         {/* Background: actual landing hero capture */}
         <div className="absolute inset-0">
           <img
             src={landingHero}
             alt="ShowMeLook Landing"
-            className="w-full h-full object-cover object-top scale-110"
+            className="w-full h-full object-cover object-top"
           />
           {/* Wash gradient for legibility */}
           <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background/85" />
