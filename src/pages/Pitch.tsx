@@ -14,7 +14,8 @@ import {
   Minimize2,
   Circle,
   Download,
-  Loader2
+  Loader2,
+  Frame
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
