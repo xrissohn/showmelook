@@ -166,11 +166,11 @@ const slides = [
           <img
             src={landingHero}
             alt="ShowMeLook Landing"
-            className="w-full h-full object-cover object-top"
+            className="w-full h-full object-cover object-top blur-[3px] scale-105"
           />
           {/* Wash gradient for legibility */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background/85" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/30 via-transparent to-background/30" />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/75 via-background/55 to-background/95" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/20 to-background/50" />
         </div>
 
         {/* Foreground content */}
