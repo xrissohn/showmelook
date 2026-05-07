@@ -1536,6 +1536,7 @@ const Pitch = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [showSafeArea, setShowSafeArea] = useState(false);
 
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
