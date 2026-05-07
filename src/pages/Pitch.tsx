@@ -1561,63 +1561,38 @@ const Pitch = () => {
     if (isExporting) return;
     setIsExporting(true);
     setExportProgress(0);
-    const originalSlide = currentSlide;
     try {
-      // High-DPI export: render at 3x and emit PNG for crisp text
-      const SCALE = 3;
-      const pageW = 1920;
-      const pageH = 1080;
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-        format: [pageW, pageH],
-        compress: true,
-        hotfixes: ['px_scaling'],
-      });
-      for (let i = 0; i < slides.length; i++) {
-        setCurrentSlide(i);
-        // wait for render + animations + images + fonts
-        await new Promise((r) => setTimeout(r, 700));
-        try {
-          // @ts-ignore
-          if (document.fonts?.ready) await (document as any).fonts.ready;
-        } catch {}
-        const node = document.getElementById('pitch-slide-capture');
-        if (!node) continue;
-        const imgs = Array.from(node.querySelectorAll('img'));
-        await Promise.all(imgs.map((img) => (img as HTMLImageElement).complete
-          ? Promise.resolve()
-          : new Promise((res) => { (img as HTMLImageElement).onload = (img as HTMLImageElement).onerror = () => res(null); })));
-        const canvas = await html2canvas(node, {
-          backgroundColor: '#ffffff',
-          scale: SCALE,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          imageTimeout: 15000,
-          windowWidth: node.scrollWidth,
-          windowHeight: node.scrollHeight,
-        });
-        const imgData = canvas.toDataURL('image/png');
-        const ratio = Math.min(pageW / (canvas.width / SCALE), pageH / (canvas.height / SCALE));
-        const w = (canvas.width / SCALE) * ratio;
-        const h = (canvas.height / SCALE) * ratio;
-        const x = (pageW - w) / 2;
-        const y = (pageH - h) / 2;
-        if (i > 0) pdf.addPage([pageW, pageH], 'landscape');
-        pdf.addImage(imgData, 'PNG', x, y, w, h, undefined, 'FAST');
-        setExportProgress(Math.round(((i + 1) / slides.length) * 100));
-      }
-      pdf.save(`ShowMeLook-Pitch-${new Date().toISOString().slice(0, 10)}.pdf`);
+      // 벡터 텍스트가 살아있는 PDF를 얻기 위해 브라우저 인쇄(저장 → PDF)를 사용한다.
+      // print 모드일 때 모든 슬라이드를 동시에 렌더링하고, 각 슬라이드를 한 페이지로 강제한다.
+      document.body.classList.add('pitch-print-mode');
+      try {
+        // @ts-ignore
+        if (document.fonts?.ready) await (document as any).fonts.ready;
+      } catch {}
+      // 폰트/이미지 페인트 한 사이클 대기
+      await new Promise((r) => setTimeout(r, 300));
+      const imgs = Array.from(document.images);
+      await Promise.all(imgs.map((img) => img.complete
+        ? Promise.resolve()
+        : new Promise((res) => { img.onload = img.onerror = () => res(null); })));
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      window.print();
     } catch (err) {
       console.error('PDF export failed', err);
-      alert('PDF 생성에 실패했습니다. 다시 시도해주세요.');
+      alert('PDF 저장 대화상자를 열지 못했습니다. 다시 시도해주세요.');
     } finally {
-      setCurrentSlide(originalSlide);
-      setIsExporting(false);
-      setExportProgress(0);
+      // 인쇄 대화상자가 닫힌 직후(브라우저별 afterprint)
+      const cleanup = () => {
+        document.body.classList.remove('pitch-print-mode');
+        setIsExporting(false);
+        setExportProgress(0);
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      // 안전장치: 일정 시간 후 자동 정리
+      setTimeout(cleanup, 2000);
     }
-  }, [isExporting, currentSlide]);
+  }, [isExporting]);
 
   const goToSlide = useCallback((index: number) => {
     if (index >= 0 && index < slides.length) {
@@ -1709,19 +1684,34 @@ const Pitch = () => {
 
       {/* 슬라이드 컨텐츠 */}
       <main className={cn('flex-1 flex flex-col items-center justify-center', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}>
-        <div id="pitch-slide-capture" className={cn('w-full', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
-          {/* 슬라이드 타이틀 (커버 슬라이드는 본문 내에 자체 타이틀) */}
+        {/* 화면 표시용: 현재 슬라이드만 */}
+        <div id="pitch-slide-capture" className={cn('w-full pitch-screen-only', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
           {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
             <div className={cn('text-center', isCaptureMode ? 'mb-6 pt-8' : 'mb-8')}>
               <h2 className="text-3xl md:text-4xl font-bold mb-2 font-korean">{slide.title}</h2>
               <p className="text-lg text-muted-foreground font-korean">{slide.subtitle}</p>
             </div>
           )}
-
-          {/* 슬라이드 본문 */}
           <div className={isCaptureMode ? '' : 'animate-fade-in'}>
             {slide.content}
           </div>
+        </div>
+
+        {/* 인쇄(PDF 저장) 전용: 모든 슬라이드를 페이지별로 렌더링 */}
+        <div className="pitch-print-only" aria-hidden="true">
+          {slides.map((s, i) => (
+            <section key={i} className={cn('pitch-print-page', s.background)}>
+              <div className="pitch-print-inner">
+                {i !== 0 && i !== slides.length - 1 && (
+                  <div className="text-center mb-6">
+                    <h2 className="text-3xl font-bold mb-2 font-korean">{s.title}</h2>
+                    <p className="text-lg text-muted-foreground font-korean">{s.subtitle}</p>
+                  </div>
+                )}
+                <div>{s.content}</div>
+              </div>
+            </section>
+          ))}
         </div>
       </main>
 
