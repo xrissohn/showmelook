@@ -1276,10 +1276,16 @@ const slides = [
                 />
                 <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
                 <ReferenceLine 
-                  x="M10" 
+                  x="M5" 
                   stroke="hsl(var(--coral))" 
                   strokeDasharray="5 5" 
-                  label={{ value: '채용', fontSize: 10, fill: 'hsl(var(--coral))' }} 
+                  label={{ value: '2인 채용', fontSize: 10, fill: 'hsl(var(--coral))' }} 
+                />
+                <ReferenceLine 
+                  x="M8" 
+                  stroke="hsl(var(--sky))" 
+                  strokeDasharray="5 5" 
+                  label={{ value: '3인 채용', fontSize: 10, fill: 'hsl(var(--sky))' }} 
                 />
                 <Bar 
                   dataKey="profit" 
