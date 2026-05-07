@@ -180,13 +180,6 @@ const slides = [
           </div>
         </div>
 
-        {/* Top-right live tag */}
-        <div className="absolute top-5 right-5 md:top-7 md:right-7 z-10">
-          <div className="px-3 py-1.5 rounded-full bg-gradient-brand text-white text-[10px] font-bold tracking-wider shadow-brand">
-            LIVE PRODUCT
-          </div>
-        </div>
-
         {/* Bottom gradient + meta strip */}
         <div className="absolute inset-x-0 bottom-0 z-10 pt-16 pb-5 px-6 md:px-10 bg-gradient-to-t from-background via-background/85 to-transparent">
           <div className="flex flex-wrap items-center justify-between gap-3">
