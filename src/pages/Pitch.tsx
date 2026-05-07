@@ -1965,8 +1965,22 @@ const Pitch = () => {
                 className="w-full accent-primary"
               />
             </div>
+            <div className="space-y-2">
+              <label htmlFor="pitch-paper-size" className="text-xs text-muted-foreground block">용지 크기</label>
+              <select
+                id="pitch-paper-size"
+                value={paperSize}
+                onChange={(e) => setPaperSize(e.target.value as PaperKey)}
+                className="w-full text-xs rounded border bg-background px-2 py-1.5"
+              >
+                {Object.entries(PAPER_SIZES).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground">선택한 용지 비율로 모든 슬라이드가 자동 스케일됩니다.</p>
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              1600×900 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
+              현재 {paper.w}×{paper.h}px 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
             </p>
           </div>
         )}
