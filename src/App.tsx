@@ -72,6 +72,7 @@ const App = () => (
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/pitch" element={<Pitch />} />
                   <Route path="/mypage" element={<MyPage />} />
+                  <Route path="/history" element={<History />} />
                   <Route path="/look/:lookId" element={<SharedLook />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
