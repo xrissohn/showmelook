@@ -57,7 +57,7 @@ export const LiquidCursor = () => {
         vy: Math.sin(angle) * speed,
         life: 1,
         maxLife: 1,
-        radius: Math.random() * 20 + 10,
+        radius: Math.random() * 8 + 4,
         color,
       });
     };
@@ -106,7 +106,7 @@ export const LiquidCursor = () => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life;
+        ctx.globalAlpha = p.life * 0.6;
         ctx.fill();
         ctx.globalAlpha = 1;
       }
