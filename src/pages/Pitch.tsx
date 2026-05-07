@@ -1585,25 +1585,29 @@ const Pitch = () => {
       document.head.appendChild(el);
     }
     const { w, h, pageCss } = paper;
-    // @page 는 물리 단위(mm/in)로 지정해야 프린터/PDF 엔진이 1:1 비율로 벡터 렌더한다.
-    // 슬라이드 박스는 화면 px 기준으로 그려두고, transform: scale 로 실제 페이지에 맞춘다.
-    const scaleX = `calc((100vw) / ${w}px)`;
-    const scaleY = `calc((100vh) / ${h}px)`;
+    // @page 는 물리 단위(mm/in)로 지정 → 프린터/PDF 엔진이 정확한 종이 크기로 벡터 렌더.
+    // 슬라이드 박스는 96dpi 기준 px(=물리 단위와 1:1 매칭)로 그려두면 추가 스케일 없이 정확히 채워진다.
     el.textContent = `
       @media print {
         @page { size: ${pageCss}; margin: 0; }
-        html, body { width: 100vw; height: 100vh; }
+        html, body { margin: 0 !important; padding: 0 !important; }
         .pitch-print-only { width: ${w}px !important; }
         .pitch-print-page {
           width: ${w}px !important;
           height: ${h}px !important;
           min-height: ${h}px !important;
           max-height: ${h}px !important;
-          transform-origin: top left;
-          transform: scale(min(${scaleX}, ${scaleY}));
         }
-        /* 이미지/SVG 선명도 보강 */
-        .pitch-print-only img { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        /* 선명도 보강: 텍스트 안티앨리어싱 + 이미지/SVG 고품질 렌더 */
+        .pitch-print-only {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: geometricPrecision;
+        }
+        .pitch-print-only img {
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
+        }
         .pitch-print-only svg { shape-rendering: geometricPrecision; }
       }
     `;
