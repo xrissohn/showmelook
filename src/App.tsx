@@ -28,6 +28,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Cafe24Fitting = lazy(() => import("./pages/Cafe24Fitting"));
 const Community = lazy(() => import("./pages/Community"));
 const UserGallery = lazy(() => import("./pages/UserGallery"));
+const History = lazy(() => import("./pages/History"));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
@@ -71,6 +72,7 @@ const App = () => (
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/pitch" element={<Pitch />} />
                   <Route path="/mypage" element={<MyPage />} />
+                  <Route path="/history" element={<History />} />
                   <Route path="/look/:lookId" element={<SharedLook />} />
                   <Route path="/privacy" element={<Privacy />} />
                   <Route path="/terms" element={<Terms />} />
