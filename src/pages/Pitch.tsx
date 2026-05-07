@@ -81,7 +81,7 @@ const slides = [
             <span className="text-primary font-semibold text-sm">플랫폼 완성도 80%</span>
           </div>
           <div className="px-5 py-2.5 bg-coral/10 border border-coral/20 rounded-full">
-            <span className="text-coral font-semibold text-sm">1,652+ 상품 DNA 분석</span>
+            <span className="text-coral font-semibold text-sm">5,579+ 상품 DNA 분석</span>
           </div>
           <div className="px-5 py-2.5 bg-sky/10 border border-sky/20 rounded-full">
             <span className="text-sky font-semibold text-sm">Gemini · Nano Banana</span>
