@@ -1400,8 +1400,8 @@ const slides = [
           <h4 className="font-bold mb-2 font-korean text-sm">🎯 핵심 마일스톤</h4>
           <div className="grid md:grid-cols-3 gap-3 text-xs font-korean">
             <div className="p-2 bg-card rounded"><strong className="text-primary">D11~ MVP 정식 배포</strong> · 무신사 랜딩 연동 테스트</div>
-            <div className="p-2 bg-card rounded"><strong className="text-coral">Y1 MAU 2만</strong> · 월 매출 ₩630만</div>
-            <div className="p-2 bg-card rounded"><strong className="text-sky">Y2 커머스 파트너 10곳</strong> · 연 매출 6억</div>
+            <div className="p-2 bg-card rounded"><strong className="text-coral">Y1 MAU 10만</strong> · 월 매출 ₩3,150만</div>
+            <div className="p-2 bg-card rounded"><strong className="text-sky">Y2 커머스 파트너 20곳</strong> · 연 매출 23억</div>
           </div>
         </div>
       </div>
