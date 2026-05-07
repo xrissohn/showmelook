@@ -1203,11 +1203,13 @@ const Pitch = () => {
       {/* 슬라이드 컨텐츠 */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 md:px-12">
         <div className="w-full max-w-5xl">
-          {/* 슬라이드 타이틀 */}
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold mb-2 font-korean">{slide.title}</h2>
-            <p className="text-lg text-muted-foreground font-korean">{slide.subtitle}</p>
-          </div>
+          {/* 슬라이드 타이틀 (커버 슬라이드는 본문 내에 자체 타이틀) */}
+          {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
+            <div className="text-center mb-8">
+              <h2 className="text-3xl md:text-4xl font-bold mb-2 font-korean">{slide.title}</h2>
+              <p className="text-lg text-muted-foreground font-korean">{slide.subtitle}</p>
+            </div>
+          )}
 
           {/* 슬라이드 본문 */}
           <div className="animate-fade-in">
