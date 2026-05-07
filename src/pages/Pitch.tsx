@@ -1658,6 +1658,19 @@ const Pitch = () => {
           <span className="text-sm text-muted-foreground">
             {currentSlide + 1} / {slides.length}
           </span>
+          <Button variant="ghost" size="sm" onClick={exportToPdf} disabled={isExporting} className="gap-2">
+            {isExporting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {exportProgress}%
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </>
+            )}
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
