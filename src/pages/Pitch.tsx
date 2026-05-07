@@ -369,6 +369,35 @@ const slides = [
                 <div className="text-muted-foreground leading-snug">남은 일일 한도 + 보너스 크레딧 실시간 노출. 소진 시 업그레이드 모달, Platinum·관리자 무제한.</div>
               </div>
             </div>
+            <div className="mt-3 grid md:grid-cols-2 gap-2">
+              <div className="rounded border border-coral/20 bg-background/60 p-2.5">
+                <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOADING TIMELINE · 진행 단계</div>
+                <div className="space-y-1 text-[10.5px] font-korean">
+                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">0~5s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-[15%] rounded-full bg-coral" /></span><span className="text-foreground/80">프로필·DNA 매칭</span></div>
+                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">5~25s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-[55%] rounded-full bg-coral" /></span><span className="text-foreground/80">상품 추천·룩 4종 병렬 생성</span></div>
+                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">25~45s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-[85%] rounded-full bg-coral" /></span><span className="text-foreground/80">얼굴 합성·풀바디 렌더</span></div>
+                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">~60s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-full rounded-full bg-coral" /></span><span className="text-foreground/80">완료 · 토스트 알림</span></div>
+                </div>
+                <div className="mt-1.5 text-[9.5px] text-muted-foreground font-korean">로딩 중 LoadingProductAds로 추천 상품 미리 노출 → 체감 대기시간 ↓</div>
+              </div>
+              <div className="rounded border border-coral/20 bg-background/60 p-2.5">
+                <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 룩 4종 선택 UI</div>
+                <div className="grid grid-cols-4 gap-1 mb-1.5">
+                  {[1,2,3,4].map(n => (
+                    <div key={n} className={cn('aspect-[3/4] rounded border bg-coral/10 flex flex-col items-center justify-center text-[9px] font-korean', n===1 ? 'border-coral border-2 ring-1 ring-coral/40' : 'border-coral/30')}>
+                      <span className="text-[10px] font-bold text-coral">LOOK {n}</span>
+                      {n===1 && <span className="text-[8px] text-coral/80 mt-0.5">SELECTED</span>}
+                    </div>
+                  ))}
+                </div>
+                <ul className="text-[10px] font-korean text-muted-foreground space-y-0.5">
+                  <li>• 탭/스와이프로 LOOK 1~4 전환, 선택된 룩 강조 보더</li>
+                  <li>• 각 룩별 상품 태그·가격·딥링크 카드 즉시 갱신</li>
+                  <li>• ♥ 좋아요 · 갤러리 저장 · 공유(KaTalk/X/링크 복사)</li>
+                  <li>• HD 다운로드(유료) · 다른 모델로 다시 생성</li>
+                </ul>
+              </div>
+            </div>
             <div className="mt-2 text-[10px] text-muted-foreground font-korean text-center">
               상품 태그 · 좋아요 · 공유 · HD 다운로드(유료)까지 결과 카드에서 바로 액션
             </div>
