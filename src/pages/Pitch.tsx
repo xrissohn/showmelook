@@ -22,6 +22,10 @@ import screenCommunity from '@/assets/pitch-screens/community.png';
 import screenAdmin from '@/assets/pitch-screens/admin.png';
 import screenPricing from '@/assets/pitch-screens/pricing.png';
 import screenMypage from '@/assets/pitch-screens/mypage.png';
+import look1Img from '@/assets/pitch-screens/look-1-minimal.jpg';
+import look2Img from '@/assets/pitch-screens/look-2-street.jpg';
+import look3Img from '@/assets/pitch-screens/look-3-office.jpg';
+import look4Img from '@/assets/pitch-screens/look-4-date.jpg';
 
 // BEP 차트 데이터 (구매 기반 등급제: ARPU ₩315, 변동비 ~₩100/명)
 // 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만
