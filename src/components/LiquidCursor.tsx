@@ -54,7 +54,15 @@ export const LiquidCursor = () => {
     const handleMouseMove = (e: MouseEvent) => {
       mouseRef.current.x = e.clientX;
       mouseRef.current.y = e.clientY;
-      mouseRef.current.moved = true;
+      if (!mouseRef.current.initialized) {
+        mouseRef.current.smoothX = e.clientX;
+        mouseRef.current.smoothY = e.clientY;
+        mouseRef.current.prevSmoothX = e.clientX;
+        mouseRef.current.prevSmoothY = e.clientY;
+        mouseRef.current.lastX = e.clientX;
+        mouseRef.current.lastY = e.clientY;
+        mouseRef.current.initialized = true;
+      }
     };
     window.addEventListener("mousemove", handleMouseMove);
 
