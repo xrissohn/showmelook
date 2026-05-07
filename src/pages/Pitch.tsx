@@ -1601,7 +1601,11 @@ const Pitch = () => {
 
   // 용지 크기를 @page + 슬라이드 박스에 동적으로 주입
   useEffect(() => {
-    try { window.localStorage.setItem('pitch-paper-size', paperSize); } catch {}
+    try {
+      window.localStorage.setItem('pitch-paper-size', paperSize);
+      window.localStorage.setItem('pitch-pdf-dpi', pdfDpi);
+      window.localStorage.setItem('pitch-img-render', imgRender);
+    } catch {}
     const id = 'pitch-page-size-style';
     let el = document.getElementById(id) as HTMLStyleElement | null;
     if (!el) {
@@ -1610,8 +1614,10 @@ const Pitch = () => {
       document.head.appendChild(el);
     }
     const { w, h, pageCss } = paper;
+    const imgCss = IMG_RENDER_OPTIONS[imgRender].css;
+    const dpi = DPI_OPTIONS[pdfDpi].dpi;
     // @page 는 물리 단위(mm/in)로 지정 → 프린터/PDF 엔진이 정확한 종이 크기로 벡터 렌더.
-    // 슬라이드 박스는 96dpi 기준 px(=물리 단위와 1:1 매칭)로 그려두면 추가 스케일 없이 정확히 채워진다.
+    // image-resolution 은 일부 엔진(Chromium 인쇄 파이프)에서 비트맵 다운샘플 방지에 도움이 된다.
     el.textContent = `
       @media print {
         @page { size: ${pageCss}; margin: 0; }
@@ -1623,20 +1629,21 @@ const Pitch = () => {
           min-height: ${h}px !important;
           max-height: ${h}px !important;
         }
-        /* 선명도 보강: 텍스트 안티앨리어싱 + 이미지/SVG 고품질 렌더 */
         .pitch-print-only {
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
           text-rendering: geometricPrecision;
+          image-resolution: ${dpi}dpi;
         }
         .pitch-print-only img {
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
+          image-rendering: ${imgCss};
+          image-resolution: ${dpi}dpi from-image;
+          ${imgCss === 'crisp-edges' ? '-ms-interpolation-mode: nearest-neighbor;' : ''}
         }
         .pitch-print-only svg { shape-rendering: geometricPrecision; }
       }
     `;
-  }, [paperSize, paper]);
+  }, [paperSize, paper, pdfDpi, imgRender]);
 
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
