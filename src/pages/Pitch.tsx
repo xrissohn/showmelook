@@ -549,8 +549,8 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 7,
-    title: '비용 구조 & BEP',
+    id: 10,
+    title: 'Cost Structure & BEP',
     subtitle: '손익분기점 분석',
     content: (
       <div className="space-y-5">
