@@ -59,11 +59,11 @@ const slides = [
           <div className="inline-block px-4 py-1.5 border border-primary/30 rounded-full text-xs tracking-[0.3em] text-primary uppercase">
             Investment Proposal · 2026
           </div>
-          <h1 className="text-6xl md:text-8xl font-bold text-gradient-brand leading-tight" style={{ fontFamily: 'Pretendard, sans-serif' }}>
+          <h1 className="text-6xl md:text-8xl font-bold text-primary font-korean leading-tight tracking-tight">
             쇼미룩
           </h1>
           <p className="text-2xl md:text-3xl font-semibold font-korean">
-            나만의 스타일을 <span className="text-gradient-brand" style={{ fontFamily: 'Pretendard, sans-serif' }}>AI</span>가 완성합니다
+            나만의 스타일을 <span className="text-primary">AI</span>가 완성합니다
           </p>
           <p className="text-base md:text-lg text-muted-foreground font-korean max-w-2xl mx-auto">
             사진 한 장으로 트렌디한 스타일을 경험하세요.<br />
