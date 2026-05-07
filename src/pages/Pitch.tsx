@@ -488,7 +488,77 @@ const slides = [
   },
   {
     id: 54,
-    title: 'Product Tour · 4. 운영 & 수익화',
+    title: 'Product Tour · 4. 커뮤니티 & 룩 공유',
+    subtitle: '내가 만든 룩을 공개 → 좋아요·팔로우·구매로 이어지는 플라이휠',
+    content: (
+      <div className="grid md:grid-cols-5 gap-5">
+        <div className="md:col-span-2 rounded-xl border border-sky/30 overflow-hidden bg-card">
+          <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
+            <img src={screenCommunity} alt="Community Gallery" className="w-full h-full object-cover object-top" loading="lazy" />
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-sky">COMMUNITY GALLERY</div>
+          </div>
+          <div className="p-3">
+            <div className="text-[10px] tracking-widest font-bold text-sky mb-1">SOCIAL DISCOVERY</div>
+            <div className="font-bold text-sm font-korean mb-1">내 룩을 공개 + 다른 유저 룩에서 영감</div>
+            <div className="text-xs text-muted-foreground font-korean leading-relaxed">
+              인기/최신 정렬, 좋아요·팔로우·해시태그 기반 큐레이션 → 사회적 검증을 통과한 룩이 곧 구매 전환으로 연결됩니다.
+            </div>
+          </div>
+        </div>
+        <div className="md:col-span-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { n: '1', title: '공개/비공개 토글', desc: '내 갤러리에서 룩별로 공유 여부 선택 (Opt-in)', color: 'sky' },
+              { n: '2', title: '좋아요·팔로우', desc: '유저당 1좋아요, 인기 룩 자동 상단 노출', color: 'coral' },
+              { n: '3', title: '동적 해시태그', desc: '#쇼미룩 #미니멀 #데이트룩 자동 생성', color: 'purple' },
+              { n: '4', title: '룩 디테일 모달', desc: '3D 플립 → 상품 태그·가격·딥링크 즉시 확인', color: 'primary' },
+            ].map((p, i) => (
+              <div key={i} className={cn('flex gap-2 p-2.5 rounded-lg border bg-card', `border-${p.color}/25`)}>
+                <div className={cn('w-6 h-6 rounded-full text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0', `bg-${p.color}`)}>{p.n}</div>
+                <div>
+                  <div className="font-bold text-xs font-korean">{p.title}</div>
+                  <div className="text-[10.5px] text-muted-foreground font-korean leading-snug">{p.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-coral/30 bg-coral/5 p-3">
+            <div className="text-[10px] font-bold tracking-widest text-coral mb-2 font-korean">FLYWHEEL · 커뮤니티가 만드는 선순환</div>
+            <div className="grid grid-cols-4 gap-2 text-[10.5px] font-korean text-center">
+              {[
+                { step: '공유', desc: '룩 공개 +1' },
+                { step: '발견', desc: '다른 유저 영감' },
+                { step: '구매', desc: '딥링크 전환' },
+                { step: '학습', desc: '추천 정확도↑' },
+              ].map((f, i) => (
+                <div key={i} className="rounded-lg border border-coral/20 bg-background/60 p-2">
+                  <div className="font-bold text-coral text-xs mb-0.5">{f.step}</div>
+                  <div className="text-muted-foreground text-[10px]">{f.desc}</div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-korean text-center">
+              누적 공개 룩 = UGC 자산 · 무료 마케팅 채널 + AI 학습 데이터셋 동시 확보
+            </div>
+          </div>
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-center gap-2 text-[11px] font-korean">
+            <span className="font-bold text-sky">크리에이터</span>
+            <span className="text-muted-foreground">룩 공개</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="font-bold text-coral">팬</span>
+            <span className="text-muted-foreground">좋아요·팔로우</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="font-bold text-purple">구매자</span>
+            <span className="text-muted-foreground">딥링크 전환</span>
+          </div>
+        </div>
+      </div>
+    ),
+    background: 'bg-background',
+  },
+  {
+    id: 55,
+    title: 'Product Tour · 5. 운영 & 수익화',
     subtitle: '데이터 → 등급 → 락인으로 이어지는 수익 엔진',
     content: (
       <div className="space-y-4">
@@ -706,76 +776,6 @@ const slides = [
       </div>
     ),
     background: 'bg-background'
-  },
-  {
-    id: 81,
-    title: 'Community · 자체 룩 공유 커뮤니티',
-    subtitle: '내가 만든 룩을 공개 → 좋아요·팔로우·구매로 이어지는 플라이휠',
-    content: (
-      <div className="grid md:grid-cols-5 gap-5">
-        <div className="md:col-span-2 rounded-xl border border-sky/30 overflow-hidden bg-card">
-          <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
-            <img src={screenCommunity} alt="Community Gallery" className="w-full h-full object-cover object-top" loading="lazy" />
-            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-sky">COMMUNITY GALLERY</div>
-          </div>
-          <div className="p-3">
-            <div className="text-[10px] tracking-widest font-bold text-sky mb-1">SOCIAL DISCOVERY</div>
-            <div className="font-bold text-sm font-korean mb-1">내 룩을 공개 + 다른 유저 룩에서 영감</div>
-            <div className="text-xs text-muted-foreground font-korean leading-relaxed">
-              인기/최신 정렬, 좋아요·팔로우·해시태그 기반 큐레이션 → 사회적 검증을 통과한 룩이 곧 구매 전환으로 연결됩니다.
-            </div>
-          </div>
-        </div>
-        <div className="md:col-span-3 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { n: '1', title: '공개/비공개 토글', desc: '내 갤러리에서 룩별로 공유 여부 선택 (Opt-in)', color: 'sky' },
-              { n: '2', title: '좋아요·팔로우', desc: '유저당 1좋아요, 인기 룩 자동 상단 노출', color: 'coral' },
-              { n: '3', title: '동적 해시태그', desc: '#쇼미룩 #미니멀 #데이트룩 자동 생성', color: 'purple' },
-              { n: '4', title: '룩 디테일 모달', desc: '3D 플립 → 상품 태그·가격·딥링크 즉시 확인', color: 'primary' },
-            ].map((p, i) => (
-              <div key={i} className={cn('flex gap-2 p-2.5 rounded-lg border bg-card', `border-${p.color}/25`)}>
-                <div className={cn('w-6 h-6 rounded-full text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0', `bg-${p.color}`)}>{p.n}</div>
-                <div>
-                  <div className="font-bold text-xs font-korean">{p.title}</div>
-                  <div className="text-[10.5px] text-muted-foreground font-korean leading-snug">{p.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="rounded-xl border border-coral/30 bg-coral/5 p-3">
-            <div className="text-[10px] font-bold tracking-widest text-coral mb-2 font-korean">FLYWHEEL · 커뮤니티가 만드는 선순환</div>
-            <div className="grid grid-cols-4 gap-2 text-[10.5px] font-korean text-center">
-              {[
-                { step: '공유', desc: '룩 공개 +1' },
-                { step: '발견', desc: '다른 유저 영감' },
-                { step: '구매', desc: '딥링크 전환' },
-                { step: '학습', desc: '추천 정확도↑' },
-              ].map((f, i) => (
-                <div key={i} className="rounded-lg border border-coral/20 bg-background/60 p-2">
-                  <div className="font-bold text-coral text-xs mb-0.5">{f.step}</div>
-                  <div className="text-muted-foreground text-[10px]">{f.desc}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-2 text-[10px] text-muted-foreground font-korean text-center">
-              누적 공개 룩 = UGC 자산 · 무료 마케팅 채널 + AI 학습 데이터셋 동시 확보
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 flex items-center justify-center gap-2 text-[11px] font-korean">
-            <span className="font-bold text-sky">크리에이터</span>
-            <span className="text-muted-foreground">룩 공개</span>
-            <span className="text-muted-foreground/50">→</span>
-            <span className="font-bold text-coral">팬</span>
-            <span className="text-muted-foreground">좋아요·팔로우</span>
-            <span className="text-muted-foreground/50">→</span>
-            <span className="font-bold text-purple">구매자</span>
-            <span className="text-muted-foreground">딥링크 전환</span>
-          </div>
-        </div>
-      </div>
-    ),
-    background: 'bg-background',
   },
   {
     id: 9,
