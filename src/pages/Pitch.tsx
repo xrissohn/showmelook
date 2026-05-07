@@ -3,7 +3,7 @@
  * 키보드 좌우 화살표, 스와이프, 클릭으로 슬라이드 전환
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
