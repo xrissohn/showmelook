@@ -598,6 +598,71 @@ img {
 /* ===== Pitch deck print (PDF 저장용 벡터 텍스트) ===== */
 .pitch-print-only { display: none; }
 
+/* 인쇄 안전 여백 시각화 오버레이 (화면 전용)
+   실제 인쇄 페이지는 1600x900, 안전 여백은 64×80px.
+   현재 슬라이드 컨테이너 너비를 기준으로 비율로 환산해 표시한다. */
+.pitch-safe-area-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  /* 1600x900 비율 박스를 컨테이너에 맞춰 가운데 정렬 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pitch-safe-area-overlay::before {
+  /* 16:9 가상 페이지 영역 (컨테이너 너비 기준) */
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  aspect-ratio: 16 / 9;
+  border: 1px dashed hsl(var(--primary) / 0.45);
+  background: hsl(var(--primary) / 0.03);
+  border-radius: 4px;
+}
+.pitch-safe-area-box {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  aspect-ratio: 16 / 9;
+  /* 80/1600 = 5%, 64/900 ≈ 7.111% */
+  padding: 7.111% 5%;
+  box-sizing: border-box;
+}
+.pitch-safe-area-box::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed hsl(var(--accent) / 0.85);
+  background: hsl(var(--accent) / 0.06);
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px hsl(var(--primary) / 0.04);
+}
+.pitch-safe-area-label {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: hsl(var(--accent-foreground));
+  background: hsl(var(--accent));
+  padding: 4px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px hsl(var(--accent) / 0.3);
+}
+@media print {
+  .pitch-safe-area-overlay { display: none !important; }
+}
+
+
 @media screen {
   body.pitch-print-mode .pitch-screen-only { display: none !important; }
   body.pitch-print-mode .pitch-print-only { display: block !important; }
