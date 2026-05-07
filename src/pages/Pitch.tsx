@@ -1378,8 +1378,8 @@ const slides = [
           {[
             { phase: '0-6 Months', title: '베타 테스트 & 초기 사용자', target: 'MAU 1,000+', desc: '패션 얼리어답터 (2030) · 베타 100명 무료 Pro', color: 'sky' },
             { phase: '6-12 Months · Y1', title: '인플루언서 협업 & 바이럴', target: 'MAU 10,000+', desc: '마이크로 인플루언서 · 릴스/쇼츠 · 레퍼럴', color: 'coral' },
-            { phase: '12-24 Months · Y2', title: '커머스 플랫폼 제휴', target: 'MAU 10만 · 매출 1억', desc: '무신사·지그재그 등 B2B 영업 · API 세일즈', color: 'purple' },
-            { phase: '24+ Months · Y3', title: 'Cafe24 SaaS 확장', target: '100곳 / ARR 10억', desc: '중소형 자사몰 · 앱스토어 플러그인', color: 'primary' },
+            { phase: '12-24 Months · Y2', title: '커머스 플랫폼 제휴', target: 'MAU 10만 · 연 매출 6억', desc: '무신사·지그재그 등 B2B 영업 · API 세일즈', color: 'purple' },
+            { phase: '24+ Months · Y3', title: 'Cafe24 SaaS 확장', target: '100곳 / 연 매출 28억', desc: '중소형 자사몰 · 앱스토어 플러그인', color: 'primary' },
           ].map((p, i) => (
             <div key={i} className={cn('p-4 rounded-xl border relative', `bg-${p.color}/5 border-${p.color}/30`)}>
               <div className={cn('absolute -top-2 -left-2 w-7 h-7 rounded-full text-white flex items-center justify-center font-bold text-xs', `bg-${p.color}`)}>{i+1}</div>
