@@ -63,7 +63,7 @@ const slides = [
             쇼미룩
           </h1>
           <p className="text-2xl md:text-3xl font-semibold font-korean">
-            나만의 스타일을 <span className="bg-gradient-brand bg-clip-text text-transparent">AI</span>가 완성합니다
+            나만의 스타일을 <span className="bg-gradient-brand bg-clip-text text-transparent" style={{ fontFamily: 'Pretendard, sans-serif' }}>AI</span>가 완성합니다
           </p>
           <p className="text-base md:text-lg text-muted-foreground font-korean max-w-2xl mx-auto">
             사진 한 장으로 트렌디한 스타일을 경험하세요.<br />
