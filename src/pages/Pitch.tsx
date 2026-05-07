@@ -1584,17 +1584,27 @@ const Pitch = () => {
       el.id = id;
       document.head.appendChild(el);
     }
-    const { w, h } = paper;
+    const { w, h, pageCss } = paper;
+    // @page 는 물리 단위(mm/in)로 지정해야 프린터/PDF 엔진이 1:1 비율로 벡터 렌더한다.
+    // 슬라이드 박스는 화면 px 기준으로 그려두고, transform: scale 로 실제 페이지에 맞춘다.
+    const scaleX = `calc((100vw) / ${w}px)`;
+    const scaleY = `calc((100vh) / ${h}px)`;
     el.textContent = `
       @media print {
-        @page { size: ${w}px ${h}px; margin: 0; }
+        @page { size: ${pageCss}; margin: 0; }
+        html, body { width: 100vw; height: 100vh; }
         .pitch-print-only { width: ${w}px !important; }
         .pitch-print-page {
           width: ${w}px !important;
           height: ${h}px !important;
           min-height: ${h}px !important;
           max-height: ${h}px !important;
+          transform-origin: top left;
+          transform: scale(min(${scaleX}, ${scaleY}));
         }
+        /* 이미지/SVG 선명도 보강 */
+        .pitch-print-only img { image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        .pitch-print-only svg { shape-rendering: geometricPrecision; }
       }
     `;
   }, [paperSize, paper]);
