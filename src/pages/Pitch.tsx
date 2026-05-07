@@ -1659,6 +1659,7 @@ const Pitch = () => {
   return (
     <div className={cn('min-h-screen flex flex-col', slide.background)}>
       {/* 헤더 */}
+      {!isCaptureMode && (
       <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between bg-background/80 backdrop-blur-sm">
         <Button variant="ghost" size="sm" onClick={() => navigate('/')}>
           <Home className="w-4 h-4 mr-2" />
@@ -1686,26 +1687,28 @@ const Pitch = () => {
           </Button>
         </div>
       </header>
+      )}
 
       {/* 슬라이드 컨텐츠 */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 md:px-12">
-        <div id="pitch-slide-capture" className="w-full max-w-5xl">
+      <main className={cn('flex-1 flex flex-col items-center justify-center', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}>
+        <div id="pitch-slide-capture" className={cn('w-full', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
           {/* 슬라이드 타이틀 (커버 슬라이드는 본문 내에 자체 타이틀) */}
           {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
-            <div className="text-center mb-8">
+            <div className={cn('text-center', isCaptureMode ? 'mb-6 pt-8' : 'mb-8')}>
               <h2 className="text-3xl md:text-4xl font-bold mb-2 font-korean">{slide.title}</h2>
               <p className="text-lg text-muted-foreground font-korean">{slide.subtitle}</p>
             </div>
           )}
 
           {/* 슬라이드 본문 */}
-          <div className="animate-fade-in">
+          <div className={isCaptureMode ? '' : 'animate-fade-in'}>
             {slide.content}
           </div>
         </div>
       </main>
 
       {/* 네비게이션 */}
+      {!isCaptureMode && (
       <footer className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/80 backdrop-blur-sm">
         <div className="flex items-center justify-between max-w-5xl mx-auto">
           <Button
@@ -1749,6 +1752,7 @@ const Pitch = () => {
           </Button>
         </div>
       </footer>
+      )}
     </div>
   );
 };
