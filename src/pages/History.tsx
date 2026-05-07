@@ -67,8 +67,10 @@ const History = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead
-        title="내 생성 히스토리 | ShowMeLook"
-        description="이전에 생성한 룩 4종 갤러리를 날짜별로 모아 다시 열람할 수 있어요."
+        custom={{
+          title: '내 생성 히스토리 | ShowMeLook',
+          description: '이전에 생성한 룩 4종 갤러리를 날짜별로 모아 다시 열람할 수 있어요.',
+        }}
       />
 
       {/* Header */}
