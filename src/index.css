@@ -631,8 +631,8 @@ img {
   top: 50%;
   transform: translateY(-50%);
   aspect-ratio: 16 / 9;
-  /* 80/1600 = 5%, 64/900 ≈ 7.111% */
-  padding: 7.111% 5%;
+  /* 기본: 80/1600 = 5% (X), 64/900 ≈ 7.111% (Y). 사용자 조정 시 인라인 변수로 덮어씀 */
+  padding: var(--safe-pad-y, 7.111%) var(--safe-pad-x, 5%);
   box-sizing: border-box;
 }
 .pitch-safe-area-box::after {
