@@ -1136,14 +1136,6 @@ const slides = [
                 </thead>
                 <tbody>
                   <tr className="border-b border-border/50">
-                    <td className="p-1.5 font-korean">2,000명</td>
-                    <td className="p-1.5 text-center">1명</td>
-                    <td className="p-1.5 text-center">₩63만</td>
-                    <td className="p-1.5 text-center">₩235만</td>
-                    <td className="p-1.5 text-center text-coral font-semibold">-₩172만</td>
-                    <td className="p-1.5 text-center text-muted-foreground">-</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
                     <td className="p-1.5 font-korean">5,000명</td>
                     <td className="p-1.5 text-center">1명</td>
                     <td className="p-1.5 text-center">₩158만</td>
@@ -1152,20 +1144,12 @@ const slides = [
                     <td className="p-1.5 text-center text-muted-foreground">-</td>
                   </tr>
                   <tr className="border-b border-border/50 bg-coral/5">
-                    <td className="p-1.5 font-korean">~10,000명 <span className="text-coral">(BEP)</span></td>
+                    <td className="p-1.5 font-korean">~10,000명 <span className="text-coral">(BEP 1인)</span></td>
                     <td className="p-1.5 text-center">1명</td>
                     <td className="p-1.5 text-center">₩315만</td>
                     <td className="p-1.5 text-center">₩315만</td>
                     <td className="p-1.5 text-center text-muted-foreground">~₩0</td>
                     <td className="p-1.5 text-center">~0%</td>
-                  </tr>
-                  <tr className="border-b border-border/50">
-                    <td className="p-1.5 font-korean">20,000명</td>
-                    <td className="p-1.5 text-center">2명</td>
-                    <td className="p-1.5 text-center">₩630만</td>
-                    <td className="p-1.5 text-center">₩1,015만</td>
-                    <td className="p-1.5 text-center text-coral font-semibold">-₩385만</td>
-                    <td className="p-1.5 text-center text-muted-foreground">-</td>
                   </tr>
                   <tr className="border-b border-border/50 bg-sky/5">
                     <td className="p-1.5 font-korean">~38,000명 <span className="text-sky">(BEP 2인)</span></td>
@@ -1174,6 +1158,22 @@ const slides = [
                     <td className="p-1.5 text-center">₩1,195만</td>
                     <td className="p-1.5 text-center text-muted-foreground">~₩0</td>
                     <td className="p-1.5 text-center">~0%</td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="p-1.5 font-korean">50,000명</td>
+                    <td className="p-1.5 text-center">2명</td>
+                    <td className="p-1.5 text-center">₩1,575만</td>
+                    <td className="p-1.5 text-center">₩1,315만</td>
+                    <td className="p-1.5 text-center text-primary font-semibold">+₩260만</td>
+                    <td className="p-1.5 text-center text-primary">17%</td>
+                  </tr>
+                  <tr className="border-b border-border/50 bg-primary/10 font-bold">
+                    <td className="p-1.5 font-korean">100,000명 <span className="text-primary">(목표)</span></td>
+                    <td className="p-1.5 text-center">3명</td>
+                    <td className="p-1.5 text-center">₩3,150만</td>
+                    <td className="p-1.5 text-center">₩2,415만</td>
+                    <td className="p-1.5 text-center text-primary">+₩735만</td>
+                    <td className="p-1.5 text-center text-primary">23%</td>
                   </tr>
                 </tbody>
               </table>
