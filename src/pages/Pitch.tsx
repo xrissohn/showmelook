@@ -1333,15 +1333,18 @@ const slides = [
                     key={row.month} 
                     className={cn(
                       'border-b border-border/50',
-                      row.month === 'M9' && 'bg-primary/5',
-                      row.month === 'M10' && 'bg-coral/10',
+                      row.month === 'M5' && 'bg-coral/10',
+                      row.month === 'M7' && 'bg-primary/5',
+                      row.month === 'M8' && 'bg-sky/10',
                       row.month === 'M12' && 'bg-primary/10 font-bold'
                     )}
                   >
                     <td className="p-1.5 font-korean">
                       {row.month}
-                      {row.month === 'M9' && <span className="text-primary ml-1">(BEP)</span>}
-                      {row.month === 'M10' && <span className="text-coral ml-1">(채용)</span>}
+                      {row.month === 'M5' && <span className="text-coral ml-1">(2인)</span>}
+                      {row.month === 'M7' && <span className="text-primary ml-1">(BEP)</span>}
+                      {row.month === 'M8' && <span className="text-sky ml-1">(3인)</span>}
+                      {row.month === 'M12' && <span className="text-primary ml-1">(MAU 10만)</span>}
                     </td>
                     <td className="p-1.5 text-center">{row.users.toLocaleString()}</td>
                     <td className="p-1.5 text-center">{row.staff}명</td>
@@ -1363,8 +1366,9 @@ const slides = [
         {/* 핵심 가정 */}
         <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground font-korean">
           <span className="px-2 py-1 bg-muted/50 rounded-full">📌 ARPU ₩315/명 (전환율 15%)</span>
-          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 10,000명 초과 시 1명 채용</span>
-          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 12개월 누적 -₩2,695만 (투자 필요)</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 M5(2인)·M8(3인) 단계적 채용</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 M7 BEP · M12 MAU 10만/월매출 ₩3,150만</span>
+          <span className="px-2 py-1 bg-muted/50 rounded-full">📌 12개월 최대손실 -₩1,683만</span>
         </div>
       </div>
     ),
