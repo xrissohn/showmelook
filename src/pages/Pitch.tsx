@@ -211,8 +211,6 @@ const slides = [
           </div>
         </div>
       </div>
-        </div>
-      </div>
     ),
     background: 'bg-gradient-hero'
   },
