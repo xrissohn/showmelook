@@ -23,7 +23,19 @@ const COLORS = [
 export const LiquidCursor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Point[]>([]);
-  const mouseRef = useRef({ x: 0, y: 0, lastX: 0, lastY: 0, moved: false });
+  const mouseRef = useRef({
+    x: 0,
+    y: 0,
+    lastX: 0,
+    lastY: 0,
+    vx: 0,
+    vy: 0,
+    smoothX: 0,
+    smoothY: 0,
+    prevSmoothX: 0,
+    prevSmoothY: 0,
+    initialized: false,
+  });
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -42,7 +54,15 @@ export const LiquidCursor = () => {
     const handleMouseMove = (e: MouseEvent) => {
       mouseRef.current.x = e.clientX;
       mouseRef.current.y = e.clientY;
-      mouseRef.current.moved = true;
+      if (!mouseRef.current.initialized) {
+        mouseRef.current.smoothX = e.clientX;
+        mouseRef.current.smoothY = e.clientY;
+        mouseRef.current.prevSmoothX = e.clientX;
+        mouseRef.current.prevSmoothY = e.clientY;
+        mouseRef.current.lastX = e.clientX;
+        mouseRef.current.lastY = e.clientY;
+        mouseRef.current.initialized = true;
+      }
     };
     window.addEventListener("mousemove", handleMouseMove);
 
@@ -62,33 +82,43 @@ export const LiquidCursor = () => {
       });
     };
 
+    const SMOOTHING = 0.25; // 0=no follow, 1=instant
+    const PREDICTION = 3.5; // frames ahead
+
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (mouseRef.current.moved) {
-        const dist = Math.hypot(
-          mouseRef.current.x - mouseRef.current.lastX,
-          mouseRef.current.y - mouseRef.current.lastY
-        );
-        if (dist > 0) {
-          const steps = Math.min(dist, 30);
+      const m = mouseRef.current;
+      if (m.initialized) {
+        // Velocity from raw mouse position
+        m.vx = m.x - m.lastX;
+        m.vy = m.y - m.lastY;
+        m.lastX = m.x;
+        m.lastY = m.y;
+
+        // Predicted target = current pos + extrapolated velocity
+        const targetX = m.x + m.vx * PREDICTION;
+        const targetY = m.y + m.vy * PREDICTION;
+
+        // Exponential smoothing toward predicted target
+        m.prevSmoothX = m.smoothX;
+        m.prevSmoothY = m.smoothY;
+        m.smoothX += (targetX - m.smoothX) * SMOOTHING;
+        m.smoothY += (targetY - m.smoothY) * SMOOTHING;
+
+        // Emit points along the smoothed trajectory
+        const dx = m.smoothX - m.prevSmoothX;
+        const dy = m.smoothY - m.prevSmoothY;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 0.5) {
+          const steps = Math.min(Math.ceil(dist), 30);
           for (let i = 0; i < steps; i += 1) {
             const t = i / steps;
-            const x =
-              mouseRef.current.lastX +
-              (mouseRef.current.x - mouseRef.current.lastX) * t;
-            const y =
-              mouseRef.current.lastY +
-              (mouseRef.current.y - mouseRef.current.lastY) * t;
+            const x = m.prevSmoothX + dx * t;
+            const y = m.prevSmoothY + dy * t;
             if (Math.random() > 0.3) addPoint(x, y);
           }
         }
-        mouseRef.current.lastX = mouseRef.current.x;
-        mouseRef.current.lastY = mouseRef.current.y;
-        mouseRef.current.moved = false;
-      } else {
-        mouseRef.current.lastX = mouseRef.current.x;
-        mouseRef.current.lastY = mouseRef.current.y;
       }
 
       for (let i = pointsRef.current.length - 1; i >= 0; i--) {
