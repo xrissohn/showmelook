@@ -1477,17 +1477,17 @@ const slides = [
               ))}
             </div>
             <div className="mt-3 pt-3 border-t text-[11px] text-muted-foreground font-korean">
-              월평균 소진 ≈ ₩833만 · 12개월 운용 시 MAU 2만 도달 + BEP 근접
+              월평균 소진 ≈ ₩833만 · 12개월 운용 시 MAU 10만 달성 + 흑자 전환
             </div>
           </div>
           <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
             <h4 className="font-bold mb-3 font-korean">🎯 12개월 핵심 마일스톤</h4>
             <div className="space-y-2">
               {[
-                { kpi: 'MAU 20,000 달성', desc: '핵심 트래픽 확보 · BEP 근접', current: '현재 → 20,000+' },
-                { kpi: '월 매출 ₩630만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩630만/월' },
-                { kpi: 'B2B 파일럿 5곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 5곳' },
-                { kpi: '상품 카탈로그 15,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 15,000+' },
+                { kpi: 'MAU 100,000 달성', desc: '핵심 트래픽 확보 · 흑자 전환', current: '현재 → 100,000+' },
+                { kpi: '월 매출 ₩3,150만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩3,150만/월' },
+                { kpi: 'B2B 파일럿 10곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 10곳' },
+                { kpi: '상품 카탈로그 20,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 20,000+' },
                 { kpi: 'Series A 준비', desc: 'M10~M12 시점 후속 라운드 IR 시작', current: '준비' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">
