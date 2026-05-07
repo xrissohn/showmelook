@@ -59,22 +59,22 @@ const cashflowChartData = [
 
 // 룩 4종 선택 시 상품 카드가 동적으로 갱신되는 데모 UI
 const LOOK_DATA = [
-  { name: '미니멀 데일리', tags: [
+  { name: '미니멀 데일리', img: look1Img, tags: [
     { cat: '상의', brand: 'COS', item: '오버사이즈 셔츠', price: '89,000', stock: '재고 ✓' },
     { cat: '하의', brand: 'UNIQLO', item: '와이드 슬랙스', price: '49,900', stock: '재고 ✓' },
     { cat: '신발', brand: 'New Balance', item: '993 그레이', price: '249,000', stock: '품절 임박' },
   ]},
-  { name: '캐주얼 스트릿', tags: [
+  { name: '캐주얼 스트릿', img: look2Img, tags: [
     { cat: '아우터', brand: 'Carhartt', item: '디트로이트 자켓', price: '298,000', stock: '재고 ✓' },
     { cat: '하의', brand: 'Levi\'s', item: '501 빈티지', price: '139,000', stock: '재고 ✓' },
     { cat: '신발', brand: 'Nike', item: '에어포스 1', price: '139,000', stock: '재고 ✓' },
   ]},
-  { name: '오피스 룩', tags: [
+  { name: '오피스 룩', img: look3Img, tags: [
     { cat: '상의', brand: 'Theory', item: '실크 블라우스', price: '320,000', stock: '재고 ✓' },
     { cat: '하의', brand: 'MaxMara', item: '테일러드 팬츠', price: '450,000', stock: '재고 ✓' },
     { cat: '가방', brand: 'Coach', item: '타뷰비 토트', price: '690,000', stock: '재고 ✓' },
   ]},
-  { name: '데이트 룩', tags: [
+  { name: '데이트 룩', img: look4Img, tags: [
     { cat: '원피스', brand: 'Reformation', item: '플로럴 미디 드레스', price: '298,000', stock: '재고 ✓' },
     { cat: '신발', brand: 'Manolo', item: 'BB 펌프스', price: '890,000', stock: '재고 ✓' },
     { cat: '가방', brand: 'Polene', item: 'Numéro Un Nano', price: '520,000', stock: '품절 임박' },
