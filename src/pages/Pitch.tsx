@@ -1540,11 +1540,11 @@ const Pitch = () => {
   // 사용자 조정 가능한 안전 여백 (px, 1600x900 기준). 기본 64×80
   const [padY, setPadY] = useState<number>(() => {
     const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-y') : null;
-    return v ? Math.max(0, Math.min(200, parseInt(v, 10) || 64)) : 64;
+    return v ? Math.max(0, Math.min(200, parseInt(v, 10) || 0)) : 0;
   });
   const [padX, setPadX] = useState<number>(() => {
     const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-x') : null;
-    return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 80)) : 80;
+    return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 0)) : 0;
   });
 
   // 사용자 정의 여백을 인쇄 트리에 CSS 변수로 적용 + 저장
@@ -1637,56 +1637,49 @@ const Pitch = () => {
         try { if ((img as any).decode) await (img as any).decode(); } catch {}
       }));
 
-      // 4) 슬라이드별 콘텐츠 분량(텍스트 길이 + 이미지 수/크기)에 따라
-      //    안전 여백을 자동으로 조정한다. (1600x900 페이지 기준)
-      //    - 콘텐츠가 매우 적으면: roomy (88x112)
-      //    - 보통: default (64x80)
-      //    - 많거나 오버플로 위험: tight (40x56)
-      //    - 그래도 넘치면: hero (32x48)
+      // 4) 각 슬라이드 콘텐츠가 1600×900 페이지 안에 정확히 들어가도록
+      //    auto-fit scale을 적용한다. 여백은 0이며, 콘텐츠가 더 크면
+      //    transform: scale(s)로 비율 유지하며 축소한다.
       try {
         const PAGE_W = 1600;
         const PAGE_H = 900;
-        const PAD_CLASSES = ['pitch-pad-tight', 'pitch-pad-default', 'pitch-pad-roomy', 'pitch-pad-hero', 'pitch-pad-none'];
         const pages = Array.from(document.querySelectorAll<HTMLElement>('.pitch-print-only .pitch-print-page'));
         for (const page of pages) {
           const inner = page.querySelector<HTMLElement>('.pitch-print-inner');
-          if (!inner) continue;
-          PAD_CLASSES.forEach((c) => page.classList.remove(c));
+          const fit = page.querySelector<HTMLElement>('.pitch-print-fit');
+          if (!inner || !fit) continue;
 
-          const text = (inner.innerText || '').trim();
-          const textLen = text.length;
-          const imgs = inner.querySelectorAll('img');
-          let imgArea = 0;
-          imgs.forEach((im) => {
-            const r = im.getBoundingClientRect();
-            imgArea += r.width * r.height;
-          });
-          const pageArea = PAGE_W * PAGE_H;
-          const imgRatio = imgArea / pageArea;
+          // 측정 전: 스케일 초기화
+          fit.style.transform = 'none';
+          fit.style.width = '';
+          fit.style.height = '';
 
-          // 1차 분류: 분량 기반
-          let chosen = 'pitch-pad-default';
-          if (textLen < 120 && imgRatio < 0.25) chosen = 'pitch-pad-roomy';
-          else if (textLen > 600 || imgRatio > 0.55) chosen = 'pitch-pad-tight';
-          page.classList.add(chosen);
-
-          // 2차 검증: 실제 오버플로가 있으면 단계적으로 더 타이트하게
           await new Promise((r) => requestAnimationFrame(() => r(null)));
-          const isOverflow = () =>
-            inner.scrollHeight > inner.clientHeight + 1 ||
-            inner.scrollWidth > inner.clientWidth + 1;
 
-          const tighten = ['pitch-pad-roomy', 'pitch-pad-default', 'pitch-pad-tight', 'pitch-pad-hero', 'pitch-pad-none'];
-          let idx = tighten.indexOf(chosen);
-          while (isOverflow() && idx < tighten.length - 1) {
-            page.classList.remove(tighten[idx]);
-            idx += 1;
-            page.classList.add(tighten[idx]);
-            await new Promise((r) => requestAnimationFrame(() => r(null)));
+          // inner 의 실제 가용 영역 (padY/padX 가 0이면 1600x900)
+          const availW = inner.clientWidth || PAGE_W;
+          const availH = inner.clientHeight || PAGE_H;
+
+          // 자연 콘텐츠 크기 측정
+          const naturalW = fit.scrollWidth;
+          const naturalH = fit.scrollHeight;
+
+          if (naturalW <= 0 || naturalH <= 0) continue;
+
+          const scale = Math.min(1, availW / naturalW, availH / naturalH);
+
+          if (scale < 1) {
+            // 콘텐츠가 더 크면 자연 크기로 두고 scale로 줄여 비율 유지
+            fit.style.width = `${naturalW}px`;
+            fit.style.height = `${naturalH}px`;
+            fit.style.transform = `scale(${scale})`;
+            fit.style.transformOrigin = 'center center';
+            // 스케일 후 시각 박스가 가용 영역에 맞도록 inner는 flex center
           }
+          await new Promise((r) => requestAnimationFrame(() => r(null)));
         }
       } catch (e) {
-        console.warn('auto-padding skipped', e);
+        console.warn('auto-fit skipped', e);
       }
 
       // 5) 두 프레임 대기 후 인쇄 (폰트/이미지 페인트 확정)
@@ -1891,13 +1884,15 @@ const Pitch = () => {
           {slides.map((s, i) => (
             <section key={i} className={cn('pitch-print-page', s.background)}>
               <div className="pitch-print-inner">
-                {i !== 0 && i !== slides.length - 1 && (
-                  <div className="text-center mb-6">
-                    <h2 className="text-3xl font-bold mb-2 font-korean">{s.title}</h2>
-                    <p className="text-lg text-muted-foreground font-korean">{s.subtitle}</p>
-                  </div>
-                )}
-                <div>{s.content}</div>
+                <div className="pitch-print-fit">
+                  {i !== 0 && i !== slides.length - 1 && (
+                    <div className="text-center mb-6">
+                      <h2 className="text-3xl font-bold mb-2 font-korean">{s.title}</h2>
+                      <p className="text-lg text-muted-foreground font-korean">{s.subtitle}</p>
+                    </div>
+                  )}
+                  <div>{s.content}</div>
+                </div>
               </div>
             </section>
           ))}
