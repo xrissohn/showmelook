@@ -277,11 +277,17 @@ const slides = [
             </div>
             <div>
               <div className="font-bold text-foreground mb-0.5">STEP 1 · 기본 정보</div>
-              <div className="text-muted-foreground leading-snug">성별 · 키(cm) · 몸무게(kg) · 체형</div>
+              <div className="text-muted-foreground leading-snug">
+                성별 선택 · 키 <span className="text-foreground/80">예) 168cm</span> (100~220) · 몸무게 <span className="text-foreground/80">예) 55kg</span> (30~200) · 체형 1택
+                <div className="mt-1 text-[10px] text-coral/90">⚠ 빈칸/범위 초과 시 "키는 100~220cm 사이여야 합니다" 등 인라인 오류</div>
+              </div>
             </div>
             <div>
               <div className="font-bold text-foreground mb-0.5">STEP 2 · 내 스타일</div>
-              <div className="text-muted-foreground leading-snug">선호 스타일(미니멀/캐주얼/스트릿…) · 예산 · TPO</div>
+              <div className="text-muted-foreground leading-snug">
+                선호 스타일 <span className="text-foreground/80">예) 미니멀·캐주얼</span> · 예산 <span className="text-foreground/80">예) 10~30만원</span> · TPO <span className="text-foreground/80">예) 데일리·데이트</span>
+                <div className="mt-1 text-[10px] text-coral/90">⚠ 최소 1개 선택 필수, 미선택 시 "스타일을 1개 이상 골라주세요"</div>
+              </div>
             </div>
             <div>
               <div className="font-bold text-foreground mb-0.5">STEP 3 · 얼굴 사진</div>
