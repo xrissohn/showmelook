@@ -1884,13 +1884,15 @@ const Pitch = () => {
           {slides.map((s, i) => (
             <section key={i} className={cn('pitch-print-page', s.background)}>
               <div className="pitch-print-inner">
-                {i !== 0 && i !== slides.length - 1 && (
-                  <div className="text-center mb-6">
-                    <h2 className="text-3xl font-bold mb-2 font-korean">{s.title}</h2>
-                    <p className="text-lg text-muted-foreground font-korean">{s.subtitle}</p>
-                  </div>
-                )}
-                <div>{s.content}</div>
+                <div className="pitch-print-fit">
+                  {i !== 0 && i !== slides.length - 1 && (
+                    <div className="text-center mb-6">
+                      <h2 className="text-3xl font-bold mb-2 font-korean">{s.title}</h2>
+                      <p className="text-lg text-muted-foreground font-korean">{s.subtitle}</p>
+                    </div>
+                  )}
+                  <div>{s.content}</div>
+                </div>
               </div>
             </section>
           ))}
