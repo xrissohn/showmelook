@@ -4,6 +4,14 @@ export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  safelist: [
+    ...['primary', 'coral', 'sky', 'purple'].flatMap(c => [
+      `bg-${c}`, `text-${c}`, `border-${c}`,
+      `bg-${c}/5`, `bg-${c}/10`, `bg-${c}/20`, `bg-${c}/30`,
+      `border-${c}/20`, `border-${c}/30`, `border-${c}/50`,
+      `text-${c}`,
+    ]),
+  ],
   theme: {
     container: {
       center: true,
