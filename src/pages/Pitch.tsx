@@ -1546,13 +1546,14 @@ const Pitch = () => {
     return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 0)) : 0;
   });
 
-  // 용지 크기 옵션 (px @ 96dpi)
+  // 용지 크기 옵션. pageCss 는 @page에 사용할 물리 단위(mm/in) — 인쇄 선명도 핵심.
+  // w/h 는 화면/스케일 계산용 px(@96dpi).
   const PAPER_SIZES = {
-    'slide-16-9': { label: '16:9 슬라이드 (1600×900)', w: 1600, h: 900 },
-    'a4-landscape': { label: 'A4 가로', w: 1123, h: 794 },
-    'a4-portrait': { label: 'A4 세로', w: 794, h: 1123 },
-    'letter-landscape': { label: 'Letter 가로', w: 1056, h: 816 },
-    'letter-portrait': { label: 'Letter 세로', w: 816, h: 1056 },
+    'slide-16-9':       { label: '16:9 슬라이드 (1600×900)', w: 1600, h: 900,  pageCss: '1600px 900px' },
+    'a4-landscape':     { label: 'A4 가로',                    w: 1123, h: 794,  pageCss: '297mm 210mm' },
+    'a4-portrait':      { label: 'A4 세로',                    w: 794,  h: 1123, pageCss: '210mm 297mm' },
+    'letter-landscape': { label: 'Letter 가로',                w: 1056, h: 816,  pageCss: '11in 8.5in' },
+    'letter-portrait':  { label: 'Letter 세로',                w: 816,  h: 1056, pageCss: '8.5in 11in' },
   } as const;
   type PaperKey = keyof typeof PAPER_SIZES;
   const [paperSize, setPaperSize] = useState<PaperKey>(() => {
