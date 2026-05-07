@@ -1378,8 +1378,8 @@ const slides = [
           {[
             { phase: '0-6 Months', title: '베타 테스트 & 초기 사용자', target: 'MAU 1,000+', desc: '패션 얼리어답터 (2030) · 베타 100명 무료 Pro', color: 'sky' },
             { phase: '6-12 Months · Y1', title: '인플루언서 협업 & 바이럴', target: 'MAU 10,000+', desc: '마이크로 인플루언서 · 릴스/쇼츠 · 레퍼럴', color: 'coral' },
-            { phase: '12-24 Months · Y2', title: '커머스 플랫폼 제휴', target: 'MAU 10만 · 매출 1억', desc: '무신사·지그재그 등 B2B 영업 · API 세일즈', color: 'purple' },
-            { phase: '24+ Months · Y3', title: 'Cafe24 SaaS 확장', target: '100곳 / ARR 10억', desc: '중소형 자사몰 · 앱스토어 플러그인', color: 'primary' },
+            { phase: '12-24 Months · Y2', title: '커머스 플랫폼 제휴', target: 'MAU 10만 · 연 매출 6억', desc: '무신사·지그재그 등 B2B 영업 · API 세일즈', color: 'purple' },
+            { phase: '24+ Months · Y3', title: 'Cafe24 SaaS 확장', target: '100곳 / 연 매출 28억', desc: '중소형 자사몰 · 앱스토어 플러그인', color: 'primary' },
           ].map((p, i) => (
             <div key={i} className={cn('p-4 rounded-xl border relative', `bg-${p.color}/5 border-${p.color}/30`)}>
               <div className={cn('absolute -top-2 -left-2 w-7 h-7 rounded-full text-white flex items-center justify-center font-bold text-xs', `bg-${p.color}`)}>{i+1}</div>
@@ -1394,8 +1394,8 @@ const slides = [
           <h4 className="font-bold mb-2 font-korean text-sm">🎯 핵심 마일스톤</h4>
           <div className="grid md:grid-cols-3 gap-3 text-xs font-korean">
             <div className="p-2 bg-card rounded"><strong className="text-primary">D11~ MVP 정식 배포</strong> · 무신사 랜딩 연동 테스트</div>
-            <div className="p-2 bg-card rounded"><strong className="text-coral">Y1 MAU 1만</strong> · 월 매출 3,000만원</div>
-            <div className="p-2 bg-card rounded"><strong className="text-sky">Y2 커머스 파트너 10곳</strong> · ARR 10억</div>
+            <div className="p-2 bg-card rounded"><strong className="text-coral">Y1 MAU 2만</strong> · 월 매출 ₩630만</div>
+            <div className="p-2 bg-card rounded"><strong className="text-sky">Y2 커머스 파트너 10곳</strong> · 연 매출 6억</div>
           </div>
         </div>
       </div>
@@ -1479,7 +1479,7 @@ const slides = [
             <div className="space-y-2">
               {[
                 { kpi: 'MAU 20,000 달성', desc: '핵심 트래픽 확보 · BEP 근접', current: '현재 → 20,000+' },
-                { kpi: '월 매출 ₩6,000만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩60M/월' },
+                { kpi: '월 매출 ₩630만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩630만/월' },
                 { kpi: 'B2B 파일럿 5곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 5곳' },
                 { kpi: '상품 카탈로그 15,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 15,000+' },
                 { kpi: 'Series A 준비', desc: 'M10~M12 시점 후속 라운드 IR 시작', current: '준비' },
