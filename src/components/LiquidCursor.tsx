@@ -93,10 +93,10 @@ export const LiquidCursor = () => {
 
       for (let i = pointsRef.current.length - 1; i >= 0; i--) {
         const p = pointsRef.current[i];
-        p.life -= 0.01;
+        p.life -= 0.006;
         p.x += p.vx;
         p.y += p.vy;
-        p.radius *= 0.99;
+        p.radius *= 0.995;
 
         if (p.life <= 0 || p.radius < 0.5) {
           pointsRef.current.splice(i, 1);
