@@ -1768,6 +1768,16 @@ const Pitch = () => {
               </>
             )}
           </Button>
+          <Button
+            variant={showSafeArea ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setShowSafeArea((v) => !v)}
+            className="gap-2"
+            title="인쇄 안전 여백 오버레이 (64×80px)"
+          >
+            <Frame className="w-4 h-4" />
+            <span className="hidden sm:inline">여백</span>
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
