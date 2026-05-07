@@ -1649,30 +1649,59 @@ const Pitch = () => {
           const fit = page.querySelector<HTMLElement>('.pitch-print-fit');
           if (!inner || !fit) continue;
 
-          // 측정 전: 이전 스케일/사이즈 초기화
+          // 측정 전: 이전 스케일/사이즈/오버플로우 초기화
+          const prevTransform = fit.style.transform;
+          const prevWidth = fit.style.width;
+          const prevHeight = fit.style.height;
+          const prevMaxW = fit.style.maxWidth;
+          const prevMaxH = fit.style.maxHeight;
+          const prevOverflow = fit.style.overflow;
+          const prevDisplay = fit.style.display;
+
           fit.style.transform = 'none';
-          fit.style.width = '';
-          fit.style.height = '';
-          fit.style.maxWidth = '';
-          fit.style.maxHeight = '';
+          fit.style.maxWidth = 'none';
+          fit.style.maxHeight = 'none';
+          fit.style.overflow = 'visible';
 
           // 가용 영역 (inner padding 반영)
           const availW = inner.clientWidth || PAGE_W;
           const availH = inner.clientHeight || PAGE_H;
 
-          // 자연 크기를 측정하기 위해 잠시 가용 폭으로만 제한하고 높이는 풀어둔다.
-          // (flex 100%/100% 상태에서는 scrollWidth/Height가 자연 크기를 반영하지 못함)
-          const prevDisplay = fit.style.display;
+          // 1단계: 디자인 기준 크기(PAGE_W × PAGE_H)로 강제 → 자식들이 디자인된 그대로 레이아웃
+          //         scrollWidth/Height 가 오버플로우(=자연 크기)를 정확히 반영하도록 한다.
           fit.style.display = 'block';
-          fit.style.width = `${availW}px`;
-          fit.style.height = 'auto';
-          fit.style.maxWidth = 'none';
-          fit.style.maxHeight = 'none';
+          fit.style.width = `${PAGE_W}px`;
+          fit.style.height = `${PAGE_H}px`;
 
+          // 레이아웃 강제
+          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+          fit.offsetHeight;
           await new Promise((r) => requestAnimationFrame(() => r(null)));
 
-          const naturalW = Math.max(fit.scrollWidth, fit.offsetWidth, availW);
-          const naturalH = Math.max(fit.scrollHeight, fit.offsetHeight);
+          // 자식 요소들의 실제 바운딩 박스를 합산해 자연 크기 산출
+          let measuredW = 0;
+          let measuredH = 0;
+          const fitRect = fit.getBoundingClientRect();
+          const children = Array.from(fit.children) as HTMLElement[];
+          for (const child of children) {
+            const r = child.getBoundingClientRect();
+            const right = r.right - fitRect.left;
+            const bottom = r.bottom - fitRect.top;
+            if (right > measuredW) measuredW = right;
+            if (bottom > measuredH) measuredH = bottom;
+            // scroll 기반 보정 (내부 오버플로우 포함)
+            if (child.scrollWidth > 0) {
+              const sw = (r.left - fitRect.left) + child.scrollWidth;
+              if (sw > measuredW) measuredW = sw;
+            }
+            if (child.scrollHeight > 0) {
+              const sh = (r.top - fitRect.top) + child.scrollHeight;
+              if (sh > measuredH) measuredH = sh;
+            }
+          }
+
+          const naturalW = Math.max(measuredW, fit.scrollWidth, PAGE_W);
+          const naturalH = Math.max(measuredH, fit.scrollHeight, PAGE_H);
 
           // 슬라이드별 독립 스케일 계산
           let scale = 1;
@@ -1686,10 +1715,20 @@ const Pitch = () => {
           fit.style.display = prevDisplay || '';
           fit.style.width = `${naturalW}px`;
           fit.style.height = `${naturalH}px`;
+          fit.style.maxWidth = prevMaxW || 'none';
+          fit.style.maxHeight = prevMaxH || 'none';
+          fit.style.overflow = prevOverflow || 'visible';
+          // 자연 크기 박스가 inner보다 클 수 있으므로 절대중앙 배치 + scale
+          fit.style.position = 'absolute';
+          fit.style.left = '50%';
+          fit.style.top = '50%';
           fit.style.transformOrigin = 'center center';
-          fit.style.transform = scale < 1 ? `scale(${scale})` : 'none';
-          // 디버깅용 데이터 속성
+          fit.style.transform = `translate(-50%, -50%)${scale < 1 ? ` scale(${scale})` : ''}`;
+          // inner 도 절대 위치 기준점이 되도록
+          inner.style.position = 'relative';
+          inner.style.overflow = 'hidden';
           page.setAttribute('data-fit-scale', scale.toFixed(4));
+          page.setAttribute('data-fit-natural', `${Math.round(naturalW)}x${Math.round(naturalH)}`);
 
           await new Promise((r) => requestAnimationFrame(() => r(null)));
         }
