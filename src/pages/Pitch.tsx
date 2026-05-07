@@ -452,8 +452,8 @@ const slides = [
     content: (
       <div className="grid md:grid-cols-5 gap-5">
         <div className="md:col-span-2 rounded-xl border border-sky/30 overflow-hidden bg-card">
-          <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
-            <img src={screenCommunity} alt="Community" className="w-full h-full object-cover object-top" loading="lazy" />
+          <div className="aspect-[4/5] bg-background overflow-hidden border-b border-border relative">
+            <img src={screenLookResult} alt="추천된 룩과 상품 카드" className="w-full h-full object-contain object-top bg-background" loading="lazy" />
             <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-sky">03 · LOOK & BUY</div>
           </div>
           <div className="p-3">
