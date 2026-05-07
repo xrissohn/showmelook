@@ -1148,28 +1148,29 @@ const slides = [
     title: 'Investment Ask',
     subtitle: 'Seed / Pre-A Round',
     content: (
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="text-center">
-          <div className="inline-block px-10 py-6 bg-gradient-brand rounded-2xl text-white shadow-2xl">
+          <div className="inline-block px-10 py-5 bg-gradient-brand rounded-2xl text-white shadow-2xl">
             <div className="text-xs tracking-widest opacity-90 mb-1">SEED INVESTMENT TARGET</div>
-            <div className="text-5xl md:text-6xl font-bold mb-1">5억원</div>
-            <div className="text-sm opacity-90 font-korean">12-18개월 런웨이 확보 · 미팅 시 협의</div>
+            <div className="text-5xl md:text-6xl font-bold mb-1">1억원</div>
+            <div className="text-sm opacity-90 font-korean">린(Lean) 18개월 런웨이 · 1인 운영 + 외주 기반</div>
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
           <div className="p-5 bg-card rounded-xl border border-border">
-            <h4 className="font-bold mb-3 font-korean">💰 자금 사용 계획 (Use of Funds)</h4>
+            <h4 className="font-bold mb-3 font-korean">💰 자금 사용 계획 (Use of Funds · 1억원)</h4>
             <div className="space-y-2">
               {[
-                { use: '마케팅 & 인플루언서', percent: 35, amount: '1.75억', desc: '베타 테스터, 바이럴', color: 'coral' },
-                { use: 'R&D · AI 고도화', percent: 30, amount: '1.5억', desc: '가상 피팅, 추천 엔진', color: 'primary' },
-                { use: 'B2B 영업 & 제휴', percent: 20, amount: '1.0억', desc: '플랫폼 영업, API 연동', color: 'sky' },
-                { use: '운영 & 인프라', percent: 15, amount: '0.75억', desc: '서버, 고객 지원', color: 'purple' },
+                { use: '마케팅 & 인플루언서', percent: 30, amount: '3,000만', desc: '베타 사용자 확보 · 마이크로 인플루언서 · SNS 광고', color: 'coral' },
+                { use: 'AI · R&D 운영비', percent: 25, amount: '2,500만', desc: 'Gemini/Nano Banana 토큰 · 데이터 수집 · 신규 기능 개발', color: 'primary' },
+                { use: '인프라 & 사무 운영', percent: 20, amount: '2,000만', desc: 'Supabase · 서버 · 사무실 임대 · 기장/세무', color: 'sky' },
+                { use: '외주 · 파트타임', percent: 15, amount: '1,500만', desc: '디자인/콘텐츠/B2B 영업 외주 (창업자 1인 + 외주 운영)', color: 'purple' },
+                { use: '예비비 & 법무', percent: 10, amount: '1,000만', desc: '계약/IP 법률 자문 · 우발 비용 · 보험', color: 'muted-foreground' },
               ].map((it, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between items-center text-xs font-korean">
                     <span className="font-semibold">{it.use}</span>
-                    <span className={cn('font-bold', `text-${it.color}`)}>{it.percent}% · {it.amount}</span>
+                    <span className={cn('font-bold', `text-${it.color}`)}>{it.percent}% · ₩{it.amount}</span>
                   </div>
                   <div className="h-2 bg-muted/40 rounded-full overflow-hidden">
                     <div className={cn('h-full rounded-full', `bg-${it.color}`)} style={{ width: `${it.percent}%` }} />
@@ -1178,26 +1179,43 @@ const slides = [
                 </div>
               ))}
             </div>
+            <div className="mt-3 pt-3 border-t text-[11px] text-muted-foreground font-korean">
+              월평균 소진 ≈ ₩555만 · 18개월 운용 시 BEP 도달(MAU 1만) 가능
+            </div>
           </div>
           <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
-            <h4 className="font-bold mb-3 font-korean">🎯 12-18개월 핵심 마일스톤</h4>
-            <div className="space-y-3">
+            <h4 className="font-bold mb-3 font-korean">🎯 18개월 핵심 마일스톤</h4>
+            <div className="space-y-2">
               {[
-                { kpi: 'MAU 1만 달성', desc: '런칭 후 1년 내 Y1 목표', current: '100 → 10,000+' },
-                { kpi: '월 매출 3,000만원', desc: '어필리에이트 + 초기 B2B 수익화', current: '0 → ₩30M/월' },
-                { kpi: '커머스 파트너 10곳', desc: '무신사·지그재그 등 주요 플랫폼', current: '0 → 10곳' },
-                { kpi: '상품 카탈로그 10,000+', desc: '국내 주요 패션 브랜드', current: '5,579 → 10,000+' },
+                { kpi: 'MAU 10,000 달성', desc: '1인 운영 BEP 도달 시점', current: '현재 → 10,000+' },
+                { kpi: '월 매출 ₩3,000만', desc: '어필리에이트 중심 수익화', current: '0 → ₩30M/월' },
+                { kpi: 'B2B 파일럿 5곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 5곳' },
+                { kpi: '상품 카탈로그 10,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 10,000+' },
+                { kpi: 'Series A 준비', desc: 'M18 시점 후속 라운드 IR 시작', current: '준비' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">
                   <div className="flex justify-between items-baseline">
-                    <span className="font-bold text-sm font-korean text-primary">{m.kpi}</span>
-                    <span className="text-xs text-muted-foreground">{m.current}</span>
+                    <span className="font-bold text-xs font-korean text-primary">{m.kpi}</span>
+                    <span className="text-[10px] text-muted-foreground">{m.current}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground font-korean mt-0.5">{m.desc}</div>
+                  <div className="text-[10px] text-muted-foreground font-korean mt-0.5">{m.desc}</div>
                 </div>
               ))}
             </div>
           </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
+          {[
+            { label: '월 평균 운영비', value: '₩555만', desc: '고정비 + 변동비 + 마케팅 가중평균', color: 'primary' },
+            { label: '예상 런웨이', value: '18개월', desc: 'MAU 1만 BEP 도달까지 충분', color: 'coral' },
+            { label: '추가 라운드', value: 'Series A', desc: 'M15~M18 시점 후속 투자 유치', color: 'sky' },
+          ].map((s, i) => (
+            <div key={i} className={cn('p-3 rounded-xl border text-center', `bg-${s.color}/5 border-${s.color}/30`)}>
+              <div className="text-[10px] tracking-widest font-bold font-korean mb-1 text-muted-foreground">{s.label}</div>
+              <div className={cn('text-2xl font-bold mb-1', `text-${s.color}`)}>{s.value}</div>
+              <div className="text-[10px] text-muted-foreground font-korean">{s.desc}</div>
+            </div>
+          ))}
         </div>
         <div className="text-center pt-2 space-y-1">
           <p className="text-xl font-bold font-korean bg-gradient-brand bg-clip-text text-transparent">
