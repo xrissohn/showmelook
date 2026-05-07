@@ -267,31 +267,52 @@ const slides = [
     title: 'Product Tour · 사용자 화면',
     subtitle: '입력 → AI 생성 → 구매로 이어지는 핵심 사용자 플로우',
     content: (
-      <div className="space-y-4">
+      <div className="space-y-3">
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
+          <div className="text-[10px] font-bold tracking-widest text-primary mb-1.5 font-korean">ONBOARDING · 가입 → 프로필 설정 → 사진 업로드</div>
+          <div className="grid md:grid-cols-4 gap-2 text-[11px] font-korean">
+            <div>
+              <div className="font-bold text-foreground mb-0.5">STEP 0 · 가입</div>
+              <div className="text-muted-foreground leading-snug">Google OAuth 또는 휴대폰 OTP 인증 (10초)</div>
+            </div>
+            <div>
+              <div className="font-bold text-foreground mb-0.5">STEP 1 · 기본 정보</div>
+              <div className="text-muted-foreground leading-snug">성별 · 키(cm) · 몸무게(kg) · 체형</div>
+            </div>
+            <div>
+              <div className="font-bold text-foreground mb-0.5">STEP 2 · 내 스타일</div>
+              <div className="text-muted-foreground leading-snug">선호 스타일(미니멀/캐주얼/스트릿…) · 예산 · TPO</div>
+            </div>
+            <div>
+              <div className="font-bold text-foreground mb-0.5">STEP 3 · 얼굴 사진</div>
+              <div className="text-muted-foreground leading-snug">정면 셀카 1장 → 모델 프로필로 가상 피팅에 합성</div>
+            </div>
+          </div>
+        </div>
         <div className="grid md:grid-cols-3 gap-4">
           {[
             {
               img: screenLanding,
               tag: '01 · Landing',
-              step: 'STEP 1 · 진입',
-              title: '브랜드 진입 경험',
-              desc: '인터랙티브 LiquidCursor로 첫인상 차별화. "AI 스타일링 무료 체험" CTA로 즉시 전환.',
-              features: ['LiquidCursor 인터랙션', '3D 플립 카드 갤러리', '무료 체험 CTA'],
+              step: 'STEP 4 · 진입',
+              title: '브랜드 진입 + 가입',
+              desc: '인터랙티브 LiquidCursor로 첫인상 차별화 → "무료 체험" CTA에서 Google/OTP 가입 10초.',
+              features: ['LiquidCursor 인터랙션', 'Google OAuth · OTP 가입', '가입 즉시 5크레딧 지급'],
               color: 'primary',
             },
             {
               img: screenStyle,
               tag: '02 · Style Generator',
-              step: 'STEP 2 · 입력 & 생성',
+              step: 'STEP 5 · 입력 & 생성',
               title: 'AI 스타일 생성기',
-              desc: '프롬프트 + 모델 프로필을 입력하면 AI가 1분 내 풀바디 룩 4종을 생성.',
-              features: ['프롬프트/HOT 트렌드 선택', '성별·체형 모델 프로필', '일일 잔여 횟수/등급 한도'],
+              desc: '키·몸무게·내 스타일이 자동 반영된 모델 프로필 + 프롬프트 → 1분 내 풀바디 룩 4종.',
+              features: ['키/몸무게/체형 자동 반영', '프롬프트 + HOT 트렌드 선택', '얼굴 합성 풀바디 4종 생성'],
               color: 'coral',
             },
             {
               img: screenCommunity,
               tag: '03 · Community Gallery',
-              step: 'STEP 3 · 검증 & 구매',
+              step: 'STEP 6 · 검증 & 구매',
               title: '커뮤니티 + 원클릭 구매',
               desc: '다른 유저 룩에서 영감 → 좋아요 → 상품 태그 클릭 → 어필리에이트 딥링크로 구매.',
               features: ['인기/최신 정렬', '좋아요·사회적 검증', '상품 태그 → 딥링크 구매'],
@@ -321,8 +342,8 @@ const slides = [
         </div>
         <div className="space-y-2">
           <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-korean">
-            <span className="font-bold text-primary">입력</span>
-            <span className="text-muted-foreground">프롬프트·프로필</span>
+            <span className="font-bold text-primary">가입·프로필</span>
+            <span className="text-muted-foreground">키·몸무게·스타일·얼굴 사진</span>
             <span className="text-muted-foreground/50">→</span>
             <span className="font-bold text-coral">AI 생성</span>
             <span className="text-muted-foreground">풀바디 룩 4종 (1분 이내)</span>
