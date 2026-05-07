@@ -341,6 +341,30 @@ const slides = [
           ))}
         </div>
         <div className="space-y-2">
+          <div className="rounded-lg border border-coral/30 bg-coral/5 px-4 py-3">
+            <div className="text-[10px] font-bold tracking-widest text-coral mb-2 font-korean">AI GENERATION RESULT · 생성 결과 한눈에</div>
+            <div className="grid md:grid-cols-4 gap-2 text-[11px] font-korean">
+              <div className="rounded border border-coral/20 bg-background/60 p-2">
+                <div className="font-bold text-coral mb-0.5">룩 4종 동시 생성</div>
+                <div className="text-muted-foreground leading-snug">하나의 프롬프트 → 풀바디 3:4 룩 4장. 좌우 스와이프로 비교, 마음에 드는 룩만 갤러리 저장.</div>
+              </div>
+              <div className="rounded border border-coral/20 bg-background/60 p-2">
+                <div className="font-bold text-coral mb-0.5">품질 옵션 · Fast/Pro</div>
+                <div className="text-muted-foreground leading-snug">Fast(Gemini Flash, ~30초) / Pro(GPT-5·Nano Banana 2, 얼굴 충실도↑) 토글로 속도·품질 선택.</div>
+              </div>
+              <div className="rounded border border-coral/20 bg-background/60 p-2">
+                <div className="font-bold text-coral mb-0.5">워터마크 정책</div>
+                <div className="text-muted-foreground leading-snug">Free 플랜은 ShowMeLook 로고 오버레이 → 자연스러운 브랜드 노출 + 유료 전환 트리거.</div>
+              </div>
+              <div className="rounded border border-coral/20 bg-background/60 p-2">
+                <div className="font-bold text-coral mb-0.5">생성 한도 표시</div>
+                <div className="text-muted-foreground leading-snug">남은 일일 한도 + 보너스 크레딧 실시간 노출. 소진 시 업그레이드 모달, Platinum·관리자 무제한.</div>
+              </div>
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-korean text-center">
+              상품 태그 · 좋아요 · 공유 · HD 다운로드(유료)까지 결과 카드에서 바로 액션
+            </div>
+          </div>
           <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-korean">
             <span className="font-bold text-primary">가입·프로필</span>
             <span className="text-muted-foreground">키·몸무게·스타일·얼굴 사진</span>
