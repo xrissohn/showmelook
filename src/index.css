@@ -595,3 +595,43 @@ img {
     animation: none !important;
   }
 }
+/* ===== Pitch deck print (PDF 저장용 벡터 텍스트) ===== */
+.pitch-print-only { display: none; }
+
+@media screen {
+  body.pitch-print-mode .pitch-screen-only { display: none !important; }
+  body.pitch-print-mode .pitch-print-only { display: block !important; }
+  body.pitch-print-mode header,
+  body.pitch-print-mode footer { display: none !important; }
+}
+
+@media print {
+  @page { size: 1600px 900px; margin: 0; }
+  html, body { background: #fff !important; }
+  body * { visibility: hidden !important; }
+  .pitch-print-only, .pitch-print-only * { visibility: visible !important; }
+  .pitch-print-only {
+    display: block !important;
+    position: absolute; left: 0; top: 0; width: 1600px;
+  }
+  header, footer, nav { display: none !important; }
+  .pitch-print-page {
+    width: 1600px;
+    height: 900px;
+    page-break-after: always;
+    break-after: page;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .pitch-print-page:last-child { page-break-after: auto; break-after: auto; }
+  .pitch-print-inner {
+    width: 100%;
+    max-width: 1500px;
+    padding: 32px 48px;
+    box-sizing: border-box;
+  }
+  .animate-fade-in, [class*="animate-"] { animation: none !important; }
+}
