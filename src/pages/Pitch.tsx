@@ -1444,7 +1444,7 @@ const slides = [
           <div className="inline-block px-10 py-5 bg-gradient-brand rounded-2xl text-white shadow-2xl">
             <div className="text-xs tracking-widest opacity-90 mb-1">SEED INVESTMENT TARGET</div>
             <div className="text-5xl md:text-6xl font-bold mb-1">1억원</div>
-            <div className="text-sm opacity-90 font-korean">린(Lean) 18개월 런웨이 · 1인 운영 + 외주 기반</div>
+            <div className="text-sm opacity-90 font-korean">린(Lean) 12개월 런웨이 · 1인 운영 + 외주 기반</div>
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
@@ -1471,18 +1471,18 @@ const slides = [
               ))}
             </div>
             <div className="mt-3 pt-3 border-t text-[11px] text-muted-foreground font-korean">
-              월평균 소진 ≈ ₩555만 · 18개월 운용 시 BEP 도달(MAU 1만) 가능
+              월평균 소진 ≈ ₩833만 · 12개월 운용 시 MAU 2만 도달 + BEP 근접
             </div>
           </div>
           <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
-            <h4 className="font-bold mb-3 font-korean">🎯 18개월 핵심 마일스톤</h4>
+            <h4 className="font-bold mb-3 font-korean">🎯 12개월 핵심 마일스톤</h4>
             <div className="space-y-2">
               {[
-                { kpi: 'MAU 10,000 달성', desc: '1인 운영 BEP 도달 시점', current: '현재 → 10,000+' },
-                { kpi: '월 매출 ₩3,000만', desc: '어필리에이트 중심 수익화', current: '0 → ₩30M/월' },
+                { kpi: 'MAU 20,000 달성', desc: '핵심 트래픽 확보 · BEP 근접', current: '현재 → 20,000+' },
+                { kpi: '월 매출 ₩6,000만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩60M/월' },
                 { kpi: 'B2B 파일럿 5곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 5곳' },
-                { kpi: '상품 카탈로그 10,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 10,000+' },
-                { kpi: 'Series A 준비', desc: 'M18 시점 후속 라운드 IR 시작', current: '준비' },
+                { kpi: '상품 카탈로그 15,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 15,000+' },
+                { kpi: 'Series A 준비', desc: 'M10~M12 시점 후속 라운드 IR 시작', current: '준비' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">
                   <div className="flex justify-between items-baseline">
@@ -1497,9 +1497,9 @@ const slides = [
         </div>
         <div className="grid md:grid-cols-3 gap-3">
           {[
-            { label: '월 평균 운영비', value: '₩555만', desc: '고정비 + 변동비 + 마케팅 가중평균', color: 'primary' },
-            { label: '예상 런웨이', value: '18개월', desc: 'MAU 1만 BEP 도달까지 충분', color: 'coral' },
-            { label: '추가 라운드', value: 'Series A', desc: 'M15~M18 시점 후속 투자 유치', color: 'sky' },
+            { label: '월 평균 운영비', value: '₩833만', desc: '고정비 + 변동비 + 마케팅 가중평균', color: 'primary' },
+            { label: '예상 런웨이', value: '12개월', desc: 'MAU 2만 도달 + BEP 근접 시점', color: 'coral' },
+            { label: '추가 라운드', value: 'Series A', desc: 'M10~M12 시점 후속 투자 유치', color: 'sky' },
           ].map((s, i) => (
             <div key={i} className={cn('p-3 rounded-xl border text-center', `bg-${s.color}/5 border-${s.color}/30`)}>
               <div className="text-[10px] tracking-widest font-bold font-korean mb-1 text-muted-foreground">{s.label}</div>
