@@ -1684,19 +1684,34 @@ const Pitch = () => {
 
       {/* 슬라이드 컨텐츠 */}
       <main className={cn('flex-1 flex flex-col items-center justify-center', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}>
-        <div id="pitch-slide-capture" className={cn('w-full', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
-          {/* 슬라이드 타이틀 (커버 슬라이드는 본문 내에 자체 타이틀) */}
+        {/* 화면 표시용: 현재 슬라이드만 */}
+        <div id="pitch-slide-capture" className={cn('w-full pitch-screen-only', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
           {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
             <div className={cn('text-center', isCaptureMode ? 'mb-6 pt-8' : 'mb-8')}>
               <h2 className="text-3xl md:text-4xl font-bold mb-2 font-korean">{slide.title}</h2>
               <p className="text-lg text-muted-foreground font-korean">{slide.subtitle}</p>
             </div>
           )}
-
-          {/* 슬라이드 본문 */}
           <div className={isCaptureMode ? '' : 'animate-fade-in'}>
             {slide.content}
           </div>
+        </div>
+
+        {/* 인쇄(PDF 저장) 전용: 모든 슬라이드를 페이지별로 렌더링 */}
+        <div className="pitch-print-only" aria-hidden="true">
+          {slides.map((s, i) => (
+            <section key={i} className={cn('pitch-print-page', s.background)}>
+              <div className="pitch-print-inner">
+                {i !== 0 && i !== slides.length - 1 && (
+                  <div className="text-center mb-6">
+                    <h2 className="text-3xl font-bold mb-2 font-korean">{s.title}</h2>
+                    <p className="text-lg text-muted-foreground font-korean">{s.subtitle}</p>
+                  </div>
+                )}
+                <div>{s.content}</div>
+              </div>
+            </section>
+          ))}
         </div>
       </main>
 
