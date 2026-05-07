@@ -645,28 +645,42 @@ img {
     width: 1600px;
     margin: 0;
     padding: 0;
+    /* 컨테이너 자체에서는 break 발생시키지 않음 */
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    page-break-inside: auto !important;
+    break-before: avoid-page !important;
+    break-after: avoid-page !important;
+    break-inside: auto !important;
   }
 
   /* 각 슬라이드 = 한 페이지 (정확히 1600x900, 여백 0) */
   .pitch-print-page {
     width: 1600px !important;
     height: 900px !important;
+    min-height: 900px !important;
+    max-height: 900px !important;
     margin: 0 !important;
     padding: 0 !important;
-    box-sizing: border-box;
-    overflow: hidden;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    page-break-after: always;
-    page-break-inside: avoid;
-    break-after: page;
-    break-inside: avoid;
+    /* 슬라이드 내부는 절대 쪼개지지 않음 */
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
+    -webkit-column-break-inside: avoid !important;
+    /* 다음 슬라이드는 항상 새 페이지에서 시작 */
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-before: auto !important;
+    break-before: auto !important;
   }
   .pitch-print-page:last-child {
-    page-break-after: auto;
-    break-after: auto;
+    page-break-after: avoid !important;
+    break-after: avoid-page !important;
   }
 
   /* 슬라이드 내용 영역: 안전 여백 (시안 기준 약 64px) */
@@ -681,8 +695,16 @@ img {
     justify-content: center;
     align-items: stretch;
     overflow: hidden;
+    page-break-inside: avoid !important;
+    break-inside: avoid-page !important;
   }
 
+  /* 슬라이드 내부 자식 요소들도 쪼개지지 않도록 */
+  .pitch-print-page *,
+  .pitch-print-inner * {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
   /* 애니메이션/트랜지션/필터 제거 — 인쇄 시 흐림 방지 */
   .pitch-print-only *,
   .pitch-print-only *::before,
