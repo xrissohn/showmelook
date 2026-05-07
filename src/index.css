@@ -608,6 +608,17 @@ img {
 @media print {
   /* 16:9 슬라이드 페이지 — 여백 0 */
   @page { size: 1600px 900px; margin: 0; }
+  @page :first { margin: 0; }
+  @page :left { margin: 0; }
+  @page :right { margin: 0; }
+
+  /* 페이지 끊김 일관성 — 루트 레벨에서 의도치 않은 break 방지 */
+  html, body {
+    page-break-before: avoid !important;
+    page-break-after: avoid !important;
+    break-before: avoid-page !important;
+    break-after: avoid-page !important;
+  }
 
   /* 배경 그래픽/색상 강제 인쇄 (Chrome/Safari/Firefox) */
   html, body, .pitch-print-only, .pitch-print-only * {
