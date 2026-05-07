@@ -1527,10 +1527,35 @@ const slides = [
 
 const Pitch = () => {
   const navigate = useNavigate();
-  const [currentSlide, setCurrentSlide] = useState(0);
+  // Capture mode: ?capture=1&slide=N renders only the slide content (no chrome)
+  const captureParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+  const isCaptureMode = captureParams?.get('capture') === '1';
+  const captureSlideIdx = isCaptureMode ? Math.max(0, Math.min(slides.length - 1, parseInt(captureParams?.get('slide') || '0', 10))) : 0;
+  const [currentSlide, setCurrentSlide] = useState(isCaptureMode ? captureSlideIdx : 0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+
+  // Signal readiness to headless capture once fonts + images are loaded
+  useEffect(() => {
+    if (!isCaptureMode) return;
+    let cancelled = false;
+    const markReady = async () => {
+      try {
+        // @ts-ignore
+        if (document.fonts?.ready) await document.fonts.ready;
+        const imgs = Array.from(document.images);
+        await Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise(res => { img.onload = img.onerror = () => res(null); })));
+        await new Promise(r => setTimeout(r, 500));
+      } catch {}
+      if (!cancelled) {
+        const node = document.getElementById('pitch-slide-capture');
+        node?.setAttribute('data-ready', 'true');
+      }
+    };
+    markReady();
+    return () => { cancelled = true; };
+  }, [isCaptureMode, currentSlide]);
 
   const exportToPdf = useCallback(async () => {
     if (isExporting) return;
