@@ -1244,7 +1244,7 @@ const slides = [
 
         {/* ComposedChart */}
         <div className="p-4 bg-card rounded-lg border border-border">
-          <h4 className="font-bold mb-3 font-korean">📈 월별 순이익 & 누적 손익 (10,000명 채용)</h4>
+          <h4 className="font-bold mb-3 font-korean">📈 월별 순이익 & 누적 손익 (사용자 10,000명 달성시 채용)</h4>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cashflowChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
