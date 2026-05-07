@@ -222,8 +222,8 @@ const slides = [
         <div className="grid md:grid-cols-4 gap-3">
           {[
             { metric: '플랫폼 완성도', value: '80%', desc: '핵심 기능 안정화 단계', accent: 'primary' },
-            { metric: '등록 상품 수', value: '1,652', desc: '실시간 카탈로그', accent: 'coral' },
-            { metric: 'AI DNA 분석', value: '1,652', desc: '스타일 속성 추출 완료', accent: 'sky' },
+            { metric: '등록 상품 수', value: '5,579', desc: '실시간 카탈로그', accent: 'coral' },
+            { metric: 'AI DNA 분석', value: '5,579', desc: '스타일 속성 추출 완료', accent: 'sky' },
             { metric: '추천 엔진', value: 'v8.0', desc: '피드백 학습 적용', accent: 'purple' },
           ].map((s, i) => (
             <div key={i} className={cn('p-4 rounded-xl border', `bg-${s.accent}/5 border-${s.accent}/30`)}>
@@ -237,7 +237,7 @@ const slides = [
           <div className="p-5 bg-card rounded-xl border border-border">
             <h4 className="font-bold mb-3 font-korean">✅ 운영 중인 핵심 기능</h4>
             <div className="grid grid-cols-2 gap-2">
-              {['AI 스타일 추천 v8.0', '얼굴 합성 가상 피팅', '1,652+ 상품 카탈로그', '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
+              {['AI 스타일 추천 v8.0', '얼굴 합성 가상 피팅', '5,579+ 상품 카탈로그', '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs font-korean">
                   <span className="text-primary">●</span>{f}
                 </div>
@@ -1032,7 +1032,7 @@ const slides = [
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
           <h4 className="font-bold text-green-700 mb-2 font-korean">✅ 완료된 기능 (Phase 1-4 · 80%)</h4>
           <div className="flex flex-wrap gap-2">
-            {['AI 추천 엔진 v8.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', '1,652+ 상품 DNA', '피드백 자기 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯 SDK', '실시간 어드민', '에러 모니터링', 'SEO/RSS'].map((item, i) => (
+            {['AI 추천 엔진 v8.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', '5,579+ 상품 DNA', '피드백 자기 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯 SDK', '실시간 어드민', '에러 모니터링', 'SEO/RSS'].map((item, i) => (
               <span key={i} className="px-3 py-1 bg-green-500/20 text-green-700 rounded-full text-xs font-korean font-semibold">{item}</span>
             ))}
           </div>
@@ -1098,7 +1098,7 @@ const slides = [
                 { kpi: 'MAU 1만 달성', desc: '런칭 후 1년 내 Y1 목표', current: '100 → 10,000+' },
                 { kpi: '월 매출 3,000만원', desc: '어필리에이트 + 초기 B2B 수익화', current: '0 → ₩30M/월' },
                 { kpi: '커머스 파트너 10곳', desc: '무신사·지그재그 등 주요 플랫폼', current: '0 → 10곳' },
-                { kpi: '상품 카탈로그 5,000+', desc: '국내 주요 패션 브랜드', current: '1,652 → 5,000+' },
+                { kpi: '상품 카탈로그 5,000+', desc: '국내 주요 패션 브랜드', current: '5,579 → 5,000+' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">
                   <div className="flex justify-between items-baseline">
