@@ -28,6 +28,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Cafe24Fitting = lazy(() => import("./pages/Cafe24Fitting"));
 const Community = lazy(() => import("./pages/Community"));
 const UserGallery = lazy(() => import("./pages/UserGallery"));
+const History = lazy(() => import("./pages/History"));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
