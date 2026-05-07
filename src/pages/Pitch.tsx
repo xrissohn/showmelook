@@ -3,7 +3,7 @@
  * 키보드 좌우 화살표, 스와이프, 클릭으로 슬라이드 전환
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -53,7 +53,71 @@ const cashflowChartData = [
   { month: 'M12', users: 20000, staff: 2, revenue: 630, fixedCost: 815, variableCost: 200, totalCost: 1015, profit: -385, cumulative: -2695 },
 ];
 
-// 슬라이드 데이터
+// 룩 4종 선택 시 상품 카드가 동적으로 갱신되는 데모 UI
+const LOOK_DATA = [
+  { name: '미니멀 데일리', tags: [
+    { cat: '상의', brand: 'COS', item: '오버사이즈 셔츠', price: '89,000', stock: '재고 ✓' },
+    { cat: '하의', brand: 'UNIQLO', item: '와이드 슬랙스', price: '49,900', stock: '재고 ✓' },
+    { cat: '신발', brand: 'New Balance', item: '993 그레이', price: '249,000', stock: '품절 임박' },
+  ]},
+  { name: '캐주얼 스트릿', tags: [
+    { cat: '아우터', brand: 'Carhartt', item: '디트로이트 자켓', price: '298,000', stock: '재고 ✓' },
+    { cat: '하의', brand: 'Levi\'s', item: '501 빈티지', price: '139,000', stock: '재고 ✓' },
+    { cat: '신발', brand: 'Nike', item: '에어포스 1', price: '139,000', stock: '재고 ✓' },
+  ]},
+  { name: '오피스 룩', tags: [
+    { cat: '상의', brand: 'Theory', item: '실크 블라우스', price: '320,000', stock: '재고 ✓' },
+    { cat: '하의', brand: 'MaxMara', item: '테일러드 팬츠', price: '450,000', stock: '재고 ✓' },
+    { cat: '가방', brand: 'Coach', item: '타뷰비 토트', price: '690,000', stock: '재고 ✓' },
+  ]},
+  { name: '데이트 룩', tags: [
+    { cat: '원피스', brand: 'Reformation', item: '플로럴 미디 드레스', price: '298,000', stock: '재고 ✓' },
+    { cat: '신발', brand: 'Manolo', item: 'BB 펌프스', price: '890,000', stock: '재고 ✓' },
+    { cat: '가방', brand: 'Polene', item: 'Numéro Un Nano', price: '520,000', stock: '품절 임박' },
+  ]},
+];
+
+const InteractiveLookPicker = () => {
+  const [selected, setSelected] = useState(0);
+  const look = LOOK_DATA[selected];
+  return (
+    <div className="rounded border border-coral/20 bg-background/60 p-2.5">
+      <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 클릭으로 상품 카드 동적 갱신</div>
+      <div className="grid grid-cols-4 gap-1 mb-2">
+        {LOOK_DATA.map((l, n) => (
+          <button
+            key={n}
+            onClick={() => setSelected(n)}
+            className={cn(
+              'aspect-[3/4] rounded border bg-coral/10 flex flex-col items-center justify-center text-[9px] font-korean transition-all hover:bg-coral/20',
+              selected === n ? 'border-coral border-2 ring-1 ring-coral/40 bg-coral/20' : 'border-coral/30'
+            )}
+          >
+            <span className="text-[10px] font-bold text-coral">LOOK {n + 1}</span>
+            <span className="text-[8px] text-muted-foreground mt-0.5 px-1 text-center leading-tight">{l.name}</span>
+            {selected === n && <span className="text-[8px] text-coral/90 mt-0.5">● SELECTED</span>}
+          </button>
+        ))}
+      </div>
+      <div className="space-y-1">
+        {look.tags.map((t, i) => (
+          <div key={i} className="flex items-center gap-1.5 rounded border border-coral/15 bg-coral/[0.03] px-1.5 py-1 text-[9.5px] font-korean">
+            <span className="px-1 py-px rounded bg-coral/20 text-coral font-bold text-[8.5px] min-w-[28px] text-center">{t.cat}</span>
+            <span className="font-bold text-foreground/90 truncate max-w-[80px]">{t.brand}</span>
+            <span className="text-muted-foreground truncate flex-1">{t.item}</span>
+            <span className="font-bold text-coral whitespace-nowrap">₩{t.price}</span>
+            <span className={cn('text-[8px] whitespace-nowrap', t.stock.includes('품절') ? 'text-amber-500' : 'text-emerald-500')}>{t.stock}</span>
+            <button className="ml-0.5 px-1.5 py-0.5 rounded bg-purple text-white text-[8.5px] font-bold whitespace-nowrap">구매 →</button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 text-[9px] text-muted-foreground font-korean text-center">
+        선택한 룩 → 상품 태그·가격·재고·딥링크가 즉시 갱신 · 좋아요 / 갤러리 저장 / 공유 / HD 다운로드
+      </div>
+    </div>
+  );
+};
+
 const slides = [
   {
     id: 1,
@@ -380,23 +444,7 @@ const slides = [
                 </div>
                 <div className="mt-1.5 text-[9.5px] text-muted-foreground font-korean">로딩 중 LoadingProductAds로 추천 상품 미리 노출 → 체감 대기시간 ↓</div>
               </div>
-              <div className="rounded border border-coral/20 bg-background/60 p-2.5">
-                <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 룩 4종 선택 UI</div>
-                <div className="grid grid-cols-4 gap-1 mb-1.5">
-                  {[1,2,3,4].map(n => (
-                    <div key={n} className={cn('aspect-[3/4] rounded border bg-coral/10 flex flex-col items-center justify-center text-[9px] font-korean', n===1 ? 'border-coral border-2 ring-1 ring-coral/40' : 'border-coral/30')}>
-                      <span className="text-[10px] font-bold text-coral">LOOK {n}</span>
-                      {n===1 && <span className="text-[8px] text-coral/80 mt-0.5">SELECTED</span>}
-                    </div>
-                  ))}
-                </div>
-                <ul className="text-[10px] font-korean text-muted-foreground space-y-0.5">
-                  <li>• 탭/스와이프로 LOOK 1~4 전환, 선택된 룩 강조 보더</li>
-                  <li>• 각 룩별 상품 태그·가격·딥링크 카드 즉시 갱신</li>
-                  <li>• ♥ 좋아요 · 갤러리 저장 · 공유(KaTalk/X/링크 복사)</li>
-                  <li>• HD 다운로드(유료) · 다른 모델로 다시 생성</li>
-                </ul>
-              </div>
+              <InteractiveLookPicker />
             </div>
             <div className="mt-2 text-[10px] text-muted-foreground font-korean text-center">
               상품 태그 · 좋아요 · 공유 · HD 다운로드(유료)까지 결과 카드에서 바로 액션
