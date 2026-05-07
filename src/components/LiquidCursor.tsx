@@ -23,7 +23,19 @@ const COLORS = [
 export const LiquidCursor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Point[]>([]);
-  const mouseRef = useRef({ x: 0, y: 0, lastX: 0, lastY: 0, moved: false });
+  const mouseRef = useRef({
+    x: 0,
+    y: 0,
+    lastX: 0,
+    lastY: 0,
+    vx: 0,
+    vy: 0,
+    smoothX: 0,
+    smoothY: 0,
+    prevSmoothX: 0,
+    prevSmoothY: 0,
+    initialized: false,
+  });
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
