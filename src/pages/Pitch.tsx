@@ -1540,11 +1540,11 @@ const Pitch = () => {
   // 사용자 조정 가능한 안전 여백 (px, 1600x900 기준). 기본 64×80
   const [padY, setPadY] = useState<number>(() => {
     const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-y') : null;
-    return v ? Math.max(0, Math.min(200, parseInt(v, 10) || 64)) : 64;
+    return v ? Math.max(0, Math.min(200, parseInt(v, 10) || 0)) : 0;
   });
   const [padX, setPadX] = useState<number>(() => {
     const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-x') : null;
-    return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 80)) : 80;
+    return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 0)) : 0;
   });
 
   // 사용자 정의 여백을 인쇄 트리에 CSS 변수로 적용 + 저장
