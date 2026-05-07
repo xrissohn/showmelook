@@ -310,8 +310,105 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 6,
-    title: '비즈니스 모델',
+    id: 7,
+    title: 'Pricing Tier',
+    subtitle: '구매할수록 등급↑ — Lock-in 효과',
+    content: (
+      <div className="space-y-5">
+        <div className="grid md:grid-cols-5 gap-3">
+          {[
+            { tier: 'Free', price: '₩0', desc: '5회/일 생성', badge: '무료 체험', color: 'muted-foreground', bg: 'bg-muted/40 border-border' },
+            { tier: 'Bronze', price: '첫 구매', desc: '워터마크 제거', badge: 'BEST', color: 'amber-600', bg: 'bg-amber-500/10 border-amber-500/30' },
+            { tier: 'Silver', price: '누적 10만원', desc: '10회/일, 추천 우선', badge: '+', color: 'slate-500', bg: 'bg-slate-300/20 border-slate-400/30' },
+            { tier: 'Gold', price: '누적 30만원', desc: '30회/일, HD 다운로드', badge: '+', color: 'yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30' },
+            { tier: 'Platinum', price: '누적 100만원', desc: '무제한, 모델 프로필 추가', badge: 'TOP', color: 'purple', bg: 'bg-purple/10 border-purple/30' },
+          ].map((t, i) => (
+            <div key={i} className={cn('p-4 rounded-xl border relative', t.bg)}>
+              {t.badge && t.badge !== '+' && (
+                <span className={cn('absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded', `text-${t.color} bg-${t.color}/10`)}>{t.badge}</span>
+              )}
+              <div className="font-bold text-lg font-korean">{t.tier}</div>
+              <div className={cn('text-sm font-semibold mt-1', `text-${t.color}`)}>{t.price}</div>
+              <div className="text-xs text-muted-foreground font-korean mt-2">{t.desc}</div>
+            </div>
+          ))}
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/20">
+            <h4 className="font-bold mb-2 font-korean">🔄 Lock-in 메커니즘</h4>
+            <p className="text-sm text-muted-foreground font-korean leading-relaxed">
+              구독료가 아닌 <strong className="text-foreground">"구매 누적 금액"</strong>으로 등급이 올라가는 구조.<br />
+              사용자는 다른 플랫폼이 아닌 <strong className="text-primary">쇼미룩에서 계속 구매할 동기</strong>를 갖게 됩니다.
+            </p>
+          </div>
+          <div className="p-5 bg-card rounded-xl border border-border">
+            <h4 className="font-bold mb-2 font-korean">🤝 B2B API Partnership</h4>
+            <p className="text-sm text-muted-foreground font-korean leading-relaxed">
+              쇼핑몰 연동 시 <strong className="text-foreground">구매 전환당 커미션</strong> 수익 모델 제공.<br />
+              자사몰은 별도 비용 없이 가상 피팅 위젯을 도입할 수 있습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    ),
+    background: 'bg-background'
+  },
+  {
+    id: 8,
+    title: 'Competitive Advantage',
+    subtitle: '단순 피팅을 넘어선 올인원 스타일링 솔루션',
+    content: (
+      <div className="space-y-4">
+        <div className="overflow-hidden rounded-xl border border-border">
+          <table className="w-full text-xs">
+            <thead className="bg-muted/40">
+              <tr>
+                <th className="p-3 text-left font-korean text-sm">주요 기능</th>
+                <th className="p-3 text-center text-muted-foreground">Virtusize</th>
+                <th className="p-3 text-center text-muted-foreground">Perfect Corp</th>
+                <th className="p-3 text-center text-muted-foreground">Wanna</th>
+                <th className="p-3 text-center bg-primary/10 text-primary font-bold">ShowMeLook</th>
+              </tr>
+            </thead>
+            <tbody className="font-korean">
+              {[
+                ['가상 피팅 (Try-on)', '—', '액세서리 위주', '신발 위주', '전신 의류 최적화'],
+                ['AI 스타일 추천', '—', '제한적', '—', 'Gemini 멀티모달'],
+                ['사이즈 정밀 분석', '실측 입력', '—', 'AR 측정', '사진 기반 추정'],
+                ['사용자 편의성', '실측 필요', '앱 설치 필수', '앱 설치 필수', '사진 1장으로 끝'],
+                ['도입 비용', 'High', 'Very High', 'High', '합리적 (구매기반)'],
+              ].map((row, i) => (
+                <tr key={i} className="border-t border-border">
+                  <td className="p-3 font-semibold">{row[0]}</td>
+                  <td className="p-3 text-center text-muted-foreground">{row[1]}</td>
+                  <td className="p-3 text-center text-muted-foreground">{row[2]}</td>
+                  <td className="p-3 text-center text-muted-foreground">{row[3]}</td>
+                  <td className="p-3 text-center bg-primary/5 text-primary font-semibold">{row[4]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
+          {[
+            { icon: '🎯', title: 'All-in-One 플랫폼', desc: '피팅·추천·구매까지 하나의 앱에서' },
+            { icon: '✨', title: '초개인화 스타일링', desc: 'AI 스타일리스트가 취향·트렌드 반영' },
+            { icon: '💰', title: '비용 효율성 혁신', desc: 'SaaS 구독으로 즉시 도입 가능' },
+          ].map((x, i) => (
+            <div key={i} className="p-4 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/20">
+              <div className="text-2xl mb-2">{x.icon}</div>
+              <div className="font-bold text-sm font-korean mb-1">{x.title}</div>
+              <div className="text-xs text-muted-foreground font-korean">{x.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    background: 'bg-background'
+  },
+  {
+    id: 9,
+    title: 'Business Model',
     subtitle: '수익 구조 상세',
     content: (
       <div className="space-y-5">
