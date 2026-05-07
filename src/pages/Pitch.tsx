@@ -1098,7 +1098,7 @@ const slides = [
                 { kpi: 'MAU 1만 달성', desc: '런칭 후 1년 내 Y1 목표', current: '100 → 10,000+' },
                 { kpi: '월 매출 3,000만원', desc: '어필리에이트 + 초기 B2B 수익화', current: '0 → ₩30M/월' },
                 { kpi: '커머스 파트너 10곳', desc: '무신사·지그재그 등 주요 플랫폼', current: '0 → 10곳' },
-                { kpi: '상품 카탈로그 5,000+', desc: '국내 주요 패션 브랜드', current: '5,579 → 5,000+' },
+                { kpi: '상품 카탈로그 10,000+', desc: '국내 주요 패션 브랜드', current: '5,579 → 10,000+' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">
                   <div className="flex justify-between items-baseline">
