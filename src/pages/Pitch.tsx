@@ -1471,7 +1471,7 @@ const slides = [
               ))}
             </div>
             <div className="mt-3 pt-3 border-t text-[11px] text-muted-foreground font-korean">
-              월평균 소진 ≈ ₩555만 · 18개월 운용 시 BEP 도달(MAU 1만) 가능
+              월평균 소진 ≈ ₩833만 · 12개월 운용 시 MAU 2만 도달 + BEP 근접
             </div>
           </div>
           <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
