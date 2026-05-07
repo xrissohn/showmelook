@@ -1565,17 +1565,56 @@ const Pitch = () => {
       // 벡터 텍스트가 살아있는 PDF를 얻기 위해 브라우저 인쇄(저장 → PDF)를 사용한다.
       // print 모드일 때 모든 슬라이드를 동시에 렌더링하고, 각 슬라이드를 한 페이지로 강제한다.
       document.body.classList.add('pitch-print-mode');
+
+      // 1) 인쇄에 사용되는 주요 폰트들을 명시적으로 미리 로드한다.
+      //    document.fonts.ready만 기다리면 한 번도 사용된 적 없는 폰트/굵기는
+      //    로드되지 않아 인쇄 첫 페이지에서 폰트 폴백 현상이 생긴다.
+      const fontsToPreload: Array<[string, string]> = [
+        ['400 16px "Playfair Display"', 'AaBb 1234'],
+        ['700 32px "Playfair Display"', 'AaBb 1234'],
+        ['400 16px "Pretendard"', '쇼미룩 ShowMeLook 0123'],
+        ['700 24px "Pretendard"', '쇼미룩 ShowMeLook 0123'],
+        ['400 16px "Cafe24Ssurround"', '쇼미룩 0123'],
+      ];
       try {
-        // @ts-ignore
-        if (document.fonts?.ready) await (document as any).fonts.ready;
+        const fontset: any = (document as any).fonts;
+        if (fontset?.load) {
+          await Promise.all(
+            fontsToPreload.map(([font, text]) =>
+              fontset.load(font, text).catch(() => null),
+            ),
+          );
+        }
+        if (fontset?.ready) {
+          await fontset.ready;
+        }
+        // Safari 대비: status가 loaded가 될 때까지 짧게 폴링
+        if (fontset && fontset.status && fontset.status !== 'loaded') {
+          await new Promise<void>((resolve) => {
+            const start = Date.now();
+            const tick = () => {
+              if (fontset.status === 'loaded' || Date.now() - start > 3000) resolve();
+              else setTimeout(tick, 50);
+            };
+            tick();
+          });
+        }
       } catch {}
-      // 폰트/이미지 페인트 한 사이클 대기
-      await new Promise((r) => setTimeout(r, 300));
+
+      // 2) 폰트 적용 후 레이아웃이 한 번 페인트되도록 대기
+      await new Promise((r) => setTimeout(r, 350));
+
+      // 3) 모든 이미지 디코딩/로드 완료 대기
       const imgs = Array.from(document.images);
-      await Promise.all(imgs.map((img) => img.complete
-        ? Promise.resolve()
-        : new Promise((res) => { img.onload = img.onerror = () => res(null); })));
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await Promise.all(imgs.map(async (img) => {
+        if (!img.complete) {
+          await new Promise((res) => { img.onload = img.onerror = () => res(null); });
+        }
+        try { if ((img as any).decode) await (img as any).decode(); } catch {}
+      }));
+
+      // 4) 두 프레임 대기 후 인쇄 (폰트/이미지 페인트 확정)
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
       window.print();
     } catch (err) {
       console.error('PDF export failed', err);
