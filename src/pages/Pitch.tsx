@@ -17,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 import screenLanding from '@/assets/pitch-screens/landing.png';
+import screenOnboarding from '@/assets/pitch-screens/onboarding-profile.jpg';
 import screenStyle from '@/assets/pitch-screens/style-generator-left.png';
 import screenCommunity from '@/assets/pitch-screens/community.png';
 import screenAdmin from '@/assets/pitch-screens/admin.png';
@@ -365,13 +366,13 @@ const slides = [
       <div className="grid md:grid-cols-5 gap-5">
         <div className="md:col-span-2 rounded-xl border border-primary/30 overflow-hidden bg-card">
           <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
-            <img src={screenLanding} alt="Landing" className="w-full h-full object-cover object-top" loading="lazy" />
-            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-primary">01 · LANDING</div>
+            <img src={screenOnboarding} alt="Onboarding" className="w-full h-full object-contain bg-background" loading="lazy" />
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-primary">01 · ONBOARDING</div>
           </div>
           <div className="p-3">
-            <div className="text-[10px] tracking-widest font-bold text-primary mb-1">FIRST IMPRESSION</div>
-            <div className="font-bold text-sm font-korean mb-1">브랜드 진입 + 무료 체험</div>
-            <div className="text-xs text-muted-foreground font-korean leading-relaxed">LiquidCursor 인터랙션으로 첫인상 차별화 → "무료 체험" CTA에서 Google/OTP 가입 10초.</div>
+            <div className="text-[10px] tracking-widest font-bold text-primary mb-1">PROFILE SETUP</div>
+            <div className="font-bold text-sm font-korean mb-1">사진 업로드 + 체형 정보</div>
+            <div className="text-xs text-muted-foreground font-korean leading-relaxed">전신 사진 1장 + 키·몸무게·성별 입력 → AI가 체형을 분석해 모든 룩에 자동 합성.</div>
           </div>
         </div>
         <div className="md:col-span-3 space-y-3">
