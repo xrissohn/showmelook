@@ -1497,9 +1497,9 @@ const slides = [
         </div>
         <div className="grid md:grid-cols-3 gap-3">
           {[
-            { label: '월 평균 운영비', value: '₩555만', desc: '고정비 + 변동비 + 마케팅 가중평균', color: 'primary' },
-            { label: '예상 런웨이', value: '18개월', desc: 'MAU 1만 BEP 도달까지 충분', color: 'coral' },
-            { label: '추가 라운드', value: 'Series A', desc: 'M15~M18 시점 후속 투자 유치', color: 'sky' },
+            { label: '월 평균 운영비', value: '₩833만', desc: '고정비 + 변동비 + 마케팅 가중평균', color: 'primary' },
+            { label: '예상 런웨이', value: '12개월', desc: 'MAU 2만 도달 + BEP 근접 시점', color: 'coral' },
+            { label: '추가 라운드', value: 'Series A', desc: 'M10~M12 시점 후속 투자 유치', color: 'sky' },
           ].map((s, i) => (
             <div key={i} className={cn('p-3 rounded-xl border text-center', `bg-${s.color}/5 border-${s.color}/30`)}>
               <div className="text-[10px] tracking-widest font-bold font-korean mb-1 text-muted-foreground">{s.label}</div>
