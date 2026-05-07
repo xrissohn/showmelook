@@ -98,15 +98,17 @@ export const LiquidCursor = () => {
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
+    // Per-tier budgets. We no longer throttle FPS — let rAF run natively for
+    // smoothness; instead we cap point counts and skip the SVG filter on low.
     const cfg = {
-      low: { maxPoints: 80, emitProb: 0.45, maxStepsPerMove: 8, targetFps: 30, radiusMul: 0.85 },
-      mid: { maxPoints: 180, emitProb: 0.6, maxStepsPerMove: 16, targetFps: 45, radiusMul: 0.95 },
-      high: { maxPoints: 320, emitProb: 0.7, maxStepsPerMove: 30, targetFps: 60, radiusMul: 1 },
+      low: { maxPoints: 110, emitDensity: 0.35, maxStepsPerMove: 12, radiusMul: 0.9 },
+      mid: { maxPoints: 220, emitDensity: 0.55, maxStepsPerMove: 20, radiusMul: 0.95 },
+      high: { maxPoints: 360, emitDensity: 0.7, maxStepsPerMove: 32, radiusMul: 1 },
     }[tier];
 
     const adaptive = {
       pointBudget: cfg.maxPoints,
-      emitProb: cfg.emitProb,
+      emitDensity: cfg.emitDensity,
       maxSteps: cfg.maxStepsPerMove,
       slowFrames: 0,
       fastFrames: 0,
@@ -165,9 +167,10 @@ export const LiquidCursor = () => {
       });
     };
 
-    const SMOOTHING = 0.25;
+    // Smoothing scaled per-frame (60fps reference). dt scales physics so motion
+    // stays consistent regardless of framerate.
+    const BASE_SMOOTHING = 0.22;
     const PREDICTION = 3.5;
-    const minFrameInterval = 1000 / cfg.targetFps;
     let lastFrameTs = performance.now();
 
     const animate = (now: number) => {
@@ -176,26 +179,26 @@ export const LiquidCursor = () => {
         lastFrameTs = now;
         return;
       }
-      const elapsed = now - lastFrameTs;
-      if (elapsed < minFrameInterval) return;
-      lastFrameTs = now - (elapsed % minFrameInterval);
+      // dt in 60fps frame units. Clamp to avoid huge jumps after tab switch.
+      const rawDt = (now - lastFrameTs) / (1000 / 60);
+      lastFrameTs = now;
+      const dt = Math.min(rawDt, 3);
 
-      if (elapsed > minFrameInterval * 1.8) {
+      // Adaptive quality: gentle degradation only when sustained slowness.
+      if (rawDt > 2.2) {
         adaptive.slowFrames++;
         adaptive.fastFrames = 0;
-        if (adaptive.slowFrames > 12) {
-          adaptive.pointBudget = Math.max(40, Math.floor(adaptive.pointBudget * 0.85));
-          adaptive.emitProb = Math.max(0.2, adaptive.emitProb - 0.05);
-          adaptive.maxSteps = Math.max(4, adaptive.maxSteps - 2);
+        if (adaptive.slowFrames > 30) {
+          adaptive.pointBudget = Math.max(60, Math.floor(adaptive.pointBudget * 0.9));
+          adaptive.emitDensity = Math.max(0.2, adaptive.emitDensity - 0.03);
           adaptive.slowFrames = 0;
         }
-      } else if (elapsed < minFrameInterval * 1.2) {
+      } else if (rawDt < 1.3) {
         adaptive.fastFrames++;
         adaptive.slowFrames = 0;
-        if (adaptive.fastFrames > 180 && adaptive.pointBudget < cfg.maxPoints) {
+        if (adaptive.fastFrames > 240 && adaptive.pointBudget < cfg.maxPoints) {
           adaptive.pointBudget = Math.min(cfg.maxPoints, adaptive.pointBudget + 10);
-          adaptive.emitProb = Math.min(cfg.emitProb, adaptive.emitProb + 0.02);
-          adaptive.maxSteps = Math.min(cfg.maxStepsPerMove, adaptive.maxSteps + 1);
+          adaptive.emitDensity = Math.min(cfg.emitDensity, adaptive.emitDensity + 0.02);
           adaptive.fastFrames = 0;
         }
       }
@@ -212,37 +215,46 @@ export const LiquidCursor = () => {
         const targetX = m.x + m.vx * PREDICTION;
         const targetY = m.y + m.vy * PREDICTION;
 
+        // Frame-rate independent exponential smoothing.
+        const k = 1 - Math.pow(1 - BASE_SMOOTHING, dt);
         m.prevSmoothX = m.smoothX;
         m.prevSmoothY = m.smoothY;
-        m.smoothX += (targetX - m.smoothX) * SMOOTHING;
-        m.smoothY += (targetY - m.smoothY) * SMOOTHING;
+        m.smoothX += (targetX - m.smoothX) * k;
+        m.smoothY += (targetY - m.smoothY) * k;
 
         const dx = m.smoothX - m.prevSmoothX;
         const dy = m.smoothY - m.prevSmoothY;
         const dist = Math.hypot(dx, dy);
-        if (dist > 0.5) {
-          const steps = Math.min(Math.ceil(dist), adaptive.maxSteps);
+        if (dist > 0.3) {
+          // Density-based emission: # of points proportional to distance.
+          // This keeps the trail continuous even when the cursor moves slowly.
+          const desired = Math.max(1, Math.ceil(dist * adaptive.emitDensity));
+          const steps = Math.min(desired, adaptive.maxSteps);
           for (let i = 0; i < steps; i += 1) {
-            const t = i / steps;
+            // Jitter t slightly to break up banding without losing continuity.
+            const t = (i + Math.random() * 0.6 + 0.2) / steps;
             const x = m.prevSmoothX + dx * t;
             const y = m.prevSmoothY + dy * t;
-            if (Math.random() < adaptive.emitProb) addPoint(x, y);
+            addPoint(x, y);
           }
         }
       }
 
-      // Dark mode uses lighter blending and higher alpha; light mode is more subtle
       const isDark = darkRef.current;
       const alphaMul = isDark ? 0.75 : 0.5;
       ctx.globalCompositeOperation = isDark ? "lighter" : "source-over";
 
       const pts = pointsRef.current;
+      // Decay rates scaled by dt so motion is identical at 30fps or 144fps.
+      const lifeDecay = 0.006 * dt;
+      const radiusDecay = Math.pow(0.995, dt);
+
       for (let i = pts.length - 1; i >= 0; i--) {
         const p = pts[i];
-        p.life -= 0.006;
-        p.x += p.vx;
-        p.y += p.vy;
-        p.radius *= 0.995;
+        p.life -= lifeDecay;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.radius *= radiusDecay;
 
         if (p.life <= 0 || p.radius < 0.5) {
           pts.splice(i, 1);
