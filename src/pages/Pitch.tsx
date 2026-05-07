@@ -1670,14 +1670,9 @@ const Pitch = () => {
     if (isExporting) return;
     setIsExporting(true);
     setExportProgress(0);
+    const prevSlide = currentSlide;
     try {
-      // 벡터 텍스트가 살아있는 PDF를 얻기 위해 브라우저 인쇄(저장 → PDF)를 사용한다.
-      // print 모드일 때 모든 슬라이드를 동시에 렌더링하고, 각 슬라이드를 한 페이지로 강제한다.
-      document.body.classList.add('pitch-print-mode');
-
-      // 1) 인쇄에 사용되는 주요 폰트들을 명시적으로 미리 로드한다.
-      //    document.fonts.ready만 기다리면 한 번도 사용된 적 없는 폰트/굵기는
-      //    로드되지 않아 인쇄 첫 페이지에서 폰트 폴백 현상이 생긴다.
+      // 1) 폰트 미리 로드
       const fontsToPreload: Array<[string, string]> = [
         ['400 16px "Playfair Display"', 'AaBb 1234'],
         ['700 32px "Playfair Display"', 'AaBb 1234'],
@@ -1689,157 +1684,84 @@ const Pitch = () => {
         const fontset: any = (document as any).fonts;
         if (fontset?.load) {
           await Promise.all(
-            fontsToPreload.map(([font, text]) =>
-              fontset.load(font, text).catch(() => null),
-            ),
+            fontsToPreload.map(([font, text]) => fontset.load(font, text).catch(() => null)),
           );
         }
-        if (fontset?.ready) {
-          await fontset.ready;
-        }
-        // Safari 대비: status가 loaded가 될 때까지 짧게 폴링
-        if (fontset && fontset.status && fontset.status !== 'loaded') {
-          await new Promise<void>((resolve) => {
-            const start = Date.now();
-            const tick = () => {
-              if (fontset.status === 'loaded' || Date.now() - start > 3000) resolve();
-              else setTimeout(tick, 50);
-            };
-            tick();
-          });
-        }
+        if (fontset?.ready) await fontset.ready;
       } catch {}
 
-      // 2) 폰트 적용 후 레이아웃이 한 번 페인트되도록 대기
-      await new Promise((r) => setTimeout(r, 350));
+      // 2) DPI → html2canvas scale 매핑 (4x 상한 클램프)
+      const dpi = DPI_OPTIONS[pdfDpi].dpi;
+      const rawScale = dpi / 96;
+      const scale = Math.min(4, Math.max(1, rawScale));
+      const useJpeg = imgRender === 'high-quality';
 
-      // 3) 모든 이미지 디코딩/로드 완료 대기
-      const imgs = Array.from(document.images);
-      await Promise.all(imgs.map(async (img) => {
-        if (!img.complete) {
-          await new Promise((res) => { img.onload = img.onerror = () => res(null); });
-        }
-        try { if ((img as any).decode) await (img as any).decode(); } catch {}
-      }));
+      let pdf: jsPDF | null = null;
 
-      // 4) 각 슬라이드 콘텐츠가 1600×900 페이지 안에 정확히 들어가도록
-      //    슬라이드별로 독립된 auto-fit scale을 계산해 적용한다.
-      //    (모든 슬라이드 동일 스케일이 아니라 콘텐츠별 최적 스케일)
-      try {
-        const PAGE_W = paper.w;
-        const PAGE_H = paper.h;
-        const pages = Array.from(document.querySelectorAll<HTMLElement>('.pitch-print-only .pitch-print-page'));
-        for (const page of pages) {
-          const inner = page.querySelector<HTMLElement>('.pitch-print-inner');
-          const fit = page.querySelector<HTMLElement>('.pitch-print-fit');
-          if (!inner || !fit) continue;
+      for (let i = 0; i < slides.length; i++) {
+        // 슬라이드 전환 + 레이아웃/이미지 안정화 대기
+        setCurrentSlide(i);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+        await new Promise((r) => setTimeout(r, 300));
 
-          // 측정 전: 이전 스케일/사이즈/오버플로우 초기화
-          const prevTransform = fit.style.transform;
-          const prevWidth = fit.style.width;
-          const prevHeight = fit.style.height;
-          const prevMaxW = fit.style.maxWidth;
-          const prevMaxH = fit.style.maxHeight;
-          const prevOverflow = fit.style.overflow;
-          const prevDisplay = fit.style.display;
+        // 현재 라이브 슬라이드 노드(화면에 보이는 그대로)
+        const node = document.getElementById('pitch-slide-capture') as HTMLElement | null;
+        if (!node) continue;
 
-          fit.style.transform = 'none';
-          fit.style.maxWidth = 'none';
-          fit.style.maxHeight = 'none';
-          fit.style.overflow = 'visible';
-
-          // 가용 영역 (inner padding 반영)
-          const availW = inner.clientWidth || PAGE_W;
-          const availH = inner.clientHeight || PAGE_H;
-
-          // 1단계: 디자인 기준 크기(PAGE_W × PAGE_H)로 강제 → 자식들이 디자인된 그대로 레이아웃
-          //         scrollWidth/Height 가 오버플로우(=자연 크기)를 정확히 반영하도록 한다.
-          fit.style.display = 'block';
-          fit.style.width = `${PAGE_W}px`;
-          fit.style.height = `${PAGE_H}px`;
-
-          // 레이아웃 강제
-          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-          fit.offsetHeight;
-          await new Promise((r) => requestAnimationFrame(() => r(null)));
-
-          // 자식 요소들의 실제 바운딩 박스를 합산해 자연 크기 산출
-          let measuredW = 0;
-          let measuredH = 0;
-          const fitRect = fit.getBoundingClientRect();
-          const children = Array.from(fit.children) as HTMLElement[];
-          for (const child of children) {
-            const r = child.getBoundingClientRect();
-            const right = r.right - fitRect.left;
-            const bottom = r.bottom - fitRect.top;
-            if (right > measuredW) measuredW = right;
-            if (bottom > measuredH) measuredH = bottom;
-            // scroll 기반 보정 (내부 오버플로우 포함)
-            if (child.scrollWidth > 0) {
-              const sw = (r.left - fitRect.left) + child.scrollWidth;
-              if (sw > measuredW) measuredW = sw;
-            }
-            if (child.scrollHeight > 0) {
-              const sh = (r.top - fitRect.top) + child.scrollHeight;
-              if (sh > measuredH) measuredH = sh;
-            }
+        // 노드 안의 이미지 디코드 대기
+        const imgs = Array.from(node.querySelectorAll('img'));
+        await Promise.all(imgs.map(async (img) => {
+          if (!img.complete) {
+            await new Promise((res) => { img.onload = img.onerror = () => res(null); });
           }
+          try { if ((img as any).decode) await (img as any).decode(); } catch {}
+        }));
 
-          const naturalW = Math.max(measuredW, fit.scrollWidth, PAGE_W);
-          const naturalH = Math.max(measuredH, fit.scrollHeight, PAGE_H);
+        const canvas = await html2canvas(node, {
+          scale,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: null,
+          logging: false,
+          imageTimeout: 15000,
+          windowWidth: document.documentElement.clientWidth,
+          windowHeight: document.documentElement.clientHeight,
+        });
 
-          // 슬라이드별 독립 스케일 계산
-          let scale = 1;
-          if (naturalW > 0 && naturalH > 0) {
-            scale = Math.min(availW / naturalW, availH / naturalH);
-            // 콘텐츠가 가용 영역보다 작아도 1을 넘기지 않음 (확대는 하지 않음)
-            scale = Math.min(1, scale);
-          }
+        const w = canvas.width;
+        const h = canvas.height;
 
-          // 적용: 자연 크기 박스 + 중앙 정렬 + 슬라이드별 scale
-          fit.style.display = prevDisplay || '';
-          fit.style.width = `${naturalW}px`;
-          fit.style.height = `${naturalH}px`;
-          fit.style.maxWidth = prevMaxW || 'none';
-          fit.style.maxHeight = prevMaxH || 'none';
-          fit.style.overflow = prevOverflow || 'visible';
-          // 자연 크기 박스가 inner보다 클 수 있으므로 절대중앙 배치 + scale
-          fit.style.position = 'absolute';
-          fit.style.left = '50%';
-          fit.style.top = '50%';
-          fit.style.transformOrigin = 'center center';
-          fit.style.transform = `translate(-50%, -50%)${scale < 1 ? ` scale(${scale})` : ''}`;
-          // inner 도 절대 위치 기준점이 되도록
-          inner.style.position = 'relative';
-          inner.style.overflow = 'hidden';
-          page.setAttribute('data-fit-scale', scale.toFixed(4));
-          page.setAttribute('data-fit-natural', `${Math.round(naturalW)}x${Math.round(naturalH)}`);
-
-          await new Promise((r) => requestAnimationFrame(() => r(null)));
+        if (!pdf) {
+          // 첫 슬라이드 픽셀 크기를 기준으로 PDF 페이지 생성 (px 단위, 보이는 그대로)
+          pdf = new jsPDF({
+            orientation: w >= h ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [w, h],
+            compress: true,
+            hotfixes: ['px_scaling'],
+          });
+        } else {
+          pdf.addPage([w, h], w >= h ? 'landscape' : 'portrait');
         }
-      } catch (e) {
-        console.warn('auto-fit skipped', e);
+
+        const dataUrl = useJpeg
+          ? canvas.toDataURL('image/jpeg', 0.92)
+          : canvas.toDataURL('image/png');
+        pdf.addImage(dataUrl, useJpeg ? 'JPEG' : 'PNG', 0, 0, w, h, undefined, useJpeg ? 'FAST' : 'SLOW');
+
+        setExportProgress(Math.round(((i + 1) / slides.length) * 100));
       }
 
-      // 5) 두 프레임 대기 후 인쇄 (폰트/이미지 페인트 확정)
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
-      window.print();
+      if (pdf) pdf.save('showmelook-pitch.pdf');
     } catch (err) {
       console.error('PDF export failed', err);
-      alert('PDF 저장 대화상자를 열지 못했습니다. 다시 시도해주세요.');
+      alert('PDF 생성에 실패했습니다. 다시 시도해주세요.');
     } finally {
-      // 인쇄 대화상자가 닫힌 직후(브라우저별 afterprint)
-      const cleanup = () => {
-        document.body.classList.remove('pitch-print-mode');
-        setIsExporting(false);
-        setExportProgress(0);
-        window.removeEventListener('afterprint', cleanup);
-      };
-      window.addEventListener('afterprint', cleanup);
-      // 안전장치: 일정 시간 후 자동 정리
-      setTimeout(cleanup, 2000);
+      setCurrentSlide(prevSlide);
+      setIsExporting(false);
+      setExportProgress(0);
     }
-  }, [isExporting, paper]);
+  }, [isExporting, currentSlide, pdfDpi, imgRender]);
 
   const goToSlide = useCallback((index: number) => {
     if (index >= 0 && index < slides.length) {

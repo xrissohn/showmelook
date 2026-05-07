@@ -1,39 +1,43 @@
-# 피치덱 화면 캡처 → 하이브리드 PPTX 생성
+## 목표
 
-## 접근
+현재 보고 있는 슬라이드를 **브라우저 인쇄 파이프라인을 거치지 않고**, 화면에 보이는 그대로 캡처해서 PDF로 저장합니다. 사용자가 보는 뷰포트(1311×901 등)와 동일한 픽셀이 PDF 페이지에 그대로 들어갑니다.
 
-`Pitch.tsx`는 이미 `id="pitch-slide-capture"`라는 슬라이드 캡처 컨테이너와 슬라이드 인덱스 네비게이션을 가지고 있어, 각 슬라이드를 동일한 레이아웃으로 1장씩 렌더링합니다. 이를 헤드리스 브라우저로 순회 캡처해서 PPTX에 풀블리드 이미지로 삽입하면 화면과 100% 일치하는 결과를 얻을 수 있습니다.
+## 동작 방식 (WYSIWYG 캡처)
 
-## 단계
+1. `exportToPdf` 클릭 시:
+   - `isExporting=true`, 진행률 0
+   - 폰트/이미지 로드 대기 (기존 로직 재사용)
+2. 슬라이드 컨테이너(라이브 DOM, 화면에 보이는 그 노드)에 `id="pitch-live-slide"` 부여
+3. 슬라이드를 한 장씩 순회:
+   - `setCurrentSlide(i)` → 한 프레임 대기 → 해당 슬라이드 노드를 `html2canvas` 로 캡처
+   - 캡처 시 `scale = (선택된 DPI / 96)` 로 해상도 결정
+     - 150dpi → 1.56x, 200dpi → 2.08x, 300dpi → 3.13x, 600dpi → 6.25x (메모리 한계 시 4x로 클램프)
+   - `useCORS: true`, `backgroundColor: null`, `logging: false`
+4. 첫 슬라이드의 캔버스 픽셀 크기를 기준으로 jsPDF 페이지 생성
+   - `orientation`: 가로/세로 자동 판단
+   - `unit: 'px'`, `format: [canvas.width, canvas.height]` → 화면 비율 그대로 보존
+5. 이미지 삽입:
+   - "부드럽게(사진)" → `addImage(dataURL, 'JPEG', 0,0,W,H, undefined, 'FAST')`, quality 0.92
+   - "자동/선명/픽셀" → PNG 무손실
+6. 마지막에 `doc.save('showmelook-pitch.pdf')`
+7. `finally`에서 `isExporting=false`, 임시 마커 제거
 
-1. **캡처 친화 모드 추가 (소규모 UI 보강)**
-   - `/pitch?capture=1&slide=N` 쿼리로 진입 시 네비게이션/푸터/진행바 숨김, 흰 배경 letterbox 제거
-   - 슬라이드 컨테이너에 명시적 폭(예: 1600px) + 폰트 로드 완료 신호용 `data-ready="true"` 속성 부여
-   - 기존 `/pitch` UX는 영향 없음
+## 무엇을 바꾸나
 
-2. **헤드리스 캡처 스크립트 (`/tmp/capture_pitch.mjs`)**
-   - Playwright(또는 Puppeteer) 사용, 뷰포트 1920x1080 / DPR 2
-   - 슬라이드 수만큼 루프: `goto('/pitch?capture=1&slide=N')` → `data-ready` 대기 → 폰트/이미지 로드 대기 → `#pitch-slide-capture` 요소 스크린샷
-   - 결과: `/tmp/pitch_slides/slide-01.png` ~ `slide-19.png` (약 3200x1800)
-   - 배포된 `https://showmelook.com/pitch` 사용 (최신 변경사항 반영 확인 필요)
+- 파일: `src/pages/Pitch.tsx` 한 곳
+  - `exportToPdf` 콜백 본문 교체: `window.print()` 경로 제거 → html2canvas + jsPDF 경로
+  - 라이브 슬라이드 노드에 캡처 마커 부여
+  - `pitch-print-mode` 클래스 토글, 자동 fit-scale 로직, `@page` CSS 주입 → PDF 경로에서 호출 안 함 (코드 자체는 남겨두지만 비활성)
+- 패널 UI는 그대로 유지 (용지 크기 옵션은 캡처 모드에서는 무시되며, "현재 보이는 뷰포트 그대로 출력"으로 설명 문구만 보강)
 
-3. **PPTX 빌드 스크립트 (`/tmp/build_pitch_v2.js`, pptxgenjs)**
-   - 16:9 LAYOUT_WIDE, 모든 슬라이드 배경 = 피치덱과 동일한 다크 네이비
-   - **이미지 슬라이드 (대부분)**: 캡처 PNG를 base64로 임베드, 슬라이드 가운데 풀블리드 배치 (비율 유지, letterbox 색상 일치)
-   - **편집 가능한 텍스트 슬라이드 (하이브리드)**:
-     - 슬라이드 1 (표지): 제목/태그라인/날짜를 텍스트 레이어로
-     - 마지막 투자 요청 슬라이드: 투자금액/런웨이/MAU 목표/연락처를 텍스트 박스로
-   - 결과: `/mnt/documents/ShowMeLook_Pitch_Deck_v2.pptx`
+## 사용자가 체감할 변화
 
-4. **QA**
-   - LibreOffice로 PDF 변환 → `pdftoppm`으로 슬라이드별 JPG 생성
-   - 모든 슬라이드 시각 검수: 잘림/흐림/누락/한글 폰트 깨짐 확인
-   - 문제가 있으면 캡처 폭/대기 시간/letterbox 색을 조정하고 재생성
+- PDF 페이지 크기 = 현재 슬라이드 박스의 실제 픽셀 크기(예: 1311×901)
+- 그라디언트, 그림자, blur, 폰트 자간이 화면과 동일
+- 파일 크기는 늘어나지만(비트맵), 300dpi 기준으로 인쇄/뷰잉에 충분
+- 캡처 중에는 슬라이드가 자동으로 넘어가며 진행률 표시
 
-## 결과물
-- `ShowMeLook_Pitch_Deck_v2.pptx` — 화면과 동일한 그래픽 + 핵심 슬라이드는 텍스트 편집 가능
+## 주의
 
-## 주의사항
-- 한글 폰트는 캡처에 픽셀로 박히므로 PPTX에서 깨질 일이 없음
-- 텍스트 편집 가능한 2개 슬라이드는 시스템 한글 폰트(맑은 고딕/Apple SD Gothic) 사용
-- 기존 `ShowMeLook_Pitch_Deck.pptx`는 보존
+- `html2canvas`는 일부 최신 CSS(`oklch`, 일부 `backdrop-filter`)를 부분 지원합니다. 화면과 차이가 보이는 항목이 있으면 해당 슬라이드만 보정 패치를 추가합니다.
+- 600dpi는 슬라이드당 캔버스가 매우 커져 모바일/저사양에서 OOM 가능 → 4x로 상한 클램프
