@@ -1679,8 +1679,8 @@ const Pitch = () => {
       //    슬라이드별로 독립된 auto-fit scale을 계산해 적용한다.
       //    (모든 슬라이드 동일 스케일이 아니라 콘텐츠별 최적 스케일)
       try {
-        const PAGE_W = 1600;
-        const PAGE_H = 900;
+        const PAGE_W = paper.w;
+        const PAGE_H = paper.h;
         const pages = Array.from(document.querySelectorAll<HTMLElement>('.pitch-print-only .pitch-print-page'));
         for (const page of pages) {
           const inner = page.querySelector<HTMLElement>('.pitch-print-inner');
