@@ -12,8 +12,12 @@ import {
   Home, 
   Maximize2, 
   Minimize2,
-  Circle
+  Circle,
+  Download,
+  Loader2
 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 import screenLanding from '@/assets/pitch-screens/landing.png';
@@ -1540,6 +1544,52 @@ const Pitch = () => {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+
+  const exportToPdf = useCallback(async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    setExportProgress(0);
+    const originalSlide = currentSlide;
+    try {
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1600, 900] });
+      for (let i = 0; i < slides.length; i++) {
+        setCurrentSlide(i);
+        // wait for render + animations + images
+        await new Promise((r) => setTimeout(r, 700));
+        const node = document.getElementById('pitch-slide-capture');
+        if (!node) continue;
+        const canvas = await html2canvas(node, {
+          backgroundColor: '#ffffff',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          windowWidth: node.scrollWidth,
+          windowHeight: node.scrollHeight,
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.92);
+        const pageW = 1600;
+        const pageH = 900;
+        const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
+        const w = canvas.width * ratio;
+        const h = canvas.height * ratio;
+        const x = (pageW - w) / 2;
+        const y = (pageH - h) / 2;
+        if (i > 0) pdf.addPage([pageW, pageH], 'landscape');
+        pdf.addImage(imgData, 'JPEG', x, y, w, h);
+        setExportProgress(Math.round(((i + 1) / slides.length) * 100));
+      }
+      pdf.save(`ShowMeLook-Pitch-${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed', err);
+      alert('PDF 생성에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setCurrentSlide(originalSlide);
+      setIsExporting(false);
+      setExportProgress(0);
+    }
+  }, [isExporting, currentSlide]);
 
   const goToSlide = useCallback((index: number) => {
     if (index >= 0 && index < slides.length) {
@@ -1608,6 +1658,19 @@ const Pitch = () => {
           <span className="text-sm text-muted-foreground">
             {currentSlide + 1} / {slides.length}
           </span>
+          <Button variant="ghost" size="sm" onClick={exportToPdf} disabled={isExporting} className="gap-2">
+            {isExporting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {exportProgress}%
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </>
+            )}
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
@@ -1616,7 +1679,7 @@ const Pitch = () => {
 
       {/* 슬라이드 컨텐츠 */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 md:px-12">
-        <div className="w-full max-w-5xl">
+        <div id="pitch-slide-capture" className="w-full max-w-5xl">
           {/* 슬라이드 타이틀 (커버 슬라이드는 본문 내에 자체 타이틀) */}
           {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
             <div className="text-center mb-8">
