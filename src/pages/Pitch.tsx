@@ -508,7 +508,7 @@ const slides = [
       <div className="grid md:grid-cols-5 gap-5">
         <div className="md:col-span-2 rounded-xl border border-sky/30 overflow-hidden bg-card">
           <div className="aspect-[4/5] bg-white overflow-hidden border-b border-border relative">
-            <img src={screenCommunity} alt="Community Gallery" className="w-full h-full object-contain object-top" loading="lazy" />
+            <img src={screenCommunity} alt="Community Gallery" className="w-full h-full object-cover object-top" loading="lazy" />
             <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-sky">STYLE GALLERY</div>
           </div>
           <div className="p-3">
