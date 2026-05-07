@@ -1563,31 +1563,49 @@ const Pitch = () => {
     setExportProgress(0);
     const originalSlide = currentSlide;
     try {
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [1600, 900] });
+      // High-DPI export: render at 3x and emit PNG for crisp text
+      const SCALE = 3;
+      const pageW = 1920;
+      const pageH = 1080;
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'px',
+        format: [pageW, pageH],
+        compress: true,
+        hotfixes: ['px_scaling'],
+      });
       for (let i = 0; i < slides.length; i++) {
         setCurrentSlide(i);
-        // wait for render + animations + images
+        // wait for render + animations + images + fonts
         await new Promise((r) => setTimeout(r, 700));
+        try {
+          // @ts-ignore
+          if (document.fonts?.ready) await (document as any).fonts.ready;
+        } catch {}
         const node = document.getElementById('pitch-slide-capture');
         if (!node) continue;
+        const imgs = Array.from(node.querySelectorAll('img'));
+        await Promise.all(imgs.map((img) => (img as HTMLImageElement).complete
+          ? Promise.resolve()
+          : new Promise((res) => { (img as HTMLImageElement).onload = (img as HTMLImageElement).onerror = () => res(null); })));
         const canvas = await html2canvas(node, {
           backgroundColor: '#ffffff',
-          scale: 2,
+          scale: SCALE,
           useCORS: true,
+          allowTaint: false,
           logging: false,
+          imageTimeout: 15000,
           windowWidth: node.scrollWidth,
           windowHeight: node.scrollHeight,
         });
-        const imgData = canvas.toDataURL('image/jpeg', 0.92);
-        const pageW = 1600;
-        const pageH = 900;
-        const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
-        const w = canvas.width * ratio;
-        const h = canvas.height * ratio;
+        const imgData = canvas.toDataURL('image/png');
+        const ratio = Math.min(pageW / (canvas.width / SCALE), pageH / (canvas.height / SCALE));
+        const w = (canvas.width / SCALE) * ratio;
+        const h = (canvas.height / SCALE) * ratio;
         const x = (pageW - w) / 2;
         const y = (pageH - h) / 2;
         if (i > 0) pdf.addPage([pageW, pageH], 'landscape');
-        pdf.addImage(imgData, 'JPEG', x, y, w, h);
+        pdf.addImage(imgData, 'PNG', x, y, w, h, undefined, 'FAST');
         setExportProgress(Math.round(((i + 1) / slides.length) * 100));
       }
       pdf.save(`ShowMeLook-Pitch-${new Date().toISOString().slice(0, 10)}.pdf`);
