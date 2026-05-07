@@ -1537,7 +1537,6 @@ const Pitch = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [showSafeArea, setShowSafeArea] = useState(false);
-  // 사용자 조정 가능한 안전 여백 (px, 1600x900 기준). 기본 64×80
   const [padY, setPadY] = useState<number>(() => {
     const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-y') : null;
     return v ? Math.max(0, Math.min(200, parseInt(v, 10) || 0)) : 0;
@@ -1547,7 +1546,21 @@ const Pitch = () => {
     return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 0)) : 0;
   });
 
-  // 사용자 정의 여백을 인쇄 트리에 CSS 변수로 적용 + 저장
+  // 용지 크기 옵션 (px @ 96dpi)
+  const PAPER_SIZES = {
+    'slide-16-9': { label: '16:9 슬라이드 (1600×900)', w: 1600, h: 900 },
+    'a4-landscape': { label: 'A4 가로', w: 1123, h: 794 },
+    'a4-portrait': { label: 'A4 세로', w: 794, h: 1123 },
+    'letter-landscape': { label: 'Letter 가로', w: 1056, h: 816 },
+    'letter-portrait': { label: 'Letter 세로', w: 816, h: 1056 },
+  } as const;
+  type PaperKey = keyof typeof PAPER_SIZES;
+  const [paperSize, setPaperSize] = useState<PaperKey>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-paper-size') : null;
+    return (v && (v in PAPER_SIZES) ? v : 'slide-16-9') as PaperKey;
+  });
+  const paper = PAPER_SIZES[paperSize];
+
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.pitch-print-only');
     if (root) {
@@ -1559,6 +1572,31 @@ const Pitch = () => {
       window.localStorage.setItem('pitch-pad-x', String(padX));
     } catch {}
   }, [padY, padX]);
+
+  // 용지 크기를 @page + 슬라이드 박스에 동적으로 주입
+  useEffect(() => {
+    try { window.localStorage.setItem('pitch-paper-size', paperSize); } catch {}
+    const id = 'pitch-page-size-style';
+    let el = document.getElementById(id) as HTMLStyleElement | null;
+    if (!el) {
+      el = document.createElement('style');
+      el.id = id;
+      document.head.appendChild(el);
+    }
+    const { w, h } = paper;
+    el.textContent = `
+      @media print {
+        @page { size: ${w}px ${h}px; margin: 0; }
+        .pitch-print-only { width: ${w}px !important; }
+        .pitch-print-page {
+          width: ${w}px !important;
+          height: ${h}px !important;
+          min-height: ${h}px !important;
+          max-height: ${h}px !important;
+        }
+      }
+    `;
+  }, [paperSize, paper]);
 
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
@@ -1641,8 +1679,8 @@ const Pitch = () => {
       //    슬라이드별로 독립된 auto-fit scale을 계산해 적용한다.
       //    (모든 슬라이드 동일 스케일이 아니라 콘텐츠별 최적 스케일)
       try {
-        const PAGE_W = 1600;
-        const PAGE_H = 900;
+        const PAGE_W = paper.w;
+        const PAGE_H = paper.h;
         const pages = Array.from(document.querySelectorAll<HTMLElement>('.pitch-print-only .pitch-print-page'));
         for (const page of pages) {
           const inner = page.querySelector<HTMLElement>('.pitch-print-inner');
@@ -1754,7 +1792,7 @@ const Pitch = () => {
       // 안전장치: 일정 시간 후 자동 정리
       setTimeout(cleanup, 2000);
     }
-  }, [isExporting]);
+  }, [isExporting, paper]);
 
   const goToSlide = useCallback((index: number) => {
     if (index >= 0 && index < slides.length) {
@@ -1927,8 +1965,22 @@ const Pitch = () => {
                 className="w-full accent-primary"
               />
             </div>
+            <div className="space-y-2">
+              <label htmlFor="pitch-paper-size" className="text-xs text-muted-foreground block">용지 크기</label>
+              <select
+                id="pitch-paper-size"
+                value={paperSize}
+                onChange={(e) => setPaperSize(e.target.value as PaperKey)}
+                className="w-full text-xs rounded border bg-background px-2 py-1.5"
+              >
+                {Object.entries(PAPER_SIZES).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground">선택한 용지 비율로 모든 슬라이드가 자동 스케일됩니다.</p>
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              1600×900 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
+              현재 {paper.w}×{paper.h}px 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
             </p>
           </div>
         )}
