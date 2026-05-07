@@ -20,6 +20,7 @@ import screenLanding from '@/assets/pitch-screens/landing.png';
 import screenOnboarding from '@/assets/pitch-screens/onboarding-profile.jpg';
 import screenStyle from '@/assets/pitch-screens/style-generator-left.png';
 import screenCommunity from '@/assets/pitch-screens/community.png';
+import screenLookResult from '@/assets/pitch-screens/look-result.png';
 import screenAdmin from '@/assets/pitch-screens/admin.png';
 import screenPricing from '@/assets/pitch-screens/pricing.png';
 import screenMypage from '@/assets/pitch-screens/mypage.png';
