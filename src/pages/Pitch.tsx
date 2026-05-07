@@ -328,163 +328,39 @@ const slides = [
   },
   {
     id: 51,
-    title: 'Product Tour · 사용자 화면',
-    subtitle: '입력 → AI 생성 → 구매로 이어지는 핵심 사용자 플로우',
+    title: 'Product Tour · 1. 온보딩',
+    subtitle: '가입 → 프로필 → 얼굴 사진까지 60초 완성',
     content: (
-      <div className="space-y-3">
-        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
-          <div className="text-[10px] font-bold tracking-widest text-primary mb-1.5 font-korean">ONBOARDING · 가입 → 프로필 설정 → 사진 업로드</div>
-          <div className="grid md:grid-cols-4 gap-2 text-[11px] font-korean">
-            <div>
-              <div className="font-bold text-foreground mb-0.5">STEP 0 · 가입</div>
-              <div className="text-muted-foreground leading-snug">Google OAuth 또는 휴대폰 OTP 인증 (10초)</div>
-            </div>
-            <div>
-              <div className="font-bold text-foreground mb-0.5">STEP 1 · 기본 정보</div>
-              <div className="text-muted-foreground leading-snug">
-                성별 선택 · 키 <span className="text-foreground/80">예) 168cm</span> (100~220) · 몸무게 <span className="text-foreground/80">예) 55kg</span> (30~200) · 체형 1택
-                <div className="mt-1 text-[10px] text-coral/90">⚠ 빈칸/범위 초과 시 "키는 100~220cm 사이여야 합니다" 등 인라인 오류</div>
-              </div>
-            </div>
-            <div>
-              <div className="font-bold text-foreground mb-0.5">STEP 2 · 내 스타일</div>
-              <div className="text-muted-foreground leading-snug">
-                선호 스타일 <span className="text-foreground/80">예) 미니멀·캐주얼</span> · 예산 <span className="text-foreground/80">예) 10~30만원</span> · TPO <span className="text-foreground/80">예) 데일리·데이트</span>
-                <div className="mt-1 text-[10px] text-coral/90">⚠ 최소 1개 선택 필수, 미선택 시 "스타일을 1개 이상 골라주세요"</div>
-              </div>
-            </div>
-            <div>
-              <div className="font-bold text-foreground mb-0.5">STEP 3 · 얼굴 사진</div>
-              <div className="text-muted-foreground leading-snug">
-                정면 셀카 1장 (어깨 위·밝은 조명·마스크/선글라스 X·JPG·PNG 10MB↓) → 업로드 즉시 미리보기 → 모델 프로필 저장 후 모든 룩에 자동 얼굴 합성
-              </div>
-            </div>
+      <div className="grid md:grid-cols-5 gap-5">
+        <div className="md:col-span-2 rounded-xl border border-primary/30 overflow-hidden bg-card">
+          <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
+            <img src={screenLanding} alt="Landing" className="w-full h-full object-cover object-top" loading="lazy" />
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-primary">01 · LANDING</div>
+          </div>
+          <div className="p-3">
+            <div className="text-[10px] tracking-widest font-bold text-primary mb-1">FIRST IMPRESSION</div>
+            <div className="font-bold text-sm font-korean mb-1">브랜드 진입 + 무료 체험</div>
+            <div className="text-xs text-muted-foreground font-korean leading-relaxed">LiquidCursor 인터랙션으로 첫인상 차별화 → "무료 체험" CTA에서 Google/OTP 가입 10초.</div>
           </div>
         </div>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-3 space-y-3">
           {[
-            {
-              img: screenLanding,
-              tag: '01 · Landing',
-              step: 'STEP 4 · 진입',
-              title: '브랜드 진입 + 가입',
-              desc: '인터랙티브 LiquidCursor로 첫인상 차별화 → "무료 체험" CTA에서 Google/OTP 가입 10초.',
-              features: ['LiquidCursor 인터랙션', 'Google OAuth · OTP 가입', '가입 즉시 5크레딧 지급'],
-              color: 'primary',
-            },
-            {
-              img: screenStyle,
-              tag: '02 · Style Generator',
-              step: 'STEP 5 · 입력 & 생성',
-              title: 'AI 스타일 생성기',
-              desc: '키·몸무게·내 스타일이 자동 반영된 모델 프로필 + 프롬프트 → 1분 내 풀바디 룩 4종.',
-              features: ['키/몸무게/체형 자동 반영', '프롬프트 + HOT 트렌드 선택', '얼굴 합성 풀바디 4종 생성'],
-              color: 'coral',
-            },
-            {
-              img: screenCommunity,
-              tag: '03 · Community Gallery',
-              step: 'STEP 6 · 검증 & 구매',
-              title: '커뮤니티 + 원클릭 구매',
-              desc: '다른 유저 룩에서 영감 → 좋아요 → 상품 태그 클릭 → 어필리에이트 딥링크로 구매.',
-              features: ['인기/최신 정렬', '좋아요·사회적 검증', '상품 태그 → 딥링크 구매'],
-              color: 'sky',
-            },
+            { n: '0', label: '가입', desc: 'Google OAuth 또는 휴대폰 OTP 인증', detail: '10초 · 가입 즉시 5크레딧 지급', color: 'primary' },
+            { n: '1', label: '기본 정보', desc: '성별 · 키 (100~220cm) · 몸무게 (30~200kg) · 체형', detail: '범위 초과 시 인라인 오류 안내', color: 'sky' },
+            { n: '2', label: '내 스타일', desc: '선호 스타일 · 예산 · TPO 선택', detail: '최소 1개 필수, 미선택 시 안내 메시지', color: 'coral' },
+            { n: '3', label: '얼굴 사진', desc: '정면 셀카 1장 (어깨 위 · 밝은 조명 · JPG/PNG 10MB↓)', detail: '업로드 즉시 미리보기 → 모든 룩에 자동 합성', color: 'purple' },
           ].map((s, i) => (
-            <div key={i} className={cn('rounded-xl border overflow-hidden bg-card flex flex-col', `border-${s.color}/30`)}>
-              <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border relative">
-                <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
-                <div className={cn('absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white', `bg-${s.color}`)}>{s.step}</div>
+            <div key={i} className="flex gap-3 p-3 rounded-xl border border-border bg-card">
+              <div className={cn('flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm', `bg-${s.color}/10 text-${s.color} border border-${s.color}/30`)}>
+                {s.n}
               </div>
-              <div className="p-3 flex-1 flex flex-col">
-                <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
-                <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
-                <div className="text-xs text-muted-foreground font-korean leading-relaxed mb-2">{s.desc}</div>
-                <ul className="mt-auto space-y-0.5">
-                  {s.features.map((f, j) => (
-                    <li key={j} className="text-[10px] font-korean text-foreground/80 flex items-start gap-1">
-                      <span className={cn('mt-1 w-1 h-1 rounded-full flex-shrink-0', `bg-${s.color}`)} />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="flex-1">
+                <div className="font-bold text-sm font-korean mb-0.5">STEP {s.n} · {s.label}</div>
+                <div className="text-xs text-muted-foreground font-korean leading-snug">{s.desc}</div>
+                <div className={cn('text-[10px] mt-1 font-korean', `text-${s.color}`)}>→ {s.detail}</div>
               </div>
             </div>
           ))}
-        </div>
-        <div className="space-y-2">
-          <div className="rounded-lg border border-coral/30 bg-coral/5 px-4 py-3">
-            <div className="text-[10px] font-bold tracking-widest text-coral mb-2 font-korean">AI GENERATION RESULT · 생성 결과 한눈에</div>
-            <div className="grid md:grid-cols-4 gap-2 text-[11px] font-korean">
-              <div className="rounded border border-coral/20 bg-background/60 p-2">
-                <div className="font-bold text-coral mb-0.5">룩 4종 동시 생성</div>
-                <div className="text-muted-foreground leading-snug">하나의 프롬프트 → 풀바디 3:4 룩 4장. 좌우 스와이프로 비교, 마음에 드는 룩만 갤러리 저장.</div>
-              </div>
-              <div className="rounded border border-coral/20 bg-background/60 p-2">
-                <div className="font-bold text-coral mb-0.5">품질 옵션 · Fast/Pro</div>
-                <div className="text-muted-foreground leading-snug">Fast(Gemini Flash, ~30초) / Pro(GPT-5·Nano Banana 2, 얼굴 충실도↑) 토글로 속도·품질 선택.</div>
-              </div>
-              <div className="rounded border border-coral/20 bg-background/60 p-2">
-                <div className="font-bold text-coral mb-0.5">워터마크 정책</div>
-                <div className="text-muted-foreground leading-snug">Free 플랜은 ShowMeLook 로고 오버레이 → 자연스러운 브랜드 노출 + 유료 전환 트리거.</div>
-              </div>
-              <div className="rounded border border-coral/20 bg-background/60 p-2">
-                <div className="font-bold text-coral mb-0.5">생성 한도 표시</div>
-                <div className="text-muted-foreground leading-snug">남은 일일 한도 + 보너스 크레딧 실시간 노출. 소진 시 업그레이드 모달, Platinum·관리자 무제한.</div>
-              </div>
-            </div>
-            <div className="mt-3 grid md:grid-cols-2 gap-2">
-              <div className="rounded border border-coral/20 bg-background/60 p-2.5">
-                <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOADING TIMELINE · 진행 단계</div>
-                <div className="space-y-1 text-[10.5px] font-korean">
-                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">0~5s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-[15%] rounded-full bg-coral" /></span><span className="text-foreground/80">프로필·DNA 매칭</span></div>
-                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">5~25s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-[55%] rounded-full bg-coral" /></span><span className="text-foreground/80">상품 추천·룩 4종 병렬 생성</span></div>
-                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">25~45s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-[85%] rounded-full bg-coral" /></span><span className="text-foreground/80">얼굴 합성·풀바디 렌더</span></div>
-                  <div className="flex items-center gap-2"><span className="w-10 text-right text-muted-foreground">~60s</span><span className="flex-1 h-1.5 rounded-full bg-coral/20"><span className="block h-full w-full rounded-full bg-coral" /></span><span className="text-foreground/80">완료 · 토스트 알림</span></div>
-                </div>
-                <div className="mt-1.5 text-[9.5px] text-muted-foreground font-korean">로딩 중 LoadingProductAds로 추천 상품 미리 노출 → 체감 대기시간 ↓</div>
-              </div>
-              <InteractiveLookPicker />
-            </div>
-            <div className="mt-2 text-[10px] text-muted-foreground font-korean text-center">
-              상품 태그 · 좋아요 · 공유 · HD 다운로드(유료)까지 결과 카드에서 바로 액션
-            </div>
-          </div>
-          <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-korean">
-            <span className="font-bold text-primary">가입·프로필</span>
-            <span className="text-muted-foreground">키·몸무게·스타일·얼굴 사진</span>
-            <span className="text-muted-foreground/50">→</span>
-            <span className="font-bold text-coral">AI 생성</span>
-            <span className="text-muted-foreground">풀바디 룩 4종 (1분 이내)</span>
-            <span className="text-muted-foreground/50">→</span>
-            <span className="font-bold text-sky">공유·검증</span>
-            <span className="text-muted-foreground">커뮤니티 갤러리</span>
-            <span className="text-muted-foreground/50">→</span>
-            <span className="font-bold text-purple">구매</span>
-            <span className="text-muted-foreground">어필리에이트 딥링크</span>
-          </div>
-          <div className="rounded-lg border border-purple/30 bg-purple/5 px-4 py-3">
-            <div className="text-[10px] font-bold tracking-widest text-purple mb-2 font-korean">PURCHASE FLOW · 구매 전환 상세</div>
-            <div className="grid md:grid-cols-4 gap-2 text-[11px] font-korean">
-              <div>
-                <div className="font-bold text-foreground mb-0.5">1. 상품 태그 클릭</div>
-                <div className="text-muted-foreground leading-snug">룩 이미지 위 인터랙티브 핀 → 가격·브랜드·재고 카드 표시</div>
-              </div>
-              <div>
-                <div className="font-bold text-foreground mb-0.5">2. 딥링크 생성</div>
-                <div className="text-muted-foreground leading-snug">LinkPrice·Coupang Partners API로 어필리에이트 URL을 실시간 발급</div>
-              </div>
-              <div>
-                <div className="font-bold text-foreground mb-0.5">3. 머천트 이동</div>
-                <div className="text-muted-foreground leading-snug">모바일 인앱 브라우저 우회 + Coupang은 m.coupang.com으로 자동 리다이렉트</div>
-              </div>
-              <div>
-                <div className="font-bold text-foreground mb-0.5">4. 결제 완료 트래킹</div>
-                <div className="text-muted-foreground leading-snug">Postback으로 구매 메타데이터 수집 → 등급 자동 승급 + 추천 학습</div>
-              </div>
-            </div>
-            <div className="mt-2 text-[10px] text-muted-foreground font-korean">평균 수수료 2.1~4.2% · 구매 데이터는 다음 추천 품질을 끌어올리는 피드백 루프로 환원</div>
-          </div>
         </div>
       </div>
     ),
@@ -492,7 +368,96 @@ const slides = [
   },
   {
     id: 52,
-    title: 'Product Tour · 운영 & 수익화',
+    title: 'Product Tour · 2. AI 스타일 생성',
+    subtitle: '프롬프트 한 줄 → 60초 안에 풀바디 룩 4종',
+    content: (
+      <div className="grid md:grid-cols-5 gap-5">
+        <div className="md:col-span-2 rounded-xl border border-coral/30 overflow-hidden bg-card">
+          <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
+            <img src={screenStyle} alt="Style Generator" className="w-full h-full object-cover object-top" loading="lazy" />
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-coral">02 · STYLE GENERATOR</div>
+          </div>
+          <div className="p-3">
+            <div className="text-[10px] tracking-widest font-bold text-coral mb-1">AI GENERATION</div>
+            <div className="font-bold text-sm font-korean mb-1">키·몸무게·스타일이 자동 반영된 풀바디 룩 4종</div>
+            <div className="text-xs text-muted-foreground font-korean leading-relaxed">프롬프트 + HOT 트렌드를 골라 한 번 생성하면 4가지 룩이 동시에 나옵니다.</div>
+          </div>
+        </div>
+        <div className="md:col-span-3 space-y-3">
+          <div className="rounded-xl border border-coral/30 bg-coral/5 p-4">
+            <div className="text-[10px] font-bold tracking-widest text-coral mb-2 font-korean">LOADING TIMELINE · 60초 안에 끝나는 생성</div>
+            <div className="space-y-1.5 text-xs font-korean">
+              <div className="flex items-center gap-2"><span className="w-12 text-right text-muted-foreground text-[10px]">0~5s</span><span className="flex-1 h-2 rounded-full bg-coral/20"><span className="block h-full w-[15%] rounded-full bg-coral" /></span><span className="text-foreground/80 w-32">프로필·DNA 매칭</span></div>
+              <div className="flex items-center gap-2"><span className="w-12 text-right text-muted-foreground text-[10px]">5~25s</span><span className="flex-1 h-2 rounded-full bg-coral/20"><span className="block h-full w-[55%] rounded-full bg-coral" /></span><span className="text-foreground/80 w-32">상품 추천·룩 4종 병렬</span></div>
+              <div className="flex items-center gap-2"><span className="w-12 text-right text-muted-foreground text-[10px]">25~45s</span><span className="flex-1 h-2 rounded-full bg-coral/20"><span className="block h-full w-[85%] rounded-full bg-coral" /></span><span className="text-foreground/80 w-32">얼굴 합성·풀바디 렌더</span></div>
+              <div className="flex items-center gap-2"><span className="w-12 text-right text-muted-foreground text-[10px]">~60s</span><span className="flex-1 h-2 rounded-full bg-coral/20"><span className="block h-full w-full rounded-full bg-coral" /></span><span className="text-foreground/80 w-32">완료 · 토스트 알림</span></div>
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-korean">로딩 중 LoadingProductAds로 추천 상품을 미리 노출 → 체감 대기시간 감소</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { title: '품질 옵션 · Fast / Pro', desc: 'Fast(Gemini Flash, ~30초) ↔ Pro(GPT-5 · Nano Banana 2)' },
+              { title: '룩 4종 동시 생성', desc: '풀바디 3:4 룩 4장, 마음에 드는 룩만 갤러리 저장' },
+              { title: '워터마크 정책', desc: 'Free 플랜은 ShowMeLook 로고 오버레이 → 유료 전환 트리거' },
+              { title: '생성 한도 표시', desc: '남은 일일 한도·보너스 크레딧 실시간 노출' },
+            ].map((f, i) => (
+              <div key={i} className="rounded-lg border border-coral/20 bg-background/60 p-2.5">
+                <div className="font-bold text-coral text-xs font-korean mb-0.5">{f.title}</div>
+                <div className="text-[10.5px] text-muted-foreground font-korean leading-snug">{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    ),
+    background: 'bg-background',
+  },
+  {
+    id: 53,
+    title: 'Product Tour · 3. 룩 선택 & 구매',
+    subtitle: '룩을 고르면 상품 태그·가격·딥링크가 실시간 갱신',
+    content: (
+      <div className="grid md:grid-cols-5 gap-5">
+        <div className="md:col-span-2 rounded-xl border border-sky/30 overflow-hidden bg-card">
+          <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
+            <img src={screenCommunity} alt="Community" className="w-full h-full object-cover object-top" loading="lazy" />
+            <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-sky">03 · LOOK & BUY</div>
+          </div>
+          <div className="p-3">
+            <div className="text-[10px] tracking-widest font-bold text-sky mb-1">PURCHASE FLOW</div>
+            <div className="font-bold text-sm font-korean mb-1">선택 → 상품 태그 → 어필리에이트 구매</div>
+            <div className="text-xs text-muted-foreground font-korean leading-relaxed">생성된 4종 중 마음에 드는 룩을 고르면 모든 상품 카드가 즉시 갱신됩니다.</div>
+          </div>
+        </div>
+        <div className="md:col-span-3 space-y-3">
+          <InteractiveLookPicker />
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { n: '1', title: '상품 태그 클릭', desc: '룩 위 인터랙티브 핀 → 가격·브랜드·재고 카드' },
+              { n: '2', title: '딥링크 생성', desc: 'LinkPrice·Coupang Partners API 실시간 발급' },
+              { n: '3', title: '머천트 이동', desc: '인앱 브라우저 우회, Coupang 자동 m.coupang 리다이렉트' },
+              { n: '4', title: '결제 트래킹', desc: 'Postback 수집 → 등급 자동 승급 + 추천 학습' },
+            ].map((p, i) => (
+              <div key={i} className="rounded-lg border border-purple/20 bg-purple/5 p-2.5 flex gap-2">
+                <div className="w-6 h-6 rounded-full bg-purple text-white flex items-center justify-center text-[11px] font-bold flex-shrink-0">{p.n}</div>
+                <div>
+                  <div className="font-bold text-xs font-korean">{p.title}</div>
+                  <div className="text-[10.5px] text-muted-foreground font-korean leading-snug">{p.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] font-korean text-center text-muted-foreground">
+            평균 수수료 <span className="text-foreground font-bold">2.1~4.2%</span> · 구매 데이터는 다음 추천 품질을 끌어올리는 <span className="text-purple font-bold">피드백 루프</span>로 환원
+          </div>
+        </div>
+      </div>
+    ),
+    background: 'bg-background',
+  },
+  {
+    id: 54,
+    title: 'Product Tour · 4. 운영 & 수익화',
     subtitle: '데이터 → 등급 → 락인으로 이어지는 수익 엔진',
     content: (
       <div className="space-y-4">
@@ -503,7 +468,7 @@ const slides = [
               tag: '04 · Admin Dashboard',
               step: 'OPS · 운영',
               title: '실시간 운영 대시보드',
-              desc: '5,579+ 상품의 DNA·머천트 매핑·에러를 한 화면에서 관리. 추천 품질 자동 모니터링.',
+              desc: '5,579+ 상품의 DNA·머천트 매핑·에러를 한 화면에서 관리.',
               features: ['상품 5,579+ DNA 자동 분석', '머천트 매핑·등록 큐', '에러/추론 메트릭 실시간'],
               color: 'primary',
             },
@@ -512,7 +477,7 @@ const slides = [
               tag: '05 · Pricing Tier',
               step: 'MONETIZE · 수익화',
               title: '구매 기반 5등급제',
-              desc: '구매 누적 금액으로 자동 승급. 워터마크/생성한도/모델 슬롯을 차등하여 구매를 유도.',
+              desc: '구매 누적 금액으로 자동 승급. 한도·기능 차등으로 구매 유도.',
               features: ['Free → Platinum 5단계', '구매액 자동 승급', '한도·기능 차등'],
               color: 'coral',
             },
@@ -521,7 +486,7 @@ const slides = [
               tag: '06 · My Page',
               step: 'RETAIN · 락인',
               title: '내 등급 · 누적 구매',
-              desc: '다음 등급까지 진행률을 시각화하고 갤러리·모델·장바구니로 재방문을 유도.',
+              desc: '다음 등급까지 진행률 시각화 + 갤러리·모델·장바구니로 재방문 유도.',
               features: ['등급 진행률 시각화', '갤러리·모델·장바구니', '추가 구매 동기 부여'],
               color: 'purple',
             },
