@@ -48,7 +48,7 @@ export const LiquidCursor = () => {
 
     const addPoint = (x: number, y: number) => {
       const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 0.5;
+      const speed = Math.random() * 1.5 + 0.3;
       const color = COLORS[Math.floor(Math.random() * COLORS.length)];
       pointsRef.current.push({
         x,
@@ -71,8 +71,8 @@ export const LiquidCursor = () => {
           mouseRef.current.y - mouseRef.current.lastY
         );
         if (dist > 0) {
-          const steps = Math.min(dist, 20);
-          for (let i = 0; i < steps; i += 2) {
+          const steps = Math.min(dist, 30);
+          for (let i = 0; i < steps; i += 1) {
             const t = i / steps;
             const x =
               mouseRef.current.lastX +
@@ -80,7 +80,7 @@ export const LiquidCursor = () => {
             const y =
               mouseRef.current.lastY +
               (mouseRef.current.y - mouseRef.current.lastY) * t;
-            if (Math.random() > 0.5) addPoint(x, y);
+            if (Math.random() > 0.3) addPoint(x, y);
           }
         }
         mouseRef.current.lastX = mouseRef.current.x;
@@ -93,10 +93,10 @@ export const LiquidCursor = () => {
 
       for (let i = pointsRef.current.length - 1; i >= 0; i--) {
         const p = pointsRef.current[i];
-        p.life -= 0.01;
+        p.life -= 0.006;
         p.x += p.vx;
         p.y += p.vy;
-        p.radius *= 0.99;
+        p.radius *= 0.995;
 
         if (p.life <= 0 || p.radius < 0.5) {
           pointsRef.current.splice(i, 1);
