@@ -86,24 +86,29 @@ const InteractiveLookPicker = () => {
   const look = LOOK_DATA[selected];
   return (
     <div className="rounded border border-coral/20 bg-background/60 p-2.5">
-      <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 클릭으로 상품 카드 동적 갱신</div>
-      <div className="grid grid-cols-4 gap-1 mb-2">
+      <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 실제 룩 카드를 골라 상품/공유 즉시 갱신</div>
+      <div className="grid grid-cols-4 gap-1.5 mb-2">
         {LOOK_DATA.map((l, n) => (
           <button
             key={n}
             onClick={() => setSelected(n)}
             className={cn(
-              'aspect-[3/4] rounded border bg-coral/10 flex flex-col items-center justify-center text-[9px] font-korean transition-all hover:bg-coral/20',
-              selected === n ? 'border-coral border-2 ring-1 ring-coral/40 bg-coral/20' : 'border-coral/30'
+              'relative aspect-[3/4] rounded-md overflow-hidden border transition-all',
+              selected === n ? 'border-coral border-2 ring-2 ring-coral/40' : 'border-coral/30 hover:border-coral/60'
             )}
           >
-            <span className="text-[10px] font-bold text-coral">LOOK {n + 1}</span>
-            <span className="text-[8px] text-muted-foreground mt-0.5 px-1 text-center leading-tight">{l.name}</span>
-            {selected === n && <span className="text-[8px] text-coral/90 mt-0.5">● SELECTED</span>}
+            <img src={l.img} alt={l.name} className="w-full h-full object-cover" loading="lazy" />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1 pt-3 pb-1">
+              <div className="text-[9px] font-bold text-white font-korean">LOOK {n + 1}</div>
+              <div className="text-[8px] text-white/85 font-korean truncate">{l.name}</div>
+            </div>
+            {selected === n && (
+              <div className="absolute top-1 right-1 px-1 py-px rounded-sm bg-coral text-white text-[8px] font-bold">●</div>
+            )}
           </button>
         ))}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1 mb-2">
         {look.tags.map((t, i) => (
           <div key={i} className="flex items-center gap-1.5 rounded border border-coral/15 bg-coral/[0.03] px-1.5 py-1 text-[9.5px] font-korean">
             <span className="px-1 py-px rounded bg-coral/20 text-coral font-bold text-[8.5px] min-w-[28px] text-center">{t.cat}</span>
@@ -115,8 +120,30 @@ const InteractiveLookPicker = () => {
           </div>
         ))}
       </div>
+      <div className="rounded border border-sky/25 bg-sky/[0.04] px-1.5 py-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[9.5px] font-bold text-sky font-korean whitespace-nowrap">SHARE · SNS 원클릭</div>
+          <div className="flex items-center gap-1">
+            {[
+              { name: 'Instagram', bg: 'bg-gradient-to-br from-purple via-coral to-amber-400', label: 'IG' },
+              { name: 'Stories', bg: 'bg-gradient-to-br from-pink-500 to-purple', label: 'ST' },
+              { name: 'KakaoTalk', bg: 'bg-amber-300 text-amber-900', label: 'K' },
+              { name: 'X', bg: 'bg-foreground text-background', label: 'X' },
+              { name: 'Facebook', bg: 'bg-blue-600', label: 'f' },
+              { name: 'Link', bg: 'bg-muted text-foreground', label: '🔗' },
+            ].map((s, i) => (
+              <div key={i} className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[8.5px] font-bold text-white', s.bg)} title={s.name}>
+                {s.label}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-1 text-[9px] text-muted-foreground font-korean leading-snug">
+          이미지에 자동 워터마크 · 동적 해시태그 <span className="text-sky">#쇼미룩 #{look.name.replace(/\s/g, '')} #AI스타일링</span> · 인스타 스토리/피드 자동 1:1·9:16 변환 · OG 이미지 1200×630 합성
+        </div>
+      </div>
       <div className="mt-1.5 text-[9px] text-muted-foreground font-korean text-center">
-        선택한 룩 → 상품 태그·가격·재고·딥링크가 즉시 갱신 · 좋아요 / 갤러리 저장 / 공유 / HD 다운로드
+        선택한 룩 → 상품 태그·가격·딥링크 + SNS 공유 카드/해시태그가 즉시 갱신
       </div>
     </div>
   );
