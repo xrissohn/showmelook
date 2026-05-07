@@ -606,32 +606,96 @@ img {
 }
 
 @media print {
+  /* 16:9 슬라이드 페이지 — 여백 0 */
   @page { size: 1600px 900px; margin: 0; }
-  html, body { background: #fff !important; }
+
+  /* 배경 그래픽/색상 강제 인쇄 (Chrome/Safari/Firefox) */
+  html, body, .pitch-print-only, .pitch-print-only * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 화면 UI 전체 숨김, 인쇄 트리만 노출 */
   body * { visibility: hidden !important; }
   .pitch-print-only, .pitch-print-only * { visibility: visible !important; }
+  header, footer, nav { display: none !important; }
+
   .pitch-print-only {
     display: block !important;
-    position: absolute; left: 0; top: 0; width: 1600px;
-  }
-  header, footer, nav { display: none !important; }
-  .pitch-print-page {
+    position: absolute;
+    left: 0; top: 0;
     width: 1600px;
-    height: 900px;
-    page-break-after: always;
-    break-after: page;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* 각 슬라이드 = 한 페이지 (정확히 1600x900, 여백 0) */
+  .pitch-print-page {
+    width: 1600px !important;
+    height: 900px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
     overflow: hidden;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
+    page-break-after: always;
+    page-break-inside: avoid;
+    break-after: page;
+    break-inside: avoid;
   }
-  .pitch-print-page:last-child { page-break-after: auto; break-after: auto; }
+  .pitch-print-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* 슬라이드 내용 영역: 안전 여백 (시안 기준 약 64px) */
   .pitch-print-inner {
     width: 100%;
-    max-width: 1500px;
-    padding: 32px 48px;
+    height: 100%;
+    max-width: none;
+    padding: 64px 80px;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    overflow: hidden;
   }
-  .animate-fade-in, [class*="animate-"] { animation: none !important; }
+
+  /* 애니메이션/트랜지션/필터 제거 — 인쇄 시 흐림 방지 */
+  .pitch-print-only *,
+  .pitch-print-only *::before,
+  .pitch-print-only *::after {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+    filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 이미지 고화질 렌더링 */
+  .pitch-print-only img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 고정/스티키 요소 제거 (인쇄 레이아웃 깨짐 방지) */
+  .pitch-print-only .fixed,
+  .pitch-print-only .sticky {
+    position: static !important;
+  }
 }
+
