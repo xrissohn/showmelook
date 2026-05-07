@@ -1562,6 +1562,31 @@ const Pitch = () => {
   });
   const paper = PAPER_SIZES[paperSize];
 
+  // PDF 출력 품질 옵션 (DPI 힌트 + 이미지 렌더링 모드)
+  const DPI_OPTIONS = {
+    '150': { label: '표준 (150 DPI)', dpi: 150 },
+    '200': { label: '고품질 (200 DPI)', dpi: 200 },
+    '300': { label: '인쇄용 (300 DPI)', dpi: 300 },
+    '600': { label: '최고 (600 DPI)', dpi: 600 },
+  } as const;
+  type DpiKey = keyof typeof DPI_OPTIONS;
+  const IMG_RENDER_OPTIONS = {
+    'high-quality': { label: '부드럽게 (사진 권장)', css: 'high-quality' },
+    'auto':         { label: '자동',                  css: 'auto' },
+    'crisp-edges':  { label: '선명하게 (그래픽/UI)',  css: 'crisp-edges' },
+    'pixelated':    { label: '픽셀 보존',             css: 'pixelated' },
+  } as const;
+  type ImgRenderKey = keyof typeof IMG_RENDER_OPTIONS;
+
+  const [pdfDpi, setPdfDpi] = useState<DpiKey>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pdf-dpi') : null;
+    return (v && (v in DPI_OPTIONS) ? v : '300') as DpiKey;
+  });
+  const [imgRender, setImgRender] = useState<ImgRenderKey>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-img-render') : null;
+    return (v && (v in IMG_RENDER_OPTIONS) ? v : 'high-quality') as ImgRenderKey;
+  });
+
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.pitch-print-only');
     if (root) {
