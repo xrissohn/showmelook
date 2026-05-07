@@ -1822,11 +1822,69 @@ const Pitch = () => {
           </div>
           {showSafeArea && !isCaptureMode && (
             <div className="pitch-safe-area-overlay" aria-hidden="true">
-              <div className="pitch-safe-area-box" />
-              <span className="pitch-safe-area-label">인쇄 안전 여백 64×80px</span>
+              <div
+                className="pitch-safe-area-box"
+                style={{
+                  // 1600x900 기준 px → 비율로 환산
+                  ['--safe-pad-x' as any]: `${(padX / 1600) * 100}%`,
+                  ['--safe-pad-y' as any]: `${(padY / 900) * 100}%`,
+                }}
+              />
+              <span className="pitch-safe-area-label">안전 여백 {padY}×{padX}px</span>
             </div>
           )}
         </div>
+
+        {/* 안전 여백 조정 패널 */}
+        {showSafeArea && !isCaptureMode && (
+          <div className="fixed bottom-20 right-4 z-50 w-72 rounded-lg border bg-background/95 backdrop-blur-sm p-4 shadow-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">인쇄 영역 여백</span>
+              <button
+                type="button"
+                onClick={() => { setPadY(64); setPadX(80); }}
+                className="text-xs text-muted-foreground hover:text-foreground underline"
+              >
+                기본값
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <label htmlFor="pitch-pad-y-input" className="text-muted-foreground">상하 (Y)</label>
+                <span className="font-mono tabular-nums">{padY}px</span>
+              </div>
+              <input
+                id="pitch-pad-y-input"
+                type="range"
+                min={0}
+                max={200}
+                step={2}
+                value={padY}
+                onChange={(e) => setPadY(parseInt(e.target.value, 10))}
+                className="w-full accent-primary"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <label htmlFor="pitch-pad-x-input" className="text-muted-foreground">좌우 (X)</label>
+                <span className="font-mono tabular-nums">{padX}px</span>
+              </div>
+              <input
+                id="pitch-pad-x-input"
+                type="range"
+                min={0}
+                max={240}
+                step={2}
+                value={padX}
+                onChange={(e) => setPadX(parseInt(e.target.value, 10))}
+                className="w-full accent-primary"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              1600×900 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
+            </p>
+          </div>
+        )}
 
         {/* 인쇄(PDF 저장) 전용: 모든 슬라이드를 페이지별로 렌더링 */}
         <div className="pitch-print-only" aria-hidden="true">
