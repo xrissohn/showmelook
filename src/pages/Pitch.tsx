@@ -160,39 +160,59 @@ const slides = [
     title: '쇼미룩',
     subtitle: 'AI Virtual Fitting & Style Recommendation Platform',
     content: (
-      <div className="text-center space-y-10">
-        <div className="space-y-3">
-          <div className="inline-block px-4 py-1.5 border border-primary/30 rounded-full text-xs tracking-[0.3em] text-primary uppercase">
+      <div className="absolute inset-0 -m-8 md:-m-12 overflow-hidden rounded-2xl">
+        {/* Background: actual landing hero capture */}
+        <div className="absolute inset-0">
+          <img
+            src={landingHero}
+            alt="ShowMeLook Landing"
+            className="w-full h-full object-cover object-top scale-110"
+          />
+          {/* Wash gradient for legibility */}
+          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background/85" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/30 via-transparent to-background/30" />
+        </div>
+
+        {/* Foreground content */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 py-10 text-center">
+          <div className="inline-block px-4 py-1.5 mb-6 rounded-full text-[10px] tracking-[0.35em] text-primary uppercase bg-background/70 backdrop-blur-md border border-primary/30 shadow-lg">
             Investment Proposal · 2026
           </div>
-          <h1 className="text-6xl md:text-8xl font-bold text-primary font-korean leading-tight tracking-tight">
-            쇼미룩
-          </h1>
-          <p className="text-2xl md:text-3xl font-semibold font-korean">
-            나만의 스타일을 <span className="text-primary">AI</span>가 완성합니다
+
+          {/* Logo mark + text logo combo */}
+          <div className="flex items-center justify-center gap-3 md:gap-5 mb-5 drop-shadow-2xl">
+            <img src={logoMark} alt="쇼미룩 로고" className="w-20 h-20 md:w-28 md:h-28 object-contain animate-twinkle" />
+            <img src={logoText} alt="쇼미룩" className="h-14 md:h-20 object-contain" />
+          </div>
+
+          <p className="text-2xl md:text-4xl font-bold font-korean text-foreground mb-3 drop-shadow-md">
+            나만의 스타일을 <span className="bg-gradient-brand bg-clip-text text-transparent">AI</span>가 완성합니다
           </p>
-          <p className="text-base md:text-lg text-muted-foreground font-korean max-w-2xl mx-auto">
-            사진 한 장으로 트렌디한 스타일을 경험하세요.<br />
-            AI가 당신에게 딱 맞는 패션을 제안합니다.
+          <p className="text-sm md:text-base text-muted-foreground font-korean max-w-2xl mx-auto mb-8 leading-relaxed bg-background/40 backdrop-blur-sm px-4 py-2 rounded-lg">
+            사진 한 장으로 트렌디한 스타일을 경험하세요 · AI가 당신에게 딱 맞는 패션을 제안합니다
           </p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-3">
-          <div className="px-5 py-2.5 bg-primary/10 border border-primary/20 rounded-full">
-            <span className="text-primary font-semibold text-sm">플랫폼 완성도 80%</span>
+
+          {/* Stat chips */}
+          <div className="flex flex-wrap justify-center gap-2.5 mb-8">
+            <div className="px-4 py-2 bg-background/80 backdrop-blur-md border border-primary/30 rounded-full shadow-md">
+              <span className="text-primary font-bold text-xs md:text-sm">플랫폼 완성도 80%</span>
+            </div>
+            <div className="px-4 py-2 bg-background/80 backdrop-blur-md border border-coral/30 rounded-full shadow-md">
+              <span className="text-coral font-bold text-xs md:text-sm">5,579+ 상품 DNA 분석</span>
+            </div>
+            <div className="px-4 py-2 bg-background/80 backdrop-blur-md border border-sky/30 rounded-full shadow-md">
+              <span className="text-sky font-bold text-xs md:text-sm">Gemini · Nano Banana</span>
+            </div>
           </div>
-          <div className="px-5 py-2.5 bg-coral/10 border border-coral/20 rounded-full">
-            <span className="text-coral font-semibold text-sm">5,579+ 상품 DNA 분석</span>
+
+          {/* Footer meta */}
+          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-6 text-[10px] md:text-xs text-muted-foreground tracking-[0.2em] font-medium">
+            <span>showmelook.com</span>
+            <span className="opacity-40">·</span>
+            <span>contact@showmelook.com</span>
+            <span className="opacity-40">·</span>
+            <span>v2.0</span>
           </div>
-          <div className="px-5 py-2.5 bg-sky/10 border border-sky/20 rounded-full">
-            <span className="text-sky font-semibold text-sm">Gemini · Nano Banana</span>
-          </div>
-        </div>
-        <div className="flex justify-center gap-8 pt-4 text-xs text-muted-foreground tracking-wider">
-          <span>showmelook.com</span>
-          <span className="opacity-50">|</span>
-          <span>contact@showmelook.com</span>
-          <span className="opacity-50">|</span>
-          <span>v2.0</span>
         </div>
       </div>
     ),
