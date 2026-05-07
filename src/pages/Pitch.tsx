@@ -17,7 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 import screenLanding from '@/assets/pitch-screens/landing.png';
-import screenStyle from '@/assets/pitch-screens/style-generator.png';
+import screenStyle from '@/assets/pitch-screens/style-generator-left.png';
 import screenCommunity from '@/assets/pitch-screens/community.png';
 import screenAdmin from '@/assets/pitch-screens/admin.png';
 import screenPricing from '@/assets/pitch-screens/pricing.png';
@@ -405,7 +405,7 @@ const slides = [
       <div className="grid md:grid-cols-5 gap-5">
         <div className="md:col-span-2 rounded-xl border border-coral/30 overflow-hidden bg-card">
           <div className="aspect-[4/5] bg-muted/30 overflow-hidden border-b border-border relative">
-            <img src={screenStyle} alt="Style Generator" className="w-full h-full object-cover object-top" loading="lazy" />
+            <img src={screenStyle} alt="Style Generator" className="w-full h-full object-contain object-top bg-background" loading="lazy" />
             <div className="absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white bg-coral">02 · STYLE GENERATOR</div>
           </div>
           <div className="p-3">
