@@ -984,183 +984,137 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 9,
-    title: '시장 분석',
-    subtitle: 'TAM / SAM / SOM',
+    id: 12,
+    title: 'GTM Strategy',
+    subtitle: '단계별 시장 침투 전략',
     content: (
-      <div className="flex flex-col items-center space-y-6">
-        <div className="w-full max-w-md space-y-4">
+      <div className="space-y-5">
+        <div className="grid md:grid-cols-4 gap-3">
           {[
-            { label: 'TAM', value: '58조원', desc: '한국 패션 이커머스 시장', width: '100%', color: 'bg-primary/30' },
-            { label: 'SAM', value: '5.8조원', desc: '스타일링 니즈 시장', width: '60%', color: 'bg-primary/50' },
-            { label: 'SOM', value: '280억원', desc: '5년 목표 시장 점유', width: '30%', color: 'bg-primary' }
-          ].map((item, i) => (
-            <div key={i} className="relative">
-              <div 
-                className={cn('p-4 rounded-lg text-white', item.color)} 
-                style={{ width: item.width }}
-              >
-                <div className="font-bold">{item.label}: {item.value}</div>
-                <div className="text-sm opacity-90 font-korean">{item.desc}</div>
-              </div>
+            { phase: '0-6 Months', title: '베타 테스트 & 초기 사용자', target: 'MAU 1,000+', desc: '패션 얼리어답터 (2030) · 베타 100명 무료 Pro', color: 'sky' },
+            { phase: '6-12 Months · Y1', title: '인플루언서 협업 & 바이럴', target: 'MAU 10,000+', desc: '마이크로 인플루언서 · 릴스/쇼츠 · 레퍼럴', color: 'coral' },
+            { phase: '12-24 Months · Y2', title: '커머스 플랫폼 제휴', target: 'MAU 10만 · 매출 1억', desc: '무신사·지그재그 등 B2B 영업 · API 세일즈', color: 'purple' },
+            { phase: '24+ Months · Y3', title: 'Cafe24 SaaS 확장', target: '100곳 / ARR 10억', desc: '중소형 자사몰 · 앱스토어 플러그인', color: 'primary' },
+          ].map((p, i) => (
+            <div key={i} className={cn('p-4 rounded-xl border relative', `bg-${p.color}/5 border-${p.color}/30`)}>
+              <div className={cn('absolute -top-2 -left-2 w-7 h-7 rounded-full text-white flex items-center justify-center font-bold text-xs', `bg-${p.color}`)}>{i+1}</div>
+              <div className={cn('text-[10px] font-bold tracking-widest mb-2', `text-${p.color}`)}>{p.phase.toUpperCase()}</div>
+              <div className="font-bold text-sm font-korean mb-2">{p.title}</div>
+              <div className={cn('inline-block px-2 py-1 rounded text-xs font-semibold mb-2', `bg-${p.color}/10 text-${p.color}`)}>{p.target}</div>
+              <div className="text-xs text-muted-foreground font-korean leading-relaxed">{p.desc}</div>
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full mt-4">
-          {['Gen Z 소비력 증가', 'AI 기술 대중화', '메타버스/AR 확산', '지속가능성 관심'].map((trend, i) => (
-            <div key={i} className="p-3 bg-card rounded-lg border border-border text-center">
-              <span className="text-sm font-korean">🚀 {trend}</span>
-            </div>
-          ))}
+        <div className="p-4 bg-gradient-to-r from-primary/5 via-coral/5 to-sky/5 rounded-xl border border-border">
+          <h4 className="font-bold mb-2 font-korean text-sm">🎯 핵심 마일스톤</h4>
+          <div className="grid md:grid-cols-3 gap-3 text-xs font-korean">
+            <div className="p-2 bg-card rounded"><strong className="text-primary">D11~ MVP 정식 배포</strong> · 무신사 랜딩 연동 테스트</div>
+            <div className="p-2 bg-card rounded"><strong className="text-coral">Y1 MAU 1만</strong> · 월 매출 3,000만원</div>
+            <div className="p-2 bg-card rounded"><strong className="text-sky">Y2 커머스 파트너 10곳</strong> · ARR 10억</div>
+          </div>
         </div>
       </div>
     ),
     background: 'bg-background'
   },
   {
-    id: 10,
-    title: '경쟁 우위',
-    subtitle: '핵심 차별화 요소',
+    id: 13,
+    title: 'Roadmap',
+    subtitle: '현재 80% 완료 — 남은 20%로 시장 진입',
     content: (
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-4">
+      <div className="space-y-5">
+        <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+          <h4 className="font-bold text-green-700 mb-2 font-korean">✅ 완료된 기능 (Phase 1-4 · 80%)</h4>
+          <div className="flex flex-wrap gap-2">
+            {['AI 추천 엔진 v8.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', '1,652+ 상품 DNA', '피드백 자기 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯 SDK', '실시간 어드민', '에러 모니터링', 'SEO/RSS'].map((item, i) => (
+              <span key={i} className="px-3 py-1 bg-green-500/20 text-green-700 rounded-full text-xs font-korean font-semibold">{item}</span>
+            ))}
+          </div>
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
           {[
-            { title: 'AI 기술 내재화', items: ['자체 추천 엔진 v8.0', '크로스 모델 폴백', '피드백 기반 학습'] },
-            { title: '완전한 구매 연동', items: ['1,400+ 상품 카탈로그', '딥링크 원클릭 구매', '실시간 재고 동기화'] }
-          ].map((section, i) => (
-            <div key={i} className="p-4 bg-card rounded-lg border border-border">
-              <h4 className="font-bold mb-2 font-korean">✅ {section.title}</h4>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                {section.items.map((item, j) => (
-                  <li key={j} className="font-korean">• {item}</li>
-                ))}
+            { q: 'Q1 2026', items: ['Phase 5: 실시간 재고 확인', '상품 2,000+ 확장', 'A/B 테스트 최적화', '결제 연동 (Toss/Stripe)'], color: 'sky' },
+            { q: 'Q2 2026', items: ['Cafe24 앱스토어 출시', 'B2B 파트너 10곳 확보', '푸시 알림 (FCM)', '인플루언서 캠페인'], color: 'coral' },
+            { q: 'Q3-Q4 2026', items: ['B2B SaaS 정식 출시', '글로벌 (일본/동남아)', 'WebXR 기반 AR 피팅', 'MAU 10만 달성'], color: 'primary' },
+          ].map((q, i) => (
+            <div key={i} className={cn('p-4 rounded-xl border', `bg-${q.color}/5 border-${q.color}/30`)}>
+              <h4 className={cn('font-bold mb-2 font-korean', `text-${q.color}`)}>📅 {q.q}</h4>
+              <ul className="text-xs space-y-1 font-korean text-muted-foreground">
+                {q.items.map((x, j) => (<li key={j}>• {x}</li>))}
               </ul>
             </div>
           ))}
         </div>
-        <div className="p-6 bg-primary/5 rounded-xl border border-primary/20">
-          <h4 className="font-bold mb-4 font-korean">🏰 MOAT (진입 장벽)</h4>
-          <div className="space-y-3 text-sm font-korean">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">⚙️</span>
-              <span><strong>기술:</strong> 1년+ 개발 투자</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📊</span>
-              <span><strong>데이터:</strong> 피드백 누적 → 품질 상승</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🤝</span>
-              <span><strong>파트너:</strong> 머천트 제휴 네트워크</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">🎨</span>
-              <span><strong>UX:</strong> 사용자 습관 형성</span>
-            </div>
-          </div>
-        </div>
       </div>
     ),
     background: 'bg-background'
   },
   {
-    id: 11,
-    title: '로드맵',
-    subtitle: '현재 80% 완료',
+    id: 14,
+    title: 'Investment Ask',
+    subtitle: 'Seed / Pre-A Round',
     content: (
       <div className="space-y-6">
-        <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-          <h4 className="font-bold text-green-600 mb-2 font-korean">✅ 완료된 기능 (Phase 1-4)</h4>
-          <div className="flex flex-wrap gap-2">
-            {['AI 추천 v8.0', '가상 피팅', '딥링크 연동', '1,400+ 상품', '피드백 학습', '구매 등급제', '가족 프로필'].map((item, i) => (
-              <span key={i} className="px-3 py-1 bg-green-500/20 text-green-700 rounded-full text-sm font-korean">{item}</span>
-            ))}
+        <div className="text-center">
+          <div className="inline-block px-10 py-6 bg-gradient-brand rounded-2xl text-white shadow-2xl">
+            <div className="text-xs tracking-widest opacity-90 mb-1">SEED INVESTMENT TARGET</div>
+            <div className="text-5xl md:text-6xl font-bold mb-1">5억원</div>
+            <div className="text-sm opacity-90 font-korean">12-18개월 런웨이 확보 · 미팅 시 협의</div>
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="p-4 bg-card rounded-lg border border-border">
-            <h4 className="font-bold mb-2 font-korean">📅 Q1 2026 (1-3월)</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 font-korean">
-              <li>• Phase 5: 실시간 재고 확인</li>
-              <li>• 상품 2,000+ 확장</li>
-              <li>• A/B 테스트 최적화</li>
-            </ul>
+          <div className="p-5 bg-card rounded-xl border border-border">
+            <h4 className="font-bold mb-3 font-korean">💰 자금 사용 계획 (Use of Funds)</h4>
+            <div className="space-y-2">
+              {[
+                { use: '마케팅 & 인플루언서', percent: 35, amount: '1.75억', desc: '베타 테스터, 바이럴', color: 'coral' },
+                { use: 'R&D · AI 고도화', percent: 30, amount: '1.5억', desc: '가상 피팅, 추천 엔진', color: 'primary' },
+                { use: 'B2B 영업 & 제휴', percent: 20, amount: '1.0억', desc: '플랫폼 영업, API 연동', color: 'sky' },
+                { use: '운영 & 인프라', percent: 15, amount: '0.75억', desc: '서버, 고객 지원', color: 'purple' },
+              ].map((it, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between items-center text-xs font-korean">
+                    <span className="font-semibold">{it.use}</span>
+                    <span className={cn('font-bold', `text-${it.color}`)}>{it.percent}% · {it.amount}</span>
+                  </div>
+                  <div className="h-2 bg-muted/40 rounded-full overflow-hidden">
+                    <div className={cn('h-full rounded-full', `bg-${it.color}`)} style={{ width: `${it.percent}%` }} />
+                  </div>
+                  <div className="text-[10px] text-muted-foreground font-korean">{it.desc}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="p-4 bg-card rounded-lg border border-border">
-            <h4 className="font-bold mb-2 font-korean">📅 Q2 2026 (4-6월)</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 font-korean">
-              <li>• 결제 연동 (Stripe/Toss)</li>
-              <li>• Cafe24 앱스토어 출시</li>
-              <li>• B2B 파트너 10곳 확보</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    ),
-    background: 'bg-background'
-  },
-  {
-    id: 12,
-    title: '투자 요청',
-    subtitle: 'Seed Round',
-    content: (
-      <div className="space-y-6">
-        {/* 투자 목표 금액 */}
-        <div className="text-center">
-          <div className="inline-block p-6 bg-gradient-brand rounded-2xl">
-            <div className="text-white">
-              <div className="text-4xl md:text-5xl font-bold mb-1">5억원</div>
-              <div className="text-base opacity-90 font-korean">Seed 투자 유치 목표</div>
+          <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
+            <h4 className="font-bold mb-3 font-korean">🎯 12-18개월 핵심 마일스톤</h4>
+            <div className="space-y-3">
+              {[
+                { kpi: 'MAU 1만 달성', desc: '런칭 후 1년 내 Y1 목표', current: '100 → 10,000+' },
+                { kpi: '월 매출 3,000만원', desc: '어필리에이트 + 초기 B2B 수익화', current: '0 → ₩30M/월' },
+                { kpi: '커머스 파트너 10곳', desc: '무신사·지그재그 등 주요 플랫폼', current: '0 → 10곳' },
+                { kpi: '상품 카탈로그 5,000+', desc: '국내 주요 패션 브랜드', current: '1,652 → 5,000+' },
+              ].map((m, i) => (
+                <div key={i} className="p-2 bg-card/70 rounded-lg">
+                  <div className="flex justify-between items-baseline">
+                    <span className="font-bold text-sm font-korean text-primary">{m.kpi}</span>
+                    <span className="text-xs text-muted-foreground">{m.current}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground font-korean mt-0.5">{m.desc}</div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-
-        {/* 자금 사용 계획 */}
-        <div className="grid grid-cols-4 gap-3 max-w-2xl mx-auto">
-          {[
-            { use: '제품 개발', percent: '40%', amount: '2억' },
-            { use: '마케팅', percent: '30%', amount: '1.5억' },
-            { use: '인력 채용', percent: '20%', amount: '1억' },
-            { use: '운영 비용', percent: '10%', amount: '0.5억' }
-          ].map((item, i) => (
-            <div key={i} className="p-3 bg-card rounded-lg border border-border text-center">
-              <div className="text-xl font-bold text-primary">{item.percent}</div>
-              <div className="text-sm font-semibold font-korean">{item.use}</div>
-              <div className="text-xs text-muted-foreground">{item.amount}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* 12개월 후 목표 KPI */}
-        <div className="p-4 bg-primary/5 rounded-xl max-w-3xl mx-auto">
-          <h4 className="font-bold mb-3 text-center font-korean">📊 12개월 후 목표 KPI</h4>
-          <div className="grid grid-cols-5 gap-2 text-center text-xs">
-            {[
-              { metric: 'MAU', current: '100', target: '20,000', unit: '명' },
-              { metric: '구매전환 사용자', current: '0', target: '3,000', unit: '명' },
-              { metric: '월 수수료 수익', current: '0', target: '630', unit: '만원' },
-              { metric: '상품 카탈로그', current: '1,400', target: '5,000', unit: '+' },
-              { metric: 'B2B 파트너', current: '0', target: '10', unit: '곳' }
-            ].map((kpi, i) => (
-              <div key={i} className="p-2 bg-card rounded-lg border border-border">
-                <div className="font-semibold font-korean mb-1">{kpi.metric}</div>
-                <div className="text-muted-foreground">{kpi.current}</div>
-                <div className="text-primary">→</div>
-                <div className="font-bold text-primary">{kpi.target}{kpi.unit}</div>
-              </div>
-            ))}
-          </div>
-          <div className="text-xs text-muted-foreground text-center mt-2 font-korean">
-            * 구매전환율 15% 기준 (MAU 20,000 × 15% × 7만원 × 3% = 월 ₩630만)
-          </div>
-        </div>
-
-        {/* 연락처 */}
-        <div className="text-center pt-2">
-          <p className="text-lg text-muted-foreground font-korean">
-            "함께 패션의 미래를 만들어갑니다"
+        <div className="text-center pt-2 space-y-1">
+          <p className="text-xl font-bold font-korean bg-gradient-brand bg-clip-text text-transparent">
+            쇼미룩과 함께 패션 테크의 미래를 여세요
           </p>
-          <p className="text-primary font-bold mt-1">contact@showmelook.com</p>
+          <p className="text-sm text-muted-foreground">Let's Build Together</p>
+          <div className="flex justify-center gap-6 text-xs text-muted-foreground pt-2">
+            <span>contact@showmelook.com</span>
+            <span className="opacity-50">|</span>
+            <span>www.showmelook.com</span>
+          </div>
         </div>
       </div>
     ),
