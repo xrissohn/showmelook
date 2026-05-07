@@ -11,16 +11,26 @@ interface Point {
   color: string;
 }
 
-const COLORS = [
-  "#FF0080",
-  "#7928CA",
-  "#0070F3",
-  "#00DFD8",
-  "#FF4D4D",
-  "#FFD700",
-];
+// Brand palette tokens — resolved from CSS variables at runtime
+const BRAND_TOKENS = ["--coral", "--magenta", "--purple", "--sky", "--accent", "--primary"];
 
-// Detect device tier from hardware hints. Returns budget multipliers.
+const readBrandColors = (): string[] => {
+  if (typeof window === "undefined") return ["#FF4D80", "#7928CA", "#0070F3"];
+  const styles = getComputedStyle(document.documentElement);
+  const colors = BRAND_TOKENS.map((t) => styles.getPropertyValue(t).trim())
+    .filter(Boolean)
+    .map((hsl) => `hsl(${hsl})`);
+  return colors.length ? colors : ["#FF4D80", "#7928CA", "#0070F3"];
+};
+
+const isDarkMode = (): boolean => {
+  if (typeof document === "undefined") return false;
+  return (
+    document.documentElement.classList.contains("dark") ||
+    document.documentElement.getAttribute("data-theme") === "dark"
+  );
+};
+
 const detectTier = (): "low" | "mid" | "high" => {
   if (typeof navigator === "undefined") return "high";
   const cores = navigator.hardwareConcurrency || 4;
@@ -41,6 +51,8 @@ const detectTier = (): "low" | "mid" | "high" => {
 export const LiquidCursor = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Point[]>([]);
+  const colorsRef = useRef<string[]>(readBrandColors());
+  const darkRef = useRef<boolean>(isDarkMode());
   const mouseRef = useRef({
     x: 0,
     y: 0,
@@ -56,11 +68,28 @@ export const LiquidCursor = () => {
   });
   const rafRef = useRef<number | null>(null);
   const [tier] = useState(detectTier);
+  const [dark, setDark] = useState(isDarkMode);
 
-  // Disable entirely for users who prefer reduced motion
   const disabled =
     typeof window !== "undefined" &&
     window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  // Watch for theme changes (class/attribute mutations on <html>)
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const update = () => {
+      const next = isDarkMode();
+      darkRef.current = next;
+      setDark(next);
+      colorsRef.current = readBrandColors();
+    };
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class", "data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     if (disabled) return;
@@ -69,35 +98,12 @@ export const LiquidCursor = () => {
     const ctx = canvas.getContext("2d", { alpha: true });
     if (!ctx) return;
 
-    // Tier-based budgets
     const cfg = {
-      low: {
-        maxPoints: 80,
-        emitProb: 0.45,
-        maxStepsPerMove: 8,
-        targetFps: 30,
-        blurDeviation: 6,
-        radiusMul: 0.85,
-      },
-      mid: {
-        maxPoints: 180,
-        emitProb: 0.6,
-        maxStepsPerMove: 16,
-        targetFps: 45,
-        blurDeviation: 8,
-        radiusMul: 0.95,
-      },
-      high: {
-        maxPoints: 320,
-        emitProb: 0.7,
-        maxStepsPerMove: 30,
-        targetFps: 60,
-        blurDeviation: 10,
-        radiusMul: 1,
-      },
+      low: { maxPoints: 80, emitProb: 0.45, maxStepsPerMove: 8, targetFps: 30, radiusMul: 0.85 },
+      mid: { maxPoints: 180, emitProb: 0.6, maxStepsPerMove: 16, targetFps: 45, radiusMul: 0.95 },
+      high: { maxPoints: 320, emitProb: 0.7, maxStepsPerMove: 30, targetFps: 60, radiusMul: 1 },
     }[tier];
 
-    // Adaptive quality (degrades when frames go slow)
     const adaptive = {
       pointBudget: cfg.maxPoints,
       emitProb: cfg.emitProb,
@@ -135,7 +141,6 @@ export const LiquidCursor = () => {
     };
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
-    // Pause when tab hidden to save CPU/battery
     let paused = false;
     const handleVisibility = () => {
       paused = document.hidden;
@@ -146,7 +151,8 @@ export const LiquidCursor = () => {
       if (pointsRef.current.length >= adaptive.pointBudget) return;
       const angle = Math.random() * Math.PI * 2;
       const speed = Math.random() * 1.5 + 0.3;
-      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const palette = colorsRef.current;
+      const color = palette[Math.floor(Math.random() * palette.length)];
       pointsRef.current.push({
         x,
         y,
@@ -171,10 +177,9 @@ export const LiquidCursor = () => {
         return;
       }
       const elapsed = now - lastFrameTs;
-      if (elapsed < minFrameInterval) return; // Throttle to target FPS
+      if (elapsed < minFrameInterval) return;
       lastFrameTs = now - (elapsed % minFrameInterval);
 
-      // Adaptive quality: monitor frame timing
       if (elapsed > minFrameInterval * 1.8) {
         adaptive.slowFrames++;
         adaptive.fastFrames = 0;
@@ -226,6 +231,11 @@ export const LiquidCursor = () => {
         }
       }
 
+      // Dark mode uses lighter blending and higher alpha; light mode is more subtle
+      const isDark = darkRef.current;
+      const alphaMul = isDark ? 0.75 : 0.5;
+      ctx.globalCompositeOperation = isDark ? "lighter" : "source-over";
+
       const pts = pointsRef.current;
       for (let i = pts.length - 1; i >= 0; i--) {
         const p = pts[i];
@@ -242,10 +252,11 @@ export const LiquidCursor = () => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
-        ctx.globalAlpha = p.life * 0.6;
+        ctx.globalAlpha = p.life * alphaMul;
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
     };
 
     rafRef.current = requestAnimationFrame(animate);
@@ -260,14 +271,16 @@ export const LiquidCursor = () => {
 
   if (disabled) return null;
 
-  // Drop the gooey filter on low tier (SVG filters are expensive to composite)
-  const filterStyle =
-    tier === "low" ? undefined : { filter: "url(#liquid-cursor-filter)" as const };
-  const blurDev = tier === "low" ? 0 : tier === "mid" ? 8 : 10;
+  // Filter strength: dark mode → stronger goo + more saturation; light → softer
+  // Low tier still skips the SVG filter for performance.
+  const useFilter = tier !== "low";
+  const blurDev = tier === "mid" ? (dark ? 9 : 7) : dark ? 12 : 9;
+  const alphaContrast = dark ? "20 -8" : "14 -5"; // stronger gooey threshold in dark
+  const filterStyle = useFilter ? { filter: "url(#liquid-cursor-filter)" as const } : undefined;
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
-      {tier !== "low" && (
+      {useFilter && (
         <svg className="hidden">
           <defs>
             <filter id="liquid-cursor-filter">
@@ -275,7 +288,7 @@ export const LiquidCursor = () => {
               <feColorMatrix
                 in="blur"
                 mode="matrix"
-                values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+                values={`1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 ${alphaContrast}`}
                 result="goo"
               />
               <feComposite in="SourceGraphic" in2="goo" operator="atop" />
