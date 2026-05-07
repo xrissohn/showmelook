@@ -1546,13 +1546,14 @@ const Pitch = () => {
     return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 0)) : 0;
   });
 
-  // 용지 크기 옵션 (px @ 96dpi)
+  // 용지 크기 옵션. pageCss 는 @page에 사용할 물리 단위(mm/in) — 인쇄 선명도 핵심.
+  // w/h 는 화면/스케일 계산용 px(@96dpi).
   const PAPER_SIZES = {
-    'slide-16-9': { label: '16:9 슬라이드 (1600×900)', w: 1600, h: 900 },
-    'a4-landscape': { label: 'A4 가로', w: 1123, h: 794 },
-    'a4-portrait': { label: 'A4 세로', w: 794, h: 1123 },
-    'letter-landscape': { label: 'Letter 가로', w: 1056, h: 816 },
-    'letter-portrait': { label: 'Letter 세로', w: 816, h: 1056 },
+    'slide-16-9':       { label: '16:9 슬라이드 (1600×900)', w: 1600, h: 900,  pageCss: '1600px 900px' },
+    'a4-landscape':     { label: 'A4 가로',                    w: 1123, h: 794,  pageCss: '297mm 210mm' },
+    'a4-portrait':      { label: 'A4 세로',                    w: 794,  h: 1123, pageCss: '210mm 297mm' },
+    'letter-landscape': { label: 'Letter 가로',                w: 1056, h: 816,  pageCss: '11in 8.5in' },
+    'letter-portrait':  { label: 'Letter 세로',                w: 816,  h: 1056, pageCss: '8.5in 11in' },
   } as const;
   type PaperKey = keyof typeof PAPER_SIZES;
   const [paperSize, setPaperSize] = useState<PaperKey>(() => {
@@ -1583,10 +1584,13 @@ const Pitch = () => {
       el.id = id;
       document.head.appendChild(el);
     }
-    const { w, h } = paper;
+    const { w, h, pageCss } = paper;
+    // @page 는 물리 단위(mm/in)로 지정 → 프린터/PDF 엔진이 정확한 종이 크기로 벡터 렌더.
+    // 슬라이드 박스는 96dpi 기준 px(=물리 단위와 1:1 매칭)로 그려두면 추가 스케일 없이 정확히 채워진다.
     el.textContent = `
       @media print {
-        @page { size: ${w}px ${h}px; margin: 0; }
+        @page { size: ${pageCss}; margin: 0; }
+        html, body { margin: 0 !important; padding: 0 !important; }
         .pitch-print-only { width: ${w}px !important; }
         .pitch-print-page {
           width: ${w}px !important;
@@ -1594,6 +1598,17 @@ const Pitch = () => {
           min-height: ${h}px !important;
           max-height: ${h}px !important;
         }
+        /* 선명도 보강: 텍스트 안티앨리어싱 + 이미지/SVG 고품질 렌더 */
+        .pitch-print-only {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: geometricPrecision;
+        }
+        .pitch-print-only img {
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
+        }
+        .pitch-print-only svg { shape-rendering: geometricPrecision; }
       }
     `;
   }, [paperSize, paper]);
