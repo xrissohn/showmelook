@@ -36,30 +36,30 @@ import look4Img from '@/assets/pitch-screens/look-4-date.jpg';
 // 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만
 const bepChartData = [
   { users: 0, revenue: 0, cost: 215, profit: -215, staff: 1 },
-  { users: 2000, revenue: 63, cost: 235, profit: -172, staff: 1 },
   { users: 5000, revenue: 158, cost: 265, profit: -107, staff: 1 },
-  { users: 8000, revenue: 252, cost: 295, profit: -43, staff: 1 },
   { users: 10000, revenue: 315, cost: 315, profit: 0, staff: 1 }, // BEP (1인)
-  { users: 15000, revenue: 473, cost: 965, profit: -492, staff: 2 },
   { users: 20000, revenue: 630, cost: 1015, profit: -385, staff: 2 },
-  { users: 30000, revenue: 945, cost: 1115, profit: -170, staff: 2 },
   { users: 38000, revenue: 1197, cost: 1195, profit: 2, staff: 2 }, // BEP (2인)
+  { users: 50000, revenue: 1575, cost: 1315, profit: 260, staff: 2 },
+  { users: 75000, revenue: 2363, cost: 2165, profit: 198, staff: 3 },
+  { users: 100000, revenue: 3150, cost: 2415, profit: 735, staff: 3 }, // 목표: MAU 10만
 ];
 
-// 12개월 현금흐름 데이터 (ARPU ₩315, 변동비 ~₩100/명, 10,000명 돌파 시 1명 채용)
+// 12개월 현금흐름 데이터 (ARPU ₩315, 변동비 ~₩100/명)
+// 채용 시점: M5(10K 돌파→2인), M8(38K 돌파→3인)
 const cashflowChartData = [
-  { month: 'M1', users: 100, staff: 1, revenue: 3, fixedCost: 215, variableCost: 1, totalCost: 216, profit: -213, cumulative: -213 },
-  { month: 'M2', users: 300, staff: 1, revenue: 9, fixedCost: 215, variableCost: 3, totalCost: 218, profit: -209, cumulative: -422 },
-  { month: 'M3', users: 600, staff: 1, revenue: 19, fixedCost: 215, variableCost: 6, totalCost: 221, profit: -202, cumulative: -624 },
-  { month: 'M4', users: 1000, staff: 1, revenue: 32, fixedCost: 215, variableCost: 10, totalCost: 225, profit: -193, cumulative: -817 },
-  { month: 'M5', users: 1800, staff: 1, revenue: 57, fixedCost: 215, variableCost: 18, totalCost: 233, profit: -176, cumulative: -993 },
-  { month: 'M6', users: 3000, staff: 1, revenue: 95, fixedCost: 215, variableCost: 30, totalCost: 245, profit: -150, cumulative: -1143 },
-  { month: 'M7', users: 5000, staff: 1, revenue: 158, fixedCost: 215, variableCost: 50, totalCost: 265, profit: -107, cumulative: -1250 },
-  { month: 'M8', users: 7500, staff: 1, revenue: 236, fixedCost: 215, variableCost: 75, totalCost: 290, profit: -54, cumulative: -1304 },
-  { month: 'M9', users: 10000, staff: 1, revenue: 315, fixedCost: 215, variableCost: 100, totalCost: 315, profit: 0, cumulative: -1304 },
-  { month: 'M10', users: 13000, staff: 2, revenue: 410, fixedCost: 815, variableCost: 130, totalCost: 945, profit: -535, cumulative: -1839 },
-  { month: 'M11', users: 16000, staff: 2, revenue: 504, fixedCost: 815, variableCost: 160, totalCost: 975, profit: -471, cumulative: -2310 },
-  { month: 'M12', users: 20000, staff: 2, revenue: 630, fixedCost: 815, variableCost: 200, totalCost: 1015, profit: -385, cumulative: -2695 },
+  { month: 'M1', users: 500, staff: 1, revenue: 16, fixedCost: 215, variableCost: 5, totalCost: 220, profit: -204, cumulative: -204 },
+  { month: 'M2', users: 1500, staff: 1, revenue: 47, fixedCost: 215, variableCost: 15, totalCost: 230, profit: -183, cumulative: -387 },
+  { month: 'M3', users: 4000, staff: 1, revenue: 126, fixedCost: 215, variableCost: 40, totalCost: 255, profit: -129, cumulative: -516 },
+  { month: 'M4', users: 8000, staff: 1, revenue: 252, fixedCost: 215, variableCost: 80, totalCost: 295, profit: -43, cumulative: -559 },
+  { month: 'M5', users: 15000, staff: 2, revenue: 473, fixedCost: 815, variableCost: 150, totalCost: 965, profit: -492, cumulative: -1051 },
+  { month: 'M6', users: 25000, staff: 2, revenue: 788, fixedCost: 815, variableCost: 250, totalCost: 1065, profit: -277, cumulative: -1328 },
+  { month: 'M7', users: 38000, staff: 2, revenue: 1197, fixedCost: 815, variableCost: 380, totalCost: 1195, profit: 2, cumulative: -1326 },
+  { month: 'M8', users: 50000, staff: 3, revenue: 1575, fixedCost: 1415, variableCost: 500, totalCost: 1915, profit: -340, cumulative: -1666 },
+  { month: 'M9', users: 65000, staff: 3, revenue: 2048, fixedCost: 1415, variableCost: 650, totalCost: 2065, profit: -17, cumulative: -1683 },
+  { month: 'M10', users: 80000, staff: 3, revenue: 2520, fixedCost: 1415, variableCost: 800, totalCost: 2215, profit: 305, cumulative: -1378 },
+  { month: 'M11', users: 90000, staff: 3, revenue: 2835, fixedCost: 1415, variableCost: 900, totalCost: 2315, profit: 520, cumulative: -858 },
+  { month: 'M12', users: 100000, staff: 3, revenue: 3150, fixedCost: 1415, variableCost: 1000, totalCost: 2415, profit: 735, cumulative: -123 },
 ];
 
 // 룩 4종 선택 시 상품 카드가 동적으로 갱신되는 데모 UI
