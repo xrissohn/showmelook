@@ -1562,6 +1562,31 @@ const Pitch = () => {
   });
   const paper = PAPER_SIZES[paperSize];
 
+  // PDF 출력 품질 옵션 (DPI 힌트 + 이미지 렌더링 모드)
+  const DPI_OPTIONS = {
+    '150': { label: '표준 (150 DPI)', dpi: 150 },
+    '200': { label: '고품질 (200 DPI)', dpi: 200 },
+    '300': { label: '인쇄용 (300 DPI)', dpi: 300 },
+    '600': { label: '최고 (600 DPI)', dpi: 600 },
+  } as const;
+  type DpiKey = keyof typeof DPI_OPTIONS;
+  const IMG_RENDER_OPTIONS = {
+    'high-quality': { label: '부드럽게 (사진 권장)', css: 'high-quality' },
+    'auto':         { label: '자동',                  css: 'auto' },
+    'crisp-edges':  { label: '선명하게 (그래픽/UI)',  css: 'crisp-edges' },
+    'pixelated':    { label: '픽셀 보존',             css: 'pixelated' },
+  } as const;
+  type ImgRenderKey = keyof typeof IMG_RENDER_OPTIONS;
+
+  const [pdfDpi, setPdfDpi] = useState<DpiKey>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pdf-dpi') : null;
+    return (v && (v in DPI_OPTIONS) ? v : '300') as DpiKey;
+  });
+  const [imgRender, setImgRender] = useState<ImgRenderKey>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-img-render') : null;
+    return (v && (v in IMG_RENDER_OPTIONS) ? v : 'high-quality') as ImgRenderKey;
+  });
+
   useEffect(() => {
     const root = document.querySelector<HTMLElement>('.pitch-print-only');
     if (root) {
@@ -1576,7 +1601,11 @@ const Pitch = () => {
 
   // 용지 크기를 @page + 슬라이드 박스에 동적으로 주입
   useEffect(() => {
-    try { window.localStorage.setItem('pitch-paper-size', paperSize); } catch {}
+    try {
+      window.localStorage.setItem('pitch-paper-size', paperSize);
+      window.localStorage.setItem('pitch-pdf-dpi', pdfDpi);
+      window.localStorage.setItem('pitch-img-render', imgRender);
+    } catch {}
     const id = 'pitch-page-size-style';
     let el = document.getElementById(id) as HTMLStyleElement | null;
     if (!el) {
@@ -1585,8 +1614,10 @@ const Pitch = () => {
       document.head.appendChild(el);
     }
     const { w, h, pageCss } = paper;
+    const imgCss = IMG_RENDER_OPTIONS[imgRender].css;
+    const dpi = DPI_OPTIONS[pdfDpi].dpi;
     // @page 는 물리 단위(mm/in)로 지정 → 프린터/PDF 엔진이 정확한 종이 크기로 벡터 렌더.
-    // 슬라이드 박스는 96dpi 기준 px(=물리 단위와 1:1 매칭)로 그려두면 추가 스케일 없이 정확히 채워진다.
+    // image-resolution 은 일부 엔진(Chromium 인쇄 파이프)에서 비트맵 다운샘플 방지에 도움이 된다.
     el.textContent = `
       @media print {
         @page { size: ${pageCss}; margin: 0; }
@@ -1598,20 +1629,21 @@ const Pitch = () => {
           min-height: ${h}px !important;
           max-height: ${h}px !important;
         }
-        /* 선명도 보강: 텍스트 안티앨리어싱 + 이미지/SVG 고품질 렌더 */
         .pitch-print-only {
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
           text-rendering: geometricPrecision;
+          image-resolution: ${dpi}dpi;
         }
         .pitch-print-only img {
-          image-rendering: -webkit-optimize-contrast;
-          image-rendering: crisp-edges;
+          image-rendering: ${imgCss};
+          image-resolution: ${dpi}dpi from-image;
+          ${imgCss === 'crisp-edges' ? '-ms-interpolation-mode: nearest-neighbor;' : ''}
         }
         .pitch-print-only svg { shape-rendering: geometricPrecision; }
       }
     `;
-  }, [paperSize, paper]);
+  }, [paperSize, paper, pdfDpi, imgRender]);
 
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
@@ -1994,8 +2026,36 @@ const Pitch = () => {
               </select>
               <p className="text-[10px] text-muted-foreground">선택한 용지 비율로 모든 슬라이드가 자동 스케일됩니다.</p>
             </div>
+            <div className="space-y-2">
+              <label htmlFor="pitch-pdf-dpi" className="text-xs text-muted-foreground block">PDF 출력 DPI</label>
+              <select
+                id="pitch-pdf-dpi"
+                value={pdfDpi}
+                onChange={(e) => setPdfDpi(e.target.value as DpiKey)}
+                className="w-full text-xs rounded border bg-background px-2 py-1.5"
+              >
+                {Object.entries(DPI_OPTIONS).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground">브라우저 인쇄 대화상자에서 동일한 DPI를 선택하면 결과가 가장 선명합니다.</p>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="pitch-img-render" className="text-xs text-muted-foreground block">이미지 압축/렌더 모드</label>
+              <select
+                id="pitch-img-render"
+                value={imgRender}
+                onChange={(e) => setImgRender(e.target.value as ImgRenderKey)}
+                className="w-full text-xs rounded border bg-background px-2 py-1.5"
+              >
+                {Object.entries(IMG_RENDER_OPTIONS).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground">사진은 "부드럽게", 로고/UI 캡처는 "선명하게"를 권장합니다.</p>
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              현재 {paper.w}×{paper.h}px 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
+              현재 {paper.w}×{paper.h}px · {DPI_OPTIONS[pdfDpi].dpi}dpi 기준입니다. 인쇄 대화상자에서 "배경 그래픽" 켜기 + 동일 DPI 선택을 권장합니다.
             </p>
           </div>
         )}
