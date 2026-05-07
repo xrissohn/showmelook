@@ -683,12 +683,20 @@ img {
     break-after: avoid-page !important;
   }
 
-  /* 슬라이드 내용 영역: 안전 여백 (시안 기준 약 64px) */
+  /* 슬라이드 내용 영역: 안전 여백 — CSS 변수로 슬라이드별 미세 조정 가능
+     기본값: 64px(상하) × 80px(좌우)
+     - 전체 일괄: --pitch-pad-y, --pitch-pad-x
+     - 개별: --pitch-pad-top / --pitch-pad-right / --pitch-pad-bottom / --pitch-pad-left
+     - 사전 정의 변형 클래스: .pitch-pad-tight | -default | -roomy | -hero | -none */
   .pitch-print-inner {
     width: 100%;
     height: 100%;
     max-width: none;
-    padding: 64px 80px;
+    padding:
+      var(--pitch-pad-top, var(--pitch-pad-y, 64px))
+      var(--pitch-pad-right, var(--pitch-pad-x, 80px))
+      var(--pitch-pad-bottom, var(--pitch-pad-y, 64px))
+      var(--pitch-pad-left, var(--pitch-pad-x, 80px));
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -698,6 +706,12 @@ img {
     page-break-inside: avoid !important;
     break-inside: avoid-page !important;
   }
+
+  .pitch-pad-tight   { --pitch-pad-y: 40px; --pitch-pad-x: 56px; }
+  .pitch-pad-default { --pitch-pad-y: 64px; --pitch-pad-x: 80px; }
+  .pitch-pad-roomy   { --pitch-pad-y: 88px; --pitch-pad-x: 112px; }
+  .pitch-pad-hero    { --pitch-pad-y: 32px; --pitch-pad-x: 48px; }
+  .pitch-pad-none    { --pitch-pad-y: 0px;  --pitch-pad-x: 0px;  }
 
   /* 슬라이드 내부 자식 요소들도 쪼개지지 않도록 */
   .pitch-print-page *,
