@@ -285,7 +285,9 @@ const slides = [
             </div>
             <div>
               <div className="font-bold text-foreground mb-0.5">STEP 3 · 얼굴 사진</div>
-              <div className="text-muted-foreground leading-snug">정면 셀카 1장 → 모델 프로필로 가상 피팅에 합성</div>
+              <div className="text-muted-foreground leading-snug">
+                정면 셀카 1장 (어깨 위·밝은 조명·마스크/선글라스 X·JPG·PNG 10MB↓) → 업로드 즉시 미리보기 → 모델 프로필 저장 후 모든 룩에 자동 얼굴 합성
+              </div>
             </div>
           </div>
         </div>
