@@ -186,7 +186,8 @@ const slides = [
 
               <h1 className="text-3xl md:text-5xl font-bold font-korean leading-[1.2] text-foreground mb-5">
                 나만의 스타일을<br />
-                <span className="bg-gradient-brand bg-clip-text text-transparent">AI</span>가 완성합니다
+                <span className="font-display italic bg-gradient-brand bg-clip-text text-transparent px-1">AI</span>
+                <span>가 완성합니다</span>
               </h1>
 
               <p className="text-sm md:text-base text-muted-foreground font-korean leading-relaxed max-w-md mb-8">
