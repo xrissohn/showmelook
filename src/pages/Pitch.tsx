@@ -1638,8 +1638,8 @@ const Pitch = () => {
       }));
 
       // 4) 각 슬라이드 콘텐츠가 1600×900 페이지 안에 정확히 들어가도록
-      //    auto-fit scale을 적용한다. 여백은 0이며, 콘텐츠가 더 크면
-      //    transform: scale(s)로 비율 유지하며 축소한다.
+      //    슬라이드별로 독립된 auto-fit scale을 계산해 적용한다.
+      //    (모든 슬라이드 동일 스케일이 아니라 콘텐츠별 최적 스케일)
       try {
         const PAGE_W = 1600;
         const PAGE_H = 900;
@@ -1649,33 +1649,48 @@ const Pitch = () => {
           const fit = page.querySelector<HTMLElement>('.pitch-print-fit');
           if (!inner || !fit) continue;
 
-          // 측정 전: 스케일 초기화
+          // 측정 전: 이전 스케일/사이즈 초기화
           fit.style.transform = 'none';
           fit.style.width = '';
           fit.style.height = '';
+          fit.style.maxWidth = '';
+          fit.style.maxHeight = '';
 
-          await new Promise((r) => requestAnimationFrame(() => r(null)));
-
-          // inner 의 실제 가용 영역 (padY/padX 가 0이면 1600x900)
+          // 가용 영역 (inner padding 반영)
           const availW = inner.clientWidth || PAGE_W;
           const availH = inner.clientHeight || PAGE_H;
 
-          // 자연 콘텐츠 크기 측정
-          const naturalW = fit.scrollWidth;
-          const naturalH = fit.scrollHeight;
+          // 자연 크기를 측정하기 위해 잠시 가용 폭으로만 제한하고 높이는 풀어둔다.
+          // (flex 100%/100% 상태에서는 scrollWidth/Height가 자연 크기를 반영하지 못함)
+          const prevDisplay = fit.style.display;
+          fit.style.display = 'block';
+          fit.style.width = `${availW}px`;
+          fit.style.height = 'auto';
+          fit.style.maxWidth = 'none';
+          fit.style.maxHeight = 'none';
 
-          if (naturalW <= 0 || naturalH <= 0) continue;
+          await new Promise((r) => requestAnimationFrame(() => r(null)));
 
-          const scale = Math.min(1, availW / naturalW, availH / naturalH);
+          const naturalW = Math.max(fit.scrollWidth, fit.offsetWidth, availW);
+          const naturalH = Math.max(fit.scrollHeight, fit.offsetHeight);
 
-          if (scale < 1) {
-            // 콘텐츠가 더 크면 자연 크기로 두고 scale로 줄여 비율 유지
-            fit.style.width = `${naturalW}px`;
-            fit.style.height = `${naturalH}px`;
-            fit.style.transform = `scale(${scale})`;
-            fit.style.transformOrigin = 'center center';
-            // 스케일 후 시각 박스가 가용 영역에 맞도록 inner는 flex center
+          // 슬라이드별 독립 스케일 계산
+          let scale = 1;
+          if (naturalW > 0 && naturalH > 0) {
+            scale = Math.min(availW / naturalW, availH / naturalH);
+            // 콘텐츠가 가용 영역보다 작아도 1을 넘기지 않음 (확대는 하지 않음)
+            scale = Math.min(1, scale);
           }
+
+          // 적용: 자연 크기 박스 + 중앙 정렬 + 슬라이드별 scale
+          fit.style.display = prevDisplay || '';
+          fit.style.width = `${naturalW}px`;
+          fit.style.height = `${naturalH}px`;
+          fit.style.transformOrigin = 'center center';
+          fit.style.transform = scale < 1 ? `scale(${scale})` : 'none';
+          // 디버깅용 데이터 속성
+          page.setAttribute('data-fit-scale', scale.toFixed(4));
+
           await new Promise((r) => requestAnimationFrame(() => r(null)));
         }
       } catch (e) {
