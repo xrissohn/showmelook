@@ -2026,8 +2026,36 @@ const Pitch = () => {
               </select>
               <p className="text-[10px] text-muted-foreground">선택한 용지 비율로 모든 슬라이드가 자동 스케일됩니다.</p>
             </div>
+            <div className="space-y-2">
+              <label htmlFor="pitch-pdf-dpi" className="text-xs text-muted-foreground block">PDF 출력 DPI</label>
+              <select
+                id="pitch-pdf-dpi"
+                value={pdfDpi}
+                onChange={(e) => setPdfDpi(e.target.value as DpiKey)}
+                className="w-full text-xs rounded border bg-background px-2 py-1.5"
+              >
+                {Object.entries(DPI_OPTIONS).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground">브라우저 인쇄 대화상자에서 동일한 DPI를 선택하면 결과가 가장 선명합니다.</p>
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="pitch-img-render" className="text-xs text-muted-foreground block">이미지 압축/렌더 모드</label>
+              <select
+                id="pitch-img-render"
+                value={imgRender}
+                onChange={(e) => setImgRender(e.target.value as ImgRenderKey)}
+                className="w-full text-xs rounded border bg-background px-2 py-1.5"
+              >
+                {Object.entries(IMG_RENDER_OPTIONS).map(([k, v]) => (
+                  <option key={k} value={k}>{v.label}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-muted-foreground">사진은 "부드럽게", 로고/UI 캡처는 "선명하게"를 권장합니다.</p>
+            </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              현재 {paper.w}×{paper.h}px 페이지 기준입니다. 값이 PDF 내보내기에 즉시 반영되며, 자동 조정 로직이 더 타이트하게 줄일 수도 있습니다.
+              현재 {paper.w}×{paper.h}px · {DPI_OPTIONS[pdfDpi].dpi}dpi 기준입니다. 인쇄 대화상자에서 "배경 그래픽" 켜기 + 동일 DPI 선택을 권장합니다.
             </p>
           </div>
         )}
