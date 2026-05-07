@@ -1,50 +1,39 @@
-## 문제
+# 피치덱 화면 캡처 → 하이브리드 PPTX 생성
 
-새 프롬프트로 "추천받기"를 누르면 AI 스타일 생성 단계에서 **이전에 생성된 룩 이미지가 결과 영역에 잠깐 다시 표시**되는 현상.
+## 접근
 
-## 원인
+`Pitch.tsx`는 이미 `id="pitch-slide-capture"`라는 슬라이드 캡처 컨테이너와 슬라이드 인덱스 네비게이션을 가지고 있어, 각 슬라이드를 동일한 레이아웃으로 1장씩 렌더링합니다. 이를 헤드리스 브라우저로 순회 캡처해서 PPTX에 풀블리드 이미지로 삽입하면 화면과 100% 일치하는 결과를 얻을 수 있습니다.
 
-`StyleGenerator.tsx`의 결과 렌더 조건은:
-```
-{isGenerating/Searching ? <로딩> : generatedImage ? <이전 이미지> : <빈 상태>}
-```
+## 단계
 
-세 곳의 생성 시작 핸들러 모두 이전 결과 상태(`generatedImage`, `generatedLookId`, `generatedTagPositions`, `generatedLookIsPublic`)를 **초기화하지 않은 채** 새 작업을 시작합니다. 따라서 로딩 게이트가 false로 잠깐 떨어지는 구간(예: 추천만 완료되고 합성은 시작 전, 또는 폴백 분기)에서 **직전 생성된 룩이 다시 노출**됩니다.
+1. **캡처 친화 모드 추가 (소규모 UI 보강)**
+   - `/pitch?capture=1&slide=N` 쿼리로 진입 시 네비게이션/푸터/진행바 숨김, 흰 배경 letterbox 제거
+   - 슬라이드 컨테이너에 명시적 폭(예: 1600px) + 폰트 로드 완료 신호용 `data-ready="true"` 속성 부여
+   - 기존 `/pitch` UX는 영향 없음
 
-## 해결 방안
+2. **헤드리스 캡처 스크립트 (`/tmp/capture_pitch.mjs`)**
+   - Playwright(또는 Puppeteer) 사용, 뷰포트 1920x1080 / DPR 2
+   - 슬라이드 수만큼 루프: `goto('/pitch?capture=1&slide=N')` → `data-ready` 대기 → 폰트/이미지 로드 대기 → `#pitch-slide-capture` 요소 스크린샷
+   - 결과: `/tmp/pitch_slides/slide-01.png` ~ `slide-19.png` (약 3200x1800)
+   - 배포된 `https://showmelook.com/pitch` 사용 (최신 변경사항 반영 확인 필요)
 
-세 함수의 **첫 줄(생성 시작 시점, validation 통과 직후)** 에서 이전 결과 상태를 모두 초기화합니다.
+3. **PPTX 빌드 스크립트 (`/tmp/build_pitch_v2.js`, pptxgenjs)**
+   - 16:9 LAYOUT_WIDE, 모든 슬라이드 배경 = 피치덱과 동일한 다크 네이비
+   - **이미지 슬라이드 (대부분)**: 캡처 PNG를 base64로 임베드, 슬라이드 가운데 풀블리드 배치 (비율 유지, letterbox 색상 일치)
+   - **편집 가능한 텍스트 슬라이드 (하이브리드)**:
+     - 슬라이드 1 (표지): 제목/태그라인/날짜를 텍스트 레이어로
+     - 마지막 투자 요청 슬라이드: 투자금액/런웨이/MAU 목표/연락처를 텍스트 박스로
+   - 결과: `/mnt/documents/ShowMeLook_Pitch_Deck_v2.pptx`
 
-### 수정 대상 파일
-- `src/pages/StyleGenerator.tsx`
+4. **QA**
+   - LibreOffice로 PDF 변환 → `pdftoppm`으로 슬라이드별 JPG 생성
+   - 모든 슬라이드 시각 검수: 잘림/흐림/누락/한글 폰트 깨짐 확인
+   - 문제가 있으면 캡처 폭/대기 시간/letterbox 색을 조정하고 재생성
 
-### 변경 내용
+## 결과물
+- `ShowMeLook_Pitch_Deck_v2.pptx` — 화면과 동일한 그래픽 + 핵심 슬라이드는 텍스트 편집 가능
 
-**1) `handleCustomStyleSearch` (line 4117 부근)**
-- `setIsCustomSearching(true)` 직후 다음 4줄 추가:
-  ```ts
-  setGeneratedImage(null);
-  setGeneratedLookId(null);
-  setGeneratedLookIsPublic(false);
-  setGeneratedTagPositions(null);
-  ```
-
-**2) `generateStyleWithRecommendation` (line 4285 부근)**
-- `setIsGenerating(true); setIsCustomSearching(true);` 직후 동일한 4줄 초기화 추가.
-
-**3) `generateStyle` (line 4657 부근)**
-- `setIsGenerating(true);` 직후 동일한 4줄 초기화 추가.
-
-**4) 타입 통일 (작은 정리)**
-- 기존 코드 5247, 6109줄에서 `setGeneratedImage('')` 로 빈 문자열을 쓰는 부분을 `setGeneratedImage(null)`로 변경 (타입은 `string | null`이며 truthy 체크와 일관되도록).
-
-## 영향 범위
-
-- 결과 영역의 렌더 게이트는 그대로 유지 (`isGenerating ? 로딩 : generatedImage ? 결과 : 빈상태`).
-- 이전 룩은 `myLooks` 배열과 갤러리에 그대로 보존됨 (DB/캐시 영향 없음).
-- 메모리상 표시 상태만 즉시 비우므로, 새 추천 진행 중에는 **로딩 → 빈 상태 → 새 결과** 순서로만 노출됨.
-- 다른 핸들러/하위 컴포넌트 로직 변경 없음. 안전한 4줄짜리 패치.
-
-## 위험 요소
-
-- StyleGenerator는 6,400줄+ 거대 파일이며 리팩토링 금지 대상이지만, 본 변경은 **3곳에 동일한 4줄 추가 + 2곳 빈 문자열 → null 치환**뿐이라 스코프가 매우 좁고 사이드 이펙트 위험이 낮음.
+## 주의사항
+- 한글 폰트는 캡처에 픽셀로 박히므로 PPTX에서 깨질 일이 없음
+- 텍스트 편집 가능한 2개 슬라이드는 시스템 한글 폰트(맑은 고딕/Apple SD Gothic) 사용
+- 기존 `ShowMeLook_Pitch_Deck.pptx`는 보존
