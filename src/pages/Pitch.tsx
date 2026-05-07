@@ -891,38 +891,38 @@ const slides = [
               <tbody>
                 <tr className="border-b border-border/50">
                   <td className="p-2 font-korean">어필리에이트</td>
-                   <td className="p-2 text-center">0.4</td>
-                   <td className="p-2 text-center">4</td>
+                   <td className="p-2 text-center">3.8</td>
                    <td className="p-2 text-center">18</td>
-                   <td className="p-2 text-center">36</td>
-                   <td className="p-2 text-center">72</td>
+                   <td className="p-2 text-center">50</td>
+                   <td className="p-2 text-center">100</td>
+                   <td className="p-2 text-center">200</td>
                  </tr>
                  <tr className="border-b border-border/50">
                    <td className="p-2 font-korean">B2B SaaS</td>
                    <td className="p-2 text-center">-</td>
-                   <td className="p-2 text-center">2</td>
-                   <td className="p-2 text-center">10</td>
-                   <td className="p-2 text-center">30</td>
-                   <td className="p-2 text-center">60</td>
+                   <td className="p-2 text-center">5</td>
+                   <td className="p-2 text-center">20</td>
+                   <td className="p-2 text-center">50</td>
+                   <td className="p-2 text-center">100</td>
                  </tr>
                  <tr className="bg-primary/10 font-bold">
                    <td className="p-2 font-korean">합계</td>
-                   <td className="p-2 text-center text-primary">0.4</td>
-                   <td className="p-2 text-center text-primary">6</td>
-                   <td className="p-2 text-center text-primary">28</td>
-                   <td className="p-2 text-center text-primary">66</td>
-                   <td className="p-2 text-center text-primary">132</td>
+                   <td className="p-2 text-center text-primary">3.8</td>
+                   <td className="p-2 text-center text-primary">23</td>
+                   <td className="p-2 text-center text-primary">70</td>
+                   <td className="p-2 text-center text-primary">150</td>
+                   <td className="p-2 text-center text-primary">300</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground font-korean">
-            <span>• Y1: 1만명</span>
-            <span>• Y2: 10만명</span>
-            <span>• Y3: 50만명</span>
-            <span>• Y4: 100만명</span>
-            <span>• Y5: 200만명</span>
-            <span className="text-primary/70">전환율 15%</span>
+            <span>• Y1: MAU 10만</span>
+            <span>• Y2: MAU 50만</span>
+            <span>• Y3: MAU 150만</span>
+            <span>• Y4: MAU 300만</span>
+            <span>• Y5: MAU 500만</span>
+            <span className="text-primary/70">전환율 15% · ARPU ₩315</span>
           </div>
         </div>
       </div>
