@@ -1444,7 +1444,7 @@ const slides = [
           <div className="inline-block px-10 py-5 bg-gradient-brand rounded-2xl text-white shadow-2xl">
             <div className="text-xs tracking-widest opacity-90 mb-1">SEED INVESTMENT TARGET</div>
             <div className="text-5xl md:text-6xl font-bold mb-1">1억원</div>
-            <div className="text-sm opacity-90 font-korean">린(Lean) 18개월 런웨이 · 1인 운영 + 외주 기반</div>
+            <div className="text-sm opacity-90 font-korean">린(Lean) 12개월 런웨이 · 1인 운영 + 외주 기반</div>
           </div>
         </div>
         <div className="grid md:grid-cols-2 gap-4">
