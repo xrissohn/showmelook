@@ -1207,7 +1207,7 @@ const slides = [
               <h4 className="font-bold text-sm font-korean">1인 고정비</h4>
             </div>
             <div className="text-xl font-bold text-primary">₩215만<span className="text-xs font-normal text-muted-foreground">/월</span></div>
-            <div className="text-xs text-muted-foreground font-korean mt-1">M1~M9 (10,000명 미만)</div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">M1~M4 (~10K MAU)</div>
           </div>
           {/* 2인 고정비 */}
           <div className="p-3 bg-card rounded-xl border border-border">
@@ -1216,16 +1216,16 @@ const slides = [
               <h4 className="font-bold text-sm font-korean">2인 고정비</h4>
             </div>
             <div className="text-xl font-bold text-coral">₩815만<span className="text-xs font-normal text-muted-foreground">/월</span></div>
-            <div className="text-xs text-muted-foreground font-korean mt-1">M10~M12 (10,000명 초과)</div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">M5~M7 (~38K MAU)</div>
           </div>
-          {/* 변동 비용 */}
+          {/* 3인 고정비 */}
           <div className="p-3 bg-card rounded-xl border border-border">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">📊</span>
-              <h4 className="font-bold text-sm font-korean">사용자당 비용</h4>
+              <span className="text-lg">👥</span>
+              <h4 className="font-bold text-sm font-korean">3인 고정비</h4>
             </div>
-            <div className="text-xl font-bold text-sky">~₩100<span className="text-xs font-normal text-muted-foreground">/명</span></div>
-            <div className="text-xs text-muted-foreground font-korean mt-1">가중 평균 변동비</div>
+            <div className="text-xl font-bold text-sky">₩1,415만<span className="text-xs font-normal text-muted-foreground">/월</span></div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">M8~M12 (10만 MAU)</div>
           </div>
           {/* 초기 자본금 */}
           <div className="p-3 bg-primary/10 rounded-xl border border-primary/30">
@@ -1233,14 +1233,14 @@ const slides = [
               <span className="text-lg">💰</span>
               <h4 className="font-bold text-sm font-korean">권장 자본금</h4>
             </div>
-            <div className="text-xl font-bold text-primary">₩1,500~2,000만</div>
-            <div className="text-xs text-muted-foreground font-korean mt-1">최대손실(₩2,695만) 대비</div>
+            <div className="text-xl font-bold text-primary">₩1억</div>
+            <div className="text-xs text-muted-foreground font-korean mt-1">최대손실(₩1,683만) + 마케팅</div>
           </div>
         </div>
 
         {/* ComposedChart */}
         <div className="p-4 bg-card rounded-lg border border-border">
-          <h4 className="font-bold mb-3 font-korean">📈 월별 순이익 & 누적 손익 (사용자 10,000명 달성시 채용)</h4>
+          <h4 className="font-bold mb-3 font-korean">📈 월별 순이익 & 누적 손익 (M5·M8 채용 → M12 MAU 10만)</h4>
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={cashflowChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
