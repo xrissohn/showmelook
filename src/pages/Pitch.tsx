@@ -1792,7 +1792,7 @@ const Pitch = () => {
       // 안전장치: 일정 시간 후 자동 정리
       setTimeout(cleanup, 2000);
     }
-  }, [isExporting]);
+  }, [isExporting, paper]);
 
   const goToSlide = useCallback((index: number) => {
     if (index >= 0 && index < slides.length) {
