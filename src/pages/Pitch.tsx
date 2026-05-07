@@ -257,39 +257,51 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 5,
-    title: '기술 스택',
-    subtitle: '시스템 아키텍처',
+    id: 6,
+    title: 'Technology',
+    subtitle: '검증된 기술력 + 커머스 연동 아키텍처',
     content: (
-      <div className="space-y-6">
-        <div className="grid md:grid-cols-4 gap-4">
+      <div className="space-y-5">
+        <div className="grid md:grid-cols-4 gap-3">
           {[
-            { layer: '프론트엔드', tech: 'React + Vite + Tailwind', color: 'bg-sky/20 border-sky/50' },
-            { layer: 'Edge Functions', tech: 'Deno (style-recommend, generate-style)', color: 'bg-coral/20 border-coral/50' },
-            { layer: 'AI Gateway', tech: 'Gemini 2.5/3 + GPT-5 Fallback', color: 'bg-purple/20 border-purple/50' },
-            { layer: 'Backend', tech: 'Supabase (PostgreSQL + Auth + Storage)', color: 'bg-primary/20 border-primary/50' }
+            { layer: 'Frontend', tech: 'React · Vite · Tailwind', icon: '🎨', color: 'sky' },
+            { layer: 'Edge Functions', tech: 'Deno · Supabase Edge', icon: '⚡', color: 'coral' },
+            { layer: 'AI Gateway', tech: 'Gemini 2.5/3 · Nano Banana · GPT-5', icon: '🧠', color: 'purple' },
+            { layer: 'Backend', tech: 'Supabase Postgres · Auth · Storage', icon: '🗄️', color: 'primary' },
           ].map((item, i) => (
-            <div key={i} className={cn('p-4 rounded-xl border text-center', item.color)}>
-              <div className="text-sm font-semibold mb-1 font-korean">{item.layer}</div>
-              <div className="text-xs text-muted-foreground">{item.tech}</div>
+            <div key={i} className={cn('p-4 rounded-xl border', `bg-${item.color}/5 border-${item.color}/30`)}>
+              <div className="text-2xl mb-2">{item.icon}</div>
+              <div className={cn('text-xs font-bold tracking-widest mb-1', `text-${item.color}`)}>{item.layer.toUpperCase()}</div>
+              <div className="text-xs text-muted-foreground font-korean">{item.tech}</div>
             </div>
           ))}
         </div>
-        <div className="grid md:grid-cols-2 gap-4 mt-6">
-          <div className="p-4 bg-card rounded-lg border border-border">
-            <h4 className="font-bold mb-2 font-korean">🧠 AI 추천 엔진 v8.0</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 font-korean">
-              <li>• 피드백 기반 자기 학습</li>
-              <li>• 크로스 모델 폴백 시스템</li>
+        <div className="grid md:grid-cols-3 gap-3">
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <h4 className="font-bold mb-2 font-korean text-sm">🧠 AI 추천 엔진 v8.0</h4>
+            <ul className="text-xs text-muted-foreground space-y-1 font-korean">
+              <li>• 상품 DNA 기반 RAG 추천</li>
+              <li>• 피드백 자기 학습 (실시간)</li>
+              <li>• 크로스 모델 폴백</li>
               <li>• 다단계 캐싱 (L1~L4)</li>
             </ul>
           </div>
-          <div className="p-4 bg-card rounded-lg border border-border">
-            <h4 className="font-bold mb-2 font-korean">💰 비용 최적화</h4>
-            <ul className="text-sm text-muted-foreground space-y-1 font-korean">
+          <div className="p-4 bg-card rounded-xl border border-border">
+            <h4 className="font-bold mb-2 font-korean text-sm">🔗 커머스 연동</h4>
+            <ul className="text-xs text-muted-foreground space-y-1 font-korean">
+              <li>• LinkPrice 딥링크 API</li>
+              <li>• Coupang Partners API</li>
+              <li>• Bright Data 실시간 수집</li>
+              <li>• Cafe24 위젯/SDK 임베딩</li>
+            </ul>
+          </div>
+          <div className="p-4 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
+            <h4 className="font-bold mb-2 font-korean text-sm">💰 비용 최적화</h4>
+            <ul className="text-xs text-muted-foreground space-y-1 font-korean">
               <li>• 이미지 생성: ~50원/장</li>
-              <li>• 캐시 히트율 목표: 70%</li>
-              <li>• 실효 비용: ~15원/장</li>
+              <li>• 캐시 히트율: 70% 목표</li>
+              <li>• 실효 비용: <strong className="text-primary">~15원/장</strong></li>
+              <li>• DNA 배치 생성 (오프라인)</li>
             </ul>
           </div>
         </div>
