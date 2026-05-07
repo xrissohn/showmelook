@@ -812,8 +812,8 @@ const slides = [
     background: 'bg-background'
   },
   {
-    id: 8,
-    title: '12개월 현금흐름',
+    id: 11,
+    title: '12-Month Cashflow',
     subtitle: '초기 자본금 & 손익분기 분석',
     content: (
       <div className="space-y-4">
