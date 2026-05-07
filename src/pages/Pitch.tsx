@@ -1718,8 +1718,15 @@ const Pitch = () => {
           fit.style.maxWidth = prevMaxW || 'none';
           fit.style.maxHeight = prevMaxH || 'none';
           fit.style.overflow = prevOverflow || 'visible';
+          // 자연 크기 박스가 inner보다 클 수 있으므로 절대중앙 배치 + scale
+          fit.style.position = 'absolute';
+          fit.style.left = '50%';
+          fit.style.top = '50%';
           fit.style.transformOrigin = 'center center';
-          fit.style.transform = scale < 1 ? `scale(${scale})` : 'none';
+          fit.style.transform = `translate(-50%, -50%)${scale < 1 ? ` scale(${scale})` : ''}`;
+          // inner 도 절대 위치 기준점이 되도록
+          inner.style.position = 'relative';
+          inner.style.overflow = 'hidden';
           page.setAttribute('data-fit-scale', scale.toFixed(4));
           page.setAttribute('data-fit-natural', `${Math.round(naturalW)}x${Math.round(naturalH)}`);
 
