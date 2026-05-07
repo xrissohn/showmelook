@@ -319,18 +319,42 @@ const slides = [
             </div>
           ))}
         </div>
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-korean">
-          <span className="font-bold text-primary">입력</span>
-          <span className="text-muted-foreground">프롬프트·프로필</span>
-          <span className="text-muted-foreground/50">→</span>
-          <span className="font-bold text-coral">AI 생성</span>
-          <span className="text-muted-foreground">풀바디 룩 4종 (1분 이내)</span>
-          <span className="text-muted-foreground/50">→</span>
-          <span className="font-bold text-sky">공유·검증</span>
-          <span className="text-muted-foreground">커뮤니티 갤러리</span>
-          <span className="text-muted-foreground/50">→</span>
-          <span className="font-bold text-purple">구매</span>
-          <span className="text-muted-foreground">어필리에이트 딥링크</span>
+        <div className="space-y-2">
+          <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs font-korean">
+            <span className="font-bold text-primary">입력</span>
+            <span className="text-muted-foreground">프롬프트·프로필</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="font-bold text-coral">AI 생성</span>
+            <span className="text-muted-foreground">풀바디 룩 4종 (1분 이내)</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="font-bold text-sky">공유·검증</span>
+            <span className="text-muted-foreground">커뮤니티 갤러리</span>
+            <span className="text-muted-foreground/50">→</span>
+            <span className="font-bold text-purple">구매</span>
+            <span className="text-muted-foreground">어필리에이트 딥링크</span>
+          </div>
+          <div className="rounded-lg border border-purple/30 bg-purple/5 px-4 py-3">
+            <div className="text-[10px] font-bold tracking-widest text-purple mb-2 font-korean">PURCHASE FLOW · 구매 전환 상세</div>
+            <div className="grid md:grid-cols-4 gap-2 text-[11px] font-korean">
+              <div>
+                <div className="font-bold text-foreground mb-0.5">1. 상품 태그 클릭</div>
+                <div className="text-muted-foreground leading-snug">룩 이미지 위 인터랙티브 핀 → 가격·브랜드·재고 카드 표시</div>
+              </div>
+              <div>
+                <div className="font-bold text-foreground mb-0.5">2. 딥링크 생성</div>
+                <div className="text-muted-foreground leading-snug">LinkPrice·Coupang Partners API로 어필리에이트 URL을 실시간 발급</div>
+              </div>
+              <div>
+                <div className="font-bold text-foreground mb-0.5">3. 머천트 이동</div>
+                <div className="text-muted-foreground leading-snug">모바일 인앱 브라우저 우회 + Coupang은 m.coupang.com으로 자동 리다이렉트</div>
+              </div>
+              <div>
+                <div className="font-bold text-foreground mb-0.5">4. 결제 완료 트래킹</div>
+                <div className="text-muted-foreground leading-snug">Postback으로 구매 메타데이터 수집 → 등급 자동 승급 + 추천 학습</div>
+              </div>
+            </div>
+            <div className="mt-2 text-[10px] text-muted-foreground font-korean">평균 수수료 2.1~4.2% · 구매 데이터는 다음 추천 품질을 끌어올리는 피드백 루프로 환원</div>
+          </div>
         </div>
       </div>
     ),
