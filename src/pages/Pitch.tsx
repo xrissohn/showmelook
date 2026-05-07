@@ -16,6 +16,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
+import screenLanding from '@/assets/pitch-screens/landing.png';
+import screenStyle from '@/assets/pitch-screens/style-generator.png';
+import screenCommunity from '@/assets/pitch-screens/community.png';
+import screenAdmin from '@/assets/pitch-screens/admin.png';
+import screenPricing from '@/assets/pitch-screens/pricing.png';
+import screenMypage from '@/assets/pitch-screens/mypage.png';
 
 // BEP 차트 데이터 (구매 기반 등급제: ARPU ₩315, 변동비 ~₩100/명)
 // 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만
