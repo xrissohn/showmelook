@@ -265,43 +265,73 @@ const slides = [
   {
     id: 51,
     title: 'Product Tour · 사용자 화면',
-    subtitle: '실제 서비스 중인 핵심 사용자 플로우',
+    subtitle: '입력 → AI 생성 → 구매로 이어지는 핵심 사용자 플로우',
     content: (
-      <div className="grid md:grid-cols-3 gap-4">
-        {[
-          {
-            img: screenLanding,
-            tag: '01 · Landing',
-            title: '브랜드 진입 경험',
-            desc: '인터랙티브 LiquidCursor · AI 패션 스타일링 가치 제안 · 무료 체험 CTA',
-            color: 'primary',
-          },
-          {
-            img: screenStyle,
-            tag: '02 · Style Generator',
-            title: 'AI 스타일 생성기',
-            desc: '프롬프트·HOT 트렌드 · 성별/모델 프로필 선택 · 일일 잔여 횟수 표시',
-            color: 'coral',
-          },
-          {
-            img: screenCommunity,
-            tag: '03 · Community Gallery',
-            title: '스타일 갤러리',
-            desc: '인기/최신 정렬 · 좋아요 · 사진별/갤러리별 보기 · 사회적 검증 루프',
-            color: 'sky',
-          },
-        ].map((s, i) => (
-          <div key={i} className={cn('rounded-xl border overflow-hidden bg-card', `border-${s.color}/30`)}>
-            <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border">
-              <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
+      <div className="space-y-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          {[
+            {
+              img: screenLanding,
+              tag: '01 · Landing',
+              step: 'STEP 1 · 진입',
+              title: '브랜드 진입 경험',
+              desc: '인터랙티브 LiquidCursor로 첫인상 차별화. "AI 스타일링 무료 체험" CTA로 즉시 전환.',
+              features: ['LiquidCursor 인터랙션', '3D 플립 카드 갤러리', '무료 체험 CTA'],
+              color: 'primary',
+            },
+            {
+              img: screenStyle,
+              tag: '02 · Style Generator',
+              step: 'STEP 2 · 입력 & 생성',
+              title: 'AI 스타일 생성기',
+              desc: '프롬프트 + 모델 프로필을 입력하면 AI가 1분 내 풀바디 룩 4종을 생성.',
+              features: ['프롬프트/HOT 트렌드 선택', '성별·체형 모델 프로필', '일일 잔여 횟수/등급 한도'],
+              color: 'coral',
+            },
+            {
+              img: screenCommunity,
+              tag: '03 · Community Gallery',
+              step: 'STEP 3 · 검증 & 구매',
+              title: '커뮤니티 + 원클릭 구매',
+              desc: '다른 유저 룩에서 영감 → 좋아요 → 상품 태그 클릭 → 어필리에이트 딥링크로 구매.',
+              features: ['인기/최신 정렬', '좋아요·사회적 검증', '상품 태그 → 딥링크 구매'],
+              color: 'sky',
+            },
+          ].map((s, i) => (
+            <div key={i} className={cn('rounded-xl border overflow-hidden bg-card flex flex-col', `border-${s.color}/30`)}>
+              <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border relative">
+                <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
+                <div className={cn('absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white', `bg-${s.color}`)}>{s.step}</div>
+              </div>
+              <div className="p-3 flex-1 flex flex-col">
+                <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
+                <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
+                <div className="text-xs text-muted-foreground font-korean leading-relaxed mb-2">{s.desc}</div>
+                <ul className="mt-auto space-y-0.5">
+                  {s.features.map((f, j) => (
+                    <li key={j} className="text-[10px] font-korean text-foreground/80 flex items-start gap-1">
+                      <span className={cn('mt-1 w-1 h-1 rounded-full flex-shrink-0', `bg-${s.color}`)} />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <div className="p-3">
-              <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
-              <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
-              <div className="text-xs text-muted-foreground font-korean leading-relaxed">{s.desc}</div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-korean">
+          <span className="font-bold text-primary">입력</span>
+          <span className="text-muted-foreground">프롬프트·프로필</span>
+          <span className="text-muted-foreground/50">→</span>
+          <span className="font-bold text-coral">AI 생성</span>
+          <span className="text-muted-foreground">풀바디 룩 4종 (1분 이내)</span>
+          <span className="text-muted-foreground/50">→</span>
+          <span className="font-bold text-sky">공유·검증</span>
+          <span className="text-muted-foreground">커뮤니티 갤러리</span>
+          <span className="text-muted-foreground/50">→</span>
+          <span className="font-bold text-purple">구매</span>
+          <span className="text-muted-foreground">어필리에이트 딥링크</span>
+        </div>
       </div>
     ),
     background: 'bg-background',
@@ -309,43 +339,70 @@ const slides = [
   {
     id: 52,
     title: 'Product Tour · 운영 & 수익화',
-    subtitle: '실제 운영 중인 어드민 / 등급 / 마이페이지',
+    subtitle: '데이터 → 등급 → 락인으로 이어지는 수익 엔진',
     content: (
-      <div className="grid md:grid-cols-3 gap-4">
-        {[
-          {
-            img: screenAdmin,
-            tag: '04 · Admin Dashboard',
-            title: '실시간 운영 대시보드',
-            desc: '5,579 상품 · DNA 자동 분석 · 머천트 매핑 · 등록 큐 · 에러 모니터링',
-            color: 'primary',
-          },
-          {
-            img: screenPricing,
-            tag: '05 · Pricing Tier',
-            title: '구매 기반 5등급제',
-            desc: '구매 누적 금액에 따라 자동 승급 · 워터마크/생성한도/모델 슬롯 차등',
-            color: 'coral',
-          },
-          {
-            img: screenMypage,
-            tag: '06 · My Page',
-            title: '내 등급 · 누적 구매',
-            desc: '다음 등급까지 진행률 · 갤러리/장바구니/모델 관리 · Lock-in 동기 부여',
-            color: 'purple',
-          },
-        ].map((s, i) => (
-          <div key={i} className={cn('rounded-xl border overflow-hidden bg-card', `border-${s.color}/30`)}>
-            <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border">
-              <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
+      <div className="space-y-4">
+        <div className="grid md:grid-cols-3 gap-4">
+          {[
+            {
+              img: screenAdmin,
+              tag: '04 · Admin Dashboard',
+              step: 'OPS · 운영',
+              title: '실시간 운영 대시보드',
+              desc: '5,579+ 상품의 DNA·머천트 매핑·에러를 한 화면에서 관리. 추천 품질 자동 모니터링.',
+              features: ['상품 5,579+ DNA 자동 분석', '머천트 매핑·등록 큐', '에러/추론 메트릭 실시간'],
+              color: 'primary',
+            },
+            {
+              img: screenPricing,
+              tag: '05 · Pricing Tier',
+              step: 'MONETIZE · 수익화',
+              title: '구매 기반 5등급제',
+              desc: '구매 누적 금액으로 자동 승급. 워터마크/생성한도/모델 슬롯을 차등하여 구매를 유도.',
+              features: ['Free → Platinum 5단계', '구매액 자동 승급', '한도·기능 차등'],
+              color: 'coral',
+            },
+            {
+              img: screenMypage,
+              tag: '06 · My Page',
+              step: 'RETAIN · 락인',
+              title: '내 등급 · 누적 구매',
+              desc: '다음 등급까지 진행률을 시각화하고 갤러리·모델·장바구니로 재방문을 유도.',
+              features: ['등급 진행률 시각화', '갤러리·모델·장바구니', '추가 구매 동기 부여'],
+              color: 'purple',
+            },
+          ].map((s, i) => (
+            <div key={i} className={cn('rounded-xl border overflow-hidden bg-card flex flex-col', `border-${s.color}/30`)}>
+              <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border relative">
+                <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
+                <div className={cn('absolute top-2 left-2 px-2 py-0.5 rounded text-[9px] font-bold tracking-wider text-white', `bg-${s.color}`)}>{s.step}</div>
+              </div>
+              <div className="p-3 flex-1 flex flex-col">
+                <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
+                <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
+                <div className="text-xs text-muted-foreground font-korean leading-relaxed mb-2">{s.desc}</div>
+                <ul className="mt-auto space-y-0.5">
+                  {s.features.map((f, j) => (
+                    <li key={j} className="text-[10px] font-korean text-foreground/80 flex items-start gap-1">
+                      <span className={cn('mt-1 w-1 h-1 rounded-full flex-shrink-0', `bg-${s.color}`)} />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <div className="p-3">
-              <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
-              <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
-              <div className="text-xs text-muted-foreground font-korean leading-relaxed">{s.desc}</div>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-2.5 flex items-center justify-center gap-2 text-xs font-korean">
+          <span className="font-bold text-primary">데이터 축적</span>
+          <span className="text-muted-foreground">상품 DNA·피드백</span>
+          <span className="text-muted-foreground/50">→</span>
+          <span className="font-bold text-coral">수익화</span>
+          <span className="text-muted-foreground">어필리에이트 + 등급제</span>
+          <span className="text-muted-foreground/50">→</span>
+          <span className="font-bold text-purple">락인</span>
+          <span className="text-muted-foreground">누적 구매·재방문 루프</span>
+        </div>
       </div>
     ),
     background: 'bg-background',
