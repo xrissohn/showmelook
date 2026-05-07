@@ -730,5 +730,61 @@ img {
   .pitch-print-only .sticky {
     position: static !important;
   }
+
+  /* ===== 배경(그라데이션/이미지/패턴) 선명도 보강 ===== */
+  /* 모든 배경 요소에 정확한 색 인쇄 강제 */
+  .pitch-print-only,
+  .pitch-print-only *,
+  .pitch-print-only *::before,
+  .pitch-print-only *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    forced-color-adjust: none !important;
+  }
+
+  /* 배경 이미지/그라데이션은 원본 비율 유지하며 선명하게 렌더 */
+  .pitch-print-page,
+  .pitch-print-inner,
+  .pitch-print-page [style*="background"],
+  .pitch-print-page [class*="bg-gradient"],
+  .pitch-print-page [class*="bg-["],
+  .pitch-print-page [class*="bg-gradient-"] {
+    background-attachment: scroll !important;
+    background-repeat: no-repeat !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+
+  /* Tailwind bg-gradient-* 유틸리티의 그라데이션 변수 보존 */
+  .pitch-print-page [class*="bg-gradient"] {
+    background-image: inherit;
+  }
+
+  /* 배경용 img/picture (absolute로 깔린 이미지) — 흐림 방지 */
+  .pitch-print-page img.absolute,
+  .pitch-print-page picture.absolute,
+  .pitch-print-page .absolute > img {
+    image-rendering: auto !important; /* 사진은 auto가 더 선명 */
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 패턴/SVG 배경 — 벡터 보존 */
+  .pitch-print-page svg,
+  .pitch-print-page [style*="url("] {
+    shape-rendering: geometricPrecision !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* opacity가 적용된 오버레이 배경도 그대로 인쇄 */
+  .pitch-print-page [class*="opacity-"],
+  .pitch-print-page [style*="opacity"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
 
