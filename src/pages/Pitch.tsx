@@ -1537,6 +1537,28 @@ const Pitch = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
   const [showSafeArea, setShowSafeArea] = useState(false);
+  // 사용자 조정 가능한 안전 여백 (px, 1600x900 기준). 기본 64×80
+  const [padY, setPadY] = useState<number>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-y') : null;
+    return v ? Math.max(0, Math.min(200, parseInt(v, 10) || 64)) : 64;
+  });
+  const [padX, setPadX] = useState<number>(() => {
+    const v = typeof window !== 'undefined' ? window.localStorage.getItem('pitch-pad-x') : null;
+    return v ? Math.max(0, Math.min(240, parseInt(v, 10) || 80)) : 80;
+  });
+
+  // 사용자 정의 여백을 인쇄 트리에 CSS 변수로 적용 + 저장
+  useEffect(() => {
+    const root = document.querySelector<HTMLElement>('.pitch-print-only');
+    if (root) {
+      root.style.setProperty('--pitch-pad-y', `${padY}px`);
+      root.style.setProperty('--pitch-pad-x', `${padX}px`);
+    }
+    try {
+      window.localStorage.setItem('pitch-pad-y', String(padY));
+      window.localStorage.setItem('pitch-pad-x', String(padX));
+    } catch {}
+  }, [padY, padX]);
 
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
