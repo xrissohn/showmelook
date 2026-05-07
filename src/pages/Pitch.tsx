@@ -164,58 +164,80 @@ const slides = [
     title: '쇼미룩',
     subtitle: 'AI Virtual Fitting & Style Recommendation Platform',
     content: (
-      <div className="relative w-full h-[78vh] min-h-[600px] overflow-hidden rounded-3xl shadow-2xl border border-primary/20">
-        {/* Background: actual landing hero capture */}
-        <div className="absolute inset-0">
-          <img
-            src={landingHero}
-            alt="ShowMeLook Landing"
-            className="w-full h-full object-cover object-top blur-[3px] scale-105"
-          />
-          {/* Wash gradient for legibility */}
-          <div className="absolute inset-0 bg-gradient-to-b from-background/75 via-background/55 to-background/95" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background/50 via-background/20 to-background/50" />
-        </div>
+      <div className="relative w-full h-[78vh] min-h-[620px] overflow-hidden rounded-3xl shadow-2xl border border-primary/15 bg-gradient-to-br from-background via-secondary/40 to-background">
+        {/* Decorative brand gradient orbs */}
+        <div className="absolute -top-32 -left-32 w-[420px] h-[420px] rounded-full bg-gradient-coral opacity-30 blur-3xl" />
+        <div className="absolute -bottom-40 -right-32 w-[480px] h-[480px] rounded-full bg-gradient-sky opacity-25 blur-3xl" />
+        <div className="absolute top-1/3 right-1/4 w-[260px] h-[260px] rounded-full bg-gradient-purple opacity-20 blur-3xl" />
 
-        {/* Foreground content */}
-        <div className="relative z-10 h-full flex flex-col items-center justify-center px-6 py-10 text-center">
-          <div className="inline-block px-4 py-1.5 mb-6 rounded-full text-[10px] tracking-[0.35em] text-primary uppercase bg-background/70 backdrop-blur-md border border-primary/30 shadow-lg">
-            Investment Proposal · 2026
+        <div className="relative z-10 h-full grid grid-cols-1 md:grid-cols-2 gap-8 p-8 md:p-12">
+          {/* LEFT: Brand & Message */}
+          <div className="flex flex-col justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 mb-8 rounded-full text-[10px] tracking-[0.3em] text-primary uppercase bg-background/80 backdrop-blur border border-primary/25 shadow-sm w-fit">
+                <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse" />
+                Investment Proposal · 2026
+              </div>
+
+              <div className="flex items-center gap-3 mb-6">
+                <img src={logoMark} alt="쇼미룩 로고" className="w-14 h-14 md:w-16 md:h-16 object-contain drop-shadow-md" />
+                <img src={logoText} alt="쇼미룩" className="h-9 md:h-11 object-contain" />
+              </div>
+
+              <h1 className="text-3xl md:text-5xl font-bold font-korean leading-[1.2] text-foreground mb-5">
+                나만의 스타일을<br />
+                <span className="bg-gradient-brand bg-clip-text text-transparent">AI</span>가 완성합니다
+              </h1>
+
+              <p className="text-sm md:text-base text-muted-foreground font-korean leading-relaxed max-w-md mb-8">
+                사진 한 장으로 트렌디한 스타일을 경험하세요.<br />
+                AI가 당신에게 딱 맞는 패션을 실시간으로 제안합니다.
+              </p>
+
+              <div className="flex flex-wrap gap-2 mb-2">
+                <div className="px-3.5 py-1.5 bg-background/90 backdrop-blur border border-primary/25 rounded-full shadow-sm">
+                  <span className="text-primary font-bold text-xs">플랫폼 완성도 80%</span>
+                </div>
+                <div className="px-3.5 py-1.5 bg-background/90 backdrop-blur border border-coral/25 rounded-full shadow-sm">
+                  <span className="text-coral font-bold text-xs">5,579+ 상품 DNA</span>
+                </div>
+                <div className="px-3.5 py-1.5 bg-background/90 backdrop-blur border border-sky/25 rounded-full shadow-sm">
+                  <span className="text-sky font-bold text-xs">Gemini · Nano Banana</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px] md:text-[11px] text-muted-foreground tracking-[0.18em] font-medium">
+              <span>showmelook.com</span>
+              <span className="opacity-30">·</span>
+              <span>contact@showmelook.com</span>
+              <span className="opacity-30">·</span>
+              <span>v2.0</span>
+            </div>
           </div>
 
-          {/* Logo mark + text logo combo */}
-          <div className="flex items-center justify-center gap-3 md:gap-5 mb-5 drop-shadow-2xl">
-            <img src={logoMark} alt="쇼미룩 로고" className="w-20 h-20 md:w-28 md:h-28 object-contain animate-twinkle" />
-            <img src={logoText} alt="쇼미룩" className="h-14 md:h-20 object-contain" />
-          </div>
-
-          <p className="text-2xl md:text-4xl font-bold font-korean text-foreground mb-3 drop-shadow-md">
-            나만의 스타일을 <span className="bg-gradient-brand bg-clip-text text-transparent">AI</span>가 완성합니다
-          </p>
-          <p className="text-sm md:text-base text-muted-foreground font-korean max-w-2xl mx-auto mb-8 leading-relaxed bg-background/40 backdrop-blur-sm px-4 py-2 rounded-lg">
-            사진 한 장으로 트렌디한 스타일을 경험하세요 · AI가 당신에게 딱 맞는 패션을 제안합니다
-          </p>
-
-          {/* Stat chips */}
-          <div className="flex flex-wrap justify-center gap-2.5 mb-8">
-            <div className="px-4 py-2 bg-background/80 backdrop-blur-md border border-primary/30 rounded-full shadow-md">
-              <span className="text-primary font-bold text-xs md:text-sm">플랫폼 완성도 80%</span>
+          {/* RIGHT: Landing hero capture in browser frame */}
+          <div className="relative flex items-center justify-center">
+            <div className="relative w-full max-w-[520px] rounded-2xl overflow-hidden shadow-2xl border border-border/60 bg-card">
+              {/* Browser chrome */}
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/70 border-b border-border/60">
+                <span className="w-2.5 h-2.5 rounded-full bg-coral/70" />
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400/80" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/80" />
+                <div className="ml-3 flex-1 px-2.5 py-0.5 rounded text-[9px] text-muted-foreground bg-background/70 truncate">
+                  showmelook.com
+                </div>
+              </div>
+              <img
+                src={landingHero}
+                alt="ShowMeLook Landing Preview"
+                className="w-full h-auto object-cover object-top"
+              />
             </div>
-            <div className="px-4 py-2 bg-background/80 backdrop-blur-md border border-coral/30 rounded-full shadow-md">
-              <span className="text-coral font-bold text-xs md:text-sm">5,579+ 상품 DNA 분석</span>
+            {/* Floating brand mark */}
+            <div className="absolute -top-3 -right-3 md:-top-4 md:-right-4 px-3 py-1.5 rounded-full bg-gradient-brand text-white text-[10px] font-bold tracking-wider shadow-brand">
+              LIVE PRODUCT
             </div>
-            <div className="px-4 py-2 bg-background/80 backdrop-blur-md border border-sky/30 rounded-full shadow-md">
-              <span className="text-sky font-bold text-xs md:text-sm">Gemini · Nano Banana</span>
-            </div>
-          </div>
-
-          {/* Footer meta */}
-          <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-6 text-[10px] md:text-xs text-muted-foreground tracking-[0.2em] font-medium">
-            <span>showmelook.com</span>
-            <span className="opacity-40">·</span>
-            <span>contact@showmelook.com</span>
-            <span className="opacity-40">·</span>
-            <span>v2.0</span>
           </div>
         </div>
       </div>
