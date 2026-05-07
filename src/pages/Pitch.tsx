@@ -263,6 +263,94 @@ const slides = [
     background: 'bg-background'
   },
   {
+    id: 51,
+    title: 'Product Tour · 사용자 화면',
+    subtitle: '실제 서비스 중인 핵심 사용자 플로우',
+    content: (
+      <div className="grid md:grid-cols-3 gap-4">
+        {[
+          {
+            img: screenLanding,
+            tag: '01 · Landing',
+            title: '브랜드 진입 경험',
+            desc: '인터랙티브 LiquidCursor · AI 패션 스타일링 가치 제안 · 무료 체험 CTA',
+            color: 'primary',
+          },
+          {
+            img: screenStyle,
+            tag: '02 · Style Generator',
+            title: 'AI 스타일 생성기',
+            desc: '프롬프트·HOT 트렌드 · 성별/모델 프로필 선택 · 일일 잔여 횟수 표시',
+            color: 'coral',
+          },
+          {
+            img: screenCommunity,
+            tag: '03 · Community Gallery',
+            title: '스타일 갤러리',
+            desc: '인기/최신 정렬 · 좋아요 · 사진별/갤러리별 보기 · 사회적 검증 루프',
+            color: 'sky',
+          },
+        ].map((s, i) => (
+          <div key={i} className={cn('rounded-xl border overflow-hidden bg-card', `border-${s.color}/30`)}>
+            <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border">
+              <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
+            </div>
+            <div className="p-3">
+              <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
+              <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
+              <div className="text-xs text-muted-foreground font-korean leading-relaxed">{s.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+    background: 'bg-background',
+  },
+  {
+    id: 52,
+    title: 'Product Tour · 운영 & 수익화',
+    subtitle: '실제 운영 중인 어드민 / 등급 / 마이페이지',
+    content: (
+      <div className="grid md:grid-cols-3 gap-4">
+        {[
+          {
+            img: screenAdmin,
+            tag: '04 · Admin Dashboard',
+            title: '실시간 운영 대시보드',
+            desc: '5,579 상품 · DNA 자동 분석 · 머천트 매핑 · 등록 큐 · 에러 모니터링',
+            color: 'primary',
+          },
+          {
+            img: screenPricing,
+            tag: '05 · Pricing Tier',
+            title: '구매 기반 5등급제',
+            desc: '구매 누적 금액에 따라 자동 승급 · 워터마크/생성한도/모델 슬롯 차등',
+            color: 'coral',
+          },
+          {
+            img: screenMypage,
+            tag: '06 · My Page',
+            title: '내 등급 · 누적 구매',
+            desc: '다음 등급까지 진행률 · 갤러리/장바구니/모델 관리 · Lock-in 동기 부여',
+            color: 'purple',
+          },
+        ].map((s, i) => (
+          <div key={i} className={cn('rounded-xl border overflow-hidden bg-card', `border-${s.color}/30`)}>
+            <div className="aspect-[4/3] bg-muted/30 overflow-hidden border-b border-border">
+              <img src={s.img} alt={s.title} className="w-full h-full object-cover object-top" loading="lazy" />
+            </div>
+            <div className="p-3">
+              <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${s.color}`)}>{s.tag}</div>
+              <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
+              <div className="text-xs text-muted-foreground font-korean leading-relaxed">{s.desc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    ),
+    background: 'bg-background',
+  },
+  {
     id: 6,
     title: 'Technology',
     subtitle: '검증된 기술력 + 커머스 연동 아키텍처',
