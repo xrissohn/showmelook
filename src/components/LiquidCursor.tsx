@@ -48,7 +48,7 @@ export const LiquidCursor = () => {
 
     const addPoint = (x: number, y: number) => {
       const angle = Math.random() * Math.PI * 2;
-      const speed = Math.random() * 0.5;
+      const speed = Math.random() * 1.5 + 0.3;
       const color = COLORS[Math.floor(Math.random() * COLORS.length)];
       pointsRef.current.push({
         x,
