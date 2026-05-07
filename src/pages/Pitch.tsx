@@ -1475,14 +1475,14 @@ const slides = [
             </div>
           </div>
           <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
-            <h4 className="font-bold mb-3 font-korean">🎯 18개월 핵심 마일스톤</h4>
+            <h4 className="font-bold mb-3 font-korean">🎯 12개월 핵심 마일스톤</h4>
             <div className="space-y-2">
               {[
-                { kpi: 'MAU 10,000 달성', desc: '1인 운영 BEP 도달 시점', current: '현재 → 10,000+' },
-                { kpi: '월 매출 ₩3,000만', desc: '어필리에이트 중심 수익화', current: '0 → ₩30M/월' },
+                { kpi: 'MAU 20,000 달성', desc: '핵심 트래픽 확보 · BEP 근접', current: '현재 → 20,000+' },
+                { kpi: '월 매출 ₩6,000만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩60M/월' },
                 { kpi: 'B2B 파일럿 5곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 5곳' },
-                { kpi: '상품 카탈로그 10,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 10,000+' },
-                { kpi: 'Series A 준비', desc: 'M18 시점 후속 라운드 IR 시작', current: '준비' },
+                { kpi: '상품 카탈로그 15,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 15,000+' },
+                { kpi: 'Series A 준비', desc: 'M10~M12 시점 후속 라운드 IR 시작', current: '준비' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">
                   <div className="flex justify-between items-baseline">
