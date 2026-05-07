@@ -52,25 +52,41 @@ const slides = [
   {
     id: 1,
     title: '쇼미룩',
-    subtitle: 'AI 기반 가상 피팅 & 스타일 추천 플랫폼',
+    subtitle: 'AI Virtual Fitting & Style Recommendation Platform',
     content: (
-      <div className="text-center space-y-8">
-        <h1 className="text-5xl md:text-7xl font-bold bg-gradient-brand bg-clip-text text-transparent font-korean">
-          쇼미룩
-        </h1>
-        <p className="text-xl md:text-2xl text-muted-foreground font-korean">
-          "입어보지 않아도 나를 아는 AI 스타일리스트"
-        </p>
-        <div className="flex flex-wrap justify-center gap-4 mt-8">
-          <div className="px-6 py-3 bg-primary/10 rounded-full">
-            <span className="text-primary font-semibold">플랫폼 완성도 80%</span>
+      <div className="text-center space-y-10">
+        <div className="space-y-3">
+          <div className="inline-block px-4 py-1.5 border border-primary/30 rounded-full text-xs tracking-[0.3em] text-primary uppercase">
+            Investment Proposal · 2026
           </div>
-          <div className="px-6 py-3 bg-coral/10 rounded-full">
-            <span className="text-coral font-semibold">1,400+ 상품</span>
+          <h1 className="text-6xl md:text-8xl font-bold bg-gradient-brand bg-clip-text text-transparent font-korean leading-tight">
+            쇼미룩
+          </h1>
+          <p className="text-2xl md:text-3xl font-semibold font-korean">
+            나만의 스타일을 <span className="bg-gradient-brand bg-clip-text text-transparent">AI</span>가 완성합니다
+          </p>
+          <p className="text-base md:text-lg text-muted-foreground font-korean max-w-2xl mx-auto">
+            사진 한 장으로 트렌디한 스타일을 경험하세요.<br />
+            AI가 당신에게 딱 맞는 패션을 제안합니다.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          <div className="px-5 py-2.5 bg-primary/10 border border-primary/20 rounded-full">
+            <span className="text-primary font-semibold text-sm">플랫폼 완성도 80%</span>
           </div>
-          <div className="px-6 py-3 bg-sky/10 rounded-full">
-            <span className="text-sky font-semibold">Gemini AI 기반</span>
+          <div className="px-5 py-2.5 bg-coral/10 border border-coral/20 rounded-full">
+            <span className="text-coral font-semibold text-sm">1,652+ 상품 DNA 분석</span>
           </div>
+          <div className="px-5 py-2.5 bg-sky/10 border border-sky/20 rounded-full">
+            <span className="text-sky font-semibold text-sm">Gemini · Nano Banana</span>
+          </div>
+        </div>
+        <div className="flex justify-center gap-8 pt-4 text-xs text-muted-foreground tracking-wider">
+          <span>showmelook.com</span>
+          <span className="opacity-50">|</span>
+          <span>contact@showmelook.com</span>
+          <span className="opacity-50">|</span>
+          <span>v2.0</span>
         </div>
       </div>
     ),
@@ -78,41 +94,33 @@ const slides = [
   },
   {
     id: 2,
-    title: '문제 정의',
-    subtitle: '패션 이커머스의 핵심 Pain Points',
+    title: 'The Problem',
+    subtitle: '온라인 쇼핑의 단절된 경험',
     content: (
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold text-coral font-korean">소비자 관점</h3>
-          <ul className="space-y-3">
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="md:col-span-1 p-6 bg-gradient-to-br from-coral/15 to-coral/5 rounded-2xl border border-coral/20 flex flex-col justify-center">
+            <div className="text-5xl md:text-6xl font-bold text-coral mb-2">25~40%</div>
+            <div className="text-sm font-semibold font-korean">평균 의류 반품률</div>
+            <div className="text-xs text-muted-foreground mt-1">Global Average</div>
+          </div>
+          <div className="md:col-span-2 grid grid-cols-2 gap-3">
             {[
-              '"이 옷이 나한테 어울릴까?" - 구매 망설임',
-              '"사이즈가 맞을까?" - 반품률 30~40%',
-              '"뭘 입어야 할지 모르겠다" - 스타일링 고민',
-              '"매번 비슷한 옷만 산다" - 새로운 시도 어려움'
-            ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-muted-foreground font-korean">
-                <span className="text-red-500">🔴</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="space-y-4">
-          <h3 className="text-xl font-bold text-sky font-korean">시장 데이터</h3>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { value: '68%', label: '사이즈/핏 불안 경험' },
-              { value: '30-40%', label: '의류 반품률' },
-              { value: '수조원', label: '연간 반품 손실' },
-              { value: '+10%', label: '전환율 1%p 효과' }
-            ].map((stat, i) => (
-              <div key={i} className="p-4 bg-card rounded-lg border border-border text-center">
-                <div className="text-2xl font-bold text-primary">{stat.value}</div>
-                <div className="text-xs text-muted-foreground font-korean">{stat.label}</div>
+              { icon: '📦', title: '높은 반품 비용', desc: '사이즈 불일치와 핏감 확인 불가로 인한 물류·재고 부담' },
+              { icon: '😞', title: '스타일 미스매치', desc: '모델 컷과 실제 착용 모습의 괴리 → 고객 실망' },
+              { icon: '🎯', title: '개인화 부재', desc: '천편일률적 상품 목록은 체형·취향을 반영하지 못함' },
+              { icon: '📉', title: '낮은 전환율', desc: '확신 없는 구매 → 장바구니 이탈, 마케팅 효율 저하' },
+            ].map((p, i) => (
+              <div key={i} className="p-4 bg-card rounded-xl border border-border">
+                <div className="text-2xl mb-2">{p.icon}</div>
+                <div className="font-bold text-sm mb-1 font-korean">{p.title}</div>
+                <div className="text-xs text-muted-foreground font-korean leading-relaxed">{p.desc}</div>
               </div>
             ))}
           </div>
+        </div>
+        <div className="p-4 bg-muted/40 rounded-xl text-center text-sm text-muted-foreground font-korean">
+          기술의 발전에도 불구하고, 패션 이커머스는 여전히 <strong className="text-foreground">"입어볼 수 없다"</strong>는 물리적 한계로 인해 비효율적인 구조를 가지고 있습니다.
         </div>
       </div>
     ),
@@ -120,77 +128,130 @@ const slides = [
   },
   {
     id: 3,
-    title: '솔루션',
-    subtitle: '쇼미룩의 3단계 해결책',
+    title: 'Solution',
+    subtitle: '사진 1장으로 완성되는 5단계 원스톱 AI 스타일링',
     content: (
-      <div className="grid md:grid-cols-3 gap-6">
-        {[
-          {
-            step: 'Step 1',
-            title: 'AI 스타일 컨설팅',
-            icon: '🎨',
-            items: ['체형/키/몸무게 기반 핏 추천', 'TPO 맞춤 스타일링', '10개 스타일 컨셉']
-          },
-          {
-            step: 'Step 2',
-            title: '가상 피팅',
-            icon: '👗',
-            items: ['Gemini 기반 얼굴 합성', '체형 맞춤 시뮬레이션', '1분 내 결과 확인']
-          },
-          {
-            step: 'Step 3',
-            title: '원클릭 구매',
-            icon: '🛒',
-            items: ['딥링크 연동', '실시간 재고/가격', '장바구니 담기']
-          }
-        ].map((step, i) => (
-          <div key={i} className="p-6 bg-card rounded-xl border border-border hover:shadow-lg transition-shadow">
-            <div className="text-4xl mb-4">{step.icon}</div>
-            <div className="text-xs text-primary font-semibold mb-2">{step.step}</div>
-            <h3 className="text-lg font-bold mb-3 font-korean">{step.title}</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              {step.items.map((item, j) => (
-                <li key={j} className="flex items-center gap-2 font-korean">
-                  <span className="text-primary">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <div className="space-y-5">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          {[
+            { n: '01', title: '회원가입', desc: '간편 가입 · 프로필 설정', icon: '👤' },
+            { n: '02', title: '사진 업로드', desc: '전신 사진 등록 · 분석', icon: '📸' },
+            { n: '03', title: '가상착장 생성', desc: 'AI 실시간 스타일 생성', icon: '✨' },
+            { n: '04', title: '상품 선택', desc: '생성된 룩의 상품 확인', icon: '🛍️' },
+            { n: '05', title: '쇼핑몰 이동', desc: '파트너몰 구매 연동', icon: '🔗' },
+          ].map((s, i) => (
+            <div key={i} className="relative p-4 bg-card rounded-xl border border-border hover:border-primary/50 transition-colors">
+              <div className="text-[10px] tracking-widest text-primary font-bold mb-1">STEP {s.n}</div>
+              <div className="text-3xl mb-2">{s.icon}</div>
+              <div className="font-bold text-sm font-korean mb-1">{s.title}</div>
+              <div className="text-xs text-muted-foreground font-korean">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+        <div className="grid md:grid-cols-3 gap-4 pt-2">
+          {[
+            { tag: 'Input', title: 'User Photo', desc: '전신 사진 1장만 업로드', color: 'sky' },
+            { tag: 'AI Engine', title: 'Gemini + Nano Banana', desc: '얼굴 합성 + 의류 매칭 + 스타일 추론', color: 'primary' },
+            { tag: 'Output', title: 'Look + Buy Link', desc: '생성된 코디 + 구매 딥링크', color: 'coral' },
+          ].map((x, i) => (
+            <div key={i} className={cn('p-4 rounded-xl border', `bg-${x.color}/5 border-${x.color}/30`)}>
+              <div className={cn('text-[10px] tracking-widest font-bold mb-1', `text-${x.color}`)}>{x.tag}</div>
+              <div className="font-bold font-korean mb-1">{x.title}</div>
+              <div className="text-xs text-muted-foreground font-korean">{x.desc}</div>
+            </div>
+          ))}
+        </div>
       </div>
     ),
     background: 'bg-background'
   },
   {
     id: 4,
-    title: '제품 소개',
-    subtitle: '핵심 화면 구성',
+    title: 'Market Opportunity',
+    subtitle: '폭발적으로 성장하는 패션 테크 시장',
     content: (
-      <div className="grid md:grid-cols-2 gap-6">
-        {[
-          {
-            title: '🏠 랜딩 페이지',
-            desc: '3D 플립 카드 갤러리, 10가지 스타일 컨셉'
-          },
-          {
-            title: '👗 스타일 생성기',
-            desc: '프롬프트 입력 → AI 추천 → 4개 카테고리 자동 선택'
-          },
-          {
-            title: '💎 등급제 페이지',
-            desc: '구매 기반 5단계 등급 (Free → Bronze → Silver → Gold → Platinum)'
-          },
-          {
-            title: '📊 어드민 대시보드',
-            desc: '상품 DNA 편집, AI 성능 모니터링'
-          }
-        ].map((item, i) => (
-          <div key={i} className="p-6 bg-card rounded-xl border border-border">
-            <h3 className="text-xl font-bold mb-2 font-korean">{item.title}</h3>
-            <p className="text-muted-foreground font-korean">{item.desc}</p>
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="p-6 bg-gradient-to-br from-sky/15 to-sky/5 rounded-2xl border border-sky/20">
+            <div className="text-xs text-sky font-semibold tracking-widest mb-2">VIRTUAL FITTING MARKET (2026)</div>
+            <div className="text-5xl font-bold text-sky mb-1">$9.81B</div>
+            <div className="text-sm text-muted-foreground font-korean">CAGR 20.9% 성장</div>
           </div>
-        ))}
+          <div className="p-6 bg-gradient-to-br from-primary/15 to-primary/5 rounded-2xl border border-primary/20">
+            <div className="text-xs text-primary font-semibold tracking-widest mb-2">AI FASHION MARKET (2035)</div>
+            <div className="text-5xl font-bold text-primary mb-1">$89.4B</div>
+            <div className="text-sm text-muted-foreground font-korean">+2,900% 성장 전망</div>
+          </div>
+        </div>
+        <div className="p-5 bg-card rounded-xl border border-border">
+          <h4 className="font-bold mb-3 font-korean">🇰🇷 국내 시장 규모 (TAM/SAM/SOM)</h4>
+          <div className="space-y-2">
+            {[
+              { label: 'TAM', value: '58조원', desc: '한국 패션 이커머스 전체', width: '100%', color: 'bg-primary/30' },
+              { label: 'SAM', value: '5.8조원', desc: '온라인 스타일링 니즈 시장', width: '60%', color: 'bg-primary/55' },
+              { label: 'SOM', value: '280억원', desc: '5년 목표 점유 시장', width: '30%', color: 'bg-primary' },
+            ].map((m, i) => (
+              <div key={i} className={cn('p-3 rounded-lg text-white flex items-center justify-between', m.color)} style={{ width: m.width }}>
+                <span className="font-bold text-sm">{m.label} · {m.value}</span>
+                <span className="text-xs opacity-90 font-korean">{m.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {['Gen Z 디지털 네이티브', 'AI 비용 90% ↓', 'AR/메타버스 확산', '지속가능 (반품↓)'].map((t, i) => (
+            <div key={i} className="p-2 bg-muted/40 rounded-lg text-center text-xs font-korean">🚀 {t}</div>
+          ))}
+        </div>
+      </div>
+    ),
+    background: 'bg-background'
+  },
+  {
+    id: 5,
+    title: 'Current Traction',
+    subtitle: '데이터 기반의 운영 시스템 구축 완료',
+    content: (
+      <div className="space-y-5">
+        <div className="grid md:grid-cols-4 gap-3">
+          {[
+            { metric: '플랫폼 완성도', value: '80%', desc: '핵심 기능 안정화 단계', accent: 'primary' },
+            { metric: '등록 상품 수', value: '1,652', desc: '실시간 카탈로그', accent: 'coral' },
+            { metric: 'AI DNA 분석', value: '1,652', desc: '스타일 속성 추출 완료', accent: 'sky' },
+            { metric: '추천 엔진', value: 'v8.0', desc: '피드백 학습 적용', accent: 'purple' },
+          ].map((s, i) => (
+            <div key={i} className={cn('p-4 rounded-xl border', `bg-${s.accent}/5 border-${s.accent}/30`)}>
+              <div className="text-xs text-muted-foreground font-korean mb-1">{s.metric}</div>
+              <div className={cn('text-3xl font-bold mb-1', `text-${s.accent}`)}>{s.value}</div>
+              <div className="text-xs text-muted-foreground font-korean">{s.desc}</div>
+            </div>
+          ))}
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="p-5 bg-card rounded-xl border border-border">
+            <h4 className="font-bold mb-3 font-korean">✅ 운영 중인 핵심 기능</h4>
+            <div className="grid grid-cols-2 gap-2">
+              {['AI 스타일 추천 v8.0', '얼굴 합성 가상 피팅', '1,652+ 상품 카탈로그', '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs font-korean">
+                  <span className="text-primary">●</span>{f}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/20">
+            <h4 className="font-bold mb-3 font-korean">⚙️ 어드민 운영 시스템</h4>
+            <ul className="space-y-2 text-sm font-korean">
+              <li>• 상품 DNA 자동 분석 · 수동 편집</li>
+              <li>• AI 추론 성능 실시간 모니터링</li>
+              <li>• Bright Data · Coupang 연동 수집</li>
+              <li>• 사용자 피드백 기반 자동 학습</li>
+              <li>• 머천트 매핑 · 수수료 정산</li>
+            </ul>
+            <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+              admin.showmelook.com/dashboard
+            </div>
+          </div>
+        </div>
       </div>
     ),
     background: 'bg-background'
