@@ -71,8 +71,8 @@ export const LiquidCursor = () => {
           mouseRef.current.y - mouseRef.current.lastY
         );
         if (dist > 0) {
-          const steps = Math.min(dist, 20);
-          for (let i = 0; i < steps; i += 2) {
+          const steps = Math.min(dist, 30);
+          for (let i = 0; i < steps; i += 1) {
             const t = i / steps;
             const x =
               mouseRef.current.lastX +
@@ -80,7 +80,7 @@ export const LiquidCursor = () => {
             const y =
               mouseRef.current.lastY +
               (mouseRef.current.y - mouseRef.current.lastY) * t;
-            if (Math.random() > 0.5) addPoint(x, y);
+            if (Math.random() > 0.3) addPoint(x, y);
           }
         }
         mouseRef.current.lastX = mouseRef.current.x;
