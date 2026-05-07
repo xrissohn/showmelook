@@ -22,6 +22,10 @@ import screenCommunity from '@/assets/pitch-screens/community.png';
 import screenAdmin from '@/assets/pitch-screens/admin.png';
 import screenPricing from '@/assets/pitch-screens/pricing.png';
 import screenMypage from '@/assets/pitch-screens/mypage.png';
+import look1Img from '@/assets/pitch-screens/look-1-minimal.jpg';
+import look2Img from '@/assets/pitch-screens/look-2-street.jpg';
+import look3Img from '@/assets/pitch-screens/look-3-office.jpg';
+import look4Img from '@/assets/pitch-screens/look-4-date.jpg';
 
 // BEP 차트 데이터 (구매 기반 등급제: ARPU ₩315, 변동비 ~₩100/명)
 // 인원별 고정비: 1명 215만, 2명 815만, 3명 1,415만
@@ -55,22 +59,22 @@ const cashflowChartData = [
 
 // 룩 4종 선택 시 상품 카드가 동적으로 갱신되는 데모 UI
 const LOOK_DATA = [
-  { name: '미니멀 데일리', tags: [
+  { name: '미니멀 데일리', img: look1Img, tags: [
     { cat: '상의', brand: 'COS', item: '오버사이즈 셔츠', price: '89,000', stock: '재고 ✓' },
     { cat: '하의', brand: 'UNIQLO', item: '와이드 슬랙스', price: '49,900', stock: '재고 ✓' },
     { cat: '신발', brand: 'New Balance', item: '993 그레이', price: '249,000', stock: '품절 임박' },
   ]},
-  { name: '캐주얼 스트릿', tags: [
+  { name: '캐주얼 스트릿', img: look2Img, tags: [
     { cat: '아우터', brand: 'Carhartt', item: '디트로이트 자켓', price: '298,000', stock: '재고 ✓' },
     { cat: '하의', brand: 'Levi\'s', item: '501 빈티지', price: '139,000', stock: '재고 ✓' },
     { cat: '신발', brand: 'Nike', item: '에어포스 1', price: '139,000', stock: '재고 ✓' },
   ]},
-  { name: '오피스 룩', tags: [
+  { name: '오피스 룩', img: look3Img, tags: [
     { cat: '상의', brand: 'Theory', item: '실크 블라우스', price: '320,000', stock: '재고 ✓' },
     { cat: '하의', brand: 'MaxMara', item: '테일러드 팬츠', price: '450,000', stock: '재고 ✓' },
     { cat: '가방', brand: 'Coach', item: '타뷰비 토트', price: '690,000', stock: '재고 ✓' },
   ]},
-  { name: '데이트 룩', tags: [
+  { name: '데이트 룩', img: look4Img, tags: [
     { cat: '원피스', brand: 'Reformation', item: '플로럴 미디 드레스', price: '298,000', stock: '재고 ✓' },
     { cat: '신발', brand: 'Manolo', item: 'BB 펌프스', price: '890,000', stock: '재고 ✓' },
     { cat: '가방', brand: 'Polene', item: 'Numéro Un Nano', price: '520,000', stock: '품절 임박' },
@@ -82,24 +86,29 @@ const InteractiveLookPicker = () => {
   const look = LOOK_DATA[selected];
   return (
     <div className="rounded border border-coral/20 bg-background/60 p-2.5">
-      <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 클릭으로 상품 카드 동적 갱신</div>
-      <div className="grid grid-cols-4 gap-1 mb-2">
+      <div className="text-[10px] font-bold tracking-widest text-coral mb-1.5 font-korean">LOOK PICKER · 실제 룩 카드를 골라 상품/공유 즉시 갱신</div>
+      <div className="grid grid-cols-4 gap-1.5 mb-2">
         {LOOK_DATA.map((l, n) => (
           <button
             key={n}
             onClick={() => setSelected(n)}
             className={cn(
-              'aspect-[3/4] rounded border bg-coral/10 flex flex-col items-center justify-center text-[9px] font-korean transition-all hover:bg-coral/20',
-              selected === n ? 'border-coral border-2 ring-1 ring-coral/40 bg-coral/20' : 'border-coral/30'
+              'relative aspect-[3/4] rounded-md overflow-hidden border transition-all',
+              selected === n ? 'border-coral border-2 ring-2 ring-coral/40' : 'border-coral/30 hover:border-coral/60'
             )}
           >
-            <span className="text-[10px] font-bold text-coral">LOOK {n + 1}</span>
-            <span className="text-[8px] text-muted-foreground mt-0.5 px-1 text-center leading-tight">{l.name}</span>
-            {selected === n && <span className="text-[8px] text-coral/90 mt-0.5">● SELECTED</span>}
+            <img src={l.img} alt={l.name} className="w-full h-full object-cover" loading="lazy" />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-1 pt-3 pb-1">
+              <div className="text-[9px] font-bold text-white font-korean">LOOK {n + 1}</div>
+              <div className="text-[8px] text-white/85 font-korean truncate">{l.name}</div>
+            </div>
+            {selected === n && (
+              <div className="absolute top-1 right-1 px-1 py-px rounded-sm bg-coral text-white text-[8px] font-bold">●</div>
+            )}
           </button>
         ))}
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1 mb-2">
         {look.tags.map((t, i) => (
           <div key={i} className="flex items-center gap-1.5 rounded border border-coral/15 bg-coral/[0.03] px-1.5 py-1 text-[9.5px] font-korean">
             <span className="px-1 py-px rounded bg-coral/20 text-coral font-bold text-[8.5px] min-w-[28px] text-center">{t.cat}</span>
@@ -111,8 +120,30 @@ const InteractiveLookPicker = () => {
           </div>
         ))}
       </div>
+      <div className="rounded border border-sky/25 bg-sky/[0.04] px-1.5 py-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-[9.5px] font-bold text-sky font-korean whitespace-nowrap">SHARE · SNS 원클릭</div>
+          <div className="flex items-center gap-1">
+            {[
+              { name: 'Instagram', bg: 'bg-gradient-to-br from-purple via-coral to-amber-400', label: 'IG' },
+              { name: 'Stories', bg: 'bg-gradient-to-br from-pink-500 to-purple', label: 'ST' },
+              { name: 'KakaoTalk', bg: 'bg-amber-300 text-amber-900', label: 'K' },
+              { name: 'X', bg: 'bg-foreground text-background', label: 'X' },
+              { name: 'Facebook', bg: 'bg-blue-600', label: 'f' },
+              { name: 'Link', bg: 'bg-muted text-foreground', label: '🔗' },
+            ].map((s, i) => (
+              <div key={i} className={cn('w-5 h-5 rounded-full flex items-center justify-center text-[8.5px] font-bold text-white', s.bg)} title={s.name}>
+                {s.label}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="mt-1 text-[9px] text-muted-foreground font-korean leading-snug">
+          이미지에 자동 워터마크 · 동적 해시태그 <span className="text-sky">#쇼미룩 #{look.name.replace(/\s/g, '')} #AI스타일링</span> · 인스타 스토리/피드 자동 1:1·9:16 변환 · OG 이미지 1200×630 합성
+        </div>
+      </div>
       <div className="mt-1.5 text-[9px] text-muted-foreground font-korean text-center">
-        선택한 룩 → 상품 태그·가격·재고·딥링크가 즉시 갱신 · 좋아요 / 갤러리 저장 / 공유 / HD 다운로드
+        선택한 룩 → 상품 태그·가격·딥링크 + SNS 공유 카드/해시태그가 즉시 갱신
       </div>
     </div>
   );
