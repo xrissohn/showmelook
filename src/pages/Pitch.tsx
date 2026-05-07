@@ -14,7 +14,8 @@ import {
   Minimize2,
   Circle,
   Download,
-  Loader2
+  Loader2,
+  Frame
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -1535,6 +1536,7 @@ const Pitch = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [showSafeArea, setShowSafeArea] = useState(false);
 
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
@@ -1766,6 +1768,16 @@ const Pitch = () => {
               </>
             )}
           </Button>
+          <Button
+            variant={showSafeArea ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setShowSafeArea((v) => !v)}
+            className="gap-2"
+            title="인쇄 안전 여백 오버레이 (64×80px)"
+          >
+            <Frame className="w-4 h-4" />
+            <span className="hidden sm:inline">여백</span>
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleFullscreen}>
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
@@ -1776,7 +1788,7 @@ const Pitch = () => {
       {/* 슬라이드 컨텐츠 */}
       <main className={cn('flex-1 flex flex-col items-center justify-center', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}>
         {/* 화면 표시용: 현재 슬라이드만 */}
-        <div id="pitch-slide-capture" className={cn('w-full pitch-screen-only', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
+        <div id="pitch-slide-capture" className={cn('w-full pitch-screen-only relative', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
           {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
             <div className={cn('text-center', isCaptureMode ? 'mb-6 pt-8' : 'mb-8')}>
               <h2 className="text-3xl md:text-4xl font-bold mb-2 font-korean">{slide.title}</h2>
@@ -1786,6 +1798,12 @@ const Pitch = () => {
           <div className={isCaptureMode ? '' : 'animate-fade-in'}>
             {slide.content}
           </div>
+          {showSafeArea && !isCaptureMode && (
+            <div className="pitch-safe-area-overlay" aria-hidden="true">
+              <div className="pitch-safe-area-box" />
+              <span className="pitch-safe-area-label">인쇄 안전 여백 64×80px</span>
+            </div>
+          )}
         </div>
 
         {/* 인쇄(PDF 저장) 전용: 모든 슬라이드를 페이지별로 렌더링 */}
