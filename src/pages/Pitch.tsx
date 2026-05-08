@@ -1656,20 +1656,21 @@ const Pitch = () => {
 
       {/* 네비게이션 */}
       {!isCaptureMode && (
-      <footer className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center justify-between max-w-5xl mx-auto">
+      <footer className="fixed bottom-0 left-0 right-0 z-50 px-2 py-2 md:p-4 bg-background/90 backdrop-blur-sm border-t border-border/50">
+        <div className="flex items-center justify-between gap-2 max-w-5xl mx-auto">
           <Button
             variant="ghost"
+            size="sm"
             onClick={prevSlide}
             disabled={currentSlide === 0}
-            className="gap-2"
+            className="gap-1 px-2 md:px-4 shrink-0"
           >
             <ChevronLeft className="w-4 h-4" />
-            이전
+            <span className="hidden sm:inline">이전</span>
           </Button>
 
-          {/* 슬라이드 인디케이터 */}
-          <div className="flex items-center gap-2">
+          {/* 슬라이드 인디케이터: 모바일에서는 숨기고 페이지 카운트만 */}
+          <div className="hidden md:flex items-center gap-2 flex-1 justify-center flex-wrap">
             {slides.map((_, index) => (
               <button
                 key={index}
@@ -1687,14 +1688,18 @@ const Pitch = () => {
               </button>
             ))}
           </div>
+          <div className="md:hidden text-xs text-muted-foreground tabular-nums">
+            {currentSlide + 1} / {slides.length}
+          </div>
 
           <Button
             variant="ghost"
+            size="sm"
             onClick={nextSlide}
             disabled={currentSlide === slides.length - 1}
-            className="gap-2"
+            className="gap-1 px-2 md:px-4 shrink-0"
           >
-            다음
+            <span className="hidden sm:inline">다음</span>
             <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
