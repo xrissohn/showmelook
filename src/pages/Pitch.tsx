@@ -740,15 +740,15 @@ const slides = [
     subtitle: '단순 피팅을 넘어선 올인원 스타일링 솔루션',
     content: (
       <div className="space-y-4">
-        <div className="overflow-hidden rounded-xl border border-border">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto rounded-xl border border-border -mx-2 md:mx-0">
+          <table className="w-full text-[10px] md:text-xs min-w-[560px]">
             <thead className="bg-muted/40">
               <tr>
-                <th className="p-3 text-left font-korean text-sm">주요 기능</th>
-                <th className="p-3 text-center text-muted-foreground">Virtusize</th>
-                <th className="p-3 text-center text-muted-foreground">Perfect Corp</th>
-                <th className="p-3 text-center text-muted-foreground">Wanna</th>
-                <th className="p-3 text-center bg-primary/10 text-primary font-bold">ShowMeLook</th>
+                <th className="p-2 md:p-3 text-left font-korean text-xs md:text-sm">주요 기능</th>
+                <th className="p-2 md:p-3 text-center text-muted-foreground">Virtusize</th>
+                <th className="p-2 md:p-3 text-center text-muted-foreground">Perfect Corp</th>
+                <th className="p-2 md:p-3 text-center text-muted-foreground">Wanna</th>
+                <th className="p-2 md:p-3 text-center bg-primary/10 text-primary font-bold whitespace-nowrap">ShowMeLook</th>
               </tr>
             </thead>
             <tbody className="font-korean">
@@ -760,11 +760,11 @@ const slides = [
                 ['도입 비용', 'High', 'Very High', 'High', '합리적 (구매기반)'],
               ].map((row, i) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="p-3 font-semibold">{row[0]}</td>
-                  <td className="p-3 text-center text-muted-foreground">{row[1]}</td>
-                  <td className="p-3 text-center text-muted-foreground">{row[2]}</td>
-                  <td className="p-3 text-center text-muted-foreground">{row[3]}</td>
-                  <td className="p-3 text-center bg-primary/5 text-primary font-semibold">{row[4]}</td>
+                  <td className="p-2 md:p-3 font-semibold whitespace-nowrap">{row[0]}</td>
+                  <td className="p-2 md:p-3 text-center text-muted-foreground">{row[1]}</td>
+                  <td className="p-2 md:p-3 text-center text-muted-foreground">{row[2]}</td>
+                  <td className="p-2 md:p-3 text-center text-muted-foreground">{row[3]}</td>
+                  <td className="p-2 md:p-3 text-center bg-primary/5 text-primary font-semibold">{row[4]}</td>
                 </tr>
               ))}
             </tbody>
