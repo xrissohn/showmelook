@@ -1639,7 +1639,24 @@ const Pitch = () => {
       )}
 
       {/* 슬라이드 컨텐츠 */}
-      <main className={cn('flex-1 flex flex-col items-center justify-center', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}>
+      <main
+        className={cn('flex-1 flex flex-col items-center justify-center touch-pan-y', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}
+        onTouchStart={(e) => {
+          const t = e.touches[0];
+          (window as any).__pitchTouch = { x: t.clientX, y: t.clientY };
+        }}
+        onTouchEnd={(e) => {
+          const start = (window as any).__pitchTouch;
+          if (!start) return;
+          const t = e.changedTouches[0];
+          const dx = t.clientX - start.x;
+          const dy = t.clientY - start.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            if (dx < 0) nextSlide(); else prevSlide();
+          }
+          (window as any).__pitchTouch = null;
+        }}
+      >
         {/* 화면 표시용: 현재 슬라이드만 */}
         <div id="pitch-slide-capture" className={cn('w-full pitch-screen-only relative', isCaptureMode ? 'max-w-none' : 'max-w-5xl')} style={isCaptureMode ? { width: '1600px' } : undefined}>
           {currentSlide !== 0 && currentSlide !== slides.length - 1 && (
