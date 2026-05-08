@@ -1540,6 +1540,23 @@ const Pitch = () => {
   const [currentSlide, setCurrentSlide] = useState(isCaptureMode ? captureSlideIdx : 0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // Preload all pitch screenshots/images on mount so slide transitions feel instant
+  useEffect(() => {
+    const urls = [
+      screenLanding, landingHero, logoMark, logoText,
+      screenOnboarding, screenStyle, screenCommunity, screenLookResult,
+      screenAdmin, screenPricing, screenMypage,
+      look1Img, look2Img, look3Img, look4Img,
+    ];
+    const imgs = urls.map((src) => {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = src;
+      return img;
+    });
+    return () => { imgs.forEach((i) => { i.src = ''; }); };
+  }, []);
+
   // Signal readiness to headless capture once fonts + images are loaded
   useEffect(() => {
     if (!isCaptureMode) return;
