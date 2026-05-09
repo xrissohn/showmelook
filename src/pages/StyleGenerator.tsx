@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePreloadedData } from '@/contexts/DataPreloaderContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { ButtonColorful } from '@/components/ui/button-colorful';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
