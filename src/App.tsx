@@ -20,6 +20,7 @@ const Install = lazy(() => import("./pages/Install"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const Pitch = lazy(() => import("./pages/Pitch"));
+const Promo = lazy(() => import("./pages/Promo"));
 const MyPage = lazy(() => import("./pages/MyPage"));
 const SharedLook = lazy(() => import("./pages/SharedLook"));
 const Privacy = lazy(() => import("./pages/Privacy"));
