@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { usePreloadedData } from '@/contexts/DataPreloaderContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import { ButtonColorful } from '@/components/ui/button-colorful';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -5799,10 +5800,8 @@ const StyleGenerator = () => {
               </div>
 
               {/* Generate Button - 데스크탑용 (모바일에서는 하단 고정 버튼 사용) */}
-              <Button
-                variant="gold"
-                size="xl"
-                className="w-full font-korean hidden lg:flex"
+              <ButtonColorful
+                className="w-full font-korean hidden lg:flex h-14 px-10 text-base"
                 onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
                 disabled={isGenerating || isCustomSearching || !canGenerate || !isProfileDataReady || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
               >
@@ -5827,7 +5826,7 @@ const StyleGenerator = () => {
                     {t('styleGen.generateStyle')}
                   </>
                 )}
-              </Button>
+              </ButtonColorful>
 
               {/* Upgrade Prompt for users with low remaining */}
               {remainingCount <= 2 && remainingCount > 0 && (
@@ -6583,10 +6582,8 @@ const StyleGenerator = () => {
       {/* 모바일 하단 고정 생성 버튼 */}
       {activeTab === 'generate' && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border lg:hidden z-40 animate-fade-in">
-          <Button
-            variant="gold"
-            size="lg"
-            className="w-full font-korean shadow-lg shadow-accent/20"
+          <ButtonColorful
+            className="w-full font-korean shadow-lg shadow-accent/20 lg:hidden h-11 px-8"
             onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
             disabled={isGenerating || isCustomSearching || !canGenerate || !isProfileDataReady || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
           >
@@ -6611,7 +6608,7 @@ const StyleGenerator = () => {
                 {t('styleGen.generateStyle')}
               </>
             )}
-          </Button>
+          </ButtonColorful>
           {/* 남은 횟수 표시 */}
           {!isPremium && (
             <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
