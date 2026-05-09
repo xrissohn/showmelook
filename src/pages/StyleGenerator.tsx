@@ -6582,10 +6582,8 @@ const StyleGenerator = () => {
       {/* 모바일 하단 고정 생성 버튼 */}
       {activeTab === 'generate' && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border lg:hidden z-40 animate-fade-in">
-          <Button
-            variant="gold"
-            size="lg"
-            className="w-full font-korean shadow-lg shadow-accent/20"
+          <ButtonColorful
+            className="w-full font-korean shadow-lg shadow-accent/20 lg:hidden h-11 px-8"
             onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
             disabled={isGenerating || isCustomSearching || !canGenerate || !isProfileDataReady || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
           >
@@ -6610,7 +6608,7 @@ const StyleGenerator = () => {
                 {t('styleGen.generateStyle')}
               </>
             )}
-          </Button>
+          </ButtonColorful>
           {/* 남은 횟수 표시 */}
           {!isPremium && (
             <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
