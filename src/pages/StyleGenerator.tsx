@@ -5800,10 +5800,8 @@ const StyleGenerator = () => {
               </div>
 
               {/* Generate Button - 데스크탑용 (모바일에서는 하단 고정 버튼 사용) */}
-              <Button
-                variant="gold"
-                size="xl"
-                className="w-full font-korean hidden lg:flex"
+              <ButtonColorful
+                className="w-full font-korean hidden lg:flex h-14 px-10 text-base"
                 onClick={(customStylePrompt.trim() && !customResult) ? generateStyleWithRecommendation : generateStyle}
                 disabled={isGenerating || isCustomSearching || !canGenerate || !isProfileDataReady || (!customStylePrompt.trim() && selectedTrendProducts.length === 0)}
               >
@@ -5828,7 +5826,7 @@ const StyleGenerator = () => {
                     {t('styleGen.generateStyle')}
                   </>
                 )}
-              </Button>
+              </ButtonColorful>
 
               {/* Upgrade Prompt for users with low remaining */}
               {remainingCount <= 2 && remainingCount > 0 && (
