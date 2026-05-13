@@ -11,8 +11,6 @@ Disallow: /mypage
 Disallow: /profile-setup
 Disallow: /profile-edit
 Disallow: /admin
-Disallow: /install
-Disallow: /pitch
 Disallow: /cafe24-fitting
 
 # Google

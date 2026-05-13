@@ -55,4 +55,20 @@
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
+
+  <!-- 앱 설치 안내 -->
+  <url>
+    <loc>https://showmelook.com/install</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- 프로모 영상 -->
+  <url>
+    <loc>https://showmelook.com/promo</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
 </urlset>
