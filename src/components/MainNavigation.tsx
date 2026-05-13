@@ -72,7 +72,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
         {/* Left side - Back button or Logo */}
         <div className="flex items-center gap-1 sm:gap-2">
           {showBackButton && (
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2" aria-label="이전 페이지로 돌아가기">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
@@ -175,6 +175,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       size="icon" 
                       onClick={() => navigate('/cart')} 
                       className="w-9 h-9 rounded-full"
+                      aria-label="장바구니 열기"
                     >
                       <ShoppingBag className="w-5 h-5" />
                     </Button>
@@ -234,7 +235,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                 {/* Hamburger Menu */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full">
+                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full" aria-label="메인 메뉴 열기">
                       <Menu className="w-5 h-5" />
                     </Button>
                   </SheetTrigger>
