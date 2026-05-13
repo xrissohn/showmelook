@@ -54,14 +54,27 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
   },
   privacy: {
     title: '개인정보처리방침 | 쇼미룩',
-    description: '쇼미룩 개인정보처리방침입니다. 고객님의 개인정보를 안전하게 보호합니다.',
+    description: '쇼미룩 ShowMeLook의 개인정보처리방침을 안내합니다. 수집 항목, 이용 목적, 보관 기간, 파기 절차 등 고객님의 개인정보 보호 정책을 자세히 확인하세요.',
     canonical: `${BASE_URL}/privacy`,
     ogImage: DEFAULT_OG_IMAGE,
   },
   terms: {
     title: '이용약관 | 쇼미룩',
-    description: '쇼미룩 서비스 이용약관입니다.',
+    description: '쇼미룩 ShowMeLook 서비스 이용약관입니다. 회원의 권리와 의무, 서비스 제공 범위, 결제 및 환불 정책 등 이용 조건을 확인하실 수 있습니다.',
     canonical: `${BASE_URL}/terms`,
+    ogImage: DEFAULT_OG_IMAGE,
+  },
+  community: {
+    title: '스타일 갤러리 - AI 추천 룩 모음 | 쇼미룩',
+    description: '쇼미룩 사용자들이 AI로 생성한 다양한 패션 스타일을 한곳에서 만나보세요. 트렌디한 룩북에서 영감을 얻고, 마음에 드는 코디를 바로 따라 해볼 수 있어요.',
+    keywords: '스타일 갤러리, AI 룩북, 패션 영감, 코디 모음, 사용자 룩, 커뮤니티',
+    canonical: `${BASE_URL}/community`,
+    ogImage: DEFAULT_OG_IMAGE,
+  },
+  promo: {
+    title: '쇼미룩 프로모 영상 | ShowMeLook',
+    description: '쇼미룩 ShowMeLook AI 가상피팅 서비스의 프로모션 영상입니다. 사진 한 장으로 만드는 나만의 스타일, 영상으로 빠르게 확인해보세요.',
+    canonical: `${BASE_URL}/promo`,
     ogImage: DEFAULT_OG_IMAGE,
   },
   cart: {

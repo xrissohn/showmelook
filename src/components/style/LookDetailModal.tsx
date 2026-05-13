@@ -345,7 +345,7 @@ export const LookDetailModal = ({
           <div className={`relative transform-style-3d transition-transform duration-600 ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transitionDuration: '0.6s' }}>
             {/* Front - Image with product tags */}
             <div className="backface-hidden relative">
-              <img src={look.image_url} alt="Look" className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none" draggable={false} />
+              <img src={look.image_url} alt="AI가 생성한 패션 코디 룩 이미지" className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none" draggable={false} />
               <ModalWatermarkOverlay show={hasWatermark} />
 
               {/* Interactive product tags on image */}

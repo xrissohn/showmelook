@@ -60,13 +60,7 @@ const Community = () => {
 
   return (
     <>
-      <SEOHead
-        custom={{
-          title: `${t('community.title')} | ShowMeLook`,
-          description: t('community.description'),
-          canonical: 'https://showmelook.com/community',
-        }}
-      />
+      <SEOHead pageKey="community" />
       <MainNavigation />
       <main className="min-h-screen bg-background pt-16 sm:pt-20">
         <div className="container mx-auto px-3 sm:px-6 py-6">

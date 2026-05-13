@@ -1,0 +1,14 @@
+# ShowMeLook (쇼미룩)
+
+> AI 패션 스타일링 서비스. 사진 한 장으로 체형·취향에 맞는 룩을 생성하고, 추천 상품을 바로 구매할 수 있는 가상피팅 플랫폼입니다.
+
+## Pages
+
+- [Home](/): 쇼미룩 소개와 AI 가상피팅 서비스 시작 페이지.
+- [Style Generator](/style): 사진 업로드 후 AI가 맞춤 패션 룩을 생성하는 페이지.
+- [Style Gallery](/community): 사용자들이 생성한 AI 룩을 둘러보는 갤러리.
+- [Pricing](/pricing): 구매 누적액 기반의 5단계 등급 혜택 안내.
+- [Promo](/promo): 쇼미룩 서비스 프로모션 영상.
+- [Auth](/auth): 회원가입 및 로그인.
+- [Privacy](/privacy): 개인정보처리방침.
+- [Terms](/terms): 서비스 이용약관.

@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TIER_CONFIG, TierType, TIER_ORDER, formatAmountKo } from '@/lib/tierConfig';
 import { CheckCircle2, HelpCircle, ShoppingBag, TrendingUp, Crown, Sparkles } from 'lucide-react';
 import { SEOHead } from '@/components/SEOHead';
+import { Helmet } from 'react-helmet-async';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { 
   Accordion, 
@@ -35,6 +36,21 @@ const Pricing = () => {
   return (
     <div className="min-h-screen bg-background">
       <SEOHead pageKey="pricing" />
+      {Array.isArray(faqItems) && faqItems.length > 0 && (
+        <Helmet>
+          <script type="application/ld+json">
+            {JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: faqItems.map((item) => ({
+                '@type': 'Question',
+                name: item.question,
+                acceptedAnswer: { '@type': 'Answer', text: item.answer },
+              })),
+            })}
+          </script>
+        </Helmet>
+      )}
       <MainNavigation />
       
       <main className="container mx-auto px-4 pt-24 pb-16">
