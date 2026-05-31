@@ -779,6 +779,43 @@ const ShareButtons = ({
     onShare?.(platform, result);
   };
 
+  // 모바일 Chrome에서 navigator.share()는 클릭 핸들러 동기 컨텍스트에서 호출해야 시트가 뜬다.
+  const handleKakaoClickSync = () => {
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = isIOS || isAndroid;
+
+    if (isMobile && typeof navigator.share === 'function') {
+      const baseUrl = 'https://showmelook.com';
+      const shareUrl = lookId ? `${baseUrl}/look/${lookId}` : baseUrl;
+      const sharePromise = navigator.share({
+        title: '👗 쇼미룩 AI 스타일',
+        text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+        url: shareUrl,
+      });
+      setIsShareOpen(false);
+      if (lookId) {
+        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+      }
+      sharePromise.then(
+        () => onShare?.('kakao', { success: true }),
+        (e: Error) => {
+          if (e?.name === 'AbortError') {
+            onShare?.('kakao', { success: true, message: '공유가 취소되었습니다.' });
+            return;
+          }
+          navigator.clipboard?.writeText(shareUrl).then(
+            () => onShare?.('kakao', { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다.' }),
+            () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+          );
+        }
+      );
+      return;
+    }
+    void handleShare('kakao');
+  };
+
   if (compact) {
     return (
       <div className={`flex gap-2 ${className}`}>
@@ -843,7 +880,7 @@ const ShareButtons = ({
                 <span className="text-sm font-korean text-foreground">Facebook</span>
               </button>
               <button
-                onClick={() => handleShare('kakao')}
+                onClick={handleKakaoClickSync}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
@@ -925,7 +962,7 @@ const ShareButtons = ({
                 <span className="text-sm font-korean text-foreground">Facebook</span>
               </button>
               <button
-                onClick={() => handleShare('kakao')}
+                onClick={handleKakaoClickSync}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
