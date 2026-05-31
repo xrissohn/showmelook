@@ -177,7 +177,30 @@ export const shareToSNS = async (
     case 'facebook':
       window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(crawlerShareUrl)}&quote=${encodeURIComponent(shareText)}`, '_blank', 'width=600,height=400');
       return { success: true };
-    case 'kakao':
+    case 'kakao': {
+      // iOS는 WebKit 강제 정책으로 인해 Kakao SDK의 kakaolink:// 스킴이 Safari 외 브라우저에서 차단됨.
+      // (iOS Chrome/Edge/Firefox에서 talk-apps.kakao.com 다운로드 안내 화면으로 폴백되는 문제)
+      // → iOS에서는 Web Share API를 우선 사용하여 네이티브 공유 시트로 설치된 카톡에 직접 전달.
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isIOS && typeof navigator.share === 'function') {
+        try {
+          await navigator.share({
+            title: '👗 쇼미룩 AI 스타일',
+            text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+            url: shareUrl,
+          });
+          return { success: true };
+        } catch (e) {
+          if ((e as Error).name === 'AbortError') {
+            return { success: true, message: '공유가 취소되었습니다.' };
+          }
+          // fall through to clipboard fallback below
+          try {
+            await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+            return { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다. Safari에서 다시 시도해보세요!' };
+          } catch { return { success: false, message: '공유에 실패했습니다.' }; }
+        }
+      }
       try {
         const Kakao = (window as any).Kakao;
         if (!Kakao) {
@@ -208,6 +231,7 @@ export const shareToSNS = async (
           return { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' };
         } catch { return { success: false, message: '공유에 실패했습니다.' }; }
       }
+    }
     case 'copy':
       try {
         await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
