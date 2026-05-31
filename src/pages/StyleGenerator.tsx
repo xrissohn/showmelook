@@ -696,12 +696,11 @@ const shareToSNS = async (
         
         // main.tsx에서 초기화 시도했지만 실패했을 수 있으므로 재시도
         if (!Kakao.isInitialized()) {
-          const kakaoKey = 'e5f9085240afd55f52cc0a0a37081761';
           try {
-            Kakao.init(kakaoKey);
+            Kakao.init(KAKAO_JS_KEY);
             console.log('Kakao SDK initialized in shareToSNS');
           } catch (initErr) {
-            console.error('Kakao init error:', initErr);
+            console.error('[Kakao Share] init error:', initErr);
           }
         }
         
@@ -711,38 +710,15 @@ const shareToSNS = async (
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
         
-        // 카카오톡 이미지: 원본 세로 이미지 그대로 사용 (카카오가 자체 크롭하지만 해상도가 높아 전신이 더 잘 보임)
-        let kakaoImageUrl = imageUrl;
-        
         // 카카오톡 공유 URL - 카카오 SDK는 등록된 도메인(showmelook.com)만 허용
         // Edge Function URL(supabase.co 도메인)을 넣으면 홈페이지로 리다이렉트됨
         const kakaoShareUrl = shareUrl; // shareUrl = showmelook.com/look/${lookId}
         
         // 카카오톡 공유하기
-        Kakao.Share.sendDefault({
-          objectType: 'feed',
-          content: {
-            title: '👗 쇼미룩 AI 스타일',
-            description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
-            imageUrl: kakaoImageUrl,
-            link: {
-              mobileWebUrl: kakaoShareUrl,
-              webUrl: kakaoShareUrl,
-            },
-          },
-          buttons: [
-            {
-              title: '스타일 보기',
-              link: {
-                mobileWebUrl: kakaoShareUrl,
-                webUrl: kakaoShareUrl,
-              },
-            },
-          ],
-        });
+        Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, kakaoShareUrl, prompt));
         return { success: true };
       } catch (err) {
-        console.error('Kakao share error:', err);
+        console.error('[Kakao Share] sendDefault error:', err);
         // 에러 시 링크 복사로 fallback
         try {
           await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
