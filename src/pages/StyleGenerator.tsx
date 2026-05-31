@@ -514,7 +514,16 @@ const shareToSNS = async (
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(navigator.userAgent);
   const isKakaoMobile = platform === 'kakao' && (isIOS || isAndroid);
+  const isMobileChrome = isKakaoMobile && /CriOS|Chrome|Chromium/i.test(navigator.userAgent) && !/Edg|OPR|SamsungBrowser|Whale/i.test(navigator.userAgent);
   if (isKakaoMobile) {
+    if (isMobileChrome) {
+      markLookPublic();
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        return { success: true, message: '모바일 Chrome에서는 링크가 복사되었습니다. 카카오톡에 붙여넣어 공유해주세요.' };
+      } catch { return { success: false, message: '링크 복사에 실패했습니다.' }; }
+    }
+
     if (typeof navigator.share === 'function') {
       try {
         const sharePromise = navigator.share({
@@ -785,10 +794,23 @@ const ShareButtons = ({
     const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const isAndroid = /Android/i.test(ua);
     const isMobile = isIOS || isAndroid;
+    const isMobileChrome = isMobile && /CriOS|Chrome|Chromium/i.test(ua) && !/Edg|OPR|SamsungBrowser|Whale/i.test(ua);
+    const baseUrl = 'https://showmelook.com';
+    const shareUrl = lookId ? `${baseUrl}/look/${lookId}` : baseUrl;
+
+    if (isMobileChrome) {
+      setIsShareOpen(false);
+      if (lookId) {
+        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+      }
+      navigator.clipboard?.writeText(shareUrl).then(
+        () => onShare?.('kakao', { success: true, message: '모바일 Chrome에서는 링크가 복사되었습니다. 카카오톡에 붙여넣어 공유해주세요.' }),
+        () => onShare?.('kakao', { success: false, message: '링크 복사에 실패했습니다.' })
+      );
+      return;
+    }
 
     if (isMobile && typeof navigator.share === 'function') {
-      const baseUrl = 'https://showmelook.com';
-      const shareUrl = lookId ? `${baseUrl}/look/${lookId}` : baseUrl;
       const sharePromise = navigator.share({
         title: '👗 쇼미룩 AI 스타일',
         text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
