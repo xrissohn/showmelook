@@ -508,10 +508,13 @@ const shareToSNS = async (
     }
   };
 
-  // iOS Chrome/Safari는 Kakao SDK의 앱 스킴 대신 네이티브 공유 시트를 사용해야 한다.
+  // 모바일 Chrome/Safari는 Kakao SDK 앱스킴이 막히거나 talk-apps 폴백이 뜰 수 있으므로
+  // Kakao 공유는 iOS/Android 모두 네이티브 공유 시트를 먼저 사용해야 한다.
   // 공유 시트 호출은 사용자 탭 직후 가장 먼저 실행되어야 하므로 DB 업데이트보다 앞에 둔다.
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (platform === 'kakao' && isIOS) {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isKakaoMobile = platform === 'kakao' && (isIOS || isAndroid);
+  if (isKakaoMobile) {
     if (typeof navigator.share === 'function') {
       try {
         const sharePromise = navigator.share({
