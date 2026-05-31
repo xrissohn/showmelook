@@ -38,6 +38,7 @@ import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSele
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { LoadingProductAds } from '@/components/style/LoadingProductAds';
 import { GenerationProgress } from '@/components/style/GenerationProgress';
+import { copyToClipboard } from '@/lib/inAppBrowserDetector';
 import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarousel';
 import { WatermarkOverlay, GalleryWatermarkOverlay, ModalWatermarkOverlay } from '@/components/style/WatermarkOverlay';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -438,6 +439,9 @@ const downloadImage = async (
 
 const KAKAO_JS_KEY = 'e5f9085240afd55f52cc0a0a37081761';
 const KAKAO_FALLBACK_IMAGE_URL = 'https://showmelook.com/og-image-kakao.png';
+const SHARE_LINK_COPIED_MESSAGE = '링크가 복사되었습니다. 카카오톡 메시지창에 붙여넣어 보내주세요.';
+const getShareLinkCopyFailedMessage = (shareUrl: string) =>
+  `링크 복사에 실패했어요. 아래 주소를 복사해 카카오톡에 붙여넣어 주세요: ${shareUrl}`;
 
 const getKakaoShareImageUrl = (url: string) => {
   try {
