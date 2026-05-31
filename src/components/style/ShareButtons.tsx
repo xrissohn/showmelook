@@ -377,7 +377,7 @@ export const ShareButtons = ({
               <ShareMenuItem emoji="📸" label="Instagram" onClick={() => handleShare('instagram')} />
               <ShareMenuItem emoji="🐦" label="Twitter" onClick={() => handleShare('twitter')} />
               <ShareMenuItem emoji="📘" label="Facebook" onClick={() => handleShare('facebook')} />
-              <ShareMenuItem emoji="💬" label="KakaoTalk" onClick={() => handleShare('kakao')} />
+              <ShareMenuItem emoji="💬" label="KakaoTalk" onClick={handleKakaoClickSync} />
               <div className="my-1 border-t border-border" />
               <ShareMenuItem emoji="🔗" label={t('shareUI.copyLink')} onClick={() => handleShare('copy')} />
             </PopoverContent>
