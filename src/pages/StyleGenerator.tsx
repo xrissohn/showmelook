@@ -854,17 +854,27 @@ const ShareButtons = ({
           void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
         }
       };
-      const fallbackCopy = (msg: string) => {
-        navigator.clipboard?.writeText(shareUrl).then(
-          () => {
-            sonnerToast.success(msg);
-            onShare?.('kakao', { success: true, message: msg });
-          },
-          () => {
-            sonnerToast.error('공유에 실패했습니다.');
-            onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' });
+      const COPIED_MSG = '링크가 복사되었습니다. 카카오톡 메시지창에 붙여넣어 보내주세요.';
+      const fallbackCopy = () => {
+        const notifyCopied = () => {
+          sonnerToast.success(COPIED_MSG, { duration: 5000 });
+          onShare?.('kakao', { success: true, message: COPIED_MSG });
+        };
+        const notifyManual = () => {
+          const manualMsg = `링크 복사에 실패했어요. 아래 주소를 복사해 카카오톡에 붙여넣어 주세요: ${shareUrl}`;
+          sonnerToast.error(manualMsg, { duration: 8000 });
+          onShare?.('kakao', { success: false, message: manualMsg });
+        };
+        try {
+          const p = navigator.clipboard?.writeText(shareUrl);
+          if (p && typeof p.then === 'function') {
+            p.then(notifyCopied, notifyManual);
+          } else {
+            notifyCopied();
           }
-        );
+        } catch {
+          notifyManual();
+        }
       };
       const doShare = () => {
         try {
@@ -873,7 +883,7 @@ const ShareButtons = ({
           onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
         } catch (e) {
           console.error('[Kakao Share] sendDefault error:', e);
-          fallbackCopy('카카오톡 공유 실패. 링크가 복사되었습니다!');
+          fallbackCopy();
         }
       };
 
