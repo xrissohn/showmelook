@@ -886,14 +886,29 @@ const ShareButtons = ({
       }
 
       if (Kakao.Auth?.login) {
-        Kakao.Auth.login({
-          scope: 'profile_nickname',
-          success: () => doShare(),
-          fail: (err: unknown) => {
+        let settled = false;
+        const finish = (ok: boolean, err?: unknown) => {
+          if (settled) return;
+          settled = true;
+          if (ok) {
+            doShare();
+          } else {
             console.error('[Kakao Share] login fail:', err);
             fallbackCopy('카카오 로그인 실패. 링크가 복사되었습니다!');
-          },
-        });
+          }
+        };
+        try {
+          const ret = Kakao.Auth.login({
+            scope: 'profile_nickname',
+            success: () => finish(true),
+            fail: (err: unknown) => finish(false, err),
+          });
+          if (ret && typeof ret.then === 'function') {
+            ret.then(() => finish(true)).catch((err: unknown) => finish(false, err));
+          }
+        } catch (err) {
+          finish(false, err);
+        }
       } else {
         doShare();
       }
