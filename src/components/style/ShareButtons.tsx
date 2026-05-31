@@ -137,10 +137,12 @@ export const shareToSNS = async (
     }
   };
 
-  // iOS Chrome/Safari는 Kakao SDK로 내려가면 talk-apps.kakao.com 폴백이 뜰 수 있으므로
+  // 모바일 Chrome/Safari는 Kakao SDK 앱스킴이 막히거나 talk-apps 폴백이 뜰 수 있으므로
   // Kakao 공유만큼은 어떤 비동기 작업보다 먼저 네이티브 공유 시트를 호출하고 즉시 종료한다.
   const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  if (platform === 'kakao' && isIOS) {
+  const isAndroid = /Android/i.test(navigator.userAgent);
+  const isMobile = isIOS || isAndroid;
+  if (platform === 'kakao' && isMobile) {
     if (typeof navigator.share === 'function') {
       try {
         const sharePromise = navigator.share({
@@ -170,8 +172,7 @@ export const shareToSNS = async (
 
   switch (platform) {
     case 'instagram': {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         try {
           try { await navigator.clipboard.writeText(hashtags); } catch {}
           const response = await fetch(imageUrl);
