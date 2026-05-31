@@ -1,65 +1,25 @@
-# iOS Chrome 카카오톡 공유 문제 해결
+## 문제 원인
+현재 iOS 분기는 `navigator.share()`를 사용하도록 추가됐지만, 그 전에 `await supabase.from('generated_looks').update(...)`가 먼저 실행됩니다. iOS Web Share API는 버튼 클릭 직후의 사용자 제스처 안에서 즉시 호출되어야 해서, async DB 업데이트가 먼저 일어나면 네이티브 공유 시트가 차단될 수 있습니다. 그러면 기존 Kakao SDK 경로 또는 fallback 페이지처럼 보이는 문제가 계속 발생합니다.
 
-## 문제 요약
+## 수정 계획
+1. `ShareButtons.tsx`의 Kakao 공유 경로를 수정합니다.
+   - iOS + Kakao 선택 시 `navigator.share()`를 함수 초반에 가장 먼저 실행합니다.
+   - `generated_looks.is_public = true` 업데이트는 공유 호출 이후 백그라운드로 실행하거나, 공유 URL 생성에 필요한 최소 값만 먼저 계산합니다.
+   - iOS에서는 절대 `Kakao.Share.sendDefault()`로 내려가지 않도록 명확히 차단합니다.
 
-iOS Chrome(및 Safari 이외 모든 iOS 브라우저)은 WebKit 강제 정책 때문에 Kakao JS SDK의 `kakaolink://` 커스텀 스킴이 차단되어, SDK가 `talk-apps.kakao.com` 웹 폴백 페이지로 빠집니다. 사용자에게는 "카톡 설치/다운로드" 안내 화면이 보이고 설치된 카톡으로 링크가 전달되지 않습니다.
+2. `StyleGenerator.tsx` 내부 중복 공유 함수도 같은 방식으로 수정합니다.
+   - 이 파일은 크지만 기존 구조를 유지하고 공유 함수의 순서만 최소 변경합니다.
+   - iOS Kakao 공유는 무조건 Web Share API 또는 링크 복사 fallback만 사용하게 합니다.
 
-코드 버그가 아니라 iOS 플랫폼 제약입니다. **Web Share API**(`navigator.share`)는 iOS Chrome/Safari/Edge 모두 지원하고, 호출 시 iOS 네이티브 공유 시트가 열려 설치된 KakaoTalk으로 바로 전달됩니다.
+3. iOS Chrome/Safari용 메시지를 정리합니다.
+   - 사용자가 공유를 취소한 경우는 오류로 보지 않습니다.
+   - `navigator.share` 자체가 없거나 실패하면 링크를 복사하고, “공유 시트를 열 수 없어 링크를 복사했습니다”로 안내합니다.
 
-## 해결 전략
+## 기대 동작
+- iPhone Chrome/Safari: KakaoTalk 버튼 클릭 → iOS 네이티브 공유 시트 → KakaoTalk 선택
+- Android/PC: 기존 Kakao SDK 공유 유지
+- iOS에서 더 이상 `talk-apps.kakao.com` 다운로드 안내 화면으로 가지 않음
 
-공유 함수 진입 시 환경을 분기:
-
-```text
-[공유 버튼 클릭]
-       │
-       ▼
-   iOS 인가?
-   ├─ Yes ──► navigator.share() (네이티브 공유 시트 → 카톡 선택)
-   │           └─ 실패/미지원 시 → 링크 복사 fallback
-   │
-   └─ No ───► Kakao.Share.sendDefault() (기존 로직 유지)
-               └─ 실패 시 → 링크 복사 fallback
-```
-
-PC/Android 동작은 그대로 두고, iOS 경로만 추가합니다.
-
-## 변경 사항
-
-### 1. 공유 유틸 함수 분기 추가
-공유 로직이 있는 파일(`src/components/style/ShareButtons.tsx` 및 `LookDetailModal.tsx`에서 호출하는 `shareToKakao` 함수)을 수정:
-
-- iOS 감지: `/iPhone|iPad|iPod/i.test(navigator.userAgent)` (기존 `inAppBrowserDetector.ts` 재사용 가능)
-- iOS + `navigator.share` 사용 가능 → `navigator.share({ title, text, url })` 호출
-  - **사용자 클릭 핸들러 내에서 동기적으로 호출**해야 iOS가 허용 (async/await로 await 후 호출 금지 — 미리 데이터 준비 후 즉시 호출)
-- iOS인데 `navigator.share` 없거나 사용자 취소 외 에러 → 링크 복사 + 토스트로 "Safari에서 공유 가능" 안내
-- 비-iOS → 기존 Kakao SDK 경로 그대로
-
-### 2. (선택) 인앱 브라우저 안내 강화
-iOS 인앱 브라우저(카톡/인스타/네이버)는 `navigator.share`도 차단되는 경우가 있어, 기존 `InAppBrowserRedirect`/`InAppBrowserWarning` 동선 그대로 유지.
-
-### 3. QA 시나리오
-- iOS Chrome에서 공유 클릭 → 네이티브 시트 → 카톡 선택 → 카톡 앱 진입 후 친구 선택 화면 (정상)
-- iOS Safari → 동일하게 네이티브 시트 동작 (정상)
-- Android Chrome → Kakao SDK로 카톡 직접 호출 (기존과 동일)
-- PC Chrome → Kakao SDK 웹 공유 (기존과 동일)
-- 인앱 브라우저 → 기존 안내 모달
-
-## 기술 디테일
-
-- `navigator.share`는 HTTPS + 사용자 제스처 컨텍스트 필요 (조건 충족됨: 버튼 클릭)
-- 이미지 첨부(`files`)는 iOS 지원이 불안정하므로 `title/text/url`만 전달
-- 에러 핸들링:
-  - `AbortError`(사용자 취소) → 무시
-  - 그 외 에러 → 링크 복사 fallback 실행
-- Kakao SDK 코드/초기화는 그대로 유지 (Android/PC에서 계속 사용)
-
-## 영향 범위
-
-- 수정 파일: `src/components/style/ShareButtons.tsx` (또는 공유 로직이 위치한 파일) — frontend only
-- 백엔드, edge function, DB 변경 없음
-- 기존 Android/PC 사용자 경험 변화 없음
-
-## 참고: 사용자에게 알릴 점
-
-iOS Chrome에서 "카카오톡으로 직접 공유" 버튼이 SDK로는 작동하지 않는 것이 정상이라는 점은 카카오 공식 문서에도 명시되어 있습니다 (Universal Link 기반 동작은 Safari 우선 지원). 이번 수정은 iOS의 네이티브 공유 시트를 활용해 우회하는 표준 패턴입니다.
+## 검증
+- 코드상 iOS Kakao 경로가 `Kakao.Share.sendDefault()`에 도달하지 않는지 확인합니다.
+- 관련 TypeScript 구문 오류가 없도록 변경 범위를 최소화합니다.

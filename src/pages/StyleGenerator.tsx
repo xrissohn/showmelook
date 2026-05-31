@@ -499,16 +499,13 @@ const shareToSNS = async (
     ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
     : baseUrl;
 
-  // 공유 시 is_public을 true로 설정하여 다른 사람도 볼 수 있게 함
+  // 공유 시 is_public을 true로 설정 (fire-and-forget: iOS Web Share API는 동기 제스처 컨텍스트 필요)
   if (lookId) {
-    try {
-      await supabase
-        .from('generated_looks')
-        .update({ is_public: true })
-        .eq('id', lookId);
-    } catch (e) {
-      console.error('Failed to make look public:', e);
-    }
+    void supabase
+      .from('generated_looks')
+      .update({ is_public: true })
+      .eq('id', lookId)
+      .then(() => {}, (e) => console.error('Failed to make look public:', e));
   }
 
   switch (platform) {
