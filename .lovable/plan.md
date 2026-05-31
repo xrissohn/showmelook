@@ -1,28 +1,71 @@
-문제 원인으로 보이는 부분은 `navigator.share()` 자체보다, 현재 카카오 공유가 비동기 함수/Popover 메뉴 클릭/상태 업데이트 흐름을 거치면서 모바일 Chrome에서 “사용자 제스처 직후 호출” 조건을 잃는 점입니다. 모바일 Chrome은 이 조건이 깨지면 공유 시트를 조용히 막는 경우가 많습니다.
+## 진단 요약
 
-계획:
+(a) JS Domain 등록됨 → 도메인 문제 아님
+(b) "로그인 안 됨/요청 실패" → 카카오 팝업에서 발생. `sendDefault` 자체는 로그인 불필요하므로, 십중팔구 **`imageUrl`이 카카오 서버에서 크롤링 불가**(Supabase signed URL, blob, data URL 등)거나 SDK가 비동기 컨텍스트에서 호출되어 팝업이 정상 흐름을 못 탐
+(c) 팝업 차단 아이콘 없음 → 팝업은 떴음. SDK 내부 에러 메시지일 가능성 높음
 
-1. 카카오 모바일 공유를 버튼 클릭 핸들러 안에서 즉시 실행
-   - `KakaoTalk` 메뉴 클릭 시 `await shareToSNS(...)`로 들어가기 전에 모바일 카카오 여부를 먼저 판단합니다.
-   - 모바일이면 클릭 이벤트 안에서 바로 `navigator.share({ title, text, url })`를 호출합니다.
-   - 공유 메뉴 닫기, DB 공개 처리, toast 콜백은 공유 시트 호출 이후로 미룹니다.
+## 변경 사항
 
-2. `ShareButtons.tsx` 구조 수정
-   - 모바일 카카오 전용 헬퍼를 추가해 `handleShare('kakao')`에서 최우선 실행합니다.
-   - iOS Safari, iOS Chrome, Android Chrome 모두 Web Share API 경로로 통일합니다.
-   - `navigator.share`가 없거나 실패하면 링크 복사 안내로 fallback합니다.
-   - PC는 기존 Kakao SDK 공유를 그대로 유지합니다.
+### 1. `src/components/style/ShareButtons.tsx`
 
-3. `StyleGenerator.tsx` 내부 중복 공유 UI도 동일하게 반영
-   - 같은 공유 함수가 중복되어 있으므로 동일한 모바일 즉시 호출 구조로 맞춥니다.
-   - 단, 기존 대형 파일은 필요한 부분만 최소 수정하고 리팩터링하지 않습니다.
+**(A) `handleKakaoClickSync`에 PC 분기 추가** — 사용자 클릭 동기 컨텍스트에서 `Kakao.Share.sendDefault()` 즉시 호출 (현재는 `handleShare('kakao')` async 체인으로 위임되어 컨텍스트 소실).
 
-4. 확인 기준
-   - 코드상 모바일 카카오 클릭이 더 이상 `Kakao.Share.sendDefault()`로 가지 않는지 확인합니다.
-   - 모바일 Chrome에서 공유 시트가 열릴 수 있도록 `navigator.share()`가 클릭 핸들러의 첫 동작에 가깝게 실행되는지 확인합니다.
-   - 실제 카카오톡 앱 선택/전송은 브라우저 자동화 환경에서 완전 검증이 어렵지만, Safari와 같은 네이티브 공유 시트를 띄우는 구조로 변경합니다.
+**(B) `imageUrl` 안전화 헬퍼**
+```text
+isPublicShareableImage(url):
+  - http(s)로 시작하고
+  - blob:/data:/ 가 아니고
+  - URL 내 'token=' / '/sign/' 포함 안 함
+  → true면 그대로, false면 'https://showmelook.com/og-image.png' 사용
+```
 
-기대 결과:
-- iOS Safari/Chrome: 공유 시트가 뜨고 카카오톡 선택 가능
-- Android Chrome: 아무 반응 없는 상태 대신 공유 시트가 뜨고 카카오톡 선택 가능
-- PC Chrome: 기존 카카오 SDK 공유 유지
+**(C) `case 'kakao'` 및 PC 동기 분기 둘 다 적용**:
+- Kakao SDK 미로드/미초기화 시 즉시 재초기화 시도
+- 에러를 `console.error('[Kakao Share]', err)`로 노출 (현재 `catch {}`로 가려져 있음)
+- 실패 시 toast 메시지 + 링크 복사 fallback
+
+**(D) `sendDefault` 호출부 정리**:
+```text
+Kakao.Share.sendDefault({
+  objectType: 'feed',
+  content: {
+    title, description,
+    imageUrl: safeImageUrl,     // 위 (B)로 검증된 공개 URL
+    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
+  },
+  buttons: [{ title: '스타일 보기', link: {...} }]
+})
+```
+
+### 2. `src/pages/StyleGenerator.tsx`
+
+동일한 패턴 적용:
+- `handleKakaoClickSync`에 PC 동기 분기 추가
+- 동일한 `isPublicShareableImage` 헬퍼 적용
+- `catch` 블록 에러 로깅 강화
+
+### 3. 분기 흐름 최종 정리
+
+```text
+KakaoTalk 버튼 onClick (동기)
+ ├─ Mobile Chrome   → 링크 복사 (현 상태 유지)
+ ├─ Mobile Safari 등 → navigator.share() 즉시 호출 (현 상태 유지)
+ └─ PC (Desktop)    → Kakao.Share.sendDefault() 즉시 호출 [NEW]
+                       │
+                       ├─ imageUrl 안전화 적용
+                       ├─ 성공: toast '카카오톡 공유 창이 열렸습니다'
+                       └─ 실패: console.error + 링크 복사 fallback + toast
+```
+
+## 검증 방법
+
+1. PC Chrome에서 스타일 생성 후 KakaoTalk 클릭 → 팝업에서 정상적으로 친구 선택 화면 도달
+2. 실패 시 브라우저 콘솔에 `[Kakao Share]` 에러 출력 확인 가능
+3. 모바일 Chrome/Safari 동작은 변경 없음 (기존 분기 유지)
+
+## 변경 대상
+
+- `src/components/style/ShareButtons.tsx` (수정)
+- `src/pages/StyleGenerator.tsx` (수정)
+
+DB/edge function 변경 없음, UI/공유 로직만 수정.

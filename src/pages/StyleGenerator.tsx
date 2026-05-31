@@ -435,6 +435,34 @@ const downloadImage = async (
   }
 };
 
+const KAKAO_JS_KEY = 'e5f9085240afd55f52cc0a0a37081761';
+const KAKAO_FALLBACK_IMAGE_URL = 'https://showmelook.com/og-image-kakao.png';
+
+const getKakaoShareImageUrl = (url: string) => {
+  try {
+    if (!/^https?:\/\//i.test(url)) return KAKAO_FALLBACK_IMAGE_URL;
+    const parsed = new URL(url);
+    const normalized = `${parsed.pathname}${parsed.search}`.toLowerCase();
+    if (normalized.includes('/sign/') || normalized.includes('token=')) {
+      return KAKAO_FALLBACK_IMAGE_URL;
+    }
+    return url;
+  } catch {
+    return KAKAO_FALLBACK_IMAGE_URL;
+  }
+};
+
+const getKakaoSharePayload = (imageUrl: string, shareUrl: string, prompt?: string) => ({
+  objectType: 'feed',
+  content: {
+    title: '👗 쇼미룩 AI 스타일',
+    description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+    imageUrl: getKakaoShareImageUrl(imageUrl),
+    link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+  },
+  buttons: [{ title: '스타일 보기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+});
+
 // SNS 공유 함수
 // 해시태그 생성 함수
 const generateHashtags = (prompt?: string, tags?: string[]): string => {
@@ -668,12 +696,11 @@ const shareToSNS = async (
         
         // main.tsx에서 초기화 시도했지만 실패했을 수 있으므로 재시도
         if (!Kakao.isInitialized()) {
-          const kakaoKey = 'e5f9085240afd55f52cc0a0a37081761';
           try {
-            Kakao.init(kakaoKey);
+            Kakao.init(KAKAO_JS_KEY);
             console.log('Kakao SDK initialized in shareToSNS');
           } catch (initErr) {
-            console.error('Kakao init error:', initErr);
+            console.error('[Kakao Share] init error:', initErr);
           }
         }
         
@@ -683,38 +710,15 @@ const shareToSNS = async (
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
         
-        // 카카오톡 이미지: 원본 세로 이미지 그대로 사용 (카카오가 자체 크롭하지만 해상도가 높아 전신이 더 잘 보임)
-        let kakaoImageUrl = imageUrl;
-        
         // 카카오톡 공유 URL - 카카오 SDK는 등록된 도메인(showmelook.com)만 허용
         // Edge Function URL(supabase.co 도메인)을 넣으면 홈페이지로 리다이렉트됨
         const kakaoShareUrl = shareUrl; // shareUrl = showmelook.com/look/${lookId}
         
         // 카카오톡 공유하기
-        Kakao.Share.sendDefault({
-          objectType: 'feed',
-          content: {
-            title: '👗 쇼미룩 AI 스타일',
-            description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
-            imageUrl: kakaoImageUrl,
-            link: {
-              mobileWebUrl: kakaoShareUrl,
-              webUrl: kakaoShareUrl,
-            },
-          },
-          buttons: [
-            {
-              title: '스타일 보기',
-              link: {
-                mobileWebUrl: kakaoShareUrl,
-                webUrl: kakaoShareUrl,
-              },
-            },
-          ],
-        });
+        Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, kakaoShareUrl, prompt));
         return { success: true };
       } catch (err) {
-        console.error('Kakao share error:', err);
+        console.error('[Kakao Share] sendDefault error:', err);
         // 에러 시 링크 복사로 fallback
         try {
           await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
@@ -835,7 +839,28 @@ const ShareButtons = ({
       );
       return;
     }
-    void handleShare('kakao');
+
+    try {
+      const Kakao = (window as any).Kakao;
+      if (!Kakao) throw new Error('Kakao SDK not loaded');
+      if (!Kakao.isInitialized()) {
+        Kakao.init(KAKAO_JS_KEY);
+      }
+      if (!Kakao.isInitialized()) throw new Error('Kakao SDK not initialized');
+      Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+      setIsShareOpen(false);
+      if (lookId) {
+        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+      }
+      onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+    } catch (err) {
+      console.error('[Kakao Share] desktop sendDefault error:', err);
+      setIsShareOpen(false);
+      navigator.clipboard?.writeText(shareUrl).then(
+        () => onShare?.('kakao', { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' }),
+        () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+      );
+    }
   };
 
   if (compact) {

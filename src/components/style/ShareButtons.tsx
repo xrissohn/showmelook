@@ -116,6 +116,34 @@ const downloadImage = async (imageUrl: string, fileName: string, addWatermark: b
   } catch { return false; }
 };
 
+const KAKAO_JS_KEY = 'e5f9085240afd55f52cc0a0a37081761';
+const KAKAO_FALLBACK_IMAGE_URL = 'https://showmelook.com/og-image-kakao.png';
+
+const getKakaoShareImageUrl = (url: string) => {
+  try {
+    if (!/^https?:\/\//i.test(url)) return KAKAO_FALLBACK_IMAGE_URL;
+    const parsed = new URL(url);
+    const normalized = `${parsed.pathname}${parsed.search}`.toLowerCase();
+    if (normalized.includes('/sign/') || normalized.includes('token=')) {
+      return KAKAO_FALLBACK_IMAGE_URL;
+    }
+    return url;
+  } catch {
+    return KAKAO_FALLBACK_IMAGE_URL;
+  }
+};
+
+const getKakaoSharePayload = (imageUrl: string, shareUrl: string, prompt?: string) => ({
+  objectType: 'feed',
+  content: {
+    title: '👗 쇼미룩 AI 스타일',
+    description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+    imageUrl: getKakaoShareImageUrl(imageUrl),
+    link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+  },
+  buttons: [{ title: '스타일 보기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+});
+
 export const shareToSNS = async (
   imageUrl: string,
   platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy',
@@ -225,24 +253,16 @@ export const shareToSNS = async (
           return { success: true, message: '카카오톡 SDK 로딩 실패. 링크가 복사되었습니다!' };
         }
         if (!Kakao.isInitialized()) {
-          try { Kakao.init('e5f9085240afd55f52cc0a0a37081761'); } catch {}
+          try { Kakao.init(KAKAO_JS_KEY); } catch (initErr) { console.error('[Kakao Share] init error:', initErr); }
         }
         if (!Kakao.isInitialized()) {
           await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
           return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
         }
-        Kakao.Share.sendDefault({
-          objectType: 'feed',
-          content: {
-            title: '👗 쇼미룩 AI 스타일',
-            description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
-            imageUrl,
-            link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
-          },
-          buttons: [{ title: '스타일 보기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
-        });
+        Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
         return { success: true };
-      } catch {
+      } catch (err) {
+        console.error('[Kakao Share] sendDefault error:', err);
         try {
           await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
           return { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' };
@@ -359,8 +379,27 @@ export const ShareButtons = ({
       return;
     }
 
-    // 모바일이 아니거나 Web Share API 미지원이면 기존 경로(카카오 SDK)
-    void handleShare('kakao');
+    try {
+      const Kakao = (window as any).Kakao;
+      if (!Kakao) throw new Error('Kakao SDK not loaded');
+      if (!Kakao.isInitialized()) {
+        Kakao.init(KAKAO_JS_KEY);
+      }
+      if (!Kakao.isInitialized()) throw new Error('Kakao SDK not initialized');
+      Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+      setIsShareOpen(false);
+      if (lookId) {
+        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+      }
+      onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+    } catch (err) {
+      console.error('[Kakao Share] desktop sendDefault error:', err);
+      setIsShareOpen(false);
+      navigator.clipboard?.writeText(shareUrl).then(
+        () => onShare?.('kakao', { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' }),
+        () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+      );
+    }
   };
 
   if (compact) {
