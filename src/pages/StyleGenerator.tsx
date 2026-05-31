@@ -435,6 +435,34 @@ const downloadImage = async (
   }
 };
 
+const KAKAO_JS_KEY = 'e5f9085240afd55f52cc0a0a37081761';
+const KAKAO_FALLBACK_IMAGE_URL = 'https://showmelook.com/og-image-kakao.png';
+
+const getKakaoShareImageUrl = (url: string) => {
+  try {
+    if (!/^https?:\/\//i.test(url)) return KAKAO_FALLBACK_IMAGE_URL;
+    const parsed = new URL(url);
+    const normalized = `${parsed.pathname}${parsed.search}`.toLowerCase();
+    if (normalized.includes('/sign/') || normalized.includes('token=')) {
+      return KAKAO_FALLBACK_IMAGE_URL;
+    }
+    return url;
+  } catch {
+    return KAKAO_FALLBACK_IMAGE_URL;
+  }
+};
+
+const getKakaoSharePayload = (imageUrl: string, shareUrl: string, prompt?: string) => ({
+  objectType: 'feed',
+  content: {
+    title: '👗 쇼미룩 AI 스타일',
+    description: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+    imageUrl: getKakaoShareImageUrl(imageUrl),
+    link: { mobileWebUrl: shareUrl, webUrl: shareUrl },
+  },
+  buttons: [{ title: '스타일 보기', link: { mobileWebUrl: shareUrl, webUrl: shareUrl } }],
+});
+
 // SNS 공유 함수
 // 해시태그 생성 함수
 const generateHashtags = (prompt?: string, tags?: string[]): string => {
