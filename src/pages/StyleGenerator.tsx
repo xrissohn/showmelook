@@ -847,14 +847,51 @@ const ShareButtons = ({
         Kakao.init(KAKAO_JS_KEY);
       }
       if (!Kakao.isInitialized()) throw new Error('Kakao SDK not initialized');
-      Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+
+      const markPublic = () => {
+        if (lookId) {
+          void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+        }
+      };
+      const fallbackCopy = (msg: string) => {
+        navigator.clipboard?.writeText(shareUrl).then(
+          () => onShare?.('kakao', { success: true, message: msg }),
+          () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+        );
+      };
+      const doShare = () => {
+        try {
+          Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+          markPublic();
+          onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+        } catch (e) {
+          console.error('[Kakao Share] sendDefault error:', e);
+          fallbackCopy('카카오톡 공유 실패. 링크가 복사되었습니다!');
+        }
+      };
+
       setIsShareOpen(false);
-      if (lookId) {
-        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+
+      const hasToken = typeof Kakao.Auth?.getAccessToken === 'function' && !!Kakao.Auth.getAccessToken();
+      if (hasToken) {
+        doShare();
+        return;
       }
-      onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+
+      if (Kakao.Auth?.login) {
+        Kakao.Auth.login({
+          scope: 'profile_nickname',
+          success: () => doShare(),
+          fail: (err: unknown) => {
+            console.error('[Kakao Share] login fail:', err);
+            fallbackCopy('카카오 로그인 실패. 링크가 복사되었습니다!');
+          },
+        });
+      } else {
+        doShare();
+      }
     } catch (err) {
-      console.error('[Kakao Share] desktop sendDefault error:', err);
+      console.error('[Kakao Share] desktop flow error:', err);
       setIsShareOpen(false);
       navigator.clipboard?.writeText(shareUrl).then(
         () => onShare?.('kakao', { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' }),
