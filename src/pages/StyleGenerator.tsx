@@ -814,7 +814,7 @@ const ShareButtons = ({
       copyToClipboard(shareUrl).then((copied) => {
         const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
         (copied ? sonnerToast.success : sonnerToast.error)(message, { duration: copied ? 5000 : 8000 });
-        onShare?.('kakao', { success: copied, message });
+        onShare?.('kakao', { success: copied });
       });
       return;
     }
@@ -839,7 +839,7 @@ const ShareButtons = ({
           copyToClipboard(shareUrl).then((copied) => {
             const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
             (copied ? sonnerToast.success : sonnerToast.error)(message, { duration: copied ? 5000 : 8000 });
-            onShare?.('kakao', { success: copied, message });
+            onShare?.('kakao', { success: copied });
           });
         }
       );
@@ -862,12 +862,12 @@ const ShareButtons = ({
       const fallbackCopy = () => {
         const notifyCopied = () => {
           sonnerToast.success(SHARE_LINK_COPIED_MESSAGE, { duration: 5000 });
-          onShare?.('kakao', { success: true, message: SHARE_LINK_COPIED_MESSAGE });
+          onShare?.('kakao', { success: true });
         };
         const notifyManual = () => {
           const manualMsg = getShareLinkCopyFailedMessage(shareUrl);
           sonnerToast.error(manualMsg, { duration: 8000 });
-          onShare?.('kakao', { success: false, message: manualMsg });
+          onShare?.('kakao', { success: false });
         };
         copyToClipboard(shareUrl).then((copied) => copied ? notifyCopied() : notifyManual());
       };
@@ -923,7 +923,7 @@ const ShareButtons = ({
       copyToClipboard(shareUrl).then((copied) => {
         const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
         (copied ? sonnerToast.success : sonnerToast.error)(message, { duration: copied ? 5000 : 8000 });
-        onShare?.('kakao', { success: copied, message });
+        onShare?.('kakao', { success: copied });
       });
     }
   };
