@@ -132,10 +132,9 @@ export const shareToSNS = async (
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const crawlerShareUrl = lookId ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}` : baseUrl;
 
+  // 사용자 제스처를 끊지 않기 위해 fire-and-forget (iOS Web Share API는 동기 제스처 컨텍스트 필요)
   if (lookId) {
-    try {
-      await supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId);
-    } catch {}
+    void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
   }
 
   switch (platform) {
