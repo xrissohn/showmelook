@@ -815,10 +815,11 @@ const ShareButtons = ({
       if (lookId) {
         void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
       }
-      navigator.clipboard?.writeText(shareUrl).then(
-        () => onShare?.('kakao', { success: true, message: '모바일 Chrome에서는 링크가 복사되었습니다. 카카오톡에 붙여넣어 공유해주세요.' }),
-        () => onShare?.('kakao', { success: false, message: '링크 복사에 실패했습니다.' })
-      );
+      copyToClipboard(shareUrl).then((copied) => {
+        const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
+        (copied ? sonnerToast.success : sonnerToast.error)(message, { duration: copied ? 5000 : 8000 });
+        onShare?.('kakao', { success: copied, message });
+      });
       return;
     }
 
@@ -839,10 +840,11 @@ const ShareButtons = ({
             onShare?.('kakao', { success: true, message: '공유가 취소되었습니다.' });
             return;
           }
-          navigator.clipboard?.writeText(shareUrl).then(
-            () => onShare?.('kakao', { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다.' }),
-            () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
-          );
+          copyToClipboard(shareUrl).then((copied) => {
+            const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
+            (copied ? sonnerToast.success : sonnerToast.error)(message, { duration: copied ? 5000 : 8000 });
+            onShare?.('kakao', { success: copied, message });
+          });
         }
       );
       return;
