@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
@@ -855,8 +856,14 @@ const ShareButtons = ({
       };
       const fallbackCopy = (msg: string) => {
         navigator.clipboard?.writeText(shareUrl).then(
-          () => onShare?.('kakao', { success: true, message: msg }),
-          () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+          () => {
+            sonnerToast.success(msg);
+            onShare?.('kakao', { success: true, message: msg });
+          },
+          () => {
+            sonnerToast.error('공유에 실패했습니다.');
+            onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' });
+          }
         );
       };
       const doShare = () => {
@@ -894,8 +901,15 @@ const ShareButtons = ({
       console.error('[Kakao Share] desktop flow error:', err);
       setIsShareOpen(false);
       navigator.clipboard?.writeText(shareUrl).then(
-        () => onShare?.('kakao', { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' }),
-        () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+        () => {
+          const msg = '카카오톡 공유 실패. 링크가 복사되었습니다!';
+          sonnerToast.success(msg);
+          onShare?.('kakao', { success: true, message: msg });
+        },
+        () => {
+          sonnerToast.error('공유에 실패했습니다.');
+          onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' });
+        }
       );
     }
   };

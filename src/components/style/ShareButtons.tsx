@@ -8,6 +8,7 @@ import { Download, Share2, Loader2, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // 해시태그 생성 함수
 const generateHashtags = (prompt?: string, tags?: string[]): string => {
@@ -395,8 +396,14 @@ export const ShareButtons = ({
       };
       const fallbackCopy = (msg: string) => {
         navigator.clipboard?.writeText(shareUrl).then(
-          () => onShare?.('kakao', { success: true, message: msg }),
-          () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+          () => {
+            toast.success(msg);
+            onShare?.('kakao', { success: true, message: msg });
+          },
+          () => {
+            toast.error('공유에 실패했습니다.');
+            onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' });
+          }
         );
       };
       const doShare = () => {
@@ -434,8 +441,15 @@ export const ShareButtons = ({
       console.error('[Kakao Share] desktop flow error:', err);
       setIsShareOpen(false);
       navigator.clipboard?.writeText(shareUrl).then(
-        () => onShare?.('kakao', { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' }),
-        () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+        () => {
+          const msg = '카카오톡 공유 실패. 링크가 복사되었습니다!';
+          toast.success(msg);
+          onShare?.('kakao', { success: true, message: msg });
+        },
+        () => {
+          toast.error('공유에 실패했습니다.');
+          onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' });
+        }
       );
     }
   };
