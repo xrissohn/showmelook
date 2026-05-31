@@ -498,15 +498,46 @@ const shareToSNS = async (
   const crawlerShareUrl = lookId 
     ? `${supabaseUrl}/functions/v1/share-preview?lookId=${lookId}`
     : baseUrl;
+  const markLookPublic = () => {
+    if (lookId) {
+      void supabase
+        .from('generated_looks')
+        .update({ is_public: true })
+        .eq('id', lookId)
+        .then(() => {}, (e) => console.error('Failed to make look public:', e));
+    }
+  };
+
+  // iOS Chrome/Safari는 Kakao SDK의 앱 스킴 대신 네이티브 공유 시트를 사용해야 한다.
+  // 공유 시트 호출은 사용자 탭 직후 가장 먼저 실행되어야 하므로 DB 업데이트보다 앞에 둔다.
+  const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (platform === 'kakao' && isIOS) {
+    if (typeof navigator.share === 'function') {
+      try {
+        const sharePromise = navigator.share({
+          title: '👗 쇼미룩 AI 스타일',
+          text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+          url: shareUrl,
+        });
+        markLookPublic();
+        await sharePromise;
+        return { success: true };
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') {
+          return { success: true, message: '공유가 취소되었습니다.' };
+        }
+      }
+    }
+
+    markLookPublic();
+    try {
+      await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+      return { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다.' };
+    } catch { return { success: false, message: '공유에 실패했습니다.' }; }
+  }
 
   // 공유 시 is_public을 true로 설정 (fire-and-forget: iOS Web Share API는 동기 제스처 컨텍스트 필요)
-  if (lookId) {
-    void supabase
-      .from('generated_looks')
-      .update({ is_public: true })
-      .eq('id', lookId)
-      .then(() => {}, (e) => console.error('Failed to make look public:', e));
-  }
+  markLookPublic();
 
   switch (platform) {
     case 'instagram':
@@ -612,29 +643,6 @@ const shareToSNS = async (
       return { success: true };
 
     case 'kakao':
-      // iOS는 WebKit 강제 정책으로 Kakao SDK의 kakaolink:// 스킴이 Safari 외 브라우저(Chrome/Edge 등)에서 차단됨.
-      // → iOS에서는 Web Share API로 네이티브 공유 시트를 띄워 설치된 카카오톡에 직접 전달.
-      {
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        if (isIOS && typeof navigator.share === 'function') {
-          try {
-            await navigator.share({
-              title: '👗 쇼미룩 AI 스타일',
-              text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
-              url: shareUrl,
-            });
-            return { success: true };
-          } catch (e) {
-            if ((e as Error).name === 'AbortError') {
-              return { success: true, message: '공유가 취소되었습니다.' };
-            }
-            try {
-              await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-              return { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다. Safari에서 다시 시도해보세요!' };
-            } catch { return { success: false, message: '공유에 실패했습니다.' }; }
-          }
-        }
-      }
       // 카카오톡 SDK 공유 (Android / PC)
       try {
         const Kakao = (window as any).Kakao;
