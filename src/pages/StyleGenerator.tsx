@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
