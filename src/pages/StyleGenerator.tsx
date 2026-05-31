@@ -734,12 +734,10 @@ const shareToSNS = async (
       }
 
     case 'copy':
-      try {
-        await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-        return { success: true, message: '링크와 해시태그가 복사되었습니다!' };
-      } catch (err) {
-        return { success: false, message: '복사에 실패했습니다.' };
+      if (await copyToClipboard(shareUrl)) {
+        return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
       }
+      return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
 
     default:
       return { success: false };
@@ -794,6 +792,11 @@ const ShareButtons = ({
   const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
     const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, lookId, prompt, tags);
     setIsShareOpen(false);
+    if (platform === 'copy' && result.message) {
+      (result.success ? sonnerToast.success : sonnerToast.error)(result.message, { duration: result.success ? 5000 : 8000 });
+      onShare?.(platform, { success: result.success });
+      return;
+    }
     onShare?.(platform, result);
   };
 
