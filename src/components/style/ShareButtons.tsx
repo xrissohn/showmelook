@@ -296,6 +296,51 @@ export const ShareButtons = ({
     onShare?.(platform, result);
   };
 
+  // 모바일 Chrome에서 navigator.share()는 클릭 핸들러의 동기 컨텍스트에서 호출해야 한다.
+  // await로 한 번이라도 끊기면 Chrome이 사용자 제스처로 인정하지 않아 공유 시트가 안 뜬다.
+  // 따라서 카카오 버튼 onClick에서 직접 호출하는 전용 핸들러를 둔다.
+  const handleKakaoClickSync = () => {
+    const ua = navigator.userAgent;
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = isIOS || isAndroid;
+
+    if (isMobile && typeof navigator.share === 'function') {
+      const baseUrl = 'https://showmelook.com';
+      const shareUrl = lookId ? `${baseUrl}/look/${lookId}` : baseUrl;
+      // 동기 컨텍스트에서 즉시 호출 (await 금지)
+      const sharePromise = navigator.share({
+        title: '👗 쇼미룩 AI 스타일',
+        text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+        url: shareUrl,
+      });
+      // 부수 작업은 이후로 미룬다
+      setIsShareOpen(false);
+      if (lookId) {
+        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+      }
+      sharePromise.then(
+        () => onShare?.('kakao', { success: true }),
+        (e: Error) => {
+          if (e?.name === 'AbortError') {
+            onShare?.('kakao', { success: true, message: '공유가 취소되었습니다.' });
+            return;
+          }
+          // 실패 시 링크 복사 fallback
+          const text = `${shareUrl}`;
+          navigator.clipboard?.writeText(text).then(
+            () => onShare?.('kakao', { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다.' }),
+            () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+          );
+        }
+      );
+      return;
+    }
+
+    // 모바일이 아니거나 Web Share API 미지원이면 기존 경로(카카오 SDK)
+    void handleShare('kakao');
+  };
+
   if (compact) {
     return (
       <div className={`flex gap-2 ${className}`}>
