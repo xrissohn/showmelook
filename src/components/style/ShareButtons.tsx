@@ -254,24 +254,22 @@ export const shareToSNS = async (
       try {
         const Kakao = (window as any).Kakao;
         if (!Kakao) {
-          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-          return { success: true, message: '카카오톡 SDK 로딩 실패. 링크가 복사되었습니다!' };
+          if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
         }
         if (!Kakao.isInitialized()) {
           try { Kakao.init(KAKAO_JS_KEY); } catch (initErr) { console.error('[Kakao Share] init error:', initErr); }
         }
         if (!Kakao.isInitialized()) {
-          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-          return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
+          if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
         }
         Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
         return { success: true };
       } catch (err) {
         console.error('[Kakao Share] sendDefault error:', err);
-        try {
-          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-          return { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' };
-        } catch { return { success: false, message: '공유에 실패했습니다.' }; }
+        if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+        return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
       }
     }
     case 'copy':
