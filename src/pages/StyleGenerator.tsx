@@ -904,7 +904,7 @@ const ShareButtons = ({
             doShare();
           } else {
             console.error('[Kakao Share] login fail:', err);
-            fallbackCopy('카카오 로그인 실패. 링크가 복사되었습니다!');
+            fallbackCopy();
           }
         };
         try {
