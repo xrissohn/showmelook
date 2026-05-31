@@ -615,7 +615,30 @@ const shareToSNS = async (
       return { success: true };
 
     case 'kakao':
-      // 카카오톡 SDK 공유
+      // iOS는 WebKit 강제 정책으로 Kakao SDK의 kakaolink:// 스킴이 Safari 외 브라우저(Chrome/Edge 등)에서 차단됨.
+      // → iOS에서는 Web Share API로 네이티브 공유 시트를 띄워 설치된 카카오톡에 직접 전달.
+      {
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIOS && typeof navigator.share === 'function') {
+          try {
+            await navigator.share({
+              title: '👗 쇼미룩 AI 스타일',
+              text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+              url: shareUrl,
+            });
+            return { success: true };
+          } catch (e) {
+            if ((e as Error).name === 'AbortError') {
+              return { success: true, message: '공유가 취소되었습니다.' };
+            }
+            try {
+              await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
+              return { success: true, message: '공유 시트를 열 수 없어 링크를 복사했습니다. Safari에서 다시 시도해보세요!' };
+            } catch { return { success: false, message: '공유에 실패했습니다.' }; }
+          }
+        }
+      }
+      // 카카오톡 SDK 공유 (Android / PC)
       try {
         const Kakao = (window as any).Kakao;
         
