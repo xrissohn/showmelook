@@ -880,7 +880,7 @@ const ShareButtons = ({
                 <span className="text-sm font-korean text-foreground">Facebook</span>
               </button>
               <button
-                onClick={() => handleShare('kakao')}
+                onClick={handleKakaoClickSync}
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
