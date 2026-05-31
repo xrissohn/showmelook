@@ -695,8 +695,8 @@ const shareToSNS = async (
         if (!Kakao) {
           console.error('Kakao SDK not loaded');
           // SDK 로드 실패 시 링크 복사로 fallback
-          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-          return { success: true, message: '카카오톡 SDK 로딩 실패. 링크가 복사되었습니다!' };
+          if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
         }
         
         // main.tsx에서 초기화 시도했지만 실패했을 수 있으므로 재시도
@@ -711,8 +711,8 @@ const shareToSNS = async (
         
         if (!Kakao.isInitialized()) {
           console.error('Kakao SDK not initialized. Key available:', !!import.meta.env.VITE_KAKAO_JS_KEY);
-          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-          return { success: true, message: '카카오톡 초기화 실패. 링크가 복사되었습니다!' };
+          if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
         }
         
         // 카카오톡 공유 URL - 카카오 SDK는 등록된 도메인(showmelook.com)만 허용
@@ -725,12 +725,8 @@ const shareToSNS = async (
       } catch (err) {
         console.error('[Kakao Share] sendDefault error:', err);
         // 에러 시 링크 복사로 fallback
-        try {
-          await navigator.clipboard.writeText(`${shareText}\n\n${shareUrl}`);
-          return { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' };
-        } catch {
-          return { success: false, message: '공유에 실패했습니다.' };
-        }
+        if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+        return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
       }
 
     case 'copy':
