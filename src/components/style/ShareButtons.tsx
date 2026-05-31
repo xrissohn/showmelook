@@ -8,6 +8,7 @@ import { Download, Share2, Loader2, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 // 해시태그 생성 함수
 const generateHashtags = (prompt?: string, tags?: string[]): string => {
