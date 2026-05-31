@@ -404,27 +404,17 @@ export const ShareButtons = ({
           void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
         }
       };
-      const COPIED_MSG = '링크가 복사되었습니다. 카카오톡 메시지창에 붙여넣어 보내주세요.';
       const fallbackCopy = () => {
         const notifyCopied = () => {
-          toast.success(COPIED_MSG, { duration: 5000 });
-          onShare?.('kakao', { success: true, message: COPIED_MSG });
+          toast.success(SHARE_LINK_COPIED_MESSAGE, { duration: 5000 });
+          onShare?.('kakao', { success: true, message: SHARE_LINK_COPIED_MESSAGE });
         };
         const notifyManual = () => {
-          const manualMsg = `링크 복사에 실패했어요. 아래 주소를 복사해 카카오톡에 붙여넣어 주세요: ${shareUrl}`;
+          const manualMsg = getShareLinkCopyFailedMessage(shareUrl);
           toast.error(manualMsg, { duration: 8000 });
           onShare?.('kakao', { success: false, message: manualMsg });
         };
-        try {
-          const p = navigator.clipboard?.writeText(shareUrl);
-          if (p && typeof p.then === 'function') {
-            p.then(notifyCopied, notifyManual);
-          } else {
-            notifyCopied();
-          }
-        } catch {
-          notifyManual();
-        }
+        copyToClipboard(shareUrl).then((copied) => copied ? notifyCopied() : notifyManual());
       };
       const doShare = () => {
         try {
@@ -476,24 +466,11 @@ export const ShareButtons = ({
     } catch (err) {
       console.error('[Kakao Share] desktop flow error:', err);
       setIsShareOpen(false);
-      const COPIED_MSG = '링크가 복사되었습니다. 카카오톡 메시지창에 붙여넣어 보내주세요.';
-      try {
-        const p = navigator.clipboard?.writeText(shareUrl);
-        const ok = () => {
-          toast.success(COPIED_MSG, { duration: 5000 });
-          onShare?.('kakao', { success: true, message: COPIED_MSG });
-        };
-        const fail = () => {
-          const manualMsg = `링크 복사에 실패했어요. 아래 주소를 복사해 카카오톡에 붙여넣어 주세요: ${shareUrl}`;
-          toast.error(manualMsg, { duration: 8000 });
-          onShare?.('kakao', { success: false, message: manualMsg });
-        };
-        if (p && typeof p.then === 'function') p.then(ok, fail); else ok();
-      } catch {
-        const manualMsg = `링크 복사에 실패했어요. 아래 주소를 복사해 카카오톡에 붙여넣어 주세요: ${shareUrl}`;
-        toast.error(manualMsg, { duration: 8000 });
-        onShare?.('kakao', { success: false, message: manualMsg });
-      }
+      copyToClipboard(shareUrl).then((copied) => {
+        const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
+        (copied ? toast.success : toast.error)(message, { duration: copied ? 5000 : 8000 });
+        onShare?.('kakao', { success: copied, message });
+      });
     }
   };
 
