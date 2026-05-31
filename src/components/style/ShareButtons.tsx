@@ -379,8 +379,27 @@ export const ShareButtons = ({
       return;
     }
 
-    // 모바일이 아니거나 Web Share API 미지원이면 기존 경로(카카오 SDK)
-    void handleShare('kakao');
+    try {
+      const Kakao = (window as any).Kakao;
+      if (!Kakao) throw new Error('Kakao SDK not loaded');
+      if (!Kakao.isInitialized()) {
+        Kakao.init(KAKAO_JS_KEY);
+      }
+      if (!Kakao.isInitialized()) throw new Error('Kakao SDK not initialized');
+      Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+      setIsShareOpen(false);
+      if (lookId) {
+        void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
+      }
+      onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+    } catch (err) {
+      console.error('[Kakao Share] desktop sendDefault error:', err);
+      setIsShareOpen(false);
+      navigator.clipboard?.writeText(shareUrl).then(
+        () => onShare?.('kakao', { success: true, message: '카카오톡 공유 실패. 링크가 복사되었습니다!' }),
+        () => onShare?.('kakao', { success: false, message: '공유에 실패했습니다.' })
+      );
+    }
   };
 
   if (compact) {
