@@ -56,8 +56,11 @@ export const useReferral = (userId: string | undefined) => {
       try {
         const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-referral-code`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId }),
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({}),
         });
         const result = await response.json();
         if (result.success) {
