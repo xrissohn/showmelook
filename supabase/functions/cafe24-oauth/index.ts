@@ -456,7 +456,52 @@ serve(async (req) => {
         );
       }
 
-      const payload = await req.json();
+      // Cafe24 webhook HMAC-SHA256 검증 (raw body 기반)
+      const rawBody = await req.text();
+      const providedHmac =
+        req.headers.get('x-cafe24-hmac-sha256') ||
+        req.headers.get('X-Cafe24-Hmac-Sha256') ||
+        req.headers.get('x-hmac-sha256');
+
+      const skipHmac = Deno.env.get('CAFE24_SKIP_HMAC') === 'true';
+      if (!skipHmac) {
+        if (!providedHmac) {
+          console.error('Cafe24 webhook missing HMAC header');
+          return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        try {
+          const encoder = new TextEncoder();
+          const key = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(CAFE24_CLIENT_SECRET),
+            { name: 'HMAC', hash: 'SHA-256' },
+            false,
+            ['sign']
+          );
+          const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
+          const expected = encodeBase64(new Uint8Array(sig));
+          if (expected !== providedHmac) {
+            console.error('Cafe24 webhook HMAC mismatch');
+            return new Response(
+              JSON.stringify({ error: 'Forbidden' }),
+              { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        } catch (e) {
+          console.error('Cafe24 webhook HMAC verification error:', e);
+          return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+      let payload: any = {};
+      try { payload = JSON.parse(rawBody); } catch (_) { payload = {}; }
+
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
       const { error: logError } = await supabase
