@@ -8,9 +8,7 @@ const corsHeaders = {
 
 interface ApplyReferralRequest {
   referral_code: string;
-  new_user_id: string;
-  new_user_email: string;
-  new_user_name: string;
+  new_user_name?: string;
 }
 
 serve(async (req) => {
@@ -22,12 +20,40 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { referral_code, new_user_id, new_user_email, new_user_name }: ApplyReferralRequest = await req.json();
+    // Require an authenticated JWT and derive the referee user id from it.
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const token = authHeader?.replace(/^Bearer\s+/i, '');
+    if (!token) {
+      return new Response(
+        JSON.stringify({ success: false, error: '인증이 필요합니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    if (!referral_code || !new_user_id) {
+    let new_user_id: string | null = null;
+    try {
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      if (!userErr && userData?.user) new_user_id = userData.user.id;
+    } catch (_) { /* fall through */ }
+    if (!new_user_id) {
+      try {
+        const { data: claimsData } = await (supabase.auth as any).getClaims(token);
+        new_user_id = claimsData?.claims?.sub || null;
+      } catch (_) { /* ignore */ }
+    }
+    if (!new_user_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: '유효하지 않은 인증입니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { referral_code, new_user_name }: ApplyReferralRequest = await req.json();
+
+    if (!referral_code) {
       return new Response(
         JSON.stringify({ success: false, error: '필수 정보가 누락되었습니다.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
