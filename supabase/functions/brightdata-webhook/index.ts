@@ -225,34 +225,40 @@ serve(async (req) => {
   console.log('Content-Type:', req.headers.get('content-type'));
 
   try {
-    // 인증 확인 with timestamp validation
+    // 인증: 시크릿이 반드시 설정되어 있어야 하며, 요청 헤더와 일치해야 한다.
     const webhookSecret = Deno.env.get('BRIGHTDATA_WEBHOOK_SECRET');
-    if (webhookSecret) {
-      const providedSecret = req.headers.get('x-webhook-secret') || req.headers.get('authorization')?.replace('Bearer ', '');
-      const providedTimestamp = req.headers.get('x-webhook-timestamp');
-      
-      // Timestamp validation (prevent replay attacks - 5 minute tolerance)
-      if (providedTimestamp) {
-        const requestTime = parseInt(providedTimestamp);
-        const currentTime = Math.floor(Date.now() / 1000);
-        const tolerance = 300; // 5 minutes
-        
-        if (isNaN(requestTime) || Math.abs(currentTime - requestTime) > tolerance) {
-          console.error('Webhook timestamp out of tolerance');
-          return new Response(JSON.stringify({ error: 'Request timestamp expired or invalid' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      }
-      
-      if (providedSecret !== webhookSecret) {
-        console.error('Invalid webhook secret');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    if (!webhookSecret) {
+      console.error('BRIGHTDATA_WEBHOOK_SECRET is not configured');
+      return new Response(JSON.stringify({ error: 'Webhook not configured' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const providedSecret = req.headers.get('x-webhook-secret') || req.headers.get('authorization')?.replace('Bearer ', '');
+    const providedTimestamp = req.headers.get('x-webhook-timestamp');
+
+    // Timestamp validation (prevent replay attacks - 5 minute tolerance)
+    if (providedTimestamp) {
+      const requestTime = parseInt(providedTimestamp);
+      const currentTime = Math.floor(Date.now() / 1000);
+      const tolerance = 300; // 5 minutes
+
+      if (isNaN(requestTime) || Math.abs(currentTime - requestTime) > tolerance) {
+        console.error('Webhook timestamp out of tolerance');
+        return new Response(JSON.stringify({ error: 'Request timestamp expired or invalid' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+    }
+
+    if (!providedSecret || providedSecret !== webhookSecret) {
+      console.error('Invalid or missing webhook secret');
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Supabase 클라이언트

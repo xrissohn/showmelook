@@ -190,13 +190,15 @@ const Auth = () => {
       
       if (finalReferralCode && newUser) {
         try {
+          const { data: { session: newSession } } = await supabase.auth.getSession();
           const response = await fetch(`${SUPABASE_URL}/functions/v1/apply-referral-code`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(newSession?.access_token ? { Authorization: `Bearer ${newSession.access_token}` } : {}),
+            },
             body: JSON.stringify({
               referral_code: finalReferralCode,
-              new_user_id: newUser.id,
-              new_user_email: email,
               new_user_name: fullName,
             }),
           });

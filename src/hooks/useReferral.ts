@@ -56,8 +56,11 @@ export const useReferral = (userId: string | undefined) => {
       try {
         const response = await fetch(`${SUPABASE_URL}/functions/v1/generate-referral-code`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: userId }),
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({}),
         });
         const result = await response.json();
         if (result.success) {
@@ -156,18 +159,23 @@ export const useReferral = (userId: string | undefined) => {
   // 추천 코드 적용 (가입 시 호출)
   const applyReferralCode = useCallback(async (
     code: string,
-    newUserId: string,
-    newUserEmail: string,
+    _newUserId: string,
+    _newUserEmail: string,
     newUserName: string
   ): Promise<{ success: boolean; message?: string; error?: string }> => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        return { success: false, error: '로그인이 필요합니다.' };
+      }
       const response = await fetch(`${SUPABASE_URL}/functions/v1/apply-referral-code`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           referral_code: code,
-          new_user_id: newUserId,
-          new_user_email: newUserEmail,
           new_user_name: newUserName,
         }),
       });

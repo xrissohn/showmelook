@@ -18,14 +18,36 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { user_id } = await req.json();
-
-    if (!user_id) {
+    // Require a valid JWT; derive user_id from the verified token.
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const token = authHeader?.replace(/^Bearer\s+/i, '');
+    if (!token) {
       return new Response(
-        JSON.stringify({ success: false, error: 'user_id가 필요합니다.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, error: '인증이 필요합니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    let user_id: string | null = null;
+    try {
+      const { data: userData } = await supabase.auth.getUser(token);
+      user_id = userData?.user?.id || null;
+    } catch (_) { /* ignore */ }
+    if (!user_id) {
+      try {
+        const { data: claimsData } = await (supabase.auth as any).getClaims(token);
+        user_id = claimsData?.claims?.sub || null;
+      } catch (_) { /* ignore */ }
+    }
+    if (!user_id) {
+      return new Response(
+        JSON.stringify({ success: false, error: '유효하지 않은 인증입니다.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // body is optional now; user_id always comes from JWT
+    try { await req.json(); } catch (_) { /* ignore */ }
 
     // 1. 기존 코드 확인
     const { data: existingCode } = await supabase

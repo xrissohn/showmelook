@@ -1977,10 +1977,47 @@ serve(async (req) => {
   };
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+
+    // Auth gate: accept either a valid user JWT or the service role key (internal queue).
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization');
+    const token = authHeader?.replace(/^Bearer\s+/i, '');
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let authedUserId: string | null = null;
+    const isServiceRole = token === SUPABASE_SERVICE_ROLE_KEY;
+    if (!isServiceRole) {
+      const authClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      try {
+        const { data: userData } = await authClient.auth.getUser(token);
+        authedUserId = userData?.user?.id || null;
+      } catch (_) { /* ignore */ }
+      if (!authedUserId) {
+        try {
+          const { data: claimsData } = await (authClient.auth as any).getClaims(token);
+          authedUserId = claimsData?.claims?.sub || null;
+        } catch (_) { /* ignore */ }
+      }
+      if (!authedUserId) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
     requestPayload = await req.json();
     const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems } = requestPayload;
-    userId = requestPayload.userId || null;
-    
+    // For end-user calls, always derive userId from the verified JWT; never trust the body.
+    userId = isServiceRole ? (requestPayload.userId || null) : authedUserId;
+
     const hasPhotoAnalysis = photoAnalysisItems && photoAnalysisItems.items && photoAnalysisItems.items.length > 0;
 
     if (!userRequest) {
@@ -1989,10 +2026,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     // OPENAI_API_KEY는 더 이상 사용하지 않음 - 모든 AI 호출은 Lovable AI Gateway 경유
     const LINKPRICE_AFFILIATE_ID = Deno.env.get('LINKPRICE_AFFILIATE_ID') || 'A100915488';
 
