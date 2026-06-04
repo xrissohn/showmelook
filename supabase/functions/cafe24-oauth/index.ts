@@ -482,7 +482,10 @@ serve(async (req) => {
             ['sign']
           );
           const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(rawBody));
-          const expected = encodeBase64(new Uint8Array(sig));
+          const sigBytes = new Uint8Array(sig);
+          let bin = '';
+          for (let i = 0; i < sigBytes.length; i++) bin += String.fromCharCode(sigBytes[i]);
+          const expected = btoa(bin);
           if (expected !== providedHmac) {
             console.error('Cafe24 webhook HMAC mismatch');
             return new Response(
