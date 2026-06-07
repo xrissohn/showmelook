@@ -151,7 +151,7 @@ const SurveyShomi = () => {
           <Card className="border-accent/20 shadow-2xl backdrop-blur-sm bg-card/95">
             <CardContent className="p-8 md:p-12 text-center space-y-6">
               {(() => {
-                const selected = (urlChoice || choice) as "A" | "B" | null;
+                const selected = (storedChoice || urlChoice || choice) as "A" | "B" | null;
                 const characterSrc = selected === "B" ? shomiBCharacter.url : shomiACharacter.url;
                 return (
                   <div className="relative mx-auto w-48 h-48 md:w-56 md:h-56">
