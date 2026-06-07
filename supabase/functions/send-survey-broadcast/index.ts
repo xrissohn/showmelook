@@ -162,7 +162,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "testEmail required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const unsubToken = await makeUnsubToken(userId);
-      const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
+      const responseToken = await makeSurveyToken(userId);
+      const html = buildEmailHtml({ bodyText, responseToken, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
       const r = await sendOne(testEmail, html, subject);
       return new Response(JSON.stringify({ ok: r.ok, error: r.error }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -206,7 +207,8 @@ Deno.serve(async (req) => {
       const chunk = targets.slice(i, i + CHUNK);
       const results = await Promise.all(chunk.map(async (t) => {
         const unsubToken = await makeUnsubToken(t.user_id);
-        const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
+        const responseToken = await makeSurveyToken(t.user_id);
+        const html = buildEmailHtml({ bodyText, responseToken, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
         const r = await sendOne(t.email, html, subject);
         return { target: t, r };
       }));
