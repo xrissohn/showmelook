@@ -166,6 +166,41 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const choice = body?.choice;
     const feedback = typeof body?.feedback === 'string' ? body.feedback.slice(0, 1000) : null;
+    const feedbackOnly = body?.feedbackOnly === true;
+
+    // Feedback-only update: user already submitted via email, just add free-text opinion
+    if (feedbackOnly) {
+      if (!feedback || !feedback.trim()) {
+        return new Response(JSON.stringify({ success: false, error: '의견을 입력해주세요.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: existing, error: findErr } = await admin
+        .from('survey_responses')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('survey_key', SURVEY_KEY)
+        .maybeSingle();
+      if (findErr || !existing) {
+        return new Response(JSON.stringify({ success: false, error: '먼저 시안을 선택해주세요.' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error: updErr } = await admin
+        .from('survey_responses')
+        .update({ feedback })
+        .eq('id', existing.id);
+      if (updErr) {
+        console.error('feedback update error', updErr);
+        return new Response(JSON.stringify({ success: false, error: '의견 저장 중 오류가 발생했습니다.' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, feedbackSaved: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (choice !== 'A' && choice !== 'B') {
       return new Response(JSON.stringify({ success: false, error: '선택지가 올바르지 않습니다.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
