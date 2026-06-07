@@ -126,12 +126,12 @@ Deno.serve(async (req) => {
       }
       const result = await saveResponseAndReward(admin, tokenUserId, choice, null);
       if (result.already) {
-        return redirectToApp('already', result.rewarded ? '이미 참여 완료되었고 10크레딧이 지급되었습니다.' : '이미 참여 완료되었습니다.');
+        return redirectToApp('already', undefined, choice);
       }
       if (!result.success) {
-        return redirectToApp('error', result.error);
+        return redirectToApp('error', result.error, choice);
       }
-      return redirectToApp('completed', '설문 참여가 완료되어 10크레딧이 지급되었습니다.');
+      return redirectToApp('completed', undefined, choice);
     }
 
     const authHeader = req.headers.get('Authorization');
