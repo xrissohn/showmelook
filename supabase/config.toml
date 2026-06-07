@@ -159,3 +159,6 @@ verify_jwt = false
 
 [functions.product-health-check]
 verify_jwt = false
+
+[functions.grant-survey-credit]
+verify_jwt = false
