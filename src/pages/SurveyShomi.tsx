@@ -28,6 +28,8 @@ const SurveyShomi = () => {
   const [checking, setChecking] = useState(true);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [zoomLabel, setZoomLabel] = useState<string>("");
+  const [storedChoice, setStoredChoice] = useState<"A" | "B" | null>(null);
+  const [alreadyResponded, setAlreadyResponded] = useState(false);
 
   const urlStatus = searchParams.get("status");
   const urlChoice = searchParams.get("choice");
@@ -47,6 +49,10 @@ const SurveyShomi = () => {
           });
           const json = await res.json().catch(() => ({}));
           if (json?.success || json?.already) {
+            if (json?.already && json?.choice) {
+              setStoredChoice(json.choice);
+              setAlreadyResponded(true);
+            }
             setSubmitted(true);
           } else {
             toast({ title: "제출 실패", description: json?.error || "다시 시도해주세요", variant: "destructive" });
@@ -68,10 +74,16 @@ const SurveyShomi = () => {
     (async () => {
       const { data } = await supabase
         .from("survey_responses")
-        .select("id")
+        .select("id, choice")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data || urlStatus === "completed" || urlStatus === "already") setSubmitted(true);
+      if (data) {
+        setStoredChoice(data.choice as "A" | "B");
+        setAlreadyResponded(true);
+        setSubmitted(true);
+      } else if (urlStatus === "completed" || urlStatus === "already") {
+        setSubmitted(true);
+      }
       setChecking(false);
     })();
   }, [user, authLoading, urlStatus, urlToken, urlChoice, toast]);
@@ -102,8 +114,10 @@ const SurveyShomi = () => {
         setSubmitted(true);
         toast({ title: "감사합니다! 🎉", description: "10크레딧이 지급되었습니다." });
       } else if (json.already) {
+        if (json.choice) setStoredChoice(json.choice);
+        setAlreadyResponded(true);
         setSubmitted(true);
-        toast({ title: "이미 참여하셨어요" });
+        toast({ title: "이미 참여하셨어요", description: "한 번만 응답하실 수 있어요." });
       } else {
         toast({ title: "제출 실패", description: json.error || "잠시 후 다시 시도해주세요", variant: "destructive" });
       }
@@ -137,7 +151,7 @@ const SurveyShomi = () => {
           <Card className="border-accent/20 shadow-2xl backdrop-blur-sm bg-card/95">
             <CardContent className="p-8 md:p-12 text-center space-y-6">
               {(() => {
-                const selected = (urlChoice || choice) as "A" | "B" | null;
+                const selected = (storedChoice || urlChoice || choice) as "A" | "B" | null;
                 const characterSrc = selected === "B" ? shomiBCharacter.url : shomiACharacter.url;
                 return (
                   <div className="relative mx-auto w-48 h-48 md:w-56 md:h-56">
@@ -155,17 +169,27 @@ const SurveyShomi = () => {
 
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold">
-                  <Sparkles className="w-3.5 h-3.5" /> 참여 완료
+                  <Sparkles className="w-3.5 h-3.5" /> {alreadyResponded ? "이미 참여 완료" : "참여 완료"}
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  소중한 의견 감사합니다 💜
+                  {alreadyResponded ? "이미 응답하셨어요 💜" : "소중한 의견 감사합니다 💜"}
                 </h1>
                 <p className="text-muted-foreground leading-relaxed">
-                  {urlChoice ? (
-                    <>선택하신 <span className="font-semibold text-foreground">시안 {urlChoice}</span>가 정상 기록되었습니다.</>
-                  ) : (
-                    <>응답이 정상 기록되었습니다.</>
-                  )}
+                  {(() => {
+                    const shown = (storedChoice || urlChoice) as string | null;
+                    if (alreadyResponded) {
+                      return shown ? (
+                        <>이전에 선택하신 <span className="font-semibold text-foreground">시안 {shown}</span>로 응답이 기록되어 있습니다. 한 번만 응답하실 수 있어요.</>
+                      ) : (
+                        <>이미 응답이 기록되어 있습니다. 한 번만 응답하실 수 있어요.</>
+                      );
+                    }
+                    return shown ? (
+                      <>선택하신 <span className="font-semibold text-foreground">시안 {shown}</span>가 정상 기록되었습니다.</>
+                    ) : (
+                      <>응답이 정상 기록되었습니다.</>
+                    );
+                  })()}
                 </p>
               </div>
 
