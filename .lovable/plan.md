@@ -1,69 +1,71 @@
-## 개요
+# 쇼미 AB 설문 — 전체 가입자 메일 발송 시스템
 
-세 가지 조각으로 구성합니다.
-1. **앱 내 설문 페이지** `/survey/shomi` — 두 시안을 보여주고 선택 + 의견 받기
-2. **자동 크레딧 지급** — 제출 즉시 `referral_rewards`에 10 보너스 크레딧 적립 (1인 1회)
-3. **관리자 발송 도구** — 전체 가입자 이메일 CSV 내보내기 + 발송용 본문 템플릿 제공. 메일은 직접 Gmail에서 BCC로 발송 (대량 마케팅성 발송은 Lovable 시스템 발송 대상이 아니므로 외부 메일로 처리)
+이미 `send-referral-success-email`에서 `noreply@showmelook.com` (Resend 인증 도메인)으로 발송이 동작 중이므로, 같은 경로로 설문 안내 메일을 일괄 발송합니다.
 
----
+## 1) DB 변경
 
-## 1) 이미지 업로드
+### `survey_email_sends` (신규)
+- `user_id` (unique), `email`, `survey_key='shomi_ab_v1'`, `status` (`sent`/`failed`/`skipped`), `error`, `sent_at`
+- RLS: admin SELECT, service_role ALL
+- 발송 이력 기록 + 1인 1회 보장
 
-- 두 시안 이미지를 Supabase Storage `avatars` 또는 새 public 버킷 `survey-assets`에 업로드 (관리자 페이지에 업로드 UI 추가, 또는 직접 업로드 후 URL 입력)
+### `profiles.email_opt_out` (신규 컬럼, boolean default false)
+- 수신거부한 사용자 제외용
 
-## 2) 설문 페이지 `/survey/shomi`
+## 2) Edge Function: `send-survey-broadcast` (신규)
 
-화면 구성:
-- 헤더: "쇼미 캐릭터 AB 테스트 — 의견 주시면 10크레딧 드려요"
-- 두 시안 카드 (A / B) — 큰 이미지, 라디오 선택
-- 자유 의견 textarea (선택, 500자)
-- "제출하고 10크레딧 받기" 버튼
-- 비로그인 시 로그인 페이지로 유도 (제출하려면 로그인 필수)
-- 이미 제출한 유저: "이미 참여하셨어요. 10크레딧이 지급되었습니다" 안내
+관리자 패널 "설문" 탭의 "전체 가입자에게 발송" 버튼이 호출.
 
-로직:
-- 로그인 확인 → `survey_responses`에 insert (user_id unique 제약으로 중복 차단)
-- 성공 시 edge function `grant-survey-credit` 호출 → `referral_rewards`에 10크레딧 추가
-- 완료 화면 + "지금 스타일 생성하러 가기" CTA
+흐름:
+1. JWT 검증 + admin 권한 확인
+2. `auth.users` + `profiles` 조회 (이메일 + opt_out=false)
+3. 다음 사용자 제외:
+   - `survey_responses`에 이미 응답한 user_id
+   - `survey_email_sends`에 이미 발송된 user_id
+   - `profiles.email_opt_out=true`
+4. 배치 처리 (한 번에 50명씩, Resend rate limit 대응 — 초당 ~10건)
+5. 각 메일에 유저별 unsubscribe 토큰 포함 (`https://showmelook.com/unsubscribe?token=...`)
+6. 발송 결과를 `survey_email_sends`에 기록
+7. 결과 요약 반환 (`{ total, sent, failed, skipped }`)
 
-## 3) DB 스키마
+발송 본문: HTML 템플릿 (`send-referral-success-email`과 동일한 디자인 톤)
+- 제목: "✨ 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요"
+- CTA 버튼: "설문 참여하기" → https://showmelook.com/survey/shomi
+- 푸터: "이 메일이 불편하셨다면 [수신거부]" 링크
 
-```text
-survey_responses
-  - id uuid pk
-  - user_id uuid unique (1인 1회)
-  - survey_key text default 'shomi_ab_v1'
-  - choice text  ('A' | 'B')
-  - feedback text
-  - created_at timestamptz
-RLS: 본인만 select/insert, admin 전체 select
-```
+## 3) Edge Function: `survey-unsubscribe` (신규, JWT 없음)
 
-## 4) Edge Function `grant-survey-credit`
+GET `?token=<base64(user_id:hmac)>` 요청을 받아:
+1. HMAC 검증 (`SURVEY_UNSUB_SECRET` 시크릿 사용 — 신규 추가 필요)
+2. `profiles.email_opt_out=true` 업데이트
+3. 간단한 HTML 페이지 응답: "수신거부 처리되었습니다. 다시 받으시려면 마이페이지에서 변경하세요."
 
-- JWT 검증 (auth.getUser → claims fallback)
-- 이미 `referral_rewards`에 `reward_type='survey_shomi_ab'`로 받은 적 있으면 거부
-- service role로 10 amount/remaining_amount, is_permanent=true, referral_code='SURVEY_SHOMI' 로 insert
+## 4) 관리자 패널 (`SurveyPanel.tsx`) 업데이트
 
-## 5) 관리자 페이지 (`/admin` 내 새 탭 "설문")
+기존 "메일 본문 복사" 섹션 아래에 새 카드 추가:
 
-- 응답 통계: 총 응답 수, A/B 비율, 최근 피드백 목록
-- **"가입자 이메일 CSV 다운로드"** 버튼 — `profiles` + `auth.users` 조인하여 email/이름 CSV 내보내기 (admin-get-users 함수 확장)
-- **메일 본문 템플릿 미리보기/복사** — Gmail에서 그대로 붙여넣어 BCC로 발송할 수 있는 한국어 본문 (설문 링크 https://showmelook.com/survey/shomi 포함)
+**"앱에서 직접 발송 (noreply@showmelook.com)"**
+- 발송 대상 미리보기: "총 N명 (이미 응답 M명 / 이미 발송 K명 제외 → 실제 발송 X명)"
+- "테스트 발송" 버튼 (본인 이메일에만 1건)
+- "전체 발송" 버튼 + 확인 다이얼로그 ("X명에게 실제 발송됩니다. 진행하시겠습니까?")
+- 발송 진행 상황 실시간 표시
+- 발송 통계: 성공/실패 카운트
 
-## 6) 메일 발송 안내
+기존 "Gmail BCC" 섹션은 백업 옵션으로 유지.
 
-대량 메일은 Lovable 메일 인프라로는 발송하지 않습니다 (수신자 평판/스팸 정책). 다음 중 선택:
-- **권장**: 다운로드한 CSV의 이메일을 Gmail의 BCC에 붙여넣어 직접 발송 (Gmail 1일 약 500건 제한, 초과 시 분할)
-- 발송량이 많거나 오픈율 추적이 필요하면 추후 Brevo/Mailgun 같은 외부 서비스 연동
+## 5) 신규 시크릿
 
----
+- `SURVEY_UNSUB_SECRET` — unsubscribe 토큰 HMAC 키 (랜덤 문자열, 사용자에게 add_secret으로 요청)
 
 ## 기술 사항
 
-- 신규 라우트 `/survey/shomi` 를 `src/App.tsx` 라우터에 추가
-- 마이그레이션: `survey_responses` 테이블 생성 + GRANT + RLS (authenticated 본인, admin SELECT)
-- 신규 Edge Function: `grant-survey-credit` (config.toml 등록, verify_jwt=false + 내부 토큰 검증)
-- 관리자 패널: `src/pages/Admin.tsx`에 "설문" 탭 추가, `SurveyPanel.tsx` 신규
-- CSV 내보내기: 기존 `admin-get-users` 함수 재사용 가능 여부 확인 후 필요한 컬럼만 클라이언트에서 CSV 변환
-- 이메일 본문: 정적 텍스트 + 설문 URL, 클립보드 복사 버튼
+- 발송 함수는 `config.toml`에 `verify_jwt = false`로 등록 후 내부에서 JWT/admin 검증
+- Resend는 직접 fetch (`https://api.resend.com/emails`), 기존 `send-referral-success-email`과 동일 패턴
+- 배치 발송 시 `Promise.allSettled` + 50개씩 청크, 청크 사이 200ms sleep
+- 발송 결과는 트랜잭션 아니어도 됨 (각 메일 독립 기록)
+- TypeScript 타입은 마이그레이션 후 자동 재생성
+- 한국 정보통신망법: "(광고)" 표기는 정보성/설문 보상 안내라 생략 가능하지만, 안전하게 메일 제목 앞에 `[쇼미룩]` 브랜드 표기 + 푸터에 발신자 정보 명시
+
+## 발송 한도 주의
+
+Resend 무료 플랜은 일일 100건이라 가입자 수가 그 이상이면 유료 플랜 업그레이드가 필요합니다. 발송 직전 관리자에게 알림 + 실패 시 자동 중단합니다.
