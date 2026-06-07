@@ -114,8 +114,10 @@ const SurveyShomi = () => {
         setSubmitted(true);
         toast({ title: "감사합니다! 🎉", description: "10크레딧이 지급되었습니다." });
       } else if (json.already) {
+        if (json.choice) setStoredChoice(json.choice);
+        setAlreadyResponded(true);
         setSubmitted(true);
-        toast({ title: "이미 참여하셨어요" });
+        toast({ title: "이미 참여하셨어요", description: "한 번만 응답하실 수 있어요." });
       } else {
         toast({ title: "제출 실패", description: json.error || "잠시 후 다시 시도해주세요", variant: "destructive" });
       }
