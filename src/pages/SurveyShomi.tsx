@@ -102,7 +102,7 @@ const SurveyShomi = () => {
 
         <div className="relative max-w-xl mx-auto px-4 py-10 md:py-16">
           <div className="flex justify-center mb-8">
-            <img src={showmelookLogo} alt="ShowMeLook" className="h-10 md:h-12 w-auto" />
+            <img src={showmelookFullLogo.url} alt="ShowMeLook" className="h-24 md:h-28 w-auto" />
           </div>
 
           <Card className="border-accent/20 shadow-2xl backdrop-blur-sm bg-card/95">
