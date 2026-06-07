@@ -19,6 +19,7 @@ import { PLAN_CONFIG } from "@/lib/planConfig";
 import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
 import { TierHistorySection } from "@/components/mypage/TierHistorySection";
+import { CreditHistoryCard } from "@/components/mypage/CreditHistoryCard";
 import { TIER_CONFIG, TierType, getTierName } from "@/lib/tierConfig";
 import { SEOHead } from "@/components/SEOHead";
 import { useLanguage } from "@/contexts/LanguageContext";
