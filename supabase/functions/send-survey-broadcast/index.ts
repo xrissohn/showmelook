@@ -87,7 +87,20 @@ export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string; respo
           </table>
         </td>
       </tr></table>
-      <p style="margin:20px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">버튼을 누르면 바로 응답이 저장되고 10크레딧이 지급됩니다.</p>
+      <p style="margin:20px 0 8px;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">버튼을 누르면 바로 응답이 저장되고 10크레딧이 지급됩니다.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 0;"><tr><td align="center">
+        <div style="padding:14px 16px;border:1px dashed #d1d5db;border-radius:12px;background:#fafafa;">
+          <p style="margin:0 0 8px;font-size:13px;color:#4b5563;line-height:1.6;">
+            ✍️ <strong style="color:#111827;">주관식 의견</strong>도 함께 남기고 싶으신가요?
+          </p>
+          <p style="margin:0 0 12px;font-size:12px;color:#6b7280;line-height:1.6;">
+            아래 링크에서 시안 선택과 함께 자유롭게 의견을 적어주실 수 있어요.<br/>(크레딧 지급은 1회만 적용됩니다)
+          </p>
+          <a href="${SURVEY_URL}" style="display:inline-block;background:#fff;border:1px solid #8b5cf6;color:#8b5cf6;text-decoration:none;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:600;">
+            의견과 함께 응답하기 →
+          </a>
+        </div>
+      </td></tr></table>
     </td></tr>
     <tr><td style="background:#f9fafb;padding:20px 30px;text-align:center;border-top:1px solid #e5e7eb;">
       <img src="${LOGO_URL}" alt="쇼미룩" width="36" height="36" style="display:inline-block;margin:0 0 8px;width:36px;height:36px;border:0;" />
