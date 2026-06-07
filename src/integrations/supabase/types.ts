@@ -273,13 +273,6 @@ export type Database = {
             referencedRelation: "generated_looks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "cart_items_generated_look_id_fkey"
-            columns: ["generated_look_id"]
-            isOneToOne: false
-            referencedRelation: "generated_looks_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       coupang_daily_reports: {
@@ -569,6 +562,60 @@ export type Database = {
           },
         ]
       }
+      generated_looks_public: {
+        Row: {
+          caption: string | null
+          created_at: string
+          gallery_user_key: string
+          id: string
+          image_url: string
+          like_count: number | null
+          memo: string | null
+          product_ids: string[] | null
+          prompt_used: string | null
+          style_reasoning: string | null
+          tag_positions: Json | null
+          tags: string[] | null
+          user_avatar: string | null
+          user_name: string | null
+          view_count: number | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at: string
+          gallery_user_key: string
+          id: string
+          image_url: string
+          like_count?: number | null
+          memo?: string | null
+          product_ids?: string[] | null
+          prompt_used?: string | null
+          style_reasoning?: string | null
+          tag_positions?: Json | null
+          tags?: string[] | null
+          user_avatar?: string | null
+          user_name?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          gallery_user_key?: string
+          id?: string
+          image_url?: string
+          like_count?: number | null
+          memo?: string | null
+          product_ids?: string[] | null
+          prompt_used?: string | null
+          style_reasoning?: string | null
+          tag_positions?: Json | null
+          tags?: string[] | null
+          user_avatar?: string | null
+          user_name?: string | null
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       generation_jobs: {
         Row: {
           completed_at: string | null
@@ -771,13 +818,6 @@ export type Database = {
             columns: ["look_id"]
             isOneToOne: false
             referencedRelation: "generated_looks"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "look_likes_look_id_fkey"
-            columns: ["look_id"]
-            isOneToOne: false
-            referencedRelation: "generated_looks_public"
             referencedColumns: ["id"]
           },
         ]
@@ -1669,13 +1709,6 @@ export type Database = {
             referencedRelation: "generated_looks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "tag_corrections_look_id_fkey"
-            columns: ["look_id"]
-            isOneToOne: false
-            referencedRelation: "generated_looks_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       tier_change_history: {
@@ -1827,26 +1860,6 @@ export type Database = {
       }
     }
     Views: {
-      generated_looks_public: {
-        Row: {
-          caption: string | null
-          created_at: string | null
-          gallery_user_key: string | null
-          id: string | null
-          image_url: string | null
-          like_count: number | null
-          memo: string | null
-          product_ids: string[] | null
-          prompt_used: string | null
-          style_reasoning: string | null
-          tag_positions: Json | null
-          tags: string[] | null
-          user_avatar: string | null
-          user_name: string | null
-          view_count: number | null
-        }
-        Relationships: []
-      }
       profiles_public: {
         Row: {
           avatar_url: string | null
