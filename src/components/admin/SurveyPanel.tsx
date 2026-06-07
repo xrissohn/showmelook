@@ -14,17 +14,14 @@ const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const IMG_A_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-a.png`;
 const IMG_B_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-b.png`;
 
-const DEFAULT_TEMPLATE = `안녕하세요, 쇼미룩입니다 ✨
+const DEFAULT_SUBJECT = "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요";
+
+const DEFAULT_TEMPLATE = `안녕하세요, 쇼미룩입니다.
 
 가상 인플루언서 '쇼미' 캐릭터를 새로 디자인 중이에요.
-두 가지 시안 중 어느 쪽이 더 마음에 드시는지 의견을 주시면,
-참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.
+두 가지 시안 중 어느 쪽이 더 마음에 드시는지 의견을 들려주세요.
 
-👉 설문 참여하기: https://showmelook.com/survey/shomi
-
-소중한 의견이 더 멋진 쇼미를 만듭니다. 감사합니다!
-
-— 쇼미룩 팀`;
+설문에 참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.`;
 
 type Stats = { total: number; a: number; b: number };
 type Resp = { id: string; choice: string; feedback: string | null; created_at: string; user_id: string };
