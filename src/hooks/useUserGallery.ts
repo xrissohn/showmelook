@@ -38,6 +38,35 @@ export function useUserGallery(userId: string | undefined) {
     if (!userId) return;
     setIsLoading(true);
 
+    if (!isOwner) {
+      const { data: publicLooks, error: publicError } = await supabase
+        .from('generated_looks_public' as any)
+        .select('id, image_url, like_count, view_count, caption, tags, created_at, prompt_used, product_ids, style_reasoning, tag_positions, user_name, user_avatar')
+        .eq('gallery_user_key', userId)
+        .order('created_at', { ascending: false });
+
+      if (publicError) {
+        console.error('Public gallery fetch error:', publicError);
+        setIsLoading(false);
+        return;
+      }
+
+      const rows = (publicLooks || []) as any[];
+      const allLooks = rows.map((look) => ({ ...look, is_public: true })) as GalleryLook[];
+      setData({
+        profile: {
+          full_name: rows[0]?.user_name ?? null,
+          avatar_url: rows[0]?.user_avatar ?? null,
+        },
+        looks: allLooks,
+        publicCount: allLooks.length,
+        totalLikes: allLooks.reduce((sum, l) => sum + l.like_count, 0),
+        isOwner: false,
+      });
+      setIsLoading(false);
+      return;
+    }
+
     // Fetch profile
     const { data: profileData } = await supabase
       .from('profiles_public' as any)

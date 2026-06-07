@@ -335,7 +335,7 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
 const GalleryPreviewSection = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null }[]>([]);
+  const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null; user_name?: string | null; user_avatar?: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -345,12 +345,11 @@ const GalleryPreviewSection = () => {
   useEffect(() => {
     const fetchPreview = async () => {
       const { data } = await supabase
-        .from('generated_looks')
-        .select('id, image_url, like_count, tags, user_id, prompt_used, style_reasoning, product_ids, created_at, memo, caption, tag_positions')
-        .eq('is_public', true)
+        .from('generated_looks_public' as any)
+        .select('id, image_url, like_count, tags, gallery_user_key, user_name, user_avatar, prompt_used, style_reasoning, product_ids, created_at, memo, caption, tag_positions')
         .order('like_count', { ascending: false })
         .limit(8);
-      if (data) setPreviewLooks(data);
+      if (data) setPreviewLooks((data as any[]).map((look) => ({ ...look, user_id: look.gallery_user_key })));
       setIsLoading(false);
     };
     fetchPreview();
@@ -362,7 +361,8 @@ const GalleryPreviewSection = () => {
       is_favorite: false,
       is_public: true,
       user_name: null,
-      user_avatar: null,
+      user_name: look.user_name ?? null,
+      user_avatar: look.user_avatar ?? null,
     });
     setSelectedIndex(index);
   };
