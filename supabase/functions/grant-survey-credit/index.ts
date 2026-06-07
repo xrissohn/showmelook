@@ -167,27 +167,44 @@ Deno.serve(async (req) => {
       return redirectToApp('completed', undefined, choice);
     }
 
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ success: false, error: '인증이 필요합니다.' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const authClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const token = authHeader.replace('Bearer ', '');
+    // POST handler: accept either authenticated user OR HMAC-signed survey token
+    const body = await req.json().catch(() => ({}));
+    const choice = body?.choice;
+    const feedback = typeof body?.feedback === 'string' ? body.feedback.slice(0, 1000) : null;
+    const feedbackOnly = body?.feedbackOnly === true;
+    const tokenFromBody = typeof body?.token === 'string' ? body.token : null;
 
     let userId: string | null = null;
-    const { data: { user } } = await authClient.auth.getUser();
-    if (user) {
-      userId = user.id;
+
+    // Path A: HMAC token from email link (no auth header required)
+    if (tokenFromBody) {
+      userId = await verifySurveyToken(tokenFromBody);
+      if (!userId) {
+        return new Response(JSON.stringify({ success: false, error: '유효하지 않은 설문 링크입니다.' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     } else {
-      try {
-        const { data: claimsData } = await authClient.auth.getClaims(token);
-        userId = (claimsData?.claims?.sub as string) || null;
-      } catch (_) { /* ignore */ }
+      // Path B: standard auth header (logged-in user submitting via UI)
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader?.startsWith('Bearer ')) {
+        return new Response(JSON.stringify({ success: false, error: '인증이 필요합니다.' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const authClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await authClient.auth.getUser();
+      if (user) {
+        userId = user.id;
+      } else {
+        try {
+          const { data: claimsData } = await authClient.auth.getClaims(token);
+          userId = (claimsData?.claims?.sub as string) || null;
+        } catch (_) { /* ignore */ }
+      }
     }
 
     if (!userId) {
@@ -195,6 +212,7 @@ Deno.serve(async (req) => {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
 
     const body = await req.json().catch(() => ({}));
     const choice = body?.choice;
