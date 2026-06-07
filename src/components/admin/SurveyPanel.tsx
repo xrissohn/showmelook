@@ -128,14 +128,36 @@ export const SurveyPanel = () => {
     setLoading(true);
     const { data } = await supabase
       .from("survey_responses")
-      .select("id,choice,feedback,created_at,user_id")
+      .select("id,choice,created_at,user_id")
       .order("created_at", { ascending: false });
     const rows = (data || []) as Resp[];
-    setRecent(rows.slice(0, 50));
+
+    // Enrich with email/name via admin-get-users
+    let enriched = rows;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-get-users`, {
+        headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+      });
+      const json = await res.json();
+      const userMap = new Map<string, { email: string; full_name: string | null }>();
+      (json.users || []).forEach((u: any) => {
+        if (u.id) userMap.set(u.id, { email: u.email || "", full_name: u.full_name ?? null });
+      });
+      enriched = rows.map((r) => ({
+        ...r,
+        email: userMap.get(r.user_id)?.email || "",
+        full_name: userMap.get(r.user_id)?.full_name ?? null,
+      }));
+    } catch (e) {
+      console.warn("user enrichment failed", e);
+    }
+
+    setRecent(enriched.slice(0, 100));
     setStats({
-      total: rows.length,
-      a: rows.filter((r) => r.choice === "A").length,
-      b: rows.filter((r) => r.choice === "B").length,
+      total: enriched.length,
+      a: enriched.filter((r) => r.choice === "A").length,
+      b: enriched.filter((r) => r.choice === "B").length,
     });
     setLoading(false);
   }, []);
