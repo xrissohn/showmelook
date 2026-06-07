@@ -169,17 +169,27 @@ const SurveyShomi = () => {
 
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold">
-                  <Sparkles className="w-3.5 h-3.5" /> 참여 완료
+                  <Sparkles className="w-3.5 h-3.5" /> {alreadyResponded ? "이미 참여 완료" : "참여 완료"}
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  소중한 의견 감사합니다 💜
+                  {alreadyResponded ? "이미 응답하셨어요 💜" : "소중한 의견 감사합니다 💜"}
                 </h1>
                 <p className="text-muted-foreground leading-relaxed">
-                  {urlChoice ? (
-                    <>선택하신 <span className="font-semibold text-foreground">시안 {urlChoice}</span>가 정상 기록되었습니다.</>
-                  ) : (
-                    <>응답이 정상 기록되었습니다.</>
-                  )}
+                  {(() => {
+                    const shown = (storedChoice || urlChoice) as string | null;
+                    if (alreadyResponded) {
+                      return shown ? (
+                        <>이전에 선택하신 <span className="font-semibold text-foreground">시안 {shown}</span>로 응답이 기록되어 있습니다. 한 번만 응답하실 수 있어요.</>
+                      ) : (
+                        <>이미 응답이 기록되어 있습니다. 한 번만 응답하실 수 있어요.</>
+                      );
+                    }
+                    return shown ? (
+                      <>선택하신 <span className="font-semibold text-foreground">시안 {shown}</span>가 정상 기록되었습니다.</>
+                    ) : (
+                      <>응답이 정상 기록되었습니다.</>
+                    );
+                  })()}
                 </p>
               </div>
 
