@@ -24,7 +24,7 @@ const DEFAULT_TEMPLATE = `안녕하세요, 쇼미룩입니다.
 설문에 참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.`;
 
 type Stats = { total: number; a: number; b: number };
-type Resp = { id: string; choice: string; feedback: string | null; created_at: string; user_id: string };
+type Resp = { id: string; choice: string; created_at: string; user_id: string; email?: string; full_name?: string | null };
 
 export const SurveyPanel = () => {
   const { toast } = useToast();
