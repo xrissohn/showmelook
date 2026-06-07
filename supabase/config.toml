@@ -162,3 +162,9 @@ verify_jwt = false
 
 [functions.grant-survey-credit]
 verify_jwt = false
+
+[functions.send-survey-broadcast]
+verify_jwt = false
+
+[functions.survey-unsubscribe]
+verify_jwt = false
