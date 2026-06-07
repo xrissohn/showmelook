@@ -34,6 +34,7 @@ export const SurveyPanel = () => {
   const [exporting, setExporting] = useState(false);
   const [uploading, setUploading] = useState<"A" | "B" | null>(null);
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
+  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [imgVersion, setImgVersion] = useState(Date.now());
   const [preview, setPreview] = useState<{ totalUsers: number; responded: number; alreadySent: number; optOut: number; toSend: number } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -41,6 +42,9 @@ export const SurveyPanel = () => {
   const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [testSending, setTestSending] = useState(false);
+  const [emailPreview, setEmailPreview] = useState<{ subject: string; html: string } | null>(null);
+  const [renderingPreview, setRenderingPreview] = useState(false);
+  const [confirmedPreview, setConfirmedPreview] = useState(false);
 
   const callBroadcast = async (body: Record<string, unknown>) => {
     const { data: { session } } = await supabase.auth.getSession();
