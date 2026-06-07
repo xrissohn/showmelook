@@ -102,18 +102,13 @@ export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string; respo
 }
 
 async function sendOne(to: string, html: string, subject: string): Promise<{ ok: boolean; error?: string }> {
-  const tryFrom = async (from: string) => {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject, html }),
-    });
-    const j = await r.json().catch(() => ({}));
-    return { ok: !!j?.id, error: j?.id ? undefined : (j?.message || `status ${r.status}`) };
-  };
-  let res = await tryFrom("쇼미룩 <noreply@showmelook.com>");
-  if (!res.ok) res = await tryFrom("ShowMeLook <onboarding@resend.dev>");
-  return res;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "쇼미룩 <noreply@showmelook.com>", to: [to], subject, html }),
+  });
+  const j = await r.json().catch(() => ({}));
+  return { ok: !!j?.id, error: j?.id ? undefined : (j?.message || `status ${r.status}`) };
 }
 
 Deno.serve(async (req) => {
