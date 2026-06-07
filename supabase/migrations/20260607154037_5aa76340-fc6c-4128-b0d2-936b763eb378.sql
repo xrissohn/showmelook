@@ -1,0 +1,1 @@
+DELETE FROM public.survey_responses WHERE survey_key = 'shomi_ab_v1';
