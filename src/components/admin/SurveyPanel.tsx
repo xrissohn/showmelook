@@ -38,6 +38,73 @@ export const SurveyPanel = () => {
   const [uploading, setUploading] = useState<"A" | "B" | null>(null);
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
   const [imgVersion, setImgVersion] = useState(Date.now());
+  const [preview, setPreview] = useState<{ totalUsers: number; responded: number; alreadySent: number; optOut: number; toSend: number } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [testSending, setTestSending] = useState(false);
+
+  const callBroadcast = async (body: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-survey-broadcast`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    return json;
+  };
+
+  const loadPreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const r = await callBroadcast({ mode: "preview" });
+      setPreview(r);
+    } catch (e: any) {
+      toast({ title: "미리보기 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const sendTest = async () => {
+    if (!testEmail) { toast({ title: "이메일을 입력하세요", variant: "destructive" }); return; }
+    setTestSending(true);
+    try {
+      const r = await callBroadcast({ mode: "test", testEmail });
+      if (r.ok) toast({ title: "테스트 메일 발송 완료", description: testEmail });
+      else throw new Error(r.error || "발송 실패");
+    } catch (e: any) {
+      toast({ title: "테스트 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  const runBroadcast = async () => {
+    if (!preview || preview.toSend === 0) {
+      toast({ title: "발송 대상이 없습니다", description: "먼저 미리보기를 실행하세요", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm(`${preview.toSend}명에게 실제 메일이 발송됩니다. 진행하시겠습니까?`)) return;
+    setBroadcasting(true);
+    setBroadcastResult(null);
+    try {
+      const r = await callBroadcast({ mode: "broadcast" });
+      setBroadcastResult({ total: r.total, sent: r.sent, failed: r.failed });
+      toast({ title: "발송 완료", description: `성공 ${r.sent} / 실패 ${r.failed}` });
+      await loadPreview();
+    } catch (e: any) {
+      toast({ title: "발송 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   const loadStats = useCallback(async () => {
     setLoading(true);
