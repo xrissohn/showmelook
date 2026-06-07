@@ -1151,6 +1151,7 @@ export type Database = {
           avatar_url: string | null
           body_type: string | null
           created_at: string
+          email_opt_out: boolean
           full_name: string | null
           gender: string | null
           height: number | null
@@ -1166,6 +1167,7 @@ export type Database = {
           avatar_url?: string | null
           body_type?: string | null
           created_at?: string
+          email_opt_out?: boolean
           full_name?: string | null
           gender?: string | null
           height?: number | null
@@ -1181,6 +1183,7 @@ export type Database = {
           avatar_url?: string | null
           body_type?: string | null
           created_at?: string
+          email_opt_out?: boolean
           full_name?: string | null
           gender?: string | null
           height?: number | null
@@ -1547,6 +1550,36 @@ export type Database = {
           name?: string
           name_ko?: string
           tags?: string[] | null
+        }
+        Relationships: []
+      }
+      survey_email_sends: {
+        Row: {
+          email: string
+          error: string | null
+          id: string
+          sent_at: string
+          status: string
+          survey_key: string
+          user_id: string
+        }
+        Insert: {
+          email: string
+          error?: string | null
+          id?: string
+          sent_at?: string
+          status: string
+          survey_key?: string
+          user_id: string
+        }
+        Update: {
+          email?: string
+          error?: string | null
+          id?: string
+          sent_at?: string
+          status?: string
+          survey_key?: string
+          user_id?: string
         }
         Relationships: []
       }

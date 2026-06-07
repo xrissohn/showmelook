@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Download, Upload, Copy, Loader2, RefreshCw } from "lucide-react";
+import { Download, Upload, Copy, Loader2, RefreshCw, Send, Mail } from "lucide-react";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -37,6 +38,73 @@ export const SurveyPanel = () => {
   const [uploading, setUploading] = useState<"A" | "B" | null>(null);
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
   const [imgVersion, setImgVersion] = useState(Date.now());
+  const [preview, setPreview] = useState<{ totalUsers: number; responded: number; alreadySent: number; optOut: number; toSend: number } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
+  const [testEmail, setTestEmail] = useState("");
+  const [testSending, setTestSending] = useState(false);
+
+  const callBroadcast = async (body: Record<string, unknown>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-survey-broadcast`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    return json;
+  };
+
+  const loadPreview = async () => {
+    setPreviewLoading(true);
+    try {
+      const r = await callBroadcast({ mode: "preview" });
+      setPreview(r);
+    } catch (e: any) {
+      toast({ title: "미리보기 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const sendTest = async () => {
+    if (!testEmail) { toast({ title: "이메일을 입력하세요", variant: "destructive" }); return; }
+    setTestSending(true);
+    try {
+      const r = await callBroadcast({ mode: "test", testEmail });
+      if (r.ok) toast({ title: "테스트 메일 발송 완료", description: testEmail });
+      else throw new Error(r.error || "발송 실패");
+    } catch (e: any) {
+      toast({ title: "테스트 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  const runBroadcast = async () => {
+    if (!preview || preview.toSend === 0) {
+      toast({ title: "발송 대상이 없습니다", description: "먼저 미리보기를 실행하세요", variant: "destructive" });
+      return;
+    }
+    if (!window.confirm(`${preview.toSend}명에게 실제 메일이 발송됩니다. 진행하시겠습니까?`)) return;
+    setBroadcasting(true);
+    setBroadcastResult(null);
+    try {
+      const r = await callBroadcast({ mode: "broadcast" });
+      setBroadcastResult({ total: r.total, sent: r.sent, failed: r.failed });
+      toast({ title: "발송 완료", description: `성공 ${r.sent} / 실패 ${r.failed}` });
+      await loadPreview();
+    } catch (e: any) {
+      toast({ title: "발송 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   const loadStats = useCallback(async () => {
     setLoading(true);
@@ -196,12 +264,86 @@ export const SurveyPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Email sending */}
+      {/* App-direct broadcast */}
+      <Card className="border-primary/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Mail className="w-5 h-5" />2. 앱에서 직접 발송 (noreply@showmelook.com)</CardTitle>
+          <CardDescription>
+            Resend로 가입자에게 일괄 발송합니다. 이미 응답했거나 발송 받았거나 수신거부한 사용자는 자동 제외됩니다.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Test send */}
+          <div className="rounded-lg border p-3 space-y-2">
+            <p className="text-sm font-medium">테스트 발송</p>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="본인 이메일 (예: you@gmail.com)"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+              <Button onClick={sendTest} disabled={testSending} variant="outline">
+                {testSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">발송 대상 미리보기</p>
+              <Button size="sm" variant="outline" onClick={loadPreview} disabled={previewLoading}>
+                {previewLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                계산
+              </Button>
+            </div>
+            {preview ? (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
+                <div className="rounded border p-2"><div className="text-lg font-bold">{preview.totalUsers}</div><div className="text-muted-foreground">전체 가입자</div></div>
+                <div className="rounded border p-2"><div className="text-lg font-bold">{preview.responded}</div><div className="text-muted-foreground">이미 응답</div></div>
+                <div className="rounded border p-2"><div className="text-lg font-bold">{preview.alreadySent}</div><div className="text-muted-foreground">이미 발송</div></div>
+                <div className="rounded border p-2"><div className="text-lg font-bold">{preview.optOut}</div><div className="text-muted-foreground">수신거부</div></div>
+                <div className="rounded border-2 border-primary p-2 bg-primary/5"><div className="text-lg font-bold text-primary">{preview.toSend}</div><div className="text-muted-foreground">실제 발송</div></div>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">"계산" 버튼을 눌러 발송 대상을 확인하세요.</p>
+            )}
+          </div>
+
+          {/* Broadcast */}
+          <Button
+            onClick={runBroadcast}
+            disabled={broadcasting || !preview || preview.toSend === 0}
+            className="w-full"
+            size="lg"
+          >
+            {broadcasting ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" />발송 중... (잠시만 기다려주세요)</>
+            ) : (
+              <><Send className="w-4 h-4 mr-2" />{preview ? `${preview.toSend}명에게 전체 발송` : "전체 발송"}</>
+            )}
+          </Button>
+
+          {broadcastResult && (
+            <div className="rounded-lg border p-3 bg-muted/30 text-sm">
+              <p className="font-medium mb-1">발송 결과</p>
+              <p className="text-muted-foreground">총 {broadcastResult.total}명 · 성공 {broadcastResult.sent} · 실패 {broadcastResult.failed}</p>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            ※ Resend 발송 한도(플랜에 따라 다름)를 초과하면 일부 메일이 실패할 수 있습니다. 메일 푸터에 수신거부 링크가 포함됩니다.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Email sending (Gmail BCC backup) */}
       <Card>
         <CardHeader>
-          <CardTitle>2. 가입자에게 메일 발송</CardTitle>
+          <CardTitle>3. (백업) Gmail BCC로 직접 발송</CardTitle>
           <CardDescription>
-            대량 발송은 Gmail에서 직접 BCC로 보내주세요. (Gmail은 1일 약 500건 제한, 초과 시 분할 발송)
+            Resend 발송이 어렵거나 수동 검토가 필요한 경우 사용하세요.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -230,7 +372,7 @@ export const SurveyPanel = () => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>3. 응답 통계</CardTitle>
+            <CardTitle>4. 응답 통계</CardTitle>
             <CardDescription>실시간 집계</CardDescription>
           </div>
           <div className="flex gap-2">
