@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ const IMG_B = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/publ
 const SurveyShomi = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [choice, setChoice] = useState<"A" | "B" | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -26,23 +27,72 @@ const SurveyShomi = () => {
   const [checking, setChecking] = useState(true);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [zoomLabel, setZoomLabel] = useState<string>("");
+  const [postFeedback, setPostFeedback] = useState("");
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [feedbackSaved, setFeedbackSaved] = useState(false);
+
+  const urlStatus = searchParams.get("status"); // "completed" | "already" | "error" | "invalid"
+  const urlChoice = searchParams.get("choice"); // "A" | "B"
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
+      // From email link: status set but user not logged in → mark submitted view anyway
+      if (urlStatus === "completed" || urlStatus === "already") {
+        setSubmitted(true);
+      }
       setChecking(false);
       return;
     }
     (async () => {
       const { data } = await supabase
         .from("survey_responses")
-        .select("id")
+        .select("id, feedback")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data) setSubmitted(true);
+      if (data) {
+        setSubmitted(true);
+        if (data.feedback) setFeedbackSaved(true);
+      } else if (urlStatus === "completed" || urlStatus === "already") {
+        setSubmitted(true);
+      }
       setChecking(false);
     })();
-  }, [user, authLoading]);
+  }, [user, authLoading, urlStatus]);
+
+  const handleSubmitFeedback = async () => {
+    if (!user) {
+      navigate(`/auth?redirect=${encodeURIComponent("/survey/shomi")}`);
+      return;
+    }
+    if (!postFeedback.trim()) {
+      toast({ title: "의견을 입력해주세요", variant: "destructive" });
+      return;
+    }
+    setSavingFeedback(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/grant-survey-credit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ feedbackOnly: true, feedback: postFeedback.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setFeedbackSaved(true);
+        toast({ title: "의견 감사합니다! 💜", description: "소중한 피드백이 저장되었어요." });
+      } else {
+        toast({ title: "저장 실패", description: json.error || "잠시 후 다시 시도해주세요", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "네트워크 오류", variant: "destructive" });
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!user) {
@@ -106,13 +156,63 @@ const SurveyShomi = () => {
 
         {submitted ? (
           <Card>
-            <CardContent className="p-10 text-center space-y-4">
-              <CheckCircle2 className="w-16 h-16 text-accent mx-auto" />
-              <h2 className="text-2xl font-bold">참여 완료!</h2>
-              <p className="text-muted-foreground">
-                소중한 의견 감사합니다. 10크레딧이 계정에 적립되었어요.
-              </p>
-              <div className="flex gap-3 justify-center pt-2">
+            <CardContent className="p-8 md:p-10 space-y-5">
+              <div className="text-center space-y-3">
+                <CheckCircle2 className="w-16 h-16 text-accent mx-auto" />
+                <h2 className="text-2xl font-bold">참여 완료!</h2>
+                <p className="text-muted-foreground">
+                  {urlChoice ? <>선택하신 <span className="font-semibold text-foreground">시안 {urlChoice}</span>가 정상 기록되었습니다. </> : null}
+                  소중한 의견 감사합니다. 10크레딧이 계정에 적립되었어요.
+                </p>
+              </div>
+
+              {user ? (
+                feedbackSaved ? (
+                  <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-center">
+                    <p className="text-sm text-foreground font-medium">💜 의견이 저장되었습니다. 감사합니다!</p>
+                  </div>
+                ) : (
+                  <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3">
+                    <label className="text-sm font-medium text-foreground block">
+                      ✍️ 주관식 의견을 남겨주세요 <span className="text-muted-foreground">(선택, 최대 500자)</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      추가 의견을 남기셔도 별도 크레딧은 지급되지 않지만, 서비스 개선에 큰 도움이 됩니다.
+                    </p>
+                    <Textarea
+                      value={postFeedback}
+                      onChange={(e) => setPostFeedback(e.target.value.slice(0, 500))}
+                      placeholder="어떤 점이 마음에 드시나요? 개선했으면 하는 부분이 있나요?"
+                      rows={4}
+                    />
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">{postFeedback.length}/500</p>
+                      <Button
+                        size="sm"
+                        disabled={!postFeedback.trim() || savingFeedback}
+                        onClick={handleSubmitFeedback}
+                      >
+                        {savingFeedback ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />저장 중...</>
+                        ) : (
+                          "의견 등록"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="bg-muted/40 border border-border rounded-xl p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    추가 의견을 남기시려면 로그인이 필요합니다.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/auth?redirect=${encodeURIComponent("/survey/shomi?status=completed")}`)}>
+                    로그인하고 의견 남기기
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                 <Button onClick={() => navigate("/style")} size="lg">스타일 생성하러 가기</Button>
                 <Button variant="outline" onClick={() => navigate("/mypage")} size="lg">크레딧 확인</Button>
               </div>

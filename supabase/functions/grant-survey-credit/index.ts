@@ -10,11 +10,12 @@ const REWARD_TYPE = 'survey_shomi_ab';
 const REWARD_AMOUNT = 10;
 const HMAC_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const htmlHeaders = { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' };
-const APP_URL = 'https://showmelook.com/style';
+const APP_URL = 'https://showmelook.com/survey/shomi';
 
-function redirectToApp(status: 'completed' | 'already' | 'invalid' | 'error', message?: string) {
+function redirectToApp(status: 'completed' | 'already' | 'invalid' | 'error', message?: string, choice?: string) {
   const url = new URL(APP_URL);
-  url.searchParams.set('survey', status);
+  url.searchParams.set('status', status);
+  if (choice) url.searchParams.set('choice', choice);
   if (message) url.searchParams.set('message', message);
   return Response.redirect(url.toString(), 303);
 }
@@ -125,12 +126,12 @@ Deno.serve(async (req) => {
       }
       const result = await saveResponseAndReward(admin, tokenUserId, choice, null);
       if (result.already) {
-        return redirectToApp('already', result.rewarded ? '이미 참여 완료되었고 10크레딧이 지급되었습니다.' : '이미 참여 완료되었습니다.');
+        return redirectToApp('already', undefined, choice);
       }
       if (!result.success) {
-        return redirectToApp('error', result.error);
+        return redirectToApp('error', result.error, choice);
       }
-      return redirectToApp('completed', '설문 참여가 완료되어 10크레딧이 지급되었습니다.');
+      return redirectToApp('completed', undefined, choice);
     }
 
     const authHeader = req.headers.get('Authorization');
@@ -165,6 +166,41 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const choice = body?.choice;
     const feedback = typeof body?.feedback === 'string' ? body.feedback.slice(0, 1000) : null;
+    const feedbackOnly = body?.feedbackOnly === true;
+
+    // Feedback-only update: user already submitted via email, just add free-text opinion
+    if (feedbackOnly) {
+      if (!feedback || !feedback.trim()) {
+        return new Response(JSON.stringify({ success: false, error: '의견을 입력해주세요.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: existing, error: findErr } = await admin
+        .from('survey_responses')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('survey_key', SURVEY_KEY)
+        .maybeSingle();
+      if (findErr || !existing) {
+        return new Response(JSON.stringify({ success: false, error: '먼저 시안을 선택해주세요.' }), {
+          status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { error: updErr } = await admin
+        .from('survey_responses')
+        .update({ feedback })
+        .eq('id', existing.id);
+      if (updErr) {
+        console.error('feedback update error', updErr);
+        return new Response(JSON.stringify({ success: false, error: '의견 저장 중 오류가 발생했습니다.' }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, feedbackSaved: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (choice !== 'A' && choice !== 'B') {
       return new Response(JSON.stringify({ success: false, error: '선택지가 올바르지 않습니다.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
