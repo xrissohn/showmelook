@@ -28,6 +28,8 @@ const SurveyShomi = () => {
   const [checking, setChecking] = useState(true);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [zoomLabel, setZoomLabel] = useState<string>("");
+  const [storedChoice, setStoredChoice] = useState<"A" | "B" | null>(null);
+  const [alreadyResponded, setAlreadyResponded] = useState(false);
 
   const urlStatus = searchParams.get("status");
   const urlChoice = searchParams.get("choice");
