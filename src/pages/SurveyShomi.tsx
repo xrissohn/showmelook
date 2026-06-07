@@ -135,7 +135,7 @@ const SurveyShomi = () => {
                       : "border-border hover:border-accent/40"
                   }`}
                 >
-                  <div className="aspect-[3/4] bg-muted">
+                  <div className="aspect-[3/4] bg-muted relative">
                     <img
                       src={opt.src}
                       alt={opt.label}
@@ -144,6 +144,18 @@ const SurveyShomi = () => {
                         (e.currentTarget as HTMLImageElement).style.opacity = "0.3";
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setZoomImage(opt.src);
+                        setZoomLabel(opt.label);
+                      }}
+                      className="absolute bottom-3 right-3 p-2 rounded-full bg-background/80 hover:bg-background text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={`${opt.label} 확대 보기`}
+                    >
+                      <ZoomIn className="w-5 h-5" />
+                    </button>
                   </div>
                   <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-background/90 text-foreground font-bold text-sm">
                     {opt.label}
