@@ -49,6 +49,10 @@ const SurveyShomi = () => {
           });
           const json = await res.json().catch(() => ({}));
           if (json?.success || json?.already) {
+            if (json?.already && json?.choice) {
+              setStoredChoice(json.choice);
+              setAlreadyResponded(true);
+            }
             setSubmitted(true);
           } else {
             toast({ title: "제출 실패", description: json?.error || "다시 시도해주세요", variant: "destructive" });
