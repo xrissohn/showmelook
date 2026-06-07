@@ -156,13 +156,63 @@ const SurveyShomi = () => {
 
         {submitted ? (
           <Card>
-            <CardContent className="p-10 text-center space-y-4">
-              <CheckCircle2 className="w-16 h-16 text-accent mx-auto" />
-              <h2 className="text-2xl font-bold">참여 완료!</h2>
-              <p className="text-muted-foreground">
-                소중한 의견 감사합니다. 10크레딧이 계정에 적립되었어요.
-              </p>
-              <div className="flex gap-3 justify-center pt-2">
+            <CardContent className="p-8 md:p-10 space-y-5">
+              <div className="text-center space-y-3">
+                <CheckCircle2 className="w-16 h-16 text-accent mx-auto" />
+                <h2 className="text-2xl font-bold">참여 완료!</h2>
+                <p className="text-muted-foreground">
+                  {urlChoice ? <>선택하신 <span className="font-semibold text-foreground">시안 {urlChoice}</span>가 정상 기록되었습니다. </> : null}
+                  소중한 의견 감사합니다. 10크레딧이 계정에 적립되었어요.
+                </p>
+              </div>
+
+              {user ? (
+                feedbackSaved ? (
+                  <div className="bg-accent/5 border border-accent/20 rounded-xl p-4 text-center">
+                    <p className="text-sm text-foreground font-medium">💜 의견이 저장되었습니다. 감사합니다!</p>
+                  </div>
+                ) : (
+                  <div className="bg-muted/40 border border-border rounded-xl p-5 space-y-3">
+                    <label className="text-sm font-medium text-foreground block">
+                      ✍️ 주관식 의견을 남겨주세요 <span className="text-muted-foreground">(선택, 최대 500자)</span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      추가 의견을 남기셔도 별도 크레딧은 지급되지 않지만, 서비스 개선에 큰 도움이 됩니다.
+                    </p>
+                    <Textarea
+                      value={postFeedback}
+                      onChange={(e) => setPostFeedback(e.target.value.slice(0, 500))}
+                      placeholder="어떤 점이 마음에 드시나요? 개선했으면 하는 부분이 있나요?"
+                      rows={4}
+                    />
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-muted-foreground">{postFeedback.length}/500</p>
+                      <Button
+                        size="sm"
+                        disabled={!postFeedback.trim() || savingFeedback}
+                        onClick={handleSubmitFeedback}
+                      >
+                        {savingFeedback ? (
+                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />저장 중...</>
+                        ) : (
+                          "의견 등록"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )
+              ) : (
+                <div className="bg-muted/40 border border-border rounded-xl p-4 text-center">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    추가 의견을 남기시려면 로그인이 필요합니다.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => navigate(`/auth?redirect=${encodeURIComponent("/survey/shomi?status=completed")}`)}>
+                    로그인하고 의견 남기기
+                  </Button>
+                </div>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
                 <Button onClick={() => navigate("/style")} size="lg">스타일 생성하러 가기</Button>
                 <Button variant="outline" onClick={() => navigate("/mypage")} size="lg">크레딧 확인</Button>
               </div>
