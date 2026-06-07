@@ -152,16 +152,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ subject, html }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // TEST MODE
+    // TEST MODE — 수신자 이메일에 해당하는 user_id로 토큰을 서명해야 함
     if (mode === "test") {
       if (!testEmail) {
         return new Response(JSON.stringify({ error: "testEmail required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const unsubToken = await makeUnsubToken(userId);
-      const responseToken = await makeSurveyToken(userId);
+      // 수신자 user_id 조회 (없으면 관리자 본인 id로 폴백)
+      let recipientUserId = userId;
+      try {
+        const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 10000 });
+        const match = list?.users?.find((u: any) => (u.email || "").toLowerCase() === testEmail.toLowerCase());
+        if (match?.id) recipientUserId = match.id;
+      } catch (e) {
+        console.warn("test mode: failed to resolve recipient user_id", e);
+      }
+      const unsubToken = await makeUnsubToken(recipientUserId);
+      const responseToken = await makeSurveyToken(recipientUserId);
       const html = buildEmailHtml({ bodyText, responseToken, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
       const r = await sendOne(testEmail, html, subject);
-      return new Response(JSON.stringify({ ok: r.ok, error: r.error }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: r.ok, error: r.error, recipientUserId }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Build recipient list
