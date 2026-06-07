@@ -416,7 +416,7 @@ export const SurveyPanel = () => {
           )}
 
           <p className="text-xs text-muted-foreground">
-            ※ Resend 발송 한도(플랜에 따라 다름)를 초과하면 일부 메일이 실패할 수 있습니다. 메일 푸터에 수신거부 링크가 포함됩니다.
+            ※ 발송 한도를 초과하면 일부 메일이 실패할 수 있습니다. 메일 푸터에 수신거부 링크가 포함됩니다.
           </p>
         </CardContent>
       </Card>
@@ -426,7 +426,7 @@ export const SurveyPanel = () => {
         <CardHeader>
           <CardTitle>3. (백업) Gmail BCC로 직접 발송</CardTitle>
           <CardDescription>
-            Resend 발송이 어렵거나 수동 검토가 필요한 경우 사용하세요.
+            앱 직접 발송이 어렵거나 수동 검토가 필요한 경우 사용하세요.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
