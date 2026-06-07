@@ -77,7 +77,7 @@ export const SurveyPanel = () => {
     if (!testEmail) { toast({ title: "이메일을 입력하세요", variant: "destructive" }); return; }
     setTestSending(true);
     try {
-      const r = await callBroadcast({ mode: "test", testEmail });
+      const r = await callBroadcast({ mode: "test", testEmail, subject, bodyText: template });
       if (r.ok) toast({ title: "테스트 메일 발송 완료", description: testEmail });
       else throw new Error(r.error || "발송 실패");
     } catch (e: any) {
@@ -87,16 +87,32 @@ export const SurveyPanel = () => {
     }
   };
 
+  const renderEmailPreview = async () => {
+    setRenderingPreview(true);
+    try {
+      const r = await callBroadcast({ mode: "render", subject, bodyText: template });
+      setEmailPreview({ subject: r.subject, html: r.html });
+    } catch (e: any) {
+      toast({ title: "미리보기 생성 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setRenderingPreview(false);
+    }
+  };
+
   const runBroadcast = async () => {
     if (!preview || preview.toSend === 0) {
       toast({ title: "발송 대상이 없습니다", description: "먼저 미리보기를 실행하세요", variant: "destructive" });
+      return;
+    }
+    if (!confirmedPreview) {
+      toast({ title: "메일 미리보기 확인 필요", description: "발송 전 최종 메일 미리보기를 확인하고 체크박스에 동의하세요.", variant: "destructive" });
       return;
     }
     if (!window.confirm(`${preview.toSend}명에게 실제 메일이 발송됩니다. 진행하시겠습니까?`)) return;
     setBroadcasting(true);
     setBroadcastResult(null);
     try {
-      const r = await callBroadcast({ mode: "broadcast" });
+      const r = await callBroadcast({ mode: "broadcast", subject, bodyText: template });
       setBroadcastResult({ total: r.total, sent: r.sent, failed: r.failed });
       toast({ title: "발송 완료", description: `성공 ${r.sent} / 실패 ${r.failed}` });
       await loadPreview();
