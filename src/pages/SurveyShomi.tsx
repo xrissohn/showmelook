@@ -143,7 +143,7 @@ const SurveyShomi = () => {
         <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-accent/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-primary/20 blur-3xl" />
 
-        <div className="relative max-w-xl mx-auto px-4 py-10 md:py-16">
+        <div className="relative max-w-xl mx-auto px-4 py-4 md:py-6">
           <div className="flex justify-center mb-8">
             <img src={showmelookFullLogo.url} alt="ShowMeLook" className="h-24 md:h-28 w-auto" />
           </div>
