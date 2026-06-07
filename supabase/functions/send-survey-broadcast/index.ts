@@ -58,8 +58,8 @@ function bodyTextToHtml(text: string) {
 
 export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string; responseToken?: string }) {
   const bodyHtml = bodyTextToHtml(opts.bodyText || DEFAULT_BODY);
-  const voteAUrl = opts.responseToken ? `${RESPONSE_BASE}?token=${encodeURIComponent(opts.responseToken)}&choice=A` : SURVEY_URL;
-  const voteBUrl = opts.responseToken ? `${RESPONSE_BASE}?token=${encodeURIComponent(opts.responseToken)}&choice=B` : SURVEY_URL;
+  const voteAUrl = opts.responseToken ? `${SURVEY_URL}?token=${encodeURIComponent(opts.responseToken)}&choice=A` : SURVEY_URL;
+  const voteBUrl = opts.responseToken ? `${SURVEY_URL}?token=${encodeURIComponent(opts.responseToken)}&choice=B` : SURVEY_URL;
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>쇼미 캐릭터 AB 테스트</title></head>
 <body style="margin:0;padding:0;font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;background:#f5f5f5;">
