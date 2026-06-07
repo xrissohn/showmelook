@@ -34,6 +34,41 @@ function htmlPage(title: string, body: string) {
 </head><body><div class="card">${body}</div></body></html>`;
 }
 
+async function ensureSurveyReward(admin: ReturnType<typeof createClient>, userId: string) {
+  const { data: existing, error: existingErr } = await admin
+    .from('referral_rewards')
+    .select('id')
+    .eq('referrer_user_id', userId)
+    .eq('reward_type', REWARD_TYPE)
+    .limit(1)
+    .maybeSingle();
+
+  if (existingErr) {
+    console.error('reward lookup error', existingErr);
+    return false;
+  }
+
+  if (existing) return true;
+
+  const { error: rewardErr } = await admin.from('referral_rewards').insert({
+    referrer_user_id: userId,
+    referee_user_id: userId,
+    referral_code: 'SURVEY_SHOMI',
+    reward_type: REWARD_TYPE,
+    amount: REWARD_AMOUNT,
+    remaining_amount: REWARD_AMOUNT,
+    is_permanent: true,
+    is_active: true,
+  });
+
+  if (rewardErr) {
+    console.error('reward error', rewardErr);
+    return false;
+  }
+
+  return true;
+}
+
 async function saveResponseAndReward(admin: ReturnType<typeof createClient>, userId: string, choice: 'A' | 'B', feedback: string | null) {
   const { error: insertErr } = await admin.from('survey_responses').insert({
     user_id: userId,
@@ -43,32 +78,16 @@ async function saveResponseAndReward(admin: ReturnType<typeof createClient>, use
   });
 
   if (insertErr) {
-    if ((insertErr as any).code === '23505') return { success: false, already: true, error: '이미 참여하셨습니다.' };
+    if ((insertErr as any).code === '23505') {
+      const rewarded = await ensureSurveyReward(admin, userId);
+      return { success: false, already: true, rewarded, error: '이미 참여하셨습니다.' };
+    }
     console.error('insert error', insertErr);
     return { success: false, already: false, error: '저장 중 오류가 발생했습니다.' };
   }
 
-  const { data: existing } = await admin
-    .from('referral_rewards')
-    .select('id')
-    .eq('referrer_user_id', userId)
-    .eq('reward_type', REWARD_TYPE)
-    .limit(1)
-    .maybeSingle();
-
-  if (!existing) {
-    const { error: rewardErr } = await admin.from('referral_rewards').insert({
-      referrer_user_id: userId,
-      referee_user_id: userId,
-      referral_code: 'SURVEY_SHOMI',
-      reward_type: REWARD_TYPE,
-      amount: REWARD_AMOUNT,
-      remaining_amount: REWARD_AMOUNT,
-      is_permanent: true,
-      is_active: true,
-    });
-    if (rewardErr) console.error('reward error', rewardErr);
-  }
+  const rewarded = await ensureSurveyReward(admin, userId);
+  if (!rewarded) return { success: false, already: false, error: '크레딧 지급 중 오류가 발생했습니다.' };
 
   return { success: true, credits: REWARD_AMOUNT };
 }
