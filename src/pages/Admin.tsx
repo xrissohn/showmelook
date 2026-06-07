@@ -34,6 +34,7 @@ import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 import { DNAClassificationManager } from "@/components/admin/DNAClassificationManager";
 import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
 import { TagCorrectionAnalytics } from "@/components/admin/TagCorrectionAnalytics";
+import { SurveyPanel } from "@/components/admin/SurveyPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1424,6 +1425,10 @@ const Admin = () => {
               <TabsTrigger value="tag-corrections" className="flex-shrink-0 whitespace-nowrap">
                 <Crosshair className="w-4 h-4 mr-1" />
                 태그 보정 분석
+              </TabsTrigger>
+              <TabsTrigger value="survey" className="flex-shrink-0 whitespace-nowrap">
+                <Sparkles className="w-4 h-4 mr-1" />
+                설문
               </TabsTrigger>
             </TabsList>
           </div>
