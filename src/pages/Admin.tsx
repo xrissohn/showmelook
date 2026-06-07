@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse, Crosshair
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse, Crosshair, Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,7 @@ import { UserAnalyticsPanel } from "@/components/admin/UserAnalyticsPanel";
 import { DNAClassificationManager } from "@/components/admin/DNAClassificationManager";
 import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
 import { TagCorrectionAnalytics } from "@/components/admin/TagCorrectionAnalytics";
+import { SurveyPanel } from "@/components/admin/SurveyPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1425,6 +1426,10 @@ const Admin = () => {
                 <Crosshair className="w-4 h-4 mr-1" />
                 태그 보정 분석
               </TabsTrigger>
+              <TabsTrigger value="survey" className="flex-shrink-0 whitespace-nowrap">
+                <Sparkles className="w-4 h-4 mr-1" />
+                설문
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -2719,6 +2724,10 @@ const Admin = () => {
           {/* Tag Correction Analytics Tab */}
           <TabsContent value="tag-corrections" className="space-y-4">
             <TagCorrectionAnalytics />
+          </TabsContent>
+
+          <TabsContent value="survey" className="space-y-4">
+            <SurveyPanel />
           </TabsContent>
 
         </Tabs>
