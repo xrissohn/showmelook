@@ -204,6 +204,31 @@ const SurveyShomi = () => {
           </>
         )}
       </div>
+
+      {zoomImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setZoomImage(null)}
+        >
+          <div className="relative max-w-4xl w-full">
+            <button
+              type="button"
+              onClick={() => setZoomImage(null)}
+              className="absolute -top-10 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="닫기"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={zoomImage}
+              alt={zoomLabel}
+              className="w-full max-h-[85vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="text-center text-white/80 mt-3 text-sm font-medium">{zoomLabel}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
