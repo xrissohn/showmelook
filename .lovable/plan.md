@@ -1,71 +1,69 @@
-## 진단 요약
+## 개요
 
-(a) JS Domain 등록됨 → 도메인 문제 아님
-(b) "로그인 안 됨/요청 실패" → 카카오 팝업에서 발생. `sendDefault` 자체는 로그인 불필요하므로, 십중팔구 **`imageUrl`이 카카오 서버에서 크롤링 불가**(Supabase signed URL, blob, data URL 등)거나 SDK가 비동기 컨텍스트에서 호출되어 팝업이 정상 흐름을 못 탐
-(c) 팝업 차단 아이콘 없음 → 팝업은 떴음. SDK 내부 에러 메시지일 가능성 높음
+세 가지 조각으로 구성합니다.
+1. **앱 내 설문 페이지** `/survey/shomi` — 두 시안을 보여주고 선택 + 의견 받기
+2. **자동 크레딧 지급** — 제출 즉시 `referral_rewards`에 10 보너스 크레딧 적립 (1인 1회)
+3. **관리자 발송 도구** — 전체 가입자 이메일 CSV 내보내기 + 발송용 본문 템플릿 제공. 메일은 직접 Gmail에서 BCC로 발송 (대량 마케팅성 발송은 Lovable 시스템 발송 대상이 아니므로 외부 메일로 처리)
 
-## 변경 사항
+---
 
-### 1. `src/components/style/ShareButtons.tsx`
+## 1) 이미지 업로드
 
-**(A) `handleKakaoClickSync`에 PC 분기 추가** — 사용자 클릭 동기 컨텍스트에서 `Kakao.Share.sendDefault()` 즉시 호출 (현재는 `handleShare('kakao')` async 체인으로 위임되어 컨텍스트 소실).
+- 두 시안 이미지를 Supabase Storage `avatars` 또는 새 public 버킷 `survey-assets`에 업로드 (관리자 페이지에 업로드 UI 추가, 또는 직접 업로드 후 URL 입력)
 
-**(B) `imageUrl` 안전화 헬퍼**
-```text
-isPublicShareableImage(url):
-  - http(s)로 시작하고
-  - blob:/data:/ 가 아니고
-  - URL 내 'token=' / '/sign/' 포함 안 함
-  → true면 그대로, false면 'https://showmelook.com/og-image.png' 사용
-```
+## 2) 설문 페이지 `/survey/shomi`
 
-**(C) `case 'kakao'` 및 PC 동기 분기 둘 다 적용**:
-- Kakao SDK 미로드/미초기화 시 즉시 재초기화 시도
-- 에러를 `console.error('[Kakao Share]', err)`로 노출 (현재 `catch {}`로 가려져 있음)
-- 실패 시 toast 메시지 + 링크 복사 fallback
+화면 구성:
+- 헤더: "쇼미 캐릭터 AB 테스트 — 의견 주시면 10크레딧 드려요"
+- 두 시안 카드 (A / B) — 큰 이미지, 라디오 선택
+- 자유 의견 textarea (선택, 500자)
+- "제출하고 10크레딧 받기" 버튼
+- 비로그인 시 로그인 페이지로 유도 (제출하려면 로그인 필수)
+- 이미 제출한 유저: "이미 참여하셨어요. 10크레딧이 지급되었습니다" 안내
 
-**(D) `sendDefault` 호출부 정리**:
-```text
-Kakao.Share.sendDefault({
-  objectType: 'feed',
-  content: {
-    title, description,
-    imageUrl: safeImageUrl,     // 위 (B)로 검증된 공개 URL
-    link: { mobileWebUrl: shareUrl, webUrl: shareUrl }
-  },
-  buttons: [{ title: '스타일 보기', link: {...} }]
-})
-```
+로직:
+- 로그인 확인 → `survey_responses`에 insert (user_id unique 제약으로 중복 차단)
+- 성공 시 edge function `grant-survey-credit` 호출 → `referral_rewards`에 10크레딧 추가
+- 완료 화면 + "지금 스타일 생성하러 가기" CTA
 
-### 2. `src/pages/StyleGenerator.tsx`
-
-동일한 패턴 적용:
-- `handleKakaoClickSync`에 PC 동기 분기 추가
-- 동일한 `isPublicShareableImage` 헬퍼 적용
-- `catch` 블록 에러 로깅 강화
-
-### 3. 분기 흐름 최종 정리
+## 3) DB 스키마
 
 ```text
-KakaoTalk 버튼 onClick (동기)
- ├─ Mobile Chrome   → 링크 복사 (현 상태 유지)
- ├─ Mobile Safari 등 → navigator.share() 즉시 호출 (현 상태 유지)
- └─ PC (Desktop)    → Kakao.Share.sendDefault() 즉시 호출 [NEW]
-                       │
-                       ├─ imageUrl 안전화 적용
-                       ├─ 성공: toast '카카오톡 공유 창이 열렸습니다'
-                       └─ 실패: console.error + 링크 복사 fallback + toast
+survey_responses
+  - id uuid pk
+  - user_id uuid unique (1인 1회)
+  - survey_key text default 'shomi_ab_v1'
+  - choice text  ('A' | 'B')
+  - feedback text
+  - created_at timestamptz
+RLS: 본인만 select/insert, admin 전체 select
 ```
 
-## 검증 방법
+## 4) Edge Function `grant-survey-credit`
 
-1. PC Chrome에서 스타일 생성 후 KakaoTalk 클릭 → 팝업에서 정상적으로 친구 선택 화면 도달
-2. 실패 시 브라우저 콘솔에 `[Kakao Share]` 에러 출력 확인 가능
-3. 모바일 Chrome/Safari 동작은 변경 없음 (기존 분기 유지)
+- JWT 검증 (auth.getUser → claims fallback)
+- 이미 `referral_rewards`에 `reward_type='survey_shomi_ab'`로 받은 적 있으면 거부
+- service role로 10 amount/remaining_amount, is_permanent=true, referral_code='SURVEY_SHOMI' 로 insert
 
-## 변경 대상
+## 5) 관리자 페이지 (`/admin` 내 새 탭 "설문")
 
-- `src/components/style/ShareButtons.tsx` (수정)
-- `src/pages/StyleGenerator.tsx` (수정)
+- 응답 통계: 총 응답 수, A/B 비율, 최근 피드백 목록
+- **"가입자 이메일 CSV 다운로드"** 버튼 — `profiles` + `auth.users` 조인하여 email/이름 CSV 내보내기 (admin-get-users 함수 확장)
+- **메일 본문 템플릿 미리보기/복사** — Gmail에서 그대로 붙여넣어 BCC로 발송할 수 있는 한국어 본문 (설문 링크 https://showmelook.com/survey/shomi 포함)
 
-DB/edge function 변경 없음, UI/공유 로직만 수정.
+## 6) 메일 발송 안내
+
+대량 메일은 Lovable 메일 인프라로는 발송하지 않습니다 (수신자 평판/스팸 정책). 다음 중 선택:
+- **권장**: 다운로드한 CSV의 이메일을 Gmail의 BCC에 붙여넣어 직접 발송 (Gmail 1일 약 500건 제한, 초과 시 분할)
+- 발송량이 많거나 오픈율 추적이 필요하면 추후 Brevo/Mailgun 같은 외부 서비스 연동
+
+---
+
+## 기술 사항
+
+- 신규 라우트 `/survey/shomi` 를 `src/App.tsx` 라우터에 추가
+- 마이그레이션: `survey_responses` 테이블 생성 + GRANT + RLS (authenticated 본인, admin SELECT)
+- 신규 Edge Function: `grant-survey-credit` (config.toml 등록, verify_jwt=false + 내부 토큰 검증)
+- 관리자 패널: `src/pages/Admin.tsx`에 "설문" 탭 추가, `SurveyPanel.tsx` 신규
+- CSV 내보내기: 기존 `admin-get-users` 함수 재사용 가능 여부 확인 후 필요한 컬럼만 클라이언트에서 CSV 변환
+- 이메일 본문: 정적 텍스트 + 설문 URL, 클립보드 복사 버튼
