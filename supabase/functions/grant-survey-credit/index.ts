@@ -117,6 +117,8 @@ Deno.serve(async (req) => {
       const url = new URL(req.url);
       const token = url.searchParams.get('token') || '';
       const choice = url.searchParams.get('choice');
+      const confirm = url.searchParams.get('confirm');
+
       if (choice !== 'A' && choice !== 'B') {
         return redirectToApp('invalid', '잘못된 설문 선택입니다.');
       }
@@ -124,9 +126,40 @@ Deno.serve(async (req) => {
       if (!tokenUserId) {
         return redirectToApp('invalid', '유효하지 않은 설문 링크입니다.');
       }
+
+      // STEP 1: First GET (from email click OR scanner prefetch) — render a
+      // confirmation page that auto-POSTs via JS. Email link-scanners do NOT
+      // execute JS, so they cannot accidentally cast a vote.
+      if (confirm !== '1') {
+        const confirmUrl = `${req.url}${req.url.includes('?') ? '&' : '?'}confirm=1`;
+        const page = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>응답 확인 중...</title>
+<style>body{font-family:-apple-system,'Pretendard','Segoe UI',sans-serif;background:#f5f5f5;margin:0;padding:40px 20px;color:#1f2937;text-align:center}.card{max-width:480px;margin:60px auto;background:#fff;border-radius:16px;padding:40px 28px;box-shadow:0 4px 12px rgba(0,0,0,.08)}h1{font-size:20px;margin:0 0 10px}p{color:#6b7280;font-size:14px;margin:0 0 22px}a.btn{display:inline-block;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700}.spin{display:inline-block;width:36px;height:36px;border:3px solid #e5e7eb;border-top-color:#8b5cf6;border-radius:50%;animation:s 0.9s linear infinite;margin:0 0 18px}@keyframes s{to{transform:rotate(360deg)}}</style>
+</head><body><div class="card">
+<div class="spin"></div>
+<h1>시안 ${choice} 응답을 저장하는 중...</h1>
+<p>잠시만 기다려주세요. 자동으로 이동하지 않으면 아래 버튼을 눌러주세요.</p>
+<a class="btn" href="${confirmUrl}">시안 ${choice} 확정하기</a>
+</div>
+<script>setTimeout(function(){location.replace(${JSON.stringify(confirmUrl)})},250);</script>
+</body></html>`;
+        return new Response(page, { status: 200, headers: htmlHeaders });
+      }
+
+      // STEP 2: confirmed via JS — actually save the response.
       const result = await saveResponseAndReward(admin, tokenUserId, choice, null);
       if (result.already) {
-        return redirectToApp('already', undefined, choice);
+        // Look up the actual stored choice so we never show the wrong one.
+        const { data: existing } = await admin
+          .from('survey_responses')
+          .select('choice')
+          .eq('user_id', tokenUserId)
+          .eq('survey_key', SURVEY_KEY)
+          .maybeSingle();
+        const actualChoice = (existing?.choice as string | undefined) || choice;
+        return redirectToApp('already', undefined, actualChoice);
       }
       if (!result.success) {
         return redirectToApp('error', result.error, choice);
