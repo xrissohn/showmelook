@@ -229,6 +229,11 @@ const MyPage = () => {
               isLoading={purchaseStats.isLoading}
             />
             <TierHistorySection tierHistory={purchaseStats.tierHistory} isLoading={purchaseStats.isLoading} />
+            <CreditHistoryCard
+              total={referral.bonusCredits.total}
+              details={referral.bonusCredits.details as any}
+              currentUserId={user?.id}
+            />
 
             {/* Referral Card */}
             <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
