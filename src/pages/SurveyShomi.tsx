@@ -24,6 +24,8 @@ const SurveyShomi = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomLabel, setZoomLabel] = useState<string>("");
 
   useEffect(() => {
     if (authLoading) return;
