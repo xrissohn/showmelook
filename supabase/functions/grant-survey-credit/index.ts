@@ -10,6 +10,14 @@ const REWARD_TYPE = 'survey_shomi_ab';
 const REWARD_AMOUNT = 10;
 const HMAC_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const htmlHeaders = { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' };
+const APP_URL = 'https://showmelook.com/style';
+
+function redirectToApp(status: 'completed' | 'already' | 'invalid' | 'error', message?: string) {
+  const url = new URL(APP_URL);
+  url.searchParams.set('survey', status);
+  if (message) url.searchParams.set('message', message);
+  return Response.redirect(url.toString(), 303);
+}
 
 async function verifySurveyToken(token: string): Promise<string | null> {
   const parts = token.split('.');
@@ -109,23 +117,20 @@ Deno.serve(async (req) => {
       const token = url.searchParams.get('token') || '';
       const choice = url.searchParams.get('choice');
       if (choice !== 'A' && choice !== 'B') {
-        return new Response(htmlPage('잘못된 선택', `<h1>잘못된 선택입니다</h1><p>메일의 A/B 선택 버튼을 다시 눌러주세요.</p>`), { status: 400, headers: htmlHeaders });
+        return redirectToApp('invalid', '잘못된 설문 선택입니다.');
       }
       const tokenUserId = await verifySurveyToken(token);
       if (!tokenUserId) {
-        return new Response(htmlPage('유효하지 않은 링크', `<h1>유효하지 않은 링크입니다</h1><p>메일에 포함된 개인 설문 링크가 올바르지 않습니다.</p>`), { status: 400, headers: htmlHeaders });
+        return redirectToApp('invalid', '유효하지 않은 설문 링크입니다.');
       }
       const result = await saveResponseAndReward(admin, tokenUserId, choice, null);
       if (result.already) {
-        const message = result.rewarded
-          ? '이미 참여가 완료되었고, 10크레딧도 계정에 지급되었습니다.'
-          : '이 설문은 계정당 1회만 참여할 수 있어요.';
-        return new Response(htmlPage('참여 완료', `<h1>참여가 완료되었습니다</h1><p>${message}</p><a href="https://showmelook.com/style">쇼미룩으로 이동</a>`), { status: 200, headers: htmlHeaders });
+        return redirectToApp('already', result.rewarded ? '이미 참여 완료되었고 10크레딧이 지급되었습니다.' : '이미 참여 완료되었습니다.');
       }
       if (!result.success) {
-        return new Response(htmlPage('저장 실패', `<h1>저장하지 못했습니다</h1><p>${result.error}</p>`), { status: 500, headers: htmlHeaders });
+        return redirectToApp('error', result.error);
       }
-      return new Response(htmlPage('참여 완료', `<h1>참여가 완료되었습니다</h1><p>소중한 의견 감사합니다.<br>10크레딧이 계정에 지급되었습니다.</p><a href="https://showmelook.com/style">스타일 생성하러 가기</a>`), { status: 200, headers: htmlHeaders });
+      return redirectToApp('completed', '설문 참여가 완료되어 10크레딧이 지급되었습니다.');
     }
 
     const authHeader = req.headers.get('Authorization');
