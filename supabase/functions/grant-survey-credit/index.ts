@@ -8,6 +8,70 @@ const corsHeaders = {
 const SURVEY_KEY = 'shomi_ab_v1';
 const REWARD_TYPE = 'survey_shomi_ab';
 const REWARD_AMOUNT = 10;
+const HMAC_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+async function verifySurveyToken(token: string): Promise<string | null> {
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [userId, sigB64] = parts;
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return null;
+
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(HMAC_SECRET), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const payload = `survey:${SURVEY_KEY}:${userId}`;
+  const expected = await crypto.subtle.sign('HMAC', key, enc.encode(payload));
+  const expectedB64 = btoa(String.fromCharCode(...new Uint8Array(expected)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  return expectedB64 === sigB64 ? userId : null;
+}
+
+function htmlPage(title: string, body: string) {
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title>
+<style>body{font-family:-apple-system,'Pretendard','Segoe UI',sans-serif;background:#f5f5f5;margin:0;padding:40px 20px;color:#1f2937}.card{max-width:520px;margin:40px auto;background:#fff;border-radius:16px;padding:40px 32px;box-shadow:0 4px 12px rgba(0,0,0,.08);text-align:center}h1{font-size:22px;margin:0 0 12px}p{font-size:15px;color:#4b5563;line-height:1.6;margin:0 0 20px}a{display:inline-block;background:linear-gradient(135deg,#8b5cf6,#ec4899);color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:600}</style>
+</head><body><div class="card">${body}</div></body></html>`;
+}
+
+async function saveResponseAndReward(admin: ReturnType<typeof createClient>, userId: string, choice: 'A' | 'B', feedback: string | null) {
+  const { error: insertErr } = await admin.from('survey_responses').insert({
+    user_id: userId,
+    survey_key: SURVEY_KEY,
+    choice,
+    feedback,
+  });
+
+  if (insertErr) {
+    if ((insertErr as any).code === '23505') return { success: false, already: true, error: '이미 참여하셨습니다.' };
+    console.error('insert error', insertErr);
+    return { success: false, already: false, error: '저장 중 오류가 발생했습니다.' };
+  }
+
+  const { data: existing } = await admin
+    .from('referral_rewards')
+    .select('id')
+    .eq('referrer_user_id', userId)
+    .eq('reward_type', REWARD_TYPE)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existing) {
+    const { error: rewardErr } = await admin.from('referral_rewards').insert({
+      referrer_user_id: userId,
+      referee_user_id: userId,
+      referral_code: 'SURVEY_SHOMI',
+      reward_type: REWARD_TYPE,
+      amount: REWARD_AMOUNT,
+      remaining_amount: REWARD_AMOUNT,
+      is_permanent: true,
+      is_active: true,
+    });
+    if (rewardErr) console.error('reward error', rewardErr);
+  }
+
+  return { success: true, credits: REWARD_AMOUNT };
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -18,6 +82,28 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const admin = createClient(supabaseUrl, serviceKey);
+
+    if (req.method === 'GET') {
+      const url = new URL(req.url);
+      const token = url.searchParams.get('token') || '';
+      const choice = url.searchParams.get('choice');
+      if (choice !== 'A' && choice !== 'B') {
+        return new Response(htmlPage('잘못된 선택', `<h1>잘못된 선택입니다</h1><p>메일의 A/B 선택 버튼을 다시 눌러주세요.</p>`), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
+      const tokenUserId = await verifySurveyToken(token);
+      if (!tokenUserId) {
+        return new Response(htmlPage('유효하지 않은 링크', `<h1>유효하지 않은 링크입니다</h1><p>메일에 포함된 개인 설문 링크가 올바르지 않습니다.</p>`), { status: 400, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
+      const result = await saveResponseAndReward(admin, tokenUserId, choice, null);
+      if (result.already) {
+        return new Response(htmlPage('이미 참여 완료', `<h1>이미 참여 완료되었습니다</h1><p>이 설문은 계정당 1회만 참여할 수 있어요.</p><a href="https://showmelook.com/style">쇼미룩으로 이동</a>`), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
+      if (!result.success) {
+        return new Response(htmlPage('저장 실패', `<h1>저장하지 못했습니다</h1><p>${result.error}</p>`), { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+      }
+      return new Response(htmlPage('참여 완료', `<h1>참여가 완료되었습니다</h1><p>소중한 의견 감사합니다.<br>10크레딧이 계정에 지급되었습니다.</p><a href="https://showmelook.com/style">스타일 생성하러 가기</a>`), { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+    }
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
@@ -57,55 +143,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const admin = createClient(supabaseUrl, serviceKey);
-
-    // Insert survey response (unique on user_id prevents dupes)
-    const { error: insertErr } = await admin.from('survey_responses').insert({
-      user_id: userId,
-      survey_key: SURVEY_KEY,
-      choice,
-      feedback,
-    });
-
-    if (insertErr) {
-      // Already submitted
-      if ((insertErr as any).code === '23505') {
-        return new Response(JSON.stringify({ success: false, error: '이미 참여하셨습니다.', already: true }), {
-          status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      console.error('insert error', insertErr);
-      return new Response(JSON.stringify({ success: false, error: '저장 중 오류가 발생했습니다.' }), {
+    const result = await saveResponseAndReward(admin, userId, choice, feedback);
+    if (result.already) {
+      return new Response(JSON.stringify(result), {
+        status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!result.success) {
+      return new Response(JSON.stringify(result), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Idempotent reward: skip if a survey reward already exists
-    const { data: existing } = await admin
-      .from('referral_rewards')
-      .select('id')
-      .eq('referrer_user_id', userId)
-      .eq('reward_type', REWARD_TYPE)
-      .limit(1)
-      .maybeSingle();
-
-    if (!existing) {
-      const { error: rewardErr } = await admin.from('referral_rewards').insert({
-        referrer_user_id: userId,
-        referee_user_id: userId,
-        referral_code: 'SURVEY_SHOMI',
-        reward_type: REWARD_TYPE,
-        amount: REWARD_AMOUNT,
-        remaining_amount: REWARD_AMOUNT,
-        is_permanent: true,
-        is_active: true,
-      });
-      if (rewardErr) {
-        console.error('reward error', rewardErr);
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, credits: REWARD_AMOUNT }), {
+    return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {

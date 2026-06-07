@@ -562,6 +562,60 @@ export type Database = {
           },
         ]
       }
+      generated_looks_public: {
+        Row: {
+          caption: string | null
+          created_at: string
+          gallery_user_key: string
+          id: string
+          image_url: string
+          like_count: number | null
+          memo: string | null
+          product_ids: string[] | null
+          prompt_used: string | null
+          style_reasoning: string | null
+          tag_positions: Json | null
+          tags: string[] | null
+          user_avatar: string | null
+          user_name: string | null
+          view_count: number | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at: string
+          gallery_user_key: string
+          id: string
+          image_url: string
+          like_count?: number | null
+          memo?: string | null
+          product_ids?: string[] | null
+          prompt_used?: string | null
+          style_reasoning?: string | null
+          tag_positions?: Json | null
+          tags?: string[] | null
+          user_avatar?: string | null
+          user_name?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          gallery_user_key?: string
+          id?: string
+          image_url?: string
+          like_count?: number | null
+          memo?: string | null
+          product_ids?: string[] | null
+          prompt_used?: string | null
+          style_reasoning?: string | null
+          tag_positions?: Json | null
+          tags?: string[] | null
+          user_avatar?: string | null
+          user_name?: string | null
+          view_count?: number | null
+        }
+        Relationships: []
+      }
       generation_jobs: {
         Row: {
           completed_at: string | null

@@ -17,11 +17,10 @@ export function useGalleryUsers() {
   const fetchGalleryUsers = useCallback(async () => {
     setIsLoading(true);
 
-    // 1. Fetch all public looks
+    // 1. Fetch all public looks without exposing internal user IDs
     const { data: looks, error } = await supabase
-      .from('generated_looks')
-      .select('user_id, image_url, like_count')
-      .eq('is_public', true)
+      .from('generated_looks_public' as any)
+      .select('gallery_user_key, image_url, like_count, user_name, user_avatar')
       .order('like_count', { ascending: false });
 
     if (error || !looks) {
@@ -31,18 +30,20 @@ export function useGalleryUsers() {
     }
 
     // 2. Aggregate by user
-    const userMap = new Map<string, { count: number; likes: number; images: string[] }>();
-    for (const look of looks) {
-      const existing = userMap.get(look.user_id);
+    const userMap = new Map<string, { count: number; likes: number; images: string[]; full_name: string | null; avatar_url: string | null }>();
+    for (const look of looks as any[]) {
+      const existing = userMap.get(look.gallery_user_key);
       if (existing) {
         existing.count++;
         existing.likes += look.like_count;
         if (existing.images.length < 4) existing.images.push(look.image_url);
       } else {
-        userMap.set(look.user_id, {
+        userMap.set(look.gallery_user_key, {
           count: 1,
           likes: look.like_count,
           images: [look.image_url],
+          full_name: look.user_name,
+          avatar_url: look.user_avatar,
         });
       }
     }
@@ -54,27 +55,13 @@ export function useGalleryUsers() {
       return;
     }
 
-    // 3. Fetch profiles
-    const { data: profiles } = await supabase
-      .from('profiles_public' as any)
-      .select('user_id, full_name, avatar_url')
-      .in('user_id', userIds);
-
-    const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
-    if (profiles) {
-      for (const p of profiles as any[]) {
-        profileMap.set(p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url });
-      }
-    }
-
-    // 4. Merge and sort by total likes
+    // 3. Merge and sort by total likes
     const result: GalleryUser[] = userIds.map((uid) => {
       const stats = userMap.get(uid)!;
-      const profile = profileMap.get(uid);
       return {
         user_id: uid,
-        full_name: profile?.full_name ?? null,
-        avatar_url: profile?.avatar_url ?? null,
+        full_name: stats.full_name,
+        avatar_url: stats.avatar_url,
         public_look_count: stats.count,
         total_likes: stats.likes,
         preview_images: stats.images,

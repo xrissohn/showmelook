@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,8 +13,11 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const HMAC_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SURVEY_KEY = "shomi_ab_v1";
 const SURVEY_URL = "https://showmelook.com/survey/shomi";
+const RESPONSE_BASE = `${SUPABASE_URL}/functions/v1/grant-survey-credit`;
 const UNSUB_BASE = `${SUPABASE_URL}/functions/v1/survey-unsubscribe`;
 const LOGO_URL = "https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-logo.png";
+const IMG_A_URL = "https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-a.png";
+const IMG_B_URL = "https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-b.png";
 
 const DEFAULT_SUBJECT = "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요";
 const DEFAULT_BODY = `안녕하세요, 쇼미룩입니다.
@@ -32,6 +35,15 @@ async function makeUnsubToken(userId: string): Promise<string> {
   return `${userId}.${sigB64}`;
 }
 
+async function makeSurveyToken(userId: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(HMAC_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const payload = `survey:${SURVEY_KEY}:${userId}`;
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(payload));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${userId}.${sigB64}`;
+}
+
 function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -44,8 +56,10 @@ function bodyTextToHtml(text: string) {
     .join("");
 }
 
-export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string }) {
+export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string; responseToken?: string }) {
   const bodyHtml = bodyTextToHtml(opts.bodyText || DEFAULT_BODY);
+  const voteAUrl = opts.responseToken ? `${RESPONSE_BASE}?token=${encodeURIComponent(opts.responseToken)}&choice=A` : SURVEY_URL;
+  const voteBUrl = opts.responseToken ? `${RESPONSE_BASE}?token=${encodeURIComponent(opts.responseToken)}&choice=B` : SURVEY_URL;
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>쇼미 캐릭터 AB 테스트</title></head>
 <body style="margin:0;padding:0;font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;background:#f5f5f5;">
@@ -58,10 +72,22 @@ export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string }) {
     </td></tr>
     <tr><td style="padding:32px 30px;">
       ${bodyHtml}
-      <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:16px 0 4px;">
-        <a href="${SURVEY_URL}" style="display:inline-block;background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:16px;font-weight:600;">설문 참여하기 →</a>
-      </td></tr></table>
-      <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">설문은 1분이면 끝나요. 소중한 의견 감사합니다!</p>
+      <p style="margin:20px 0 14px;font-size:15px;color:#111827;font-weight:700;line-height:1.6;text-align:center;">아래 두 시안 중 더 마음에 드는 쪽을 선택해주세요.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;"><tr>
+        <td width="50%" valign="top" style="padding:0 6px 0 0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fafafa;">
+            <tr><td style="padding:10px;text-align:center;"><img src="${IMG_A_URL}" alt="쇼미 캐릭터 시안 A" width="210" style="display:block;width:100%;max-width:210px;height:auto;margin:0 auto;border:0;border-radius:10px;" /></td></tr>
+            <tr><td style="padding:0 12px 14px;text-align:center;"><a href="${voteAUrl}" style="display:block;background:#111827;color:#fff;text-decoration:none;padding:12px 10px;border-radius:8px;font-size:15px;font-weight:700;">A 시안 선택</a></td></tr>
+          </table>
+        </td>
+        <td width="50%" valign="top" style="padding:0 0 0 6px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;background:#fafafa;">
+            <tr><td style="padding:10px;text-align:center;"><img src="${IMG_B_URL}" alt="쇼미 캐릭터 시안 B" width="210" style="display:block;width:100%;max-width:210px;height:auto;margin:0 auto;border:0;border-radius:10px;" /></td></tr>
+            <tr><td style="padding:0 12px 14px;text-align:center;"><a href="${voteBUrl}" style="display:block;background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);color:#fff;text-decoration:none;padding:12px 10px;border-radius:8px;font-size:15px;font-weight:700;">B 시안 선택</a></td></tr>
+          </table>
+        </td>
+      </tr></table>
+      <p style="margin:20px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">버튼을 누르면 바로 응답이 저장되고 10크레딧이 지급됩니다.</p>
     </td></tr>
     <tr><td style="background:#f9fafb;padding:20px 30px;text-align:center;border-top:1px solid #e5e7eb;">
       <img src="${LOGO_URL}" alt="쇼미룩" width="36" height="36" style="display:inline-block;margin:0 0 8px;width:36px;height:36px;border:0;" />
@@ -76,18 +102,13 @@ export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string }) {
 }
 
 async function sendOne(to: string, html: string, subject: string): Promise<{ ok: boolean; error?: string }> {
-  const tryFrom = async (from: string) => {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject, html }),
-    });
-    const j = await r.json().catch(() => ({}));
-    return { ok: !!j?.id, error: j?.id ? undefined : (j?.message || `status ${r.status}`) };
-  };
-  let res = await tryFrom("쇼미룩 <noreply@showmelook.com>");
-  if (!res.ok) res = await tryFrom("ShowMeLook <onboarding@resend.dev>");
-  return res;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "쇼미룩 <noreply@showmelook.com>", to: [to], subject, html }),
+  });
+  const j = await r.json().catch(() => ({}));
+  return { ok: !!j?.id, error: j?.id ? undefined : (j?.message || `status ${r.status}`) };
 }
 
 Deno.serve(async (req) => {
@@ -123,10 +144,11 @@ Deno.serve(async (req) => {
     const testEmail: string | undefined = body.testEmail;
     const subject: string = (typeof body.subject === "string" && body.subject.trim()) ? body.subject.trim() : DEFAULT_SUBJECT;
     const bodyText: string = (typeof body.bodyText === "string" && body.bodyText.trim()) ? body.bodyText : DEFAULT_BODY;
+    const includeAlreadySent = body.includeAlreadySent === true;
 
     // RENDER MODE — returns the HTML preview (no send)
     if (mode === "render") {
-      const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=preview` });
+      const html = buildEmailHtml({ bodyText, responseToken: "preview", unsubUrl: `${UNSUB_BASE}?token=preview` });
       return new Response(JSON.stringify({ subject, html }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -136,7 +158,8 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "testEmail required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const unsubToken = await makeUnsubToken(userId);
-      const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
+      const responseToken = await makeSurveyToken(userId);
+      const html = buildEmailHtml({ bodyText, responseToken, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
       const r = await sendOne(testEmail, html, subject);
       return new Response(JSON.stringify({ ok: r.ok, error: r.error }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -159,7 +182,7 @@ Deno.serve(async (req) => {
     let skipped = 0;
     for (const u of authUsers.users) {
       if (!u.email) continue;
-      if (optOutSet.has(u.id) || respondedSet.has(u.id) || sentSet.has(u.id)) { skipped++; continue; }
+      if (optOutSet.has(u.id) || respondedSet.has(u.id) || (!includeAlreadySent && sentSet.has(u.id))) { skipped++; continue; }
       targets.push({ user_id: u.id, email: u.email });
     }
 
@@ -180,7 +203,8 @@ Deno.serve(async (req) => {
       const chunk = targets.slice(i, i + CHUNK);
       const results = await Promise.all(chunk.map(async (t) => {
         const unsubToken = await makeUnsubToken(t.user_id);
-        const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
+        const responseToken = await makeSurveyToken(t.user_id);
+        const html = buildEmailHtml({ bodyText, responseToken, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
         const r = await sendOne(t.email, html, subject);
         return { target: t, r };
       }));

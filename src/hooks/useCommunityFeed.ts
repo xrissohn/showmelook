@@ -13,6 +13,7 @@ export interface CommunityLook {
   tags: string[] | null;
   created_at: string;
   user_id: string;
+  gallery_user_key?: string;
   prompt_used: string | null;
   product_ids: string[] | null;
   style_reasoning: string | null;
@@ -29,32 +30,6 @@ export function useCommunityFeed() {
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
-  const enrichWithProfiles = useCallback(async (rawLooks: CommunityLook[]): Promise<CommunityLook[]> => {
-    const uniqueIds = [...new Set(rawLooks.map((l) => l.user_id))];
-    if (uniqueIds.length === 0) return rawLooks;
-
-    const { data: profiles } = await supabase
-      .from('profiles_public' as any)
-      .select('user_id, full_name, avatar_url')
-      .in('user_id', uniqueIds);
-
-    const profileMap = new Map<string, { full_name: string | null; avatar_url: string | null }>();
-    if (profiles) {
-      for (const p of profiles as any[]) {
-        profileMap.set(p.user_id, { full_name: p.full_name, avatar_url: p.avatar_url });
-      }
-    }
-
-    return rawLooks.map((look) => {
-      const profile = profileMap.get(look.user_id);
-      return {
-        ...look,
-        user_name: profile?.full_name ?? null,
-        user_avatar: profile?.avatar_url ?? null,
-      };
-    });
-  }, []);
-
   const fetchLooks = useCallback(async (reset = false) => {
     const currentPage = reset ? 0 : page;
     if (reset) {
@@ -64,9 +39,8 @@ export function useCommunityFeed() {
     const orderColumn = sortBy === 'popular' ? 'like_count' : 'created_at';
 
     const { data, error } = await supabase
-      .from('generated_looks')
-      .select('id, image_url, like_count, view_count, caption, tags, created_at, user_id, prompt_used, product_ids, style_reasoning, tag_positions')
-      .eq('is_public', true)
+      .from('generated_looks_public' as any)
+      .select('id, image_url, like_count, view_count, caption, tags, created_at, gallery_user_key, user_name, user_avatar, prompt_used, product_ids, style_reasoning, tag_positions')
       .order(orderColumn, { ascending: false })
       .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
 
@@ -77,7 +51,7 @@ export function useCommunityFeed() {
     }
 
     if (data) {
-      const enriched = await enrichWithProfiles(data as CommunityLook[]);
+      const enriched = (data as any[]).map((look) => ({ ...look, user_id: look.gallery_user_key })) as CommunityLook[];
       if (reset) {
         setLooks(enriched);
         setPage(1);
@@ -89,7 +63,7 @@ export function useCommunityFeed() {
     }
 
     setIsLoading(false);
-  }, [sortBy, page, enrichWithProfiles]);
+  }, [sortBy, page]);
 
   useEffect(() => {
     fetchLooks(true);

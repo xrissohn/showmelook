@@ -143,17 +143,19 @@ const SharedLook = () => {
 
       try {
         // Fetch the look
-        const { data: lookData, error: lookError } = await supabase
-          .from("generated_looks")
+        const { data: rawLookData, error: lookError } = await supabase
+          .from("generated_looks_public" as any)
           .select("*")
           .eq("id", lookId)
           .single();
 
-        if (lookError || !lookData) {
+        if (lookError || !rawLookData) {
           setError(t('sharedLook.notFoundDesc'));
           setLoading(false);
           return;
         }
+
+        const lookData = rawLookData as any;
 
         // Get signed URL for the image
         let imageUrl = lookData.image_url;
@@ -218,7 +220,7 @@ const SharedLook = () => {
           ...lookData,
           image_url: imageUrl,
           products,
-        });
+        } as LookData);
       } catch (e) {
         console.error("Error fetching look:", e);
         setError(t('sharedLook.styleNotFound'));
