@@ -241,8 +241,8 @@ export const SurveyPanel = () => {
 
   const exportResponsesCsv = () => {
     const rows = [
-      ["created_at", "choice", "feedback", "user_id"],
-      ...recent.map((r) => [r.created_at, r.choice, r.feedback || "", r.user_id]),
+      ["created_at", "choice", "email", "full_name", "user_id"],
+      ...recent.map((r) => [r.created_at, r.choice, r.email || "", r.full_name || "", r.user_id]),
     ];
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
