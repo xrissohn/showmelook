@@ -74,10 +74,16 @@ const SurveyShomi = () => {
     (async () => {
       const { data } = await supabase
         .from("survey_responses")
-        .select("id")
+        .select("id, choice")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data || urlStatus === "completed" || urlStatus === "already") setSubmitted(true);
+      if (data) {
+        setStoredChoice(data.choice as "A" | "B");
+        setAlreadyResponded(true);
+        setSubmitted(true);
+      } else if (urlStatus === "completed" || urlStatus === "already") {
+        setSubmitted(true);
+      }
       setChecking(false);
     })();
   }, [user, authLoading, urlStatus, urlToken, urlChoice, toast]);
