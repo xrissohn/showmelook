@@ -1550,6 +1550,33 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_responses: {
+        Row: {
+          choice: string
+          created_at: string
+          feedback: string | null
+          id: string
+          survey_key: string
+          user_id: string
+        }
+        Insert: {
+          choice: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          survey_key?: string
+          user_id: string
+        }
+        Update: {
+          choice?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          survey_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tag_corrections: {
         Row: {
           ai_x: number
