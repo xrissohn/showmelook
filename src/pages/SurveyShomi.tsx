@@ -18,6 +18,7 @@ const IMG_B = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/publ
 const SurveyShomi = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [choice, setChoice] = useState<"A" | "B" | null>(null);
   const [feedback, setFeedback] = useState("");
@@ -26,23 +27,72 @@ const SurveyShomi = () => {
   const [checking, setChecking] = useState(true);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
   const [zoomLabel, setZoomLabel] = useState<string>("");
+  const [postFeedback, setPostFeedback] = useState("");
+  const [savingFeedback, setSavingFeedback] = useState(false);
+  const [feedbackSaved, setFeedbackSaved] = useState(false);
+
+  const urlStatus = searchParams.get("status"); // "completed" | "already" | "error" | "invalid"
+  const urlChoice = searchParams.get("choice"); // "A" | "B"
 
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
+      // From email link: status set but user not logged in → mark submitted view anyway
+      if (urlStatus === "completed" || urlStatus === "already") {
+        setSubmitted(true);
+      }
       setChecking(false);
       return;
     }
     (async () => {
       const { data } = await supabase
         .from("survey_responses")
-        .select("id")
+        .select("id, feedback")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data) setSubmitted(true);
+      if (data) {
+        setSubmitted(true);
+        if (data.feedback) setFeedbackSaved(true);
+      } else if (urlStatus === "completed" || urlStatus === "already") {
+        setSubmitted(true);
+      }
       setChecking(false);
     })();
-  }, [user, authLoading]);
+  }, [user, authLoading, urlStatus]);
+
+  const handleSubmitFeedback = async () => {
+    if (!user) {
+      navigate(`/auth?redirect=${encodeURIComponent("/survey/shomi")}`);
+      return;
+    }
+    if (!postFeedback.trim()) {
+      toast({ title: "의견을 입력해주세요", variant: "destructive" });
+      return;
+    }
+    setSavingFeedback(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/grant-survey-credit`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ feedbackOnly: true, feedback: postFeedback.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setFeedbackSaved(true);
+        toast({ title: "의견 감사합니다! 💜", description: "소중한 피드백이 저장되었어요." });
+      } else {
+        toast({ title: "저장 실패", description: json.error || "잠시 후 다시 시도해주세요", variant: "destructive" });
+      }
+    } catch (e) {
+      toast({ title: "네트워크 오류", variant: "destructive" });
+    } finally {
+      setSavingFeedback(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!user) {
