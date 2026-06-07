@@ -87,7 +87,7 @@ export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string; respo
           </table>
         </td>
       </tr></table>
-      <p style="margin:20px 0 8px;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">버튼을 누르면 바로 응답이 저장되고 10크레딧이 지급됩니다.<br/>완료 페이지에서 주관식 의견도 자유롭게 남기실 수 있어요.</p>
+      <p style="margin:20px 0 8px;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">버튼을 누르면 바로 응답이 저장되고 10크레딧이 지급됩니다.</p>
     </td></tr>
     <tr><td style="background:#f9fafb;padding:20px 30px;text-align:center;border-top:1px solid #e5e7eb;">
       <img src="${LOGO_URL}" alt="쇼미룩" width="36" height="36" style="display:inline-block;margin:0 0 8px;width:36px;height:36px;border:0;" />
