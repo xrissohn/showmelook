@@ -76,7 +76,7 @@ async function sendOne(to: string, html: string): Promise<{ ok: boolean; error?:
       body: JSON.stringify({
         from,
         to: [to],
-        subject: "[쇼미룩] ✨ 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요",
+        subject: "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요",
         html,
       }),
     });
