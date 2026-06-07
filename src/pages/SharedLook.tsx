@@ -144,7 +144,7 @@ const SharedLook = () => {
       try {
         // Fetch the look
         const { data: lookData, error: lookError } = await supabase
-          .from("generated_looks")
+          .from("generated_looks_public" as any)
           .select("*")
           .eq("id", lookId)
           .single();
@@ -218,7 +218,7 @@ const SharedLook = () => {
           ...lookData,
           image_url: imageUrl,
           products,
-        });
+        } as LookData);
       } catch (e) {
         console.error("Error fetching look:", e);
         setError(t('sharedLook.styleNotFound'));
