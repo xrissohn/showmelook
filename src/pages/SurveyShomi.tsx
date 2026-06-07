@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2, Sparkles, X, ZoomIn, Gift } from "lucide-react";
 import showmelookLogo from "@/assets/showmelook-korean-logo.png";
 import showmelookFullLogo from "@/assets/showmelook-full-logo.png.asset.json";
+import shomiACharacter from "@/assets/shomi-a-character.png.asset.json";
+import shomiBCharacter from "@/assets/shomi-b-character.png.asset.json";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -107,12 +109,22 @@ const SurveyShomi = () => {
 
           <Card className="border-accent/20 shadow-2xl backdrop-blur-sm bg-card/95">
             <CardContent className="p-8 md:p-12 text-center space-y-6">
-              <div className="relative mx-auto w-24 h-24">
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent to-primary opacity-20 blur-xl" />
-                <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                  <CheckCircle2 className="w-12 h-12 text-white" strokeWidth={2.5} />
-                </div>
-              </div>
+              {(() => {
+                const selected = (urlChoice || choice) as "A" | "B" | null;
+                const characterSrc = selected === "B" ? shomiBCharacter.url : shomiACharacter.url;
+                return (
+                  <div className="relative mx-auto w-48 h-48 md:w-56 md:h-56">
+                    <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-accent via-primary to-magenta opacity-40 blur-2xl" />
+                    <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-accent/40 shadow-2xl bg-gradient-to-br from-accent/10 to-primary/10">
+                      <img
+                        src={characterSrc}
+                        alt={`시안 ${selected ?? "A"} 캐릭터`}
+                        className="w-full h-full object-cover object-top"
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent/10 text-accent text-xs font-semibold">
