@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, CheckCircle2, Sparkles, X, ZoomIn, Gift } from "lucide-react";
 import showmelookLogo from "@/assets/showmelook-korean-logo.png";
 import showmelookFullLogo from "@/assets/showmelook-full-logo.png.asset.json";
+import shomiACharacter from "@/assets/shomi-a-character.png.asset.json";
+import shomiBCharacter from "@/assets/shomi-b-character.png.asset.json";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
