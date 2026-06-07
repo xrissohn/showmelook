@@ -10,11 +10,12 @@ const REWARD_TYPE = 'survey_shomi_ab';
 const REWARD_AMOUNT = 10;
 const HMAC_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const htmlHeaders = { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' };
-const APP_URL = 'https://showmelook.com/style';
+const APP_URL = 'https://showmelook.com/survey/shomi';
 
-function redirectToApp(status: 'completed' | 'already' | 'invalid' | 'error', message?: string) {
+function redirectToApp(status: 'completed' | 'already' | 'invalid' | 'error', message?: string, choice?: string) {
   const url = new URL(APP_URL);
-  url.searchParams.set('survey', status);
+  url.searchParams.set('status', status);
+  if (choice) url.searchParams.set('choice', choice);
   if (message) url.searchParams.set('message', message);
   return Response.redirect(url.toString(), 303);
 }
