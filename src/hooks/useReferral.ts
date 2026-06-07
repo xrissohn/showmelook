@@ -15,10 +15,15 @@ interface ReferralCode {
 
 interface BonusCredit {
   id: string;
+  amount?: number;
   remaining: number;
   expires_at: string | null;
   is_permanent: boolean;
+  is_active?: boolean;
+  reward_type?: string;
   referral_code: string;
+  referee_user_id?: string | null;
+  created_at?: string;
 }
 
 interface ReferralState {
