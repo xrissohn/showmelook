@@ -24,7 +24,7 @@ const DEFAULT_TEMPLATE = `안녕하세요, 쇼미룩입니다.
 설문에 참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.`;
 
 type Stats = { total: number; a: number; b: number };
-type Resp = { id: string; choice: string; feedback: string | null; created_at: string; user_id: string };
+type Resp = { id: string; choice: string; created_at: string; user_id: string; email?: string; full_name?: string | null };
 
 export const SurveyPanel = () => {
   const { toast } = useToast();
@@ -128,14 +128,36 @@ export const SurveyPanel = () => {
     setLoading(true);
     const { data } = await supabase
       .from("survey_responses")
-      .select("id,choice,feedback,created_at,user_id")
+      .select("id,choice,created_at,user_id")
       .order("created_at", { ascending: false });
     const rows = (data || []) as Resp[];
-    setRecent(rows.slice(0, 50));
+
+    // Enrich with email/name via admin-get-users
+    let enriched = rows;
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-get-users`, {
+        headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+      });
+      const json = await res.json();
+      const userMap = new Map<string, { email: string; full_name: string | null }>();
+      (json.users || []).forEach((u: any) => {
+        if (u.id) userMap.set(u.id, { email: u.email || "", full_name: u.full_name ?? null });
+      });
+      enriched = rows.map((r) => ({
+        ...r,
+        email: userMap.get(r.user_id)?.email || "",
+        full_name: userMap.get(r.user_id)?.full_name ?? null,
+      }));
+    } catch (e) {
+      console.warn("user enrichment failed", e);
+    }
+
+    setRecent(enriched.slice(0, 100));
     setStats({
-      total: rows.length,
-      a: rows.filter((r) => r.choice === "A").length,
-      b: rows.filter((r) => r.choice === "B").length,
+      total: enriched.length,
+      a: enriched.filter((r) => r.choice === "A").length,
+      b: enriched.filter((r) => r.choice === "B").length,
     });
     setLoading(false);
   }, []);
@@ -219,8 +241,8 @@ export const SurveyPanel = () => {
 
   const exportResponsesCsv = () => {
     const rows = [
-      ["created_at", "choice", "feedback", "user_id"],
-      ...recent.map((r) => [r.created_at, r.choice, r.feedback || "", r.user_id]),
+      ["created_at", "choice", "email", "full_name", "user_id"],
+      ...recent.map((r) => [r.created_at, r.choice, r.email || "", r.full_name || "", r.user_id]),
     ];
     const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
@@ -493,8 +515,11 @@ export const SurveyPanel = () => {
                 <div key={r.id} className="flex items-start gap-3 p-3 border rounded-lg">
                   <Badge variant={r.choice === "A" ? "default" : "secondary"}>{r.choice}</Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground break-words">
-                      {r.feedback || <span className="text-muted-foreground italic">(의견 없음)</span>}
+                    <p className="text-sm text-foreground break-words font-medium">
+                      {r.full_name || <span className="text-muted-foreground italic">(이름 없음)</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground break-all">
+                      {r.email || <span className="italic">(이메일 없음)</span>}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(r.created_at).toLocaleString("ko-KR")}
