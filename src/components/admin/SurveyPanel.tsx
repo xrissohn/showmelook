@@ -14,17 +14,14 @@ const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const IMG_A_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-a.png`;
 const IMG_B_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-b.png`;
 
-const DEFAULT_TEMPLATE = `안녕하세요, 쇼미룩입니다 ✨
+const DEFAULT_SUBJECT = "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요";
+
+const DEFAULT_TEMPLATE = `안녕하세요, 쇼미룩입니다.
 
 가상 인플루언서 '쇼미' 캐릭터를 새로 디자인 중이에요.
-두 가지 시안 중 어느 쪽이 더 마음에 드시는지 의견을 주시면,
-참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.
+두 가지 시안 중 어느 쪽이 더 마음에 드시는지 의견을 들려주세요.
 
-👉 설문 참여하기: https://showmelook.com/survey/shomi
-
-소중한 의견이 더 멋진 쇼미를 만듭니다. 감사합니다!
-
-— 쇼미룩 팀`;
+설문에 참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.`;
 
 type Stats = { total: number; a: number; b: number };
 type Resp = { id: string; choice: string; feedback: string | null; created_at: string; user_id: string };
@@ -37,6 +34,7 @@ export const SurveyPanel = () => {
   const [exporting, setExporting] = useState(false);
   const [uploading, setUploading] = useState<"A" | "B" | null>(null);
   const [template, setTemplate] = useState(DEFAULT_TEMPLATE);
+  const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [imgVersion, setImgVersion] = useState(Date.now());
   const [preview, setPreview] = useState<{ totalUsers: number; responded: number; alreadySent: number; optOut: number; toSend: number } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -44,6 +42,9 @@ export const SurveyPanel = () => {
   const [broadcastResult, setBroadcastResult] = useState<{ total: number; sent: number; failed: number } | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [testSending, setTestSending] = useState(false);
+  const [emailPreview, setEmailPreview] = useState<{ subject: string; html: string } | null>(null);
+  const [renderingPreview, setRenderingPreview] = useState(false);
+  const [confirmedPreview, setConfirmedPreview] = useState(false);
 
   const callBroadcast = async (body: Record<string, unknown>) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -76,7 +77,7 @@ export const SurveyPanel = () => {
     if (!testEmail) { toast({ title: "이메일을 입력하세요", variant: "destructive" }); return; }
     setTestSending(true);
     try {
-      const r = await callBroadcast({ mode: "test", testEmail });
+      const r = await callBroadcast({ mode: "test", testEmail, subject, bodyText: template });
       if (r.ok) toast({ title: "테스트 메일 발송 완료", description: testEmail });
       else throw new Error(r.error || "발송 실패");
     } catch (e: any) {
@@ -86,16 +87,32 @@ export const SurveyPanel = () => {
     }
   };
 
+  const renderEmailPreview = async () => {
+    setRenderingPreview(true);
+    try {
+      const r = await callBroadcast({ mode: "render", subject, bodyText: template });
+      setEmailPreview({ subject: r.subject, html: r.html });
+    } catch (e: any) {
+      toast({ title: "미리보기 생성 실패", description: e?.message, variant: "destructive" });
+    } finally {
+      setRenderingPreview(false);
+    }
+  };
+
   const runBroadcast = async () => {
     if (!preview || preview.toSend === 0) {
       toast({ title: "발송 대상이 없습니다", description: "먼저 미리보기를 실행하세요", variant: "destructive" });
+      return;
+    }
+    if (!confirmedPreview) {
+      toast({ title: "메일 미리보기 확인 필요", description: "발송 전 최종 메일 미리보기를 확인하고 체크박스에 동의하세요.", variant: "destructive" });
       return;
     }
     if (!window.confirm(`${preview.toSend}명에게 실제 메일이 발송됩니다. 진행하시겠습니까?`)) return;
     setBroadcasting(true);
     setBroadcastResult(null);
     try {
-      const r = await callBroadcast({ mode: "broadcast" });
+      const r = await callBroadcast({ mode: "broadcast", subject, bodyText: template });
       setBroadcastResult({ total: r.total, sent: r.sent, failed: r.failed });
       toast({ title: "발송 완료", description: `성공 ${r.sent} / 실패 ${r.failed}` });
       await loadPreview();
@@ -273,9 +290,63 @@ export const SurveyPanel = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Editable subject + body (drives both test, broadcast, and section 3) */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <p className="text-sm font-medium">메일 제목 & 본문 (수정 시 즉시 적용)</p>
+            <Input
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); setConfirmedPreview(false); setEmailPreview(null); }}
+              placeholder="메일 제목"
+              className="font-medium"
+            />
+            <Textarea
+              value={template}
+              onChange={(e) => { setTemplate(e.target.value); setConfirmedPreview(false); setEmailPreview(null); }}
+              rows={10}
+              className="font-mono text-sm"
+              placeholder="메일 본문 (빈 줄로 단락 구분, 줄바꿈 유지)"
+            />
+            <p className="text-[11px] text-muted-foreground">로고·헤더·CTA 버튼·푸터는 자동으로 추가되며 위 본문만 메일 중앙에 들어갑니다.</p>
+          </div>
+
+          {/* Final email preview */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">최종 메일 미리보기 (실제 발송되는 형태)</p>
+              <Button size="sm" variant="outline" onClick={renderEmailPreview} disabled={renderingPreview}>
+                {renderingPreview ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                미리보기 생성
+              </Button>
+            </div>
+            {emailPreview ? (
+              <>
+                <div className="rounded border bg-muted/30 px-2 py-1 text-xs">
+                  <span className="text-muted-foreground">제목: </span>
+                  <span className="font-medium">{emailPreview.subject}</span>
+                </div>
+                <iframe
+                  title="email-preview"
+                  srcDoc={emailPreview.html}
+                  className="w-full h-[520px] rounded border bg-white"
+                  sandbox=""
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={confirmedPreview}
+                    onChange={(e) => setConfirmedPreview(e.target.checked)}
+                  />
+                  <span>미리보기를 확인했고 이 내용 그대로 발송하는 것에 동의합니다.</span>
+                </label>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">"미리보기 생성" 버튼을 눌러 실제 발송되는 메일을 확인하세요.</p>
+            )}
+          </div>
+
           {/* Test send */}
           <div className="rounded-lg border p-3 space-y-2">
-            <p className="text-sm font-medium">테스트 발송</p>
+            <p className="text-sm font-medium">테스트 발송 (현재 제목/본문 그대로 1건만)</p>
             <div className="flex gap-2">
               <Input
                 type="email"
@@ -288,6 +359,7 @@ export const SurveyPanel = () => {
               </Button>
             </div>
           </div>
+
 
           {/* Preview */}
           <div className="rounded-lg border p-3 space-y-3">
@@ -314,16 +386,17 @@ export const SurveyPanel = () => {
           {/* Broadcast */}
           <Button
             onClick={runBroadcast}
-            disabled={broadcasting || !preview || preview.toSend === 0}
+            disabled={broadcasting || !preview || preview.toSend === 0 || !confirmedPreview}
             className="w-full"
             size="lg"
           >
             {broadcasting ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />발송 중... (잠시만 기다려주세요)</>
             ) : (
-              <><Send className="w-4 h-4 mr-2" />{preview ? `${preview.toSend}명에게 전체 발송` : "전체 발송"}</>
+              <><Send className="w-4 h-4 mr-2" />{preview ? `${preview.toSend}명에게 전체 발송` : "전체 발송"}{!confirmedPreview ? " (미리보기 확인 필요)" : ""}</>
             )}
           </Button>
+
 
           {broadcastResult && (
             <div className="rounded-lg border p-3 bg-muted/30 text-sm">
