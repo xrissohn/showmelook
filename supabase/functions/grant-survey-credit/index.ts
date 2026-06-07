@@ -9,7 +9,7 @@ const SURVEY_KEY = 'shomi_ab_v1';
 const REWARD_TYPE = 'survey_shomi_ab';
 const REWARD_AMOUNT = 10;
 const HMAC_SECRET = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const htmlHeaders = { ...corsHeaders, 'content-type': 'text/html; charset=utf-8' };
+const htmlHeaders = { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' };
 
 async function verifySurveyToken(token: string): Promise<string | null> {
   const parts = token.split('.');
