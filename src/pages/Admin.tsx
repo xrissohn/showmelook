@@ -11,7 +11,7 @@ import {
   CheckCircle2, XCircle, ExternalLink, Link2, Loader2, Database, ShoppingBag, 
   Package, RefreshCw, RotateCcw, Zap, Dna, Trash2, ImageOff, Upload, 
   AlertTriangle, FileSpreadsheet, Eye, RotateCw, Users, AlertCircle, Activity, 
-  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse, Crosshair
+  Clock, Play, CheckCircle, XOctagon, BarChart3, Store, Globe, TrendingUp, HeartPulse, Crosshair, Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -2724,6 +2724,10 @@ const Admin = () => {
           {/* Tag Correction Analytics Tab */}
           <TabsContent value="tag-corrections" className="space-y-4">
             <TagCorrectionAnalytics />
+          </TabsContent>
+
+          <TabsContent value="survey" className="space-y-4">
+            <SurveyPanel />
           </TabsContent>
 
         </Tabs>
