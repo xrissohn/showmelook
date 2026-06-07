@@ -31,9 +31,35 @@ const SurveyShomi = () => {
 
   const urlStatus = searchParams.get("status");
   const urlChoice = searchParams.get("choice");
+  const urlToken = searchParams.get("token");
 
   useEffect(() => {
     if (authLoading) return;
+
+    // Email-link flow: token + choice present → submit directly via HMAC token (no login required)
+    if (urlToken && (urlChoice === "A" || urlChoice === "B") && urlStatus !== "completed" && urlStatus !== "already") {
+      (async () => {
+        try {
+          const res = await fetch(`${SUPABASE_URL}/functions/v1/grant-survey-credit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: urlToken, choice: urlChoice }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (json?.success || json?.already) {
+            setSubmitted(true);
+          } else {
+            toast({ title: "제출 실패", description: json?.error || "다시 시도해주세요", variant: "destructive" });
+          }
+        } catch {
+          toast({ title: "네트워크 오류", variant: "destructive" });
+        } finally {
+          setChecking(false);
+        }
+      })();
+      return;
+    }
+
     if (!user) {
       if (urlStatus === "completed" || urlStatus === "already") setSubmitted(true);
       setChecking(false);
@@ -48,7 +74,8 @@ const SurveyShomi = () => {
       if (data || urlStatus === "completed" || urlStatus === "already") setSubmitted(true);
       setChecking(false);
     })();
-  }, [user, authLoading, urlStatus]);
+  }, [user, authLoading, urlStatus, urlToken, urlChoice, toast]);
+
 
   const handleSubmit = async () => {
     if (!user) {
