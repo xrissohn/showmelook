@@ -149,10 +149,11 @@ Deno.serve(async (req) => {
     const testEmail: string | undefined = body.testEmail;
     const subject: string = (typeof body.subject === "string" && body.subject.trim()) ? body.subject.trim() : DEFAULT_SUBJECT;
     const bodyText: string = (typeof body.bodyText === "string" && body.bodyText.trim()) ? body.bodyText : DEFAULT_BODY;
+    const includeAlreadySent = body.includeAlreadySent === true;
 
     // RENDER MODE — returns the HTML preview (no send)
     if (mode === "render") {
-      const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=preview` });
+      const html = buildEmailHtml({ bodyText, responseToken: "preview", unsubUrl: `${UNSUB_BASE}?token=preview` });
       return new Response(JSON.stringify({ subject, html }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
@@ -186,7 +187,7 @@ Deno.serve(async (req) => {
     let skipped = 0;
     for (const u of authUsers.users) {
       if (!u.email) continue;
-      if (optOutSet.has(u.id) || respondedSet.has(u.id) || sentSet.has(u.id)) { skipped++; continue; }
+      if (optOutSet.has(u.id) || respondedSet.has(u.id) || (!includeAlreadySent && sentSet.has(u.id))) { skipped++; continue; }
       targets.push({ user_id: u.id, email: u.email });
     }
 
