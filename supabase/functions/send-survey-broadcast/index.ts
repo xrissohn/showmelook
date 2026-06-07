@@ -10,57 +10,64 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const HMAC_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!; // reuse for unsub HMAC
+const HMAC_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SURVEY_KEY = "shomi_ab_v1";
 const SURVEY_URL = "https://showmelook.com/survey/shomi";
 const UNSUB_BASE = `${SUPABASE_URL}/functions/v1/survey-unsubscribe`;
+const LOGO_URL = "https://mggedvvzpwxlgrhatrau.supabase.co/storage/v1/object/public/generated-looks/survey/shomi-logo.png";
+
+const DEFAULT_SUBJECT = "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요";
+const DEFAULT_BODY = `안녕하세요, 쇼미룩입니다.
+
+가상 인플루언서 '쇼미' 캐릭터를 새로 디자인 중이에요.
+두 가지 시안 중 어느 쪽이 더 마음에 드시는지 의견을 들려주세요.
+
+설문에 참여해주신 모든 분께 무료 10크레딧을 즉시 지급해드립니다.`;
 
 async function makeUnsubToken(userId: string): Promise<string> {
   const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(HMAC_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", enc.encode(HMAC_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(userId));
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   return `${userId}.${sigB64}`;
 }
 
-function emailHtml(unsubUrl: string) {
+function escapeHtml(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function bodyTextToHtml(text: string) {
+  // preserve paragraphs (double newline) and line breaks
+  return text
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.7;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+export function buildEmailHtml(opts: { bodyText: string; unsubUrl: string }) {
+  const bodyHtml = bodyTextToHtml(opts.bodyText || DEFAULT_BODY);
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>쇼미 캐릭터 AB 테스트</title></head>
 <body style="margin:0;padding:0;font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;background:#f5f5f5;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px;"><tr><td align="center">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.1);">
-    <tr><td style="background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);padding:32px 30px;text-align:center;">
-      <img src="https://showmelook.com/showmelook-text-logo.png" alt="쇼미룩" width="140" style="display:block;margin:0 auto 14px;max-width:140px;height:auto;border:0;outline:none;text-decoration:none;" />
-      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">쇼미 캐릭터 AB 테스트</h1>
+    <tr><td style="background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);padding:36px 30px;text-align:center;">
+      <img src="${LOGO_URL}" alt="쇼미룩" width="96" height="96" style="display:block;margin:0 auto 14px;width:96px;height:96px;border:0;outline:none;text-decoration:none;" />
+      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">쇼미 캐릭터 AB 테스트</h1>
       <p style="margin:10px 0 0;color:rgba(255,255,255,.92);font-size:14px;">참여하시면 무료 10크레딧을 즉시 드려요</p>
     </td></tr>
     <tr><td style="padding:32px 30px;">
-      <p style="margin:0 0 16px;font-size:16px;color:#1f2937;line-height:1.6;">안녕하세요, 쇼미룩입니다.</p>
-      <p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.7;">
-        가상 인플루언서 <strong>'쇼미'</strong> 캐릭터를 새로 디자인 중이에요.<br>
-        두 가지 시안 중 어느 쪽이 더 마음에 드시는지 의견을 들려주세요.
-      </p>
-      <p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.7;">
-        설문에 참여해주신 모든 분께 <strong style="color:#8b5cf6;">무료 10크레딧</strong>을 즉시 지급해드립니다.
-      </p>
-      <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:8px 0 4px;">
+      ${bodyHtml}
+      <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:16px 0 4px;">
         <a href="${SURVEY_URL}" style="display:inline-block;background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);color:#fff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:16px;font-weight:600;">설문 참여하기 →</a>
       </td></tr></table>
-      <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">
-        설문은 1분이면 끝나요. 소중한 의견 감사합니다!
-      </p>
+      <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;line-height:1.6;text-align:center;">설문은 1분이면 끝나요. 소중한 의견 감사합니다!</p>
     </td></tr>
     <tr><td style="background:#f9fafb;padding:20px 30px;text-align:center;border-top:1px solid #e5e7eb;">
+      <img src="${LOGO_URL}" alt="쇼미룩" width="36" height="36" style="display:inline-block;margin:0 0 8px;width:36px;height:36px;border:0;" />
       <p style="margin:0 0 6px;font-size:12px;color:#9ca3af;">쇼미룩 · AI 가상 피팅 서비스</p>
       <p style="margin:0;font-size:11px;color:#9ca3af;">
-        이 메일을 받고 싶지 않으시면 <a href="${unsubUrl}" style="color:#9ca3af;text-decoration:underline;">수신거부</a>하실 수 있습니다.
+        이 메일을 받고 싶지 않으시면 <a href="${opts.unsubUrl}" style="color:#9ca3af;text-decoration:underline;">수신거부</a>하실 수 있습니다.
       </p>
     </td></tr>
   </table>
@@ -68,17 +75,12 @@ function emailHtml(unsubUrl: string) {
 </body></html>`;
 }
 
-async function sendOne(to: string, html: string): Promise<{ ok: boolean; error?: string }> {
+async function sendOne(to: string, html: string, subject: string): Promise<{ ok: boolean; error?: string }> {
   const tryFrom = async (from: string) => {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        subject: "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요",
-        html,
-      }),
+      body: JSON.stringify({ from, to: [to], subject, html }),
     });
     const j = await r.json().catch(() => ({}));
     return { ok: !!j?.id, error: j?.id ? undefined : (j?.message || `status ${r.status}`) };
@@ -94,15 +96,11 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const token = authHeader.replace("Bearer ", "");
 
-    const supaUser = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supaUser = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } });
     let userId: string | undefined;
     const { data: userData } = await supaUser.auth.getUser();
     userId = userData?.user?.id;
@@ -111,36 +109,36 @@ Deno.serve(async (req) => {
       userId = claimsData?.claims?.sub as string | undefined;
     }
     if (!userId) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
     const { data: isAdmin } = await admin.rpc("has_role", { _user_id: userId, _role: "admin" });
     if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const body = await req.json().catch(() => ({}));
-    const mode: "test" | "preview" | "broadcast" = body.mode ?? "preview";
+    const mode: "test" | "preview" | "broadcast" | "render" = body.mode ?? "preview";
     const testEmail: string | undefined = body.testEmail;
+    const subject: string = (typeof body.subject === "string" && body.subject.trim()) ? body.subject.trim() : DEFAULT_SUBJECT;
+    const bodyText: string = (typeof body.bodyText === "string" && body.bodyText.trim()) ? body.bodyText : DEFAULT_BODY;
 
-    // TEST MODE — send 1 to admin
+    // RENDER MODE — returns the HTML preview (no send)
+    if (mode === "render") {
+      const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=preview` });
+      return new Response(JSON.stringify({ subject, html }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // TEST MODE
     if (mode === "test") {
       if (!testEmail) {
-        return new Response(JSON.stringify({ error: "testEmail required" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({ error: "testEmail required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const unsubToken = await makeUnsubToken(userId);
-      const html = emailHtml(`${UNSUB_BASE}?token=${unsubToken}`);
-      const r = await sendOne(testEmail, html);
-      return new Response(JSON.stringify({ ok: r.ok, error: r.error }), {
-        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
+      const r = await sendOne(testEmail, html, subject);
+      return new Response(JSON.stringify({ ok: r.ok, error: r.error }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // Build recipient list
@@ -153,8 +151,7 @@ Deno.serve(async (req) => {
     const { data: responded } = await admin.from("survey_responses").select("user_id").eq("survey_key", SURVEY_KEY);
     const respondedSet = new Set((responded || []).map((r: any) => r.user_id));
 
-    const { data: alreadySent } = await admin.from("survey_email_sends")
-      .select("user_id").eq("survey_key", SURVEY_KEY).eq("status", "sent");
+    const { data: alreadySent } = await admin.from("survey_email_sends").select("user_id").eq("survey_key", SURVEY_KEY).eq("status", "sent");
     const sentSet = new Set((alreadySent || []).map((r: any) => r.user_id));
 
     type Target = { user_id: string; email: string };
@@ -162,14 +159,10 @@ Deno.serve(async (req) => {
     let skipped = 0;
     for (const u of authUsers.users) {
       if (!u.email) continue;
-      if (optOutSet.has(u.id) || respondedSet.has(u.id) || sentSet.has(u.id)) {
-        skipped++;
-        continue;
-      }
+      if (optOutSet.has(u.id) || respondedSet.has(u.id) || sentSet.has(u.id)) { skipped++; continue; }
       targets.push({ user_id: u.id, email: u.email });
     }
 
-    // PREVIEW MODE — return counts only
     if (mode === "preview") {
       return new Response(JSON.stringify({
         totalUsers: authUsers.users.length,
@@ -180,15 +173,15 @@ Deno.serve(async (req) => {
       }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // BROADCAST MODE
+    // BROADCAST
     let sent = 0, failed = 0;
     const CHUNK = 10;
     for (let i = 0; i < targets.length; i += CHUNK) {
       const chunk = targets.slice(i, i + CHUNK);
       const results = await Promise.all(chunk.map(async (t) => {
         const unsubToken = await makeUnsubToken(t.user_id);
-        const html = emailHtml(`${UNSUB_BASE}?token=${unsubToken}`);
-        const r = await sendOne(t.email, html);
+        const html = buildEmailHtml({ bodyText, unsubUrl: `${UNSUB_BASE}?token=${unsubToken}` });
+        const r = await sendOne(t.email, html, subject);
         return { target: t, r };
       }));
       const logRows = results.map(({ target, r }) => ({
@@ -200,16 +193,14 @@ Deno.serve(async (req) => {
       }));
       await admin.from("survey_email_sends").upsert(logRows, { onConflict: "user_id,survey_key" });
       for (const { r } of results) r.ok ? sent++ : failed++;
-      if (i + CHUNK < targets.length) await new Promise((res) => setTimeout(res, 1100)); // ~10/s
+      if (i + CHUNK < targets.length) await new Promise((res) => setTimeout(res, 1100));
     }
 
-    return new Response(JSON.stringify({
-      total: targets.length, sent, failed, skipped,
-    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ total: targets.length, sent, failed, skipped }), {
+      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (e: any) {
     console.error("send-survey-broadcast error:", e);
-    return new Response(JSON.stringify({ error: e?.message || String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({ error: e?.message || String(e) }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
