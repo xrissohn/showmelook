@@ -386,16 +386,17 @@ export const SurveyPanel = () => {
           {/* Broadcast */}
           <Button
             onClick={runBroadcast}
-            disabled={broadcasting || !preview || preview.toSend === 0}
+            disabled={broadcasting || !preview || preview.toSend === 0 || !confirmedPreview}
             className="w-full"
             size="lg"
           >
             {broadcasting ? (
               <><Loader2 className="w-4 h-4 mr-2 animate-spin" />발송 중... (잠시만 기다려주세요)</>
             ) : (
-              <><Send className="w-4 h-4 mr-2" />{preview ? `${preview.toSend}명에게 전체 발송` : "전체 발송"}</>
+              <><Send className="w-4 h-4 mr-2" />{preview ? `${preview.toSend}명에게 전체 발송` : "전체 발송"}{!confirmedPreview ? " (미리보기 확인 필요)" : ""}</>
             )}
           </Button>
+
 
           {broadcastResult && (
             <div className="rounded-lg border p-3 bg-muted/30 text-sm">
