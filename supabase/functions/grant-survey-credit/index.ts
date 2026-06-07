@@ -90,7 +90,13 @@ async function saveResponseAndReward(admin: ReturnType<typeof createClient>, use
   if (insertErr) {
     if ((insertErr as any).code === '23505') {
       const rewarded = await ensureSurveyReward(admin, userId);
-      return { success: false, already: true, rewarded, error: '이미 참여하셨습니다.' };
+      const { data: existingRow } = await admin
+        .from('survey_responses')
+        .select('choice')
+        .eq('user_id', userId)
+        .eq('survey_key', SURVEY_KEY)
+        .maybeSingle();
+      return { success: false, already: true, rewarded, choice: existingRow?.choice ?? null, error: '이미 참여하셨습니다.' };
     }
     console.error('insert error', insertErr);
     return { success: false, already: false, error: '저장 중 오류가 발생했습니다.' };
