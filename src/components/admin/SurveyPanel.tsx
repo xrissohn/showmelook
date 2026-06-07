@@ -515,8 +515,11 @@ export const SurveyPanel = () => {
                 <div key={r.id} className="flex items-start gap-3 p-3 border rounded-lg">
                   <Badge variant={r.choice === "A" ? "default" : "secondary"}>{r.choice}</Badge>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground break-words">
-                      {r.feedback || <span className="text-muted-foreground italic">(의견 없음)</span>}
+                    <p className="text-sm text-foreground break-words font-medium">
+                      {r.full_name || <span className="text-muted-foreground italic">(이름 없음)</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground break-all">
+                      {r.email || <span className="italic">(이메일 없음)</span>}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(r.created_at).toLocaleString("ko-KR")}
