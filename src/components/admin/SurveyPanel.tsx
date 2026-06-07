@@ -45,6 +45,7 @@ export const SurveyPanel = () => {
   const [emailPreview, setEmailPreview] = useState<{ subject: string; html: string } | null>(null);
   const [renderingPreview, setRenderingPreview] = useState(false);
   const [confirmedPreview, setConfirmedPreview] = useState(false);
+  const [includeAlreadySent, setIncludeAlreadySent] = useState(true);
 
   const callBroadcast = async (body: Record<string, unknown>) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -64,7 +65,7 @@ export const SurveyPanel = () => {
   const loadPreview = async () => {
     setPreviewLoading(true);
     try {
-      const r = await callBroadcast({ mode: "preview" });
+      const r = await callBroadcast({ mode: "preview", includeAlreadySent });
       setPreview(r);
     } catch (e: any) {
       toast({ title: "미리보기 실패", description: e?.message, variant: "destructive" });
@@ -112,7 +113,7 @@ export const SurveyPanel = () => {
     setBroadcasting(true);
     setBroadcastResult(null);
     try {
-      const r = await callBroadcast({ mode: "broadcast", subject, bodyText: template });
+      const r = await callBroadcast({ mode: "broadcast", subject, bodyText: template, includeAlreadySent });
       setBroadcastResult({ total: r.total, sent: r.sent, failed: r.failed });
       toast({ title: "발송 완료", description: `성공 ${r.sent} / 실패 ${r.failed}` });
       await loadPreview();
