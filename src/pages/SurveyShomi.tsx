@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, Sparkles } from "lucide-react";
+import { Loader2, CheckCircle2, Sparkles, X, ZoomIn } from "lucide-react";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
@@ -24,6 +24,8 @@ const SurveyShomi = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [zoomLabel, setZoomLabel] = useState<string>("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -133,7 +135,7 @@ const SurveyShomi = () => {
                       : "border-border hover:border-accent/40"
                   }`}
                 >
-                  <div className="aspect-[3/4] bg-muted">
+                  <div className="aspect-[3/4] bg-muted relative">
                     <img
                       src={opt.src}
                       alt={opt.label}
@@ -142,6 +144,18 @@ const SurveyShomi = () => {
                         (e.currentTarget as HTMLImageElement).style.opacity = "0.3";
                       }}
                     />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setZoomImage(opt.src);
+                        setZoomLabel(opt.label);
+                      }}
+                      className="absolute bottom-3 right-3 p-2 rounded-full bg-background/80 hover:bg-background text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={`${opt.label} 확대 보기`}
+                    >
+                      <ZoomIn className="w-5 h-5" />
+                    </button>
                   </div>
                   <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-background/90 text-foreground font-bold text-sm">
                     {opt.label}
@@ -190,6 +204,31 @@ const SurveyShomi = () => {
           </>
         )}
       </div>
+
+      {zoomImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setZoomImage(null)}
+        >
+          <div className="relative max-w-4xl w-full">
+            <button
+              type="button"
+              onClick={() => setZoomImage(null)}
+              className="absolute -top-10 right-0 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+              aria-label="닫기"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={zoomImage}
+              alt={zoomLabel}
+              className="w-full max-h-[85vh] object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="text-center text-white/80 mt-3 text-sm font-medium">{zoomLabel}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
