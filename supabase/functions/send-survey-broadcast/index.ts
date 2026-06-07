@@ -36,8 +36,9 @@ function emailHtml(unsubUrl: string) {
 <body style="margin:0;padding:0;font-family:'Pretendard',-apple-system,'Segoe UI',sans-serif;background:#f5f5f5;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 20px;"><tr><td align="center">
   <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,.1);">
-    <tr><td style="background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);padding:36px 30px;text-align:center;">
-      <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700;">✨ 쇼미 캐릭터 AB 테스트</h1>
+    <tr><td style="background:linear-gradient(135deg,#8b5cf6 0%,#ec4899 100%);padding:32px 30px;text-align:center;">
+      <img src="https://showmelook.com/showmelook-text-logo.png" alt="쇼미룩" width="140" style="display:block;margin:0 auto 14px;max-width:140px;height:auto;border:0;outline:none;text-decoration:none;" />
+      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">쇼미 캐릭터 AB 테스트</h1>
       <p style="margin:10px 0 0;color:rgba(255,255,255,.92);font-size:14px;">참여하시면 무료 10크레딧을 즉시 드려요</p>
     </td></tr>
     <tr><td style="padding:32px 30px;">
@@ -75,7 +76,7 @@ async function sendOne(to: string, html: string): Promise<{ ok: boolean; error?:
       body: JSON.stringify({
         from,
         to: [to],
-        subject: "[쇼미룩] ✨ 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요",
+        subject: "[쇼미룩] 쇼미 캐릭터 AB 테스트 — 참여하고 무료 10크레딧 받으세요",
         html,
       }),
     });
