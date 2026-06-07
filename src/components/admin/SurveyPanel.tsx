@@ -287,7 +287,7 @@ export const SurveyPanel = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Mail className="w-5 h-5" />2. 앱에서 직접 발송 (noreply@showmelook.com)</CardTitle>
           <CardDescription>
-            Resend로 가입자에게 일괄 발송합니다. 이미 응답했거나 발송 받았거나 수신거부한 사용자는 자동 제외됩니다.
+            가입자에게 noreply@showmelook.com으로 발송합니다. 메일 안의 A/B 버튼을 누르면 바로 응답 저장과 크레딧 지급이 완료됩니다.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -307,7 +307,7 @@ export const SurveyPanel = () => {
               className="font-mono text-sm"
               placeholder="메일 본문 (빈 줄로 단락 구분, 줄바꿈 유지)"
             />
-            <p className="text-[11px] text-muted-foreground">로고·헤더·CTA 버튼·푸터는 자동으로 추가되며 위 본문만 메일 중앙에 들어갑니다.</p>
+            <p className="text-[11px] text-muted-foreground">로고·헤더·A/B 이미지·선택 버튼·푸터는 자동으로 추가되며 위 본문만 메일 중앙에 들어갑니다.</p>
           </div>
 
           {/* Final email preview */}
@@ -371,6 +371,15 @@ export const SurveyPanel = () => {
                 계산
               </Button>
             </div>
+            <label className="flex items-start gap-2 rounded border bg-muted/20 p-2 text-sm">
+              <input
+                type="checkbox"
+                checked={includeAlreadySent}
+                onChange={(e) => { setIncludeAlreadySent(e.target.checked); setPreview(null); }}
+                className="mt-1"
+              />
+              <span>이미 기존 설문 메일을 받은 미응답자에게도 새 이메일 설문을 다시 발송합니다.</span>
+            </label>
             {preview ? (
               <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-center text-xs">
                 <div className="rounded border p-2"><div className="text-lg font-bold">{preview.totalUsers}</div><div className="text-muted-foreground">전체 가입자</div></div>
