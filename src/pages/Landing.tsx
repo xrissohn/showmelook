@@ -360,7 +360,6 @@ const GalleryPreviewSection = () => {
       ...look,
       is_favorite: false,
       is_public: true,
-      user_name: null,
       user_name: look.user_name ?? null,
       user_avatar: look.user_avatar ?? null,
     });
