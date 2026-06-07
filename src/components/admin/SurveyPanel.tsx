@@ -290,9 +290,63 @@ export const SurveyPanel = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Editable subject + body (drives both test, broadcast, and section 3) */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <p className="text-sm font-medium">메일 제목 & 본문 (수정 시 즉시 적용)</p>
+            <Input
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); setConfirmedPreview(false); setEmailPreview(null); }}
+              placeholder="메일 제목"
+              className="font-medium"
+            />
+            <Textarea
+              value={template}
+              onChange={(e) => { setTemplate(e.target.value); setConfirmedPreview(false); setEmailPreview(null); }}
+              rows={10}
+              className="font-mono text-sm"
+              placeholder="메일 본문 (빈 줄로 단락 구분, 줄바꿈 유지)"
+            />
+            <p className="text-[11px] text-muted-foreground">로고·헤더·CTA 버튼·푸터는 자동으로 추가되며 위 본문만 메일 중앙에 들어갑니다.</p>
+          </div>
+
+          {/* Final email preview */}
+          <div className="rounded-lg border p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">최종 메일 미리보기 (실제 발송되는 형태)</p>
+              <Button size="sm" variant="outline" onClick={renderEmailPreview} disabled={renderingPreview}>
+                {renderingPreview ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                미리보기 생성
+              </Button>
+            </div>
+            {emailPreview ? (
+              <>
+                <div className="rounded border bg-muted/30 px-2 py-1 text-xs">
+                  <span className="text-muted-foreground">제목: </span>
+                  <span className="font-medium">{emailPreview.subject}</span>
+                </div>
+                <iframe
+                  title="email-preview"
+                  srcDoc={emailPreview.html}
+                  className="w-full h-[520px] rounded border bg-white"
+                  sandbox=""
+                />
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={confirmedPreview}
+                    onChange={(e) => setConfirmedPreview(e.target.checked)}
+                  />
+                  <span>미리보기를 확인했고 이 내용 그대로 발송하는 것에 동의합니다.</span>
+                </label>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">"미리보기 생성" 버튼을 눌러 실제 발송되는 메일을 확인하세요.</p>
+            )}
+          </div>
+
           {/* Test send */}
           <div className="rounded-lg border p-3 space-y-2">
-            <p className="text-sm font-medium">테스트 발송</p>
+            <p className="text-sm font-medium">테스트 발송 (현재 제목/본문 그대로 1건만)</p>
             <div className="flex gap-2">
               <Input
                 type="email"
@@ -305,6 +359,7 @@ export const SurveyPanel = () => {
               </Button>
             </div>
           </div>
+
 
           {/* Preview */}
           <div className="rounded-lg border p-3 space-y-3">
