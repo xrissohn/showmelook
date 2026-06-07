@@ -52,7 +52,7 @@ function bodyTextToHtml(text: string) {
   // preserve paragraphs (double newline) and line breaks
   return text
     .split(/\n{2,}/)
-    .map((p) => `<p style="margin:0 0 16px;font-size:15px;color:#4b5563;line-height:1.7;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
+    .map((p) => `<p style="margin:0 0 16px;font-size:15px;color:#111827;line-height:1.7;">${escapeHtml(p).replace(/\n/g, "<br>")}</p>`)
     .join("");
 }
 
