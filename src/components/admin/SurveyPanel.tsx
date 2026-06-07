@@ -372,7 +372,7 @@ export const SurveyPanel = () => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>3. 응답 통계</CardTitle>
+            <CardTitle>4. 응답 통계</CardTitle>
             <CardDescription>실시간 집계</CardDescription>
           </div>
           <div className="flex gap-2">
