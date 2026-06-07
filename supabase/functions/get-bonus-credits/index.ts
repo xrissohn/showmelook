@@ -65,15 +65,13 @@ serve(async (req) => {
 
     // 활성화된 보너스 크레딧 조회 (추천인/피추천인 모두 포함)
     // referrer_user_id: 본인이 받은 보너스 (추천인으로서 또는 피추천인 웰컴 보너스)
+    // 모든 보상 내역 조회 (활성 + 만료/소진 포함, 본인이 받은 모든 크레딧)
     const { data: rewards, error } = await supabase
       .from('referral_rewards')
       .select('*')
       .eq('referrer_user_id', userId)
-      .eq('reward_type', 'bonus_credits')
-      .eq('is_active', true)
-      .gt('remaining_amount', 0)
-      .or('expires_at.is.null,expires_at.gt.now()')
-      .order('expires_at', { ascending: true, nullsFirst: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
 
     if (error) {
       console.error('Query error:', error);
@@ -83,17 +81,26 @@ serve(async (req) => {
       );
     }
 
-    // 총 보너스 크레딧 계산
-    const total = rewards?.reduce((sum, r) => sum + (r.remaining_amount || 0), 0) || 0;
+    const now = Date.now();
+    const isActiveRow = (r: any) =>
+      r.is_active && (r.remaining_amount ?? 0) > 0 &&
+      (!r.expires_at || new Date(r.expires_at).getTime() > now);
 
-    // 상세 내역 포맷팅
-    const details = rewards?.map(r => ({
+    const total = (rewards || []).filter(isActiveRow)
+      .reduce((sum, r) => sum + (r.remaining_amount || 0), 0);
+
+    const details = (rewards || []).map((r: any) => ({
       id: r.id,
+      amount: r.amount,
       remaining: r.remaining_amount,
       expires_at: r.expires_at,
       is_permanent: r.is_permanent,
+      is_active: isActiveRow(r),
+      reward_type: r.reward_type,
       referral_code: r.referral_code,
-    })) || [];
+      referee_user_id: r.referee_user_id,
+      created_at: r.created_at,
+    }));
 
     return new Response(
       JSON.stringify({ 

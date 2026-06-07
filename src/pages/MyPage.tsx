@@ -19,6 +19,7 @@ import { PLAN_CONFIG } from "@/lib/planConfig";
 import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
 import { TierHistorySection } from "@/components/mypage/TierHistorySection";
+import { CreditHistoryCard } from "@/components/mypage/CreditHistoryCard";
 import { TIER_CONFIG, TierType, getTierName } from "@/lib/tierConfig";
 import { SEOHead } from "@/components/SEOHead";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -229,6 +230,11 @@ const MyPage = () => {
               isLoading={purchaseStats.isLoading}
             />
             <TierHistorySection tierHistory={purchaseStats.tierHistory} isLoading={purchaseStats.isLoading} />
+            <CreditHistoryCard
+              total={referral.bonusCredits.total}
+              details={referral.bonusCredits.details as any}
+              currentUserId={user?.id}
+            />
 
             {/* Referral Card */}
             <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
