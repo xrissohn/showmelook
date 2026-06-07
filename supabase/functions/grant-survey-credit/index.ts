@@ -214,10 +214,6 @@ Deno.serve(async (req) => {
     }
 
 
-    const body = await req.json().catch(() => ({}));
-    const choice = body?.choice;
-    const feedback = typeof body?.feedback === 'string' ? body.feedback.slice(0, 1000) : null;
-    const feedbackOnly = body?.feedbackOnly === true;
 
     // Feedback-only update: user already submitted via email, just add free-text opinion
     if (feedbackOnly) {
