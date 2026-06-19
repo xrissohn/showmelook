@@ -86,6 +86,14 @@ export const LiquidCursor = ({ disabled = false }: { disabled?: boolean }) => {
     const PREDICTION = 3.5; // frames ahead
 
     const animate = () => {
+      // Pause drawing when any look detail modal is open
+      if (document.querySelector('[data-look-modal="true"]')) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pointsRef.current = [];
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const m = mouseRef.current;
