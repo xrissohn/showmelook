@@ -20,7 +20,7 @@ const COLORS = [
   "#FFD700", // Gold
 ];
 
-export const LiquidCursor = () => {
+export const LiquidCursor = ({ disabled = false }: { disabled?: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Point[]>([]);
   const mouseRef = useRef({
