@@ -154,7 +154,7 @@ export const LiquidCursor = ({ disabled = false }: { disabled?: boolean }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+    <div className={`fixed inset-0 pointer-events-none z-[9999] overflow-hidden ${disabled ? "hidden" : ""}`}>
       <svg className="hidden">
         <defs>
           <filter id="liquid-cursor-filter">
