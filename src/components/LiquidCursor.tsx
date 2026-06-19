@@ -20,7 +20,7 @@ const COLORS = [
   "#FFD700", // Gold
 ];
 
-export const LiquidCursor = () => {
+export const LiquidCursor = ({ disabled = false }: { disabled?: boolean }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pointsRef = useRef<Point[]>([]);
   const mouseRef = useRef({
@@ -86,6 +86,14 @@ export const LiquidCursor = () => {
     const PREDICTION = 3.5; // frames ahead
 
     const animate = () => {
+      // Pause drawing when any look detail modal is open
+      if (document.querySelector('[data-look-modal="true"]')) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pointsRef.current = [];
+        rafRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const m = mouseRef.current;
@@ -154,7 +162,7 @@ export const LiquidCursor = () => {
   }, []);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[9999] overflow-hidden">
+    <div className={`fixed inset-0 pointer-events-none z-[9999] overflow-hidden ${disabled ? "hidden" : ""}`}>
       <svg className="hidden">
         <defs>
           <filter id="liquid-cursor-filter">
