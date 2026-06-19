@@ -433,7 +433,7 @@ export const LookDetailModal = ({
                     </h3>
                   )}
                   
-                  <div className="relative pl-3 border-l-2 border-accent/40 max-h-32 overflow-y-auto scrollbar-hide">
+                  <div className="relative pl-3 border-l-2 border-accent/40">
                     <p className="text-sm text-white/90 font-korean leading-relaxed whitespace-pre-wrap">
                       {look.style_reasoning || (
                         lookProducts.length > 0 
