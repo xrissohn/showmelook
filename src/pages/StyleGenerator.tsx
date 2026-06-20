@@ -2400,7 +2400,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                           <ShoppingBag className="w-4 h-4 text-accent" />
                           추천 상품 ({lookProducts.length}개)
                         </h4>
-                        <div className="space-y-2 max-h-36 overflow-y-auto scrollbar-hide">
+                        <div className="space-y-2">
                           {lookProducts.map((product, idx) => (
                             <div 
                               key={product.id} 
