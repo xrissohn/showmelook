@@ -2367,7 +2367,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       )}
                       
                       {/* 설명 (styleReasoning) - 구조화된 렌더링 */}
-                      <div className="relative pl-3 border-l-2 border-accent/40 max-h-36 overflow-y-auto scrollbar-hide space-y-1">
+                      <div className="relative pl-3 border-l-2 border-accent/40 space-y-1">
                         {(selectedLook.style_reasoning || (
                           lookProducts.length > 0 
                             ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`
