@@ -343,10 +343,14 @@ export const LookDetailModal = ({
             setIsFlipped(!isFlipped);
           }}
         >
-          <div className={`relative transform-style-3d transition-transform duration-600 ${isFlipped ? 'rotate-y-180' : ''}`} style={{ transitionDuration: '0.6s' }}>
+          <div
+            className={`relative transform-style-3d transition-transform duration-600 ${isFlipped ? 'rotate-y-180' : ''}`}
+            style={{ transitionDuration: '0.6s', width: 'min(90vw, 420px)', height: 'min(70vh, 560px)' }}
+          >
             {/* Front - Image with product tags */}
-            <div className="backface-hidden relative">
-              <img src={look.image_url} alt="AI가 생성한 패션 코디 룩 이미지" className="max-w-full max-h-[55vh] object-contain rounded-lg shadow-2xl select-none" draggable={false} />
+            <div className="backface-hidden relative w-full h-full flex items-center justify-center bg-black/40 rounded-lg overflow-hidden shadow-2xl">
+              <img src={look.image_url} alt="AI가 생성한 패션 코디 룩 이미지" className="w-full h-full object-contain select-none" draggable={false} />
+
               <ModalWatermarkOverlay show={hasWatermark} />
 
               {/* Interactive product tags on image */}
@@ -404,7 +408,7 @@ export const LookDetailModal = ({
             </div>
 
             {/* Back - Info card */}
-            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col" style={{ minHeight: '300px', maxHeight: '55vh' }}>
+            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col">
               <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/80 to-slate-900 pointer-events-none" />
               <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/10 pointer-events-none" />
               
