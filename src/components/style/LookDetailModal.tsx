@@ -408,7 +408,7 @@ export const LookDetailModal = ({
             </div>
 
             {/* Back - Info card */}
-            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col" style={{ minHeight: '300px', maxHeight: '55vh' }}>
+            <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col">
               <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/80 to-slate-900 pointer-events-none" />
               <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/10 pointer-events-none" />
               
