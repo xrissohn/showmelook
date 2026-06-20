@@ -405,8 +405,8 @@ export const LookDetailModal = ({
 
             {/* Back - Info card */}
             <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-lg overflow-hidden shadow-2xl flex flex-col" style={{ minHeight: '300px', maxHeight: '55vh' }}>
-              <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/80 to-slate-900" />
-              <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/10" />
+              <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-purple-900/80 to-slate-900 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-accent/20 via-transparent to-primary/10 pointer-events-none" />
               
               {/* Sparkle particles */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -415,9 +415,17 @@ export const LookDetailModal = ({
                 <div className="absolute bottom-24 right-8 w-1.5 h-1.5 bg-accent/80 rounded-full animate-pulse" style={{ animationDelay: '0.9s' }} />
               </div>
               
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent" />
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-accent to-transparent pointer-events-none" />
               
-              <div className="relative flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
+              <div
+                className="relative flex-1 overflow-y-auto overscroll-contain p-5 space-y-4 scrollbar-hide"
+                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
+                onTouchMove={(e) => e.stopPropagation()}
+                onTouchEnd={(e) => e.stopPropagation()}
+              >
+
                 {/* AI Stylist recommendation */}
                 <div className="bg-gradient-to-br from-accent/25 via-primary/20 to-accent/15 rounded-xl p-5 border border-accent/40 shadow-lg">
                   <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-gradient-to-r from-accent/15 to-primary/15 border border-accent/20 mb-3">
