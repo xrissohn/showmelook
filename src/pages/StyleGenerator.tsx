@@ -3882,9 +3882,11 @@ const StyleGenerator = () => {
           Promise.resolve(
             supabase
               .from('generated_looks')
-              .select('*')
+              .select('id, image_url, prompt_used, is_favorite, created_at, style_trend_id, product_ids, memo, tags, is_public, like_count, view_count, caption')
               .eq('user_id', user.id)
               .order('created_at', { ascending: false })
+              .limit(100)
+
           )
         );
       }
