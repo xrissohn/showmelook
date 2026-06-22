@@ -275,6 +275,39 @@ export type Database = {
           },
         ]
       }
+      channel_email_sends: {
+        Row: {
+          campaign_key: string
+          created_at: string
+          email: string
+          error: string | null
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_key: string
+          created_at?: string
+          email: string
+          error?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_key?: string
+          created_at?: string
+          email?: string
+          error?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       coupang_daily_reports: {
         Row: {
           cancel_count: number | null
