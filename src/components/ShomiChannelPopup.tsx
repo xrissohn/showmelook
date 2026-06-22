@@ -67,10 +67,12 @@ export default function ShomiChannelPopup() {
   }, [open]);
 
   const handleClose = () => {
-    try {
-      localStorage.setItem(STORAGE_KEY, Date.now().toString());
-    } catch {
-      /* ignore */
+    if (!isForced) {
+      try {
+        localStorage.setItem(STORAGE_KEY, Date.now().toString());
+      } catch {
+        /* ignore */
+      }
     }
     setOpen(false);
   };
