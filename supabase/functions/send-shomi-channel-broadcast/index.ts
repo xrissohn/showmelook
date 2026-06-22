@@ -87,24 +87,24 @@ export function buildEmailHtml(opts: { bodyText: string; subject: string; unsubU
         <tr>
           <td width="50%" style="padding:0 5px 10px 0;">
             <a href="${CHANNELS.instagram}" style="display:block;background:linear-gradient(135deg,#feda75 0%,#d62976 50%,#4f5bd5 100%);color:#ffffff;text-decoration:none;text-align:center;padding:13px 10px;border-radius:12px;font-size:14px;font-weight:700;">
-              📷 Instagram
+              <img src="https://img.icons8.com/ios-filled/50/ffffff/instagram-new.png" alt="" width="18" height="18" style="vertical-align:middle;border:0;margin-right:6px;" />Instagram
             </a>
           </td>
           <td width="50%" style="padding:0 0 10px 5px;">
             <a href="${CHANNELS.youtube}" style="display:block;background:#FF0000;color:#ffffff;text-decoration:none;text-align:center;padding:13px 10px;border-radius:12px;font-size:14px;font-weight:700;">
-              ▶ YouTube
+              <img src="https://img.icons8.com/ios-filled/50/ffffff/youtube-play.png" alt="" width="18" height="18" style="vertical-align:middle;border:0;margin-right:6px;" />YouTube
             </a>
           </td>
         </tr>
         <tr>
           <td width="50%" style="padding:0 5px 0 0;">
             <a href="${CHANNELS.tiktok}" style="display:block;background:#000000;color:#ffffff;text-decoration:none;text-align:center;padding:13px 10px;border-radius:12px;font-size:14px;font-weight:700;">
-              🎵 TikTok
+              <img src="https://img.icons8.com/ios-filled/50/ffffff/tiktok--v1.png" alt="" width="18" height="18" style="vertical-align:middle;border:0;margin-right:6px;" />TikTok
             </a>
           </td>
           <td width="50%" style="padding:0 0 0 5px;">
             <a href="${CHANNELS.threads}" style="display:block;background:#101010;color:#ffffff;text-decoration:none;text-align:center;padding:13px 10px;border-radius:12px;font-size:14px;font-weight:700;">
-              @ Threads
+              <img src="https://img.icons8.com/ios-filled/50/ffffff/threads.png" alt="" width="18" height="18" style="vertical-align:middle;border:0;margin-right:6px;" />Threads
             </a>
           </td>
         </tr>
