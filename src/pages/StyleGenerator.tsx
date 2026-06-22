@@ -2144,6 +2144,14 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
               )}
             </div>
           ))}
+          {/* 무한 스크롤 로딩 스켈레톤 */}
+          {hasMore && (
+            <>
+              {Array.from({ length: Math.min(12, Math.max(0, filteredLooks.length - visibleItems.length)) }).map((_, i) => (
+                <div key={`skeleton-${i}`} className="aspect-[3/4] rounded-2xl bg-muted animate-pulse" />
+              ))}
+            </>
+          )}
         </div>
       )}
       
