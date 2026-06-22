@@ -1892,9 +1892,19 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   if (myLooks.length === 0) {
     if (isLoading) {
       return (
-        <div className="text-center py-20">
-          <Loader2 className="w-10 h-10 mx-auto text-primary animate-spin mb-4" />
-          <p className="text-sm text-muted-foreground font-korean">불러오는 중...</p>
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <Skeleton className="h-5 w-32" />
+            <div className="flex gap-2">
+              <Skeleton className="h-8 w-16 rounded-md" />
+              <Skeleton className="h-8 w-20 rounded-md" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="aspect-[3/4] rounded-2xl bg-muted animate-pulse" />
+            ))}
+          </div>
         </div>
       );
     }
