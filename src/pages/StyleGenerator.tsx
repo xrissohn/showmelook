@@ -4000,7 +4000,9 @@ const StyleGenerator = () => {
       .from('generated_looks')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
+
     
     if (looksData && looksData.length > 0) {
       const pathsNeedingSigning = looksData
