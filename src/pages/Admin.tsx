@@ -2735,6 +2735,10 @@ const Admin = () => {
             <SurveyPanel />
           </TabsContent>
 
+          <TabsContent value="channel-mail" className="space-y-4">
+            <ShomiChannelBroadcastPanel />
+          </TabsContent>
+
         </Tabs>
       </div>
     </div>
