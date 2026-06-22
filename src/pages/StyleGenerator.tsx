@@ -1338,9 +1338,11 @@ interface MyLooksGalleryProps {
   setActiveTab: (tab: 'generate' | 'mylooks' | 'mypage') => void;
   toast: ReturnType<typeof useToast>['toast'];
   hasWatermark: boolean; // Pro 이상이면 false
+  isLoading?: boolean;
 }
 
-const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark }: MyLooksGalleryProps) => {
+const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark, isLoading }: MyLooksGalleryProps) => {
+
   // 필터 상태
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
