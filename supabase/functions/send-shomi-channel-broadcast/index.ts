@@ -28,13 +28,14 @@ const SITE_URL = "https://showmelook.com";
 const DEFAULT_SUBJECT = "[쇼미룩] 쇼미룩의 모델 '쇼미'를 소개합니다 ✨ 채널 4곳도 함께 오픈!";
 const DEFAULT_BODY = `안녕하세요, 쇼미룩입니다.
 
-쇼미룩을 대표하는 가상 모델 '쇼미'가 새롭게 선정됐어요.
+쇼미룩을 대표하는 패셔니스타 '쇼미'가 여러분의 투표에 의해 선정됐어요.
+
 성수동 감성의 일상룩, 트렌디한 코디, 스타일 팁을
 쇼미와 함께 더 가깝게 만나보실 수 있도록
 인스타그램 · 유튜브 · 틱톡 · 스레드 4개 채널을 동시에 오픈했습니다.
 
 룩이 고민될 땐 언제든 쇼미에게 물어봐 주세요.
-쇼미룩 AI가 당신에게 어울리는 코디를 추천해드립니다.`;
+쇼미룩이 당신에게 어울리는 코디를 추천해드립니다.`;
 
 async function makeUnsubToken(userId: string): Promise<string> {
   const enc = new TextEncoder();
