@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { X, Instagram, Youtube } from "lucide-react";
+import { X } from "lucide-react";
 import shomiHero from "@/assets/shomi-channel-hero.png.asset.json";
 
 const STORAGE_KEY = "shomi_channel_popup_dismissed_at";
