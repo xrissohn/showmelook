@@ -1,30 +1,47 @@
-## 문제 요약
-랜딩페이지 "다른 사람의 스타일 구경하기" 카드 팝업의 뒷면에서 추천 상세 내용이 스크롤되지 않고 구매상품 정보가 보이지 않음. 마이갤러리 팝업은 정상 작동. 모든 사용처에서 뒷면 정보 스타일을 통일 필요.
+## 문제 진단
 
-## 원인 분석
-`LookDetailModal`은 단일 재사용 컴포넌트이며, 뒷면(back face) 구조상 다음 문제가 있음:
-1. 상품 목록 영역이 `max-h-36 overflow-y-auto`로 별도의 작은 스크롤 박스로 격리되어 있어, 콘텐츠가 많을 때 메인 스크롤 영역 안에서 상품 박스가 viewport 아래로 밀려 보이지 않음
-2. 뒷면 컨테이너에 `maxHeight: '55vh'` 고정 제한이 있어 일부 해상도/데이터 조합에서 콘텐츠가 짤림
+콘솔에 다음 에러가 반복적으로 찍히고 있습니다:
 
-## 수정 계획
+```
+Error preloading looks: { code: "57014", message: "canceling statement due to statement timeout" }
+```
 
-### 1. 상품 목록 스크롤 박스 제거
-- `LookDetailModal` 뒷면의 상품 목록 래퍼에서 `max-h-36 overflow-y-auto scrollbar-hide` 제거
-- 상품 목록이 메인 콘텐츠 스크롤 영역의 일부로 자연스럽게 흐르도록 변경
+원인은 두 가지가 겹쳐 있습니다.
 
-### 2. 뒷면 높이 제한 완화
-- Back face 컨테이너의 `maxHeight: '55vh'` 및 `minHeight: '300px'`를 완화하거나 콘텐츠 기반으로 조정
-- Back face가 고정된 55vh보다는 콘텐츠 길이에 따라 유연하게 늘어나되, viewport를 넘지 않도록 메인 래퍼의 스크롤이 우선 적용되도록 구조 정리
+1. **DB 쿼리 타임아웃**: `generated_looks` 테이블에 `(user_id, created_at)` 복합 인덱스가 없습니다. 현재 인덱스는 `is_public=true` 조건부 인덱스 3개와 PK뿐이라, 본인 룩을 `user_id`로 필터링할 때 풀 스캔에 가까운 비용이 발생 → 룩이 많은 계정은 statement timeout(8초)에 걸려 `[]`가 반환됨 → 화면에 즉시 "아직 생성된 룩이 없습니다"가 뜸.
+2. **로딩 중에도 빈 상태 화면 표시**: `StyleGenerator.tsx`의 `MyLooksGallery`는 `myLooks.length === 0`이면 곧바로 빈 상태 UI를 보여줍니다. 로딩 중인지 여부를 체크하지 않아, 프리로더가 데이터를 가져오는 동안에도 첨부 이미지처럼 "룩 없음" 화면이 깜빡입니다.
 
-### 3. 통합 스크롤 보장
-- Back face 내부의 `flex-1 overflow-y-auto` 영역이 모든 콘텐츠(추천 설명 + 상품 목록 + 태그 + 메모)를 하나의 연속적인 스크롤 영역으로 포함하도록 확인
-- `overflow-hidden`이 내부 스크롤을 막지 않도록 CSS 우선순위 점검
+## 해결 방안
 
-## 기대 결과
-- 랜딩페이지, 커뮤니티, 마이갤러리, 유저갤러리 등 모든 사용처에서 팝업 카드 뒷면의 동작이 통일됨
-- 추천 정보와 구매상품 정보를 하나의 스크롤로 끝까지 확인 가능
-- 마이갤러리와 동일한 사용자 경험 제공
+### 1) DB 인덱스 추가 (마이그레이션)
 
-## 영향 범위
-- `src/components/style/LookDetailModal.tsx` 단일 파일 수정
-- 다른 컴포넌트/페이지 변경 없음 (LookDetailModal을 재사용하므로 자동 통일)
+```sql
+CREATE INDEX IF NOT EXISTS idx_generated_looks_user_created
+  ON public.generated_looks (user_id, created_at DESC);
+```
+
+이걸로 본인 룩 조회는 인덱스 스캔으로 ms 단위로 떨어집니다 (현재 timeout → 정상화).
+
+### 2) 프리로더 쿼리 경량화 (`src/contexts/DataPreloaderContext.tsx`)
+
+- 첫 로드는 최신 100개로 LIMIT (`.limit(100)`). 마이갤러리 첫 화면에 충분.
+- 무거운 컬럼(`tag_positions`, `style_reasoning`)은 1차 로드에서 제외하고, 상세 모달 열 때만 fetch (지금은 매번 전부 가져와서 페이로드도 큽니다).
+
+### 3) 로딩 상태로 빈 화면 가드 (`src/pages/StyleGenerator.tsx`)
+
+`MyLooksGallery`에 `isLooksLoading` prop을 받아, 로딩 중이면 스피너를 보이고, 로딩이 끝났는데 비어 있을 때만 "아직 생성된 룩이 없습니다"를 표시.
+
+### 4) StyleGenerator 보조 쿼리도 LIMIT 추가
+
+`refreshLooksOnly`와 메인 fetch에서 `generated_looks` 조회 시 동일하게 `.limit(100)` 적용 → 같은 타임아웃 재발 방지.
+
+## 변경 파일
+
+- `supabase/migrations/<new>.sql` — 인덱스 추가
+- `src/contexts/DataPreloaderContext.tsx` — select 컬럼 축소 + limit
+- `src/pages/StyleGenerator.tsx` — 로딩 가드 + limit 추가
+
+## 검증
+
+- 마이그레이션 적용 후 콘솔에 `57014` 에러 없는지 확인
+- /mypage(또는 /style의 마이갤러리 탭) 진입 시 첨부 화면이 더 이상 깜빡이지 않고, 룩이 즉시 표시되는지 확인
