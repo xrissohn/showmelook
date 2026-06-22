@@ -6487,7 +6487,9 @@ const StyleGenerator = () => {
             setActiveTab={setActiveTab}
             toast={toast}
             hasWatermark={subscription.hasWatermark}
+            isLoading={isPreloadingLooks && myLooks.length === 0}
           />
+
         ) : (
           /* My Page */
           <div className="max-w-2xl mx-auto">
