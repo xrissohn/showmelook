@@ -1,47 +1,47 @@
-## 문제 진단
+## 현 상황 진단
 
-콘솔에 다음 에러가 반복적으로 찍히고 있습니다:
+쇼미 채널 오픈 팝업이 안 뜨는 이유는 **버그가 아닙니다**. 직전 검증에서 "나중에 볼게"를 눌러 `localStorage.shomi_channel_popup_dismissed_at`이 기록됐고, 7일 숨김 가드가 정상 동작 중이라 같은 브라우저에서는 안 뜨는 게 맞아요. 시크릿 창/다른 브라우저/그 키를 지운 상태에서는 첫 접속 시 정상 노출됩니다.
 
-```
-Error preloading looks: { code: "57014", message: "canceling statement due to statement timeout" }
-```
+즉, 현재 동작은 사양대로입니다. 다만 "맨 처음 접속시 랜딩 페이지에 떠야해" 요구를 더 정확히 맞추기 위해 두 가지를 제안합니다.
 
-원인은 두 가지가 겹쳐 있습니다.
+## 제안 변경
 
-1. **DB 쿼리 타임아웃**: `generated_looks` 테이블에 `(user_id, created_at)` 복합 인덱스가 없습니다. 현재 인덱스는 `is_public=true` 조건부 인덱스 3개와 PK뿐이라, 본인 룩을 `user_id`로 필터링할 때 풀 스캔에 가까운 비용이 발생 → 룩이 많은 계정은 statement timeout(8초)에 걸려 `[]`가 반환됨 → 화면에 즉시 "아직 생성된 룩이 없습니다"가 뜸.
-2. **로딩 중에도 빈 상태 화면 표시**: `StyleGenerator.tsx`의 `MyLooksGallery`는 `myLooks.length === 0`이면 곧바로 빈 상태 UI를 보여줍니다. 로딩 중인지 여부를 체크하지 않아, 프리로더가 데이터를 가져오는 동안에도 첨부 이미지처럼 "룩 없음" 화면이 깜빡입니다.
+### 1) 노출 위치를 "랜딩(`/`)으로 한정"
 
-## 해결 방안
+지금은 모든 라우트(`/auth`, `/style`, `/mypage` 등)에서 떠요. 사용자가 "랜딩 페이지에 떠야 한다"고 명시하셨으니 노출 범위를 좁힙니다.
 
-### 1) DB 인덱스 추가 (마이그레이션)
+- `App.tsx`에서 `<ShomiChannelPopup />`을 `<Routes>` 바깥이 아닌 `Landing` 페이지 내부로 이동, 또는 컴포넌트 안에서 `useLocation().pathname === '/'`일 때만 렌더.
+- 효과: 로그인 직후 `/style`, `/mypage` 등으로 이동했을 때 팝업이 따라붙지 않음. 첫 진입(랜딩)에서만 1회 노출.
 
-```sql
-CREATE INDEX IF NOT EXISTS idx_generated_looks_user_created
-  ON public.generated_looks (user_id, created_at DESC);
-```
+### 2) URL 쿼리로 강제 표시 가능하게(검증 편의)
 
-이걸로 본인 룩 조회는 인덱스 스캔으로 ms 단위로 떨어집니다 (현재 timeout → 정상화).
+`?showPopup=1`이 붙어 있으면 localStorage 가드를 무시하고 즉시 띄우도록 추가. 운영자가 항상 수동 검증 가능.
 
-### 2) 프리로더 쿼리 경량화 (`src/contexts/DataPreloaderContext.tsx`)
+- 동작: `new URLSearchParams(location.search).get('showPopup') === '1'`이면 7일 가드 스킵.
+- 닫아도 timestamp 저장 안 함(검증 모드라 다음에도 다시 확인 가능).
 
-- 첫 로드는 최신 100개로 LIMIT (`.limit(100)`). 마이갤러리 첫 화면에 충분.
-- 무거운 컬럼(`tag_positions`, `style_reasoning`)은 1차 로드에서 제외하고, 상세 모달 열 때만 fetch (지금은 매번 전부 가져와서 페이로드도 큽니다).
+### 3) (선택) 7일 → 3일로 단축
 
-### 3) 로딩 상태로 빈 화면 가드 (`src/pages/StyleGenerator.tsx`)
+오픈 초기 노출을 더 자주 가져가고 싶다면 `HIDE_DAYS = 3`로 줄이는 옵션. 강제는 아님.
 
-`MyLooksGallery`에 `isLooksLoading` prop을 받아, 로딩 중이면 스피너를 보이고, 로딩이 끝났는데 비어 있을 때만 "아직 생성된 룩이 없습니다"를 표시.
+## 구현 범위
 
-### 4) StyleGenerator 보조 쿼리도 LIMIT 추가
+- `src/components/ShomiChannelPopup.tsx`: 라우트/쿼리 가드 추가, (선택) HIDE_DAYS 변경.
+- `src/App.tsx`: 변경 없음(컴포넌트 내부에서 path 체크). 또는 `Landing.tsx`로 이동 — 둘 중 더 간결한 쪽 선택.
 
-`refreshLooksOnly`와 메인 fetch에서 `generated_looks` 조회 시 동일하게 `.limit(100)` 적용 → 같은 타임아웃 재발 방지.
+기존 레이아웃, 인증, 사진 업로드, 가상착장 흐름은 일절 건드리지 않음.
 
-## 변경 파일
+## 검증 절차
 
-- `supabase/migrations/<new>.sql` — 인덱스 추가
-- `src/contexts/DataPreloaderContext.tsx` — select 컬럼 축소 + limit
-- `src/pages/StyleGenerator.tsx` — 로딩 가드 + limit 추가
+1. localStorage 비운 상태로 `/` 접속 → 팝업 노출 확인.
+2. 닫은 뒤 `/` 새로고침 → 안 뜨는지 확인.
+3. `/style`, `/mypage`, `/auth` 진입 시 팝업 안 뜨는지 확인 (랜딩 한정 적용 시).
+4. `/?showPopup=1` 접속 → 가드 무시하고 노출 확인, 닫아도 다음 호출에서 다시 노출.
+5. localStorage 키 삭제 후 `/` 접속 → 다시 정상 노출.
 
-## 검증
+## 확인 부탁
 
-- 마이그레이션 적용 후 콘솔에 `57014` 에러 없는지 확인
-- /mypage(또는 /style의 마이갤러리 탭) 진입 시 첨부 화면이 더 이상 깜빡이지 않고, 룩이 즉시 표시되는지 확인
+다음 항목을 골라주세요:
+- (a) 위 1·2번만 적용 (권장)
+- (b) 1·2·3번 모두 적용 (HIDE_DAYS 며칠로?)
+- (c) 노출 범위는 그대로 두고 2번(쿼리 강제 표시)만 추가
