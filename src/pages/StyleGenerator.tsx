@@ -1338,9 +1338,11 @@ interface MyLooksGalleryProps {
   setActiveTab: (tab: 'generate' | 'mylooks' | 'mypage') => void;
   toast: ReturnType<typeof useToast>['toast'];
   hasWatermark: boolean; // Pro 이상이면 false
+  isLoading?: boolean;
 }
 
-const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark }: MyLooksGalleryProps) => {
+const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark, isLoading }: MyLooksGalleryProps) => {
+
   // 필터 상태
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   
@@ -1888,6 +1890,14 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   };
 
   if (myLooks.length === 0) {
+    if (isLoading) {
+      return (
+        <div className="text-center py-20">
+          <Loader2 className="w-10 h-10 mx-auto text-primary animate-spin mb-4" />
+          <p className="text-sm text-muted-foreground font-korean">불러오는 중...</p>
+        </div>
+      );
+    }
     return (
       <div className="text-center py-20">
         <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
@@ -1902,6 +1912,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       </div>
     );
   }
+
 
   return (
     <div>
@@ -3871,9 +3882,11 @@ const StyleGenerator = () => {
           Promise.resolve(
             supabase
               .from('generated_looks')
-              .select('*')
+              .select('id, image_url, prompt_used, is_favorite, created_at, style_trend_id, product_ids, memo, tags, is_public, like_count, view_count, caption')
               .eq('user_id', user.id)
               .order('created_at', { ascending: false })
+              .limit(100)
+
           )
         );
       }
@@ -3987,7 +4000,9 @@ const StyleGenerator = () => {
       .from('generated_looks')
       .select('*')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100);
+
     
     if (looksData && looksData.length > 0) {
       const pathsNeedingSigning = looksData
@@ -6476,7 +6491,9 @@ const StyleGenerator = () => {
             setActiveTab={setActiveTab}
             toast={toast}
             hasWatermark={subscription.hasWatermark}
+            isLoading={isPreloadingLooks && myLooks.length === 0}
           />
+
         ) : (
           /* My Page */
           <div className="max-w-2xl mx-auto">

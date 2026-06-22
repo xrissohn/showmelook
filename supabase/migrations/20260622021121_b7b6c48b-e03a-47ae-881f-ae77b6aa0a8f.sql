@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS idx_generated_looks_user_created ON public.generated_looks (user_id, created_at DESC);
