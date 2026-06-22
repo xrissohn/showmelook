@@ -35,6 +35,7 @@ import { DNAClassificationManager } from "@/components/admin/DNAClassificationMa
 import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
 import { TagCorrectionAnalytics } from "@/components/admin/TagCorrectionAnalytics";
 import { SurveyPanel } from "@/components/admin/SurveyPanel";
+import { ShomiChannelBroadcastPanel } from "@/components/admin/ShomiChannelBroadcastPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1429,6 +1430,10 @@ const Admin = () => {
               <TabsTrigger value="survey" className="flex-shrink-0 whitespace-nowrap">
                 <Sparkles className="w-4 h-4 mr-1" />
                 설문
+              </TabsTrigger>
+              <TabsTrigger value="channel-mail" className="flex-shrink-0 whitespace-nowrap">
+                <Sparkles className="w-4 h-4 mr-1" />
+                채널 안내 메일
               </TabsTrigger>
             </TabsList>
           </div>
