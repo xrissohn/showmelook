@@ -1390,7 +1390,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   
   const favoriteCount = myLooks.filter(look => look.is_favorite).length;
   
-  // 무한 스크롤 훅 (처음 12개, 스크롤 시 8개씩 추가)
+  // 무한 스크롤 훅 (처음 20개, 스크롤 시 12개씩 추가)
   const {
     visibleItems,
     loadMoreRef,
@@ -1398,9 +1398,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     preloadItems,
   } = useInfiniteScroll({
     items: filteredLooks,
-    initialCount: 12,
-    increment: 8,
-    preloadCount: 4,
+    initialCount: 20,
+    increment: 12,
+    preloadCount: 6,
   });
 
   // 다음에 로드될 이미지들 프리로딩
