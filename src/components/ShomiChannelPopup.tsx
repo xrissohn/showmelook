@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { X, Instagram, Youtube } from "lucide-react";
 import shomiHero from "@/assets/shomi-channel-hero.png.asset.json";
 
@@ -27,20 +28,29 @@ const ThreadsIcon = ({ className }: { className?: string }) => (
 
 export default function ShomiChannelPopup() {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const isForced =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("showPopup") === "1";
 
   useEffect(() => {
-    try {
-      const dismissedAt = localStorage.getItem(STORAGE_KEY);
-      if (dismissedAt) {
-        const elapsed = Date.now() - parseInt(dismissedAt, 10);
-        if (elapsed < HIDE_DAYS * 24 * 60 * 60 * 1000) return;
+    // Landing page only (or forced via ?showPopup=1)
+    if (location.pathname !== "/" && !isForced) return;
+
+    if (!isForced) {
+      try {
+        const dismissedAt = localStorage.getItem(STORAGE_KEY);
+        if (dismissedAt) {
+          const elapsed = Date.now() - parseInt(dismissedAt, 10);
+          if (elapsed < HIDE_DAYS * 24 * 60 * 60 * 1000) return;
+        }
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore */
     }
     const t = setTimeout(() => setOpen(true), 800);
     return () => clearTimeout(t);
-  }, []);
+  }, [location.pathname, isForced]);
 
   useEffect(() => {
     if (!open) return;
