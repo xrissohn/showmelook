@@ -61,8 +61,8 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <ShomiChannelPopup />
             <BrowserRouter>
+              <ShomiChannelPopup />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Landing />} />
