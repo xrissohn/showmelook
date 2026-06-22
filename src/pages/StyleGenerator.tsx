@@ -1890,6 +1890,14 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   };
 
   if (myLooks.length === 0) {
+    if (isLoading) {
+      return (
+        <div className="text-center py-20">
+          <Loader2 className="w-10 h-10 mx-auto text-primary animate-spin mb-4" />
+          <p className="text-sm text-muted-foreground font-korean">불러오는 중...</p>
+        </div>
+      );
+    }
     return (
       <div className="text-center py-20">
         <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
@@ -1904,6 +1912,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       </div>
     );
   }
+
 
   return (
     <div>
