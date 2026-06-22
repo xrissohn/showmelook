@@ -97,13 +97,13 @@ export default function ShomiChannelPopup() {
     {
       label: "Instagram",
       href: CHANNELS.instagram,
-      icon: <Instagram className="w-5 h-5" />,
+      icon: <InstagramIcon className="w-5 h-5" />,
       style: "bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] text-white",
     },
     {
       label: "YouTube",
       href: CHANNELS.youtube,
-      icon: <Youtube className="w-5 h-5" />,
+      icon: <YoutubeIcon className="w-5 h-5" />,
       style: "bg-[#FF0000] text-white",
     },
     {
