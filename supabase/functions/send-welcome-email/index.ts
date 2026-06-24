@@ -126,11 +126,19 @@ serve(async (req) => {
   }
 
   try {
+    const internal = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (internal !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const { email, fullName }: WelcomeEmailRequest = await req.json();
 
-    if (!email) {
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return new Response(
-        JSON.stringify({ error: "이메일이 필요합니다." }),
+        JSON.stringify({ error: "유효한 이메일이 필요합니다." }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
