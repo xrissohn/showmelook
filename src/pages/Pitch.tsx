@@ -1434,6 +1434,99 @@ const slides = [
     background: 'bg-background'
   },
   {
+    id: 125,
+    title: 'Influencer Marketing · 쇼미',
+    subtitle: 'AI 가상 인플루언서 \'쇼미\'를 중심으로 SNS에서 인지도를 키우고 쇼미룩으로 유입시킨다',
+    content: (
+      <div className="grid md:grid-cols-5 gap-5 items-stretch">
+        {/* Left — Shomi portrait */}
+        <div className="md:col-span-2 relative rounded-2xl overflow-hidden border border-primary/20 shadow-xl bg-gradient-to-br from-pink-100 to-indigo-100 min-h-[420px]">
+          <img
+            src={shomiHero.url}
+            alt="쇼미룩 AI 가상 인플루언서 쇼미"
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
+          <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/85 backdrop-blur text-[10px] font-semibold tracking-widest text-[#1e1b4b]">
+            SHOWMELOOK · 쇼미
+          </div>
+          <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/70 via-black/30 to-transparent">
+            <div className="text-white font-korean">
+              <div className="text-lg font-bold">쇼미 (SHOMI)</div>
+              <div className="text-xs opacity-90 mt-0.5">성수동 감성 · 트렌디 데일리룩 · 스타일 큐레이터</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right — strategy */}
+        <div className="md:col-span-3 flex flex-col gap-4">
+          <div className="p-4 rounded-xl border border-primary/20 bg-primary/5">
+            <h4 className="font-bold text-sm font-korean mb-2 text-primary">왜 가상 인플루언서인가</h4>
+            <ul className="text-xs font-korean text-foreground/80 space-y-1.5 leading-relaxed">
+              <li>· 365일 활동 · 스캔들 리스크 0 · 브랜드 톤 100% 제어</li>
+              <li>· 룩 추천이 그대로 콘텐츠가 되는 <strong>서비스↔콘텐츠 일체형</strong> 구조</li>
+              <li>· 팔로워 → 쇼미룩 가입 → 가상 피팅 → 구매 전환의 단일 깔때기</li>
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            <a href="https://www.instagram.com/showmi.look" target="_blank" rel="noopener noreferrer"
+              className="group flex items-center gap-3 p-3 rounded-xl text-white bg-gradient-to-br from-[#feda75] via-[#d62976] to-[#4f5bd5] shadow-sm hover:shadow-md transition">
+              <PitchInstagramIcon className="w-6 h-6 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[11px] opacity-90 leading-none">Instagram</div>
+                <div className="text-sm font-bold truncate">@showmi.look</div>
+              </div>
+            </a>
+            <a href="https://www.youtube.com/@showmi_tv" target="_blank" rel="noopener noreferrer"
+              className="group flex items-center gap-3 p-3 rounded-xl text-white bg-[#FF0000] shadow-sm hover:shadow-md transition">
+              <PitchYoutubeIcon className="w-6 h-6 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[11px] opacity-90 leading-none">YouTube</div>
+                <div className="text-sm font-bold truncate">@showmi_tv</div>
+              </div>
+            </a>
+            <a href="https://www.tiktok.com/@showmi.look" target="_blank" rel="noopener noreferrer"
+              className="group flex items-center gap-3 p-3 rounded-xl text-white bg-black shadow-sm hover:shadow-md transition">
+              <PitchTikTokIcon className="w-6 h-6 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[11px] opacity-90 leading-none">TikTok</div>
+                <div className="text-sm font-bold truncate">@showmi.look</div>
+              </div>
+            </a>
+            <a href="https://www.threads.net/@showmi.look" target="_blank" rel="noopener noreferrer"
+              className="group flex items-center gap-3 p-3 rounded-xl text-white bg-[#101010] shadow-sm hover:shadow-md transition">
+              <PitchThreadsIcon className="w-6 h-6 shrink-0" />
+              <div className="min-w-0">
+                <div className="text-[11px] opacity-90 leading-none">Threads</div>
+                <div className="text-sm font-bold truncate">@showmi.look</div>
+              </div>
+            </a>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="p-3 rounded-xl border border-coral/30 bg-coral/5">
+              <div className="text-[10px] font-bold tracking-widest text-coral mb-1">채널 전략</div>
+              <div className="text-xs font-korean leading-relaxed">릴스 · 쇼츠 중심의 룩북 · 코디 팁 · OOTD</div>
+            </div>
+            <div className="p-3 rounded-xl border border-sky/30 bg-sky/5">
+              <div className="text-[10px] font-bold tracking-widest text-sky mb-1">콘텐츠 → 전환</div>
+              <div className="text-xs font-korean leading-relaxed">캡션 CTA · 링크인바이오로 쇼미룩 가상 피팅 직행</div>
+            </div>
+            <div className="p-3 rounded-xl border border-purple/30 bg-purple/5">
+              <div className="text-[10px] font-bold tracking-widest text-purple mb-1">KPI</div>
+              <div className="text-xs font-korean leading-relaxed">팔로워 · 저장수 · 프로필 방문 · 가입 전환율</div>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-gradient-to-r from-primary/10 via-coral/10 to-sky/10 border border-border text-xs font-korean">
+            <strong className="text-primary">유입 깔때기:</strong> SNS 콘텐츠 → 프로필 링크 → 쇼미룩 가입 → AI 가상 피팅 → 룩 추천 → 제휴 구매
+          </div>
+        </div>
+      </div>
+    ),
+    background: 'bg-background'
+  },
+  {
     id: 13,
     title: 'Roadmap',
     subtitle: '현재 80% 완료 — 남은 20%로 시장 진입',
