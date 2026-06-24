@@ -45,7 +45,11 @@ serve(async (req) => {
     // 1. 위젯 SDK 제공
     // ==========================================
     if (endpoint === 'sdk.js') {
-      const mallId = url.searchParams.get('mall_id');
+      const mallIdRaw = url.searchParams.get('mall_id') ?? '';
+      if (mallIdRaw && !/^[a-zA-Z0-9_-]{1,50}$/.test(mallIdRaw)) {
+        return new Response('Invalid mall_id', { status: 400, headers: corsHeaders });
+      }
+      const mallId = mallIdRaw;
       
 const sdkCode = `
 (function() {
@@ -53,8 +57,8 @@ const sdkCode = `
   
   window.ShowMeLook = window.ShowMeLook || {};
   
-  var APP_BASE_URL = '${APP_BASE_URL}';
-  var MALL_ID = '${mallId || ''}';
+  var APP_BASE_URL = ${JSON.stringify(APP_BASE_URL)};
+  var MALL_ID = ${JSON.stringify(mallId)};
   
   ShowMeLook.init = function(options) {
     this.options = options || {};
