@@ -186,9 +186,9 @@ serve(async (req) => {
     // ==========================================
     if (endpoint === 'authorize') {
       const mallId = url.searchParams.get('mall_id');
-      if (!mallId) {
+      if (!mallId || !/^[a-zA-Z0-9_-]{1,50}$/.test(mallId)) {
         return new Response(
-          JSON.stringify({ error: 'mall_id is required' }),
+          JSON.stringify({ error: 'Invalid mall_id' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
