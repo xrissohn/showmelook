@@ -32,6 +32,7 @@ const Community = lazy(() => import("./pages/Community"));
 const UserGallery = lazy(() => import("./pages/UserGallery"));
 const History = lazy(() => import("./pages/History"));
 const SurveyShomi = lazy(() => import("./pages/SurveyShomi"));
+const Connect = lazy(() => import("./pages/Connect"));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
