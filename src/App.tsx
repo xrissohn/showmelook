@@ -32,6 +32,7 @@ const Community = lazy(() => import("./pages/Community"));
 const UserGallery = lazy(() => import("./pages/UserGallery"));
 const History = lazy(() => import("./pages/History"));
 const SurveyShomi = lazy(() => import("./pages/SurveyShomi"));
+const Connect = lazy(() => import("./pages/Connect"));
 
 // Optimized QueryClient configuration
 const queryClient = new QueryClient({
@@ -85,6 +86,7 @@ const App = () => (
                   <Route path="/community" element={<Community />} />
                   <Route path="/gallery/:userId" element={<UserGallery />} />
                   <Route path="/survey/shomi" element={<SurveyShomi />} />
+                  <Route path="/connect" element={<Connect />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
