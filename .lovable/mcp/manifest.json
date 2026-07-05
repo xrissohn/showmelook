@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "showmelook-mcp",
+      "version": "0.1.0",
+      "title": "ShowMeLook MCP"
+    },
+    "tools": [
+      {
+        "name": "search_products",
+        "title": "Search products",
+        "description": "Search the ShowMeLook product catalog by keyword, category, gender, and price range. Returns active in-stock items.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "Free-text keyword to match against product name, brand, or tags."
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "상의",
+                "하의",
+                "아우터",
+                "가방",
+                "신발",
+                "액세서리",
+                "원피스",
+                "홈웨어",
+                "수영복"
+              ],
+              "description": "Standard fashion category."
+            },
+            "gender": {
+              "type": "string",
+              "enum": [
+                "female",
+                "male",
+                "kids",
+                "unisex"
+              ]
+            },
+            "min_price": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "max_price": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Max results, default 10."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_product",
+        "title": "Get product",
+        "description": "Fetch full details for a ShowMeLook product by ID, including brand, price, image, style tags, and the purchase URL.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "product_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "products_cache.id"
+            }
+          },
+          "required": [
+            "product_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_public_looks",
+        "title": "List public looks",
+        "description": "List recent public AI-generated looks from the ShowMeLook community gallery, sorted by most recent by default.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "description": "Max looks to return, default 10."
+            },
+            "sort": {
+              "type": "string",
+              "enum": [
+                "recent",
+                "popular"
+              ],
+              "description": "Sort order (default recent)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
