@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "Authenticated users can view active merchants" ON public.merchants;
+CREATE POLICY "Admins can view merchants" ON public.merchants FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'));
