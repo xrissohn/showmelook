@@ -1,0 +1,52 @@
+name: Bug report
+description: Report a reproducible problem in ShowMeLook
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not include credentials, personal photos, customer data, or security vulnerabilities. Use SECURITY.md for sensitive reports.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Run ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or commit SHA
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - MCP connector
+        - Web application
+        - Supabase Edge Functions
+        - Documentation
+        - Build or CI
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser, Node.js version, and relevant non-secret configuration.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      render: shell
