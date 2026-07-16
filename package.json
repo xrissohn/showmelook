@@ -1,13 +1,37 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "showmelook",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Open-source fashion commerce platform and model-agnostic MCP connector for real products and public looks.",
+  "license": "MIT",
+  "homepage": "https://showmelook.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xrissohn/showmelook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xrissohn/showmelook/issues"
+  },
+  "keywords": [
+    "fashion",
+    "virtual-try-on",
+    "mcp",
+    "model-context-protocol",
+    "supabase",
+    "react"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm test && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {
