@@ -65,6 +65,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <ShomiChannelPopup />
+              <AdSenseLoader />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/" element={<Landing />} />
