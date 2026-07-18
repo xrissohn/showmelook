@@ -10,6 +10,7 @@ import { DataPreloaderProvider } from "@/contexts/DataPreloaderContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { Loader2 } from "lucide-react";
 import ShomiChannelPopup from "@/components/ShomiChannelPopup";
+import AdSenseLoader from "@/components/AdSenseLoader";
 // Lazy load pages for code splitting
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
