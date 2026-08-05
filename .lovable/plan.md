@@ -66,11 +66,9 @@
 ## 기술 세부사항
 
 - 아티클은 별도 CMS 없이 `src/content/guides/*.ts` 형태의 타입 지정된 데이터 모듈로 관리하고, `/guide/:slug`에서 렌더
+- 쇼미 SNS 링크는 `src/lib/shomiChannels.ts`로 상수 분리해 팝업·이메일·가이드가 공유
+- `src/components/guide/ShomiTagFooter.tsx` — 모든 아티클 하단에 SNS 링크 + 해시태그 자동 삽입
 - `AdSenseLoader`에 `ready` 조건 추가: 경로 허용 + 페이지가 "콘텐츠 렌더 완료"를 알린 경우에만 스크립트 주입 (컨텍스트 또는 커스텀 이벤트 사용)
-- SEO 태그는 기존 `SEOHead` / `react-helmet-async` 패턴 재사용
+- SEO 태그는 기존 `SEOHead` / `react-helmet-async` 패턴 재사용, 각 글에 `Article` JSON-LD + `author`를 쇼미룩으로 지정
 - 광고 슬롯(`<ins class="adsbygoogle">`)은 승인 후 가이드 본문·커뮤니티 목록에만 배치
 
-## 확인 필요
-
-- 가이드 아티클 초안을 제가 전부 작성할까요, 아니면 주제만 잡고 초안은 직접 쓰시겠어요?
-- 위 8개 주제 중 우선순위나 추가/제외할 주제가 있을까요?
