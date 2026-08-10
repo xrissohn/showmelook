@@ -25,7 +25,9 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Never serve anything from cache while this worker is still controlling pages.
-self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
-});
+// No fetch handler on purpose.
+// Intercepting requests here (even with a pass-through fetch) makes the worker a
+// "cross-world" resource owner: preloaded module/CSS requests get re-issued by the
+// worker and can fail with ERR_CONNECTION_RESET, leaving a blank page.
+// Without a fetch handler the browser bypasses this worker entirely for network
+// requests, while install/activate still purge caches and unregister it.
