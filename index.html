@@ -3,6 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Canonical host enforcement: always https + apex (showmelook.com) -->
+    <script>
+      (function () {
+        try {
+          var h = location.hostname;
+          if (h === 'www.showmelook.com' || (h === 'showmelook.com' && location.protocol === 'http:')) {
+            location.replace('https://showmelook.com' + location.pathname + location.search + location.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    
     
     <!-- Early Preconnect for critical third-party origins (MUST be first for maximum effect) -->
     <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
