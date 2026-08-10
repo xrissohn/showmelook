@@ -12,6 +12,9 @@ Disallow: /profile-setup
 Disallow: /profile-edit
 Disallow: /admin
 Disallow: /cafe24-fitting
+Disallow: /survey
+Disallow: /connect
+Disallow: /history
 
 # Google
 User-agent: Googlebot
