@@ -48,15 +48,20 @@ window.addEventListener('error', (event) => {
   }
 });
 
-// Register service worker after initial render (non-blocking)
+// Cache kill-switch: remove any previously registered service worker and its
+// caches so returning visitors always get the latest deployed content.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then((registration) => {
-        console.log('SW registered:', registration.scope);
-      })
-      .catch((error) => {
-        console.log('SW registration failed:', error);
+    navigator.serviceWorker.getRegistrations()
+      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+      .catch(() => undefined)
+      .finally(() => {
+        if ('caches' in window) {
+          caches.keys()
+            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+            .catch(() => undefined);
+        }
       });
   });
 }
+
