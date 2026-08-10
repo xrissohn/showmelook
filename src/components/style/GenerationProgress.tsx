@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { X, Users, Clock } from 'lucide-react';
-import showmelookLogo from '@/assets/showmelook-logo.webp';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 import { useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 

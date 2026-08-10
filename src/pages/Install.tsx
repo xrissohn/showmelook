@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Share, MoreVertical, Plus, Download, Smartphone, Monitor, Apple, Chrome } from 'lucide-react';
-import showmelookLogo from '@/assets/showmelook-logo.webp';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 import MainNavigation from '@/components/MainNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 

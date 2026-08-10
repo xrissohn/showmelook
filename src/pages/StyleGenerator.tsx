@@ -22,7 +22,7 @@ import { TierBadge } from '@/components/ui/tier-badge';
 import { TIER_CONFIG } from '@/lib/tierConfig';
 import { InteractiveProductTags } from '@/components/style/InteractiveProductTags';
 import { Skeleton } from '@/components/ui/skeleton';
-import showmelookLogo from '@/assets/showmelook-logo.webp';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookWatermarkFull from '@/assets/showmelook-watermark-full.png';
 import MainNavigation from '@/components/MainNavigation';
 import useEmblaCarousel from 'embla-carousel-react';

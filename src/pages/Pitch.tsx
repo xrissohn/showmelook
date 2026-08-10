@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 import screenLanding from '@/assets/pitch-screens/landing.png';
 import landingHero from '@/assets/pitch-screens/landing-hero.png';
-import logoMark from '@/assets/showmelook-logo.webp';
+import logoMark from '@/assets/showmelook-logo.png';
 import logoText from '@/assets/showmelook-text-logo.png';
 import screenOnboarding from '@/assets/pitch-screens/onboarding-profile.jpg';
 import screenStyle from '@/assets/pitch-screens/style-generator-left.png';

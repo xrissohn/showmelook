@@ -3,7 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown, Images, Heart, Gift, Users } from 'lucide-react';
 import { TIER_CONFIG, formatAmountKo } from '@/lib/tierConfig';
-import showmelookLogo from '@/assets/showmelook-logo.webp';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 import { SEOHead } from '@/components/SEOHead';
 
 // Use public path for Korean logo to enable preloading and improve LCP
