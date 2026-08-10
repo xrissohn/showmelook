@@ -13,6 +13,7 @@ import { getProductAffiliateDisclosure } from "@/lib/affiliateDisclosure";
 import { WatermarkOverlay } from "@/components/style/WatermarkOverlay";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAdsContentReady } from "@/hooks/useAdsContentReady";
+import LookEditorialNotes from "@/components/style/LookEditorialNotes";
 
 
 // 카카오톡 인앱 브라우저 감지
@@ -458,6 +459,12 @@ const SharedLook = () => {
             </div>
           )}
         </div>
+
+        <LookEditorialNotes
+          tags={look.tags}
+          prompt={look.prompt_used}
+          categories={(look.products ?? []).map((p) => p.category)}
+        />
 
         {/* Products */}
         {look.products && look.products.length > 0 && (
