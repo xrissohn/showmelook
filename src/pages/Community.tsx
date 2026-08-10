@@ -11,6 +11,7 @@ import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailMo
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Images, LayoutGrid } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAdsContentReady } from '@/hooks/useAdsContentReady';
 
 const Community = () => {
   const { t } = useLanguage();
@@ -18,6 +19,7 @@ const Community = () => {
   const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount } = useCommunityFeed();
   const { users, isLoading: galleryLoading } = useGalleryUsers();
   const lookIds = useMemo(() => looks.map(l => l.id), [looks]);
+  useAdsContentReady(!isLoading && looks.length > 0);
   const { likedLookIds, toggleLike } = useLookLikes(lookIds);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -78,6 +80,19 @@ const Community = () => {
             {activeTab === 'photos' && (
               <CommunityFilters sortBy={sortBy} onSortChange={setSortBy} />
             )}
+          </div>
+
+          {/* 섹션 소개 */}
+          <div className="mb-6 rounded-xl border border-border/60 bg-card/60 p-4">
+            <p className="font-korean text-sm leading-relaxed text-muted-foreground break-keep">
+              쇼미룩 사용자들이 직접 만들고 공개한 AI 착장을 모아둔 공간입니다.
+              사진 탭에서는 최신순·인기순으로 개별 룩을 볼 수 있고, 갤러리 탭에서는
+              사용자별 스타일을 이어서 살펴볼 수 있어요. 마음에 드는 룩을 누르면
+              사용된 상품 구성과 코디 포인트를 확인할 수 있습니다.
+            </p>
+            <p className="mt-2 font-korean text-sm text-muted-foreground break-keep">
+              코디 기준이 궁금하다면 <a href="/guide" className="text-primary underline">쇼미가 제안하는 스타일 가이드</a>를 먼저 읽어보세요.
+            </p>
           </div>
 
           {/* Tabs */}

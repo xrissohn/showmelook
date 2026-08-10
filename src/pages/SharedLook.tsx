@@ -12,6 +12,9 @@ import MainNavigation from "@/components/MainNavigation";
 import { getProductAffiliateDisclosure } from "@/lib/affiliateDisclosure";
 import { WatermarkOverlay } from "@/components/style/WatermarkOverlay";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAdsContentReady } from "@/hooks/useAdsContentReady";
+import LookEditorialNotes from "@/components/style/LookEditorialNotes";
+
 
 // 카카오톡 인앱 브라우저 감지
 const isKakaoInAppBrowser = (): boolean => {
@@ -112,6 +115,7 @@ const SharedLook = () => {
   const [error, setError] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
   const [showKakaoRedirectUI, setShowKakaoRedirectUI] = useState(false);
+  useAdsContentReady(!loading && !error && Boolean(look));
   const [isKakaoWebView, setIsKakaoWebView] = useState(false);
 
   // 카카오톡 인앱 브라우저 감지 및 외부 브라우저 열기 시도
@@ -455,6 +459,12 @@ const SharedLook = () => {
             </div>
           )}
         </div>
+
+        <LookEditorialNotes
+          tags={look.tags}
+          prompt={look.prompt_used}
+          categories={(look.products ?? []).map((p) => p.category)}
+        />
 
         {/* Products */}
         {look.products && look.products.length > 0 && (
