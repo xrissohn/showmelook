@@ -65,4 +65,18 @@ export const virtualFittingGuide: GuideArticle = {
   outro:
     "AI 가상피팅은 옷을 상상하는 시간을 줄여주는 도구예요. 몇 번만 익숙해지면 쇼핑 실패가 확 줄어듭니다.",
   hashtags: ["#AI가상피팅활용법", "#쇼미룩사용법", "#AI코디"],
+  lookPrompts: [
+    {
+      label: "가을 저녁 데이트",
+      prompt: "가을 저녁 데이트, 차분한 톤, 니트와 슬랙스",
+    },
+    {
+      label: "주말 브런치 캐주얼",
+      prompt: "주말 브런치, 캐주얼하고 밝은 톤, 데님 재킷",
+    },
+    {
+      label: "변수 하나만 바꾼 비교룩",
+      prompt: "같은 니트와 슬랙스 조합에서 아우터만 코트로 바꾼 차분한 룩",
+    },
+  ],
 };
