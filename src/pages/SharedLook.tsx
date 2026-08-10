@@ -182,8 +182,15 @@ const SharedLook = () => {
         
         const tagStr = lookData.tags?.slice(0, 3).map((t: string) => `#${t}`).join(" ") || "";
 
+        const titleCore = (lookData.tags?.slice(0, 2).join(", ")
+          || (lookData.prompt_used ? lookData.prompt_used.slice(0, 24) : ""))
+          .trim();
+        const dynamicTitle = titleCore
+          ? `${titleCore} 코디 | 쇼미룩 AI 스타일`
+          : "AI 스타일 코디 | 쇼미룩";
+
         updateMetaTags({
-          title: "ShowMeLook AI Style",
+          title: dynamicTitle.slice(0, 60),
           description: `${description} ${tagStr}`.trim(),
           image: imageUrl,
           url: `https://showmelook.com/look/${lookId}`,
