@@ -1,6 +1,7 @@
 export interface TranslationKeys {
   nav: {
     styleGallery: string;
+    styleGuide: string;
     pricing: string;
     install: string;
     mypage: string;
