@@ -102,6 +102,27 @@ const updateMetaTags = (metadata: {
 
   // Update description
   setMeta('meta[name="description"]', metadata.description);
+
+  // Self-referencing canonical for this look page
+  let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  canonical.href = metadata.url;
+};
+
+// Inject / remove Product JSON-LD for the shared look
+const LOOK_JSONLD_ID = 'shared-look-jsonld';
+const setLookJsonLd = (data: Record<string, unknown> | null) => {
+  document.getElementById(LOOK_JSONLD_ID)?.remove();
+  if (!data) return;
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.id = LOOK_JSONLD_ID;
+  script.textContent = JSON.stringify(data);
+  document.head.appendChild(script);
 };
 
 const SharedLook = () => {
