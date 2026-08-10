@@ -126,11 +126,13 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     description: '체형과 스타일 취향을 입력하면 더 정확한 AI 패션 추천을 받을 수 있어요.',
     canonical: `${BASE_URL}/profile-setup`,
     ogImage: DEFAULT_OG_IMAGE,
+    noindex: true,
   },
   notFound: {
     title: '페이지를 찾을 수 없습니다 | 쇼미룩',
     description: '요청하신 페이지를 찾을 수 없습니다. 홈으로 돌아가서 AI 패션 스타일링을 경험해보세요.',
     ogImage: DEFAULT_OG_IMAGE,
+    noindex: true,
   },
 };
 
