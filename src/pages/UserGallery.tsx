@@ -68,7 +68,29 @@ const UserGallery = () => {
 
   return (
     <>
-      <SEOHead custom={{ title: `${displayName} Gallery | ShowMeLook`, description: `${displayName}'s AI style gallery`, canonical: `https://showmelook.com/gallery/${userId}` }} />
+      <SEOHead
+        custom={{
+          title: `${displayName} - 스타일 갤러리 | ShowMeLook`,
+          description: `${displayName}님이 쇼미룩 AI로 만든 코디 갤러리입니다. 공개된 착장과 스타일 아이디어를 살펴보고 마음에 드는 룩을 직접 만들어 보세요.`,
+          canonical: `https://showmelook.com/gallery/${userId}`,
+        }}
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'ImageGallery',
+          name: `${displayName} - 스타일 갤러리`,
+          url: `https://showmelook.com/gallery/${userId}`,
+          author: { '@type': 'Person', name: displayName },
+          mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: filteredLooks.length,
+            itemListElement: filteredLooks.slice(0, 20).map((look, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              url: `https://showmelook.com/look/${look.id}`,
+            })),
+          },
+        }}
+      />
       <MainNavigation />
       <main className="min-h-screen bg-background pt-16 sm:pt-20">
         <div className="container mx-auto px-3 sm:px-6 py-6">
