@@ -3,6 +3,7 @@ import type { TranslationKeys } from './index';
 export const ko: TranslationKeys = {
   nav: {
     styleGallery: '스타일 갤러리',
+    styleGuide: '스타일 가이드',
     pricing: '요금제',
     install: '앱 설치',
     mypage: '마이페이지',
