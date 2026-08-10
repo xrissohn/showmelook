@@ -20,7 +20,7 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     title: '쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook',
     description: 'AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!',
     keywords: 'AI 패션, 스타일링, 패션 추천, 코디 추천, 룩북, 버추얼 피팅, 가상 피팅, showmelook, 쇼미룩, AI 스타일링, 패션 AI, 옷 추천',
-    canonical: BASE_URL,
+    canonical: `${BASE_URL}/`,
     ogImage: DEFAULT_OG_IMAGE,
   },
   style: {
