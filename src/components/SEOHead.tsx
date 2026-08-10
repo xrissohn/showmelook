@@ -36,6 +36,11 @@ export const SEOHead = ({ pageKey, custom, jsonLd }: SEOHeadProps) => {
       {seo.title && <meta name="twitter:title" content={seo.title} />}
       {seo.description && <meta name="twitter:description" content={seo.description} />}
       {seo.ogImage && <meta name="twitter:image" content={seo.ogImage} />}
+
+      {/* Structured data */}
+      {jsonLd && (
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      )}
     </Helmet>
   );
 };
