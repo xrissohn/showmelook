@@ -35,19 +35,21 @@
     <!-- Preload critical font to break chain -->
     <link rel="preload" href="https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff" as="font" type="font/woff" crossorigin />
     
-    <!-- Service worker kill-switch, inline so it runs even if the app bundle fails to load -->
+    <!-- Service worker recovery, inline so it runs even if the app bundle fails to load -->
     <script>
       (function () {
         try {
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function (regs) {
-              regs.forEach(function (r) { r.unregister(); });
+              return Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }).then(function () {
+              if (!navigator.serviceWorker.controller) return;
+              var key = '__sw_recovery_reloaded__';
+              if (!sessionStorage.getItem(key)) {
+                sessionStorage.setItem(key, '1');
+                location.reload();
+              }
             }).catch(function () {});
-            if (window.caches) {
-              caches.keys().then(function (keys) {
-                keys.forEach(function (k) { caches.delete(k); });
-              }).catch(function () {});
-            }
           }
         } catch (e) {}
       })();

@@ -50,26 +50,7 @@ const AppUpdateNotifier = () => {
       showUpdateToast(reload);
     };
 
-    // 1) Service worker based detection
-    let registration: ServiceWorkerRegistration | undefined;
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistration().then((reg) => {
-        if (!reg) return;
-        registration = reg;
-        if (reg.waiting) notify();
-        reg.addEventListener("updatefound", () => {
-          const installing = reg.installing;
-          if (!installing) return;
-          installing.addEventListener("statechange", () => {
-            if (installing.state === "installed" && navigator.serviceWorker.controller) {
-              notify();
-            }
-          });
-        });
-      });
-    }
-
-    // 2) Build signature polling (works even without a service worker)
+    // Build signature polling works without a service worker.
     const checkBuild = async () => {
       try {
         const res = await fetch(`/index.html?_=${Date.now()}`, { cache: "no-store" });
@@ -84,7 +65,6 @@ const AppUpdateNotifier = () => {
       } catch {
         /* offline or blocked — ignore */
       }
-      registration?.update().catch(() => undefined);
     };
 
     checkBuild();

@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
-import { VitePWA } from "vite-plugin-pwa";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/supabase/vite";
 
 
@@ -16,7 +15,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mcpPlugin(),
     mode === "development" && componentTagger(),
-    VitePWA({
+    /* PWA generation disabled while the former Workbox worker is retired. */ false && VitePWA({
       registerType: "autoUpdate",
       injectRegister: null, // Defer SW registration to avoid render-blocking
       devOptions: {
