@@ -102,6 +102,27 @@ const updateMetaTags = (metadata: {
 
   // Update description
   setMeta('meta[name="description"]', metadata.description);
+
+  // Self-referencing canonical for this look page
+  let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+  if (!canonical) {
+    canonical = document.createElement('link');
+    canonical.rel = 'canonical';
+    document.head.appendChild(canonical);
+  }
+  canonical.href = metadata.url;
+};
+
+// Inject / remove Product JSON-LD for the shared look
+const LOOK_JSONLD_ID = 'shared-look-jsonld';
+const setLookJsonLd = (data: Record<string, unknown> | null) => {
+  document.getElementById(LOOK_JSONLD_ID)?.remove();
+  if (!data) return;
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.id = LOOK_JSONLD_ID;
+  script.textContent = JSON.stringify(data);
+  document.head.appendChild(script);
 };
 
 const SharedLook = () => {
@@ -182,8 +203,15 @@ const SharedLook = () => {
         
         const tagStr = lookData.tags?.slice(0, 3).map((t: string) => `#${t}`).join(" ") || "";
 
+        const titleCore = (lookData.tags?.slice(0, 2).join(", ")
+          || (lookData.prompt_used ? lookData.prompt_used.slice(0, 24) : ""))
+          .trim();
+        const dynamicTitle = titleCore
+          ? `${titleCore} 코디 | 쇼미룩 AI 스타일`
+          : "AI 스타일 코디 | 쇼미룩";
+
         updateMetaTags({
-          title: "ShowMeLook AI Style",
+          title: dynamicTitle.slice(0, 60),
           description: `${description} ${tagStr}`.trim(),
           image: imageUrl,
           url: `https://showmelook.com/look/${lookId}`,
@@ -225,6 +253,35 @@ const SharedLook = () => {
           image_url: imageUrl,
           products,
         } as LookData);
+
+        setLookJsonLd({
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: dynamicTitle,
+          url: `https://showmelook.com/look/${lookId}`,
+          numberOfItems: products.length,
+          itemListElement: products.map((p, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            item: {
+              '@type': 'Product',
+              name: p.name,
+              image: p.image_url || imageUrl,
+              url: `https://showmelook.com/look/${lookId}`,
+              ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
+              ...(p.price
+                ? {
+                    offers: {
+                      '@type': 'Offer',
+                      price: p.price,
+                      priceCurrency: 'KRW',
+                      availability: 'https://schema.org/InStock',
+                    },
+                  }
+                : {}),
+            },
+          })),
+        });
       } catch (e) {
         console.error("Error fetching look:", e);
         setError(t('sharedLook.styleNotFound'));
@@ -238,6 +295,7 @@ const SharedLook = () => {
     // Cleanup: restore original meta tags on unmount
     return () => {
       document.title = "ShowMeLook - AI Fashion Styling";
+      setLookJsonLd(null);
     };
   }, [lookId, t]);
 
@@ -427,7 +485,7 @@ const SharedLook = () => {
         <div className="rounded-2xl overflow-hidden shadow-xl mb-4 relative">
           <img
             src={look.image_url}
-            alt="AI Generated Style"
+            alt="AI가 완성한 전신 코디 착장"
             className="w-full object-contain bg-muted"
           />
           {/* 무료 플랜 워터마크 - 공유 페이지에서는 항상 표시 */}

@@ -62,7 +62,25 @@ const Community = () => {
 
   return (
     <>
-      <SEOHead pageKey="community" />
+      <SEOHead
+        pageKey="community"
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'CollectionPage',
+          name: '쇼미룩 커뮤니티 스타일 갤러리',
+          url: 'https://showmelook.com/community',
+          description: '쇼미룩 사용자들이 AI로 만든 코디를 공유하는 공개 스타일 갤러리입니다.',
+          mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: looks.length,
+            itemListElement: looks.slice(0, 20).map((look, i) => ({
+              '@type': 'ListItem',
+              position: i + 1,
+              url: `https://showmelook.com/look/${look.id}`,
+            })),
+          },
+        }}
+      />
       <MainNavigation />
       <main className="min-h-screen bg-background pt-16 sm:pt-20">
         <div className="container mx-auto px-3 sm:px-6 py-6">

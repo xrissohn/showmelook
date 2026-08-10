@@ -313,7 +313,7 @@ export function Cafe24TenantManager() {
                         </style>
                       </head>
                       <body>
-                        <h1>🛍️ ShowMeLook 카페24 위젯 연동 가이드</h1>
+                        <h2>🛍️ ShowMeLook 카페24 위젯 연동 가이드</h2>
                         
                         <h2>1. 개요</h2>
                         <p>ShowMeLook 가상피팅 위젯을 카페24 쇼핑몰에 설치하여 고객에게 AI 기반 가상피팅 서비스를 제공할 수 있습니다.</p>

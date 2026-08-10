@@ -299,13 +299,13 @@ export const LookDetailModal = ({
       onClick={() => !showDeleteConfirm && !isEditingMemo && onClose()}
     >
       {/* Close button */}
-      <button className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors" onClick={onClose}>
+      <button aria-label="상세 보기 닫기" className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center hover:bg-white/20 transition-colors" onClick={onClose}>
         <X className="w-6 h-6 text-white" />
       </button>
 
       {/* Delete button - owner only */}
       {isOwner && onDelete && (
-        <button className="absolute top-4 left-4 z-10 w-12 h-12 rounded-full bg-red-500/20 backdrop-blur-sm flex items-center justify-center hover:bg-red-500/40 transition-colors"
+        <button aria-label="이 스타일 삭제" className="absolute top-4 left-4 z-10 w-12 h-12 rounded-full bg-red-500/20 backdrop-blur-sm flex items-center justify-center hover:bg-red-500/40 transition-colors"
           onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); }}>
           <Trash2 className="w-5 h-5 text-red-400" />
         </button>
@@ -313,13 +313,13 @@ export const LookDetailModal = ({
 
       {/* Nav buttons - desktop */}
       {hasPrevious && (
-        <button className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
+        <button aria-label="이전 스타일 보기" className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
           onClick={(e) => { e.stopPropagation(); onPrevious?.(); }}>
           <ChevronLeft className="w-6 h-6 text-white" />
         </button>
       )}
       {hasNext && (
-        <button className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
+        <button aria-label="다음 스타일 보기" className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm items-center justify-center hover:bg-white/20 transition-colors hidden sm:flex"
           onClick={(e) => { e.stopPropagation(); onNext?.(); }}>
           <ChevronRight className="w-6 h-6 text-white" />
         </button>
@@ -349,7 +349,7 @@ export const LookDetailModal = ({
           >
             {/* Front - Image with product tags */}
             <div className="backface-hidden relative w-full h-full flex items-center justify-center bg-black/40 rounded-lg overflow-hidden shadow-2xl">
-              <img src={look.image_url} alt="AI가 생성한 패션 코디 룩 이미지" className="w-full h-full object-contain select-none" draggable={false} />
+              <img src={look.image_url} alt="AI가 완성한 전신 코디 착장" className="w-full h-full object-contain select-none" draggable={false} />
 
               <ModalWatermarkOverlay show={hasWatermark} />
 
