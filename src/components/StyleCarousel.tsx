@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
 // Style images - All optimized small WebP images from /public for LCP
-// Real WebP, ~10-30KB each (previously PNGs mislabeled as .webp at ~1MB)
+// Optimized progressive JPEGs (~25-40KB each) for max browser compatibility
 const minimalistMale = '/carousel/minimalist-male-opt.jpg';
 const minimalistFemale = '/carousel/minimalist-female-opt.jpg';
 const streetMale = '/carousel/street-male-opt.jpg';
