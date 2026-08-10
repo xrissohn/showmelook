@@ -48,20 +48,4 @@ window.addEventListener('error', (event) => {
   }
 });
 
-// Cache kill-switch: remove any previously registered service worker and its
-// caches so returning visitors always get the latest deployed content.
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.getRegistrations()
-      .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-      .catch(() => undefined)
-      .finally(() => {
-        if ('caches' in window) {
-          caches.keys()
-            .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
-            .catch(() => undefined);
-        }
-      });
-  });
-}
 
