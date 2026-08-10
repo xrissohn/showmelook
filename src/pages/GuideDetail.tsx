@@ -55,7 +55,8 @@ const GuideDetail = () => {
         <script type="application/ld+json">{JSON.stringify(breadcrumbJsonLd)}</script>
       </Helmet>
 
-      <main className="min-h-screen bg-background text-foreground">
+      <MainNavigation />
+      <main className="min-h-screen bg-background text-foreground pt-16 sm:pt-20">
         <article className="mx-auto max-w-3xl px-5 py-8 md:py-12">
           <nav className="mb-6 text-sm text-muted-foreground">
             <Link to="/guide" className="inline-flex items-center gap-1 hover:text-foreground">

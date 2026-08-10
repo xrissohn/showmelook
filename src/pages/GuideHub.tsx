@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight, Clock } from "lucide-react";
+import MainNavigation from "@/components/MainNavigation";
 import { GUIDES } from "@/content/guides";
 import ShomiTagFooter from "@/components/guide/ShomiTagFooter";
 import { useAdsContentReady } from "@/hooks/useAdsContentReady";
@@ -46,7 +47,8 @@ const GuideHub = () => {
         <script type="application/ld+json">{JSON.stringify(itemListJsonLd)}</script>
       </Helmet>
 
-      <main className="min-h-screen bg-background text-foreground">
+      <MainNavigation />
+      <main className="min-h-screen bg-background text-foreground pt-16 sm:pt-20">
         <div className="mx-auto max-w-5xl px-5 py-10 md:py-14">
           <header className="flex flex-col gap-6 md:flex-row md:items-center">
             <img
