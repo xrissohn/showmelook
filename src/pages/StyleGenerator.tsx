@@ -6334,6 +6334,7 @@ const StyleGenerator = () => {
                               title: newPublic ? '커뮤니티에 공개됨 🌐' : '비공개로 전환됨 🔒',
                               description: newPublic ? '스타일 갤러리에서 다른 사람들이 볼 수 있어요.' : '나만 볼 수 있는 비공개 상태입니다.',
                             });
+                            if (newPublic) void claimGalleryPublicCredit(generatedLookId);
                           }
                         }}
                         className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-korean transition-all ${
@@ -6346,6 +6347,12 @@ const StyleGenerator = () => {
                         {generatedLookIsPublic ? '커뮤니티 공개 중' : '비공개 (커뮤니티에 공개하기)'}
                       </button>
                     )}
+                    {generatedLookId && !generatedLookIsPublic && (
+                      <p className="text-[11px] sm:text-xs text-primary/80 font-korean text-center max-w-xs">
+                        🎁 {GALLERY_PUBLIC_CREDIT_TEXT}
+                      </p>
+                    )}
+
                     <Button
                       variant="outline"
                       size="sm"
