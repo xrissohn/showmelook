@@ -18,6 +18,7 @@ import { LazyImage } from '@/components/LazyImage';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { useLookLikes } from '@/hooks/useLookLikes';
 import { useLanguage } from '@/contexts/LanguageContext';
+import LandingContentSections from '@/components/landing/LandingContentSections';
 
 // Scroll animated section wrapper
 const ScrollSection = ({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) => {
@@ -852,6 +853,9 @@ const Landing = () => {
         </div>
       </ScrollSection>
 
+
+      {/* 에디토리얼 콘텐츠: 사용법 · 가이드 · FAQ */}
+      <LandingContentSections />
 
       {/* CTA Section */}
       <CTASection handleGetStarted={handleGetStarted} />
