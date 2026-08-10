@@ -614,6 +614,7 @@ export const ko: TranslationKeys = {
     adLabel: '광고',
   },
   styleGen: {
+    pageTitle: 'AI 스타일 생성기',
     settingsTitle: '스타일 설정',
     entered: '입력됨',
     describeStyle: '원하는 스타일 설명',

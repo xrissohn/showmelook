@@ -614,6 +614,7 @@ export const en: TranslationKeys = {
     adLabel: 'Ad',
   },
   styleGen: {
+    pageTitle: 'AI Style Generator',
     settingsTitle: 'Style Settings',
     entered: 'Entered',
     describeStyle: 'Describe Your Style',
