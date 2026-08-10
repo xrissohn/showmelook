@@ -485,7 +485,7 @@ const SharedLook = () => {
         <div className="rounded-2xl overflow-hidden shadow-xl mb-4 relative">
           <img
             src={look.image_url}
-            alt="AI Generated Style"
+            alt="AI가 완성한 전신 코디 착장"
             className="w-full object-contain bg-muted"
           />
           {/* 무료 플랜 워터마크 - 공유 페이지에서는 항상 표시 */}
