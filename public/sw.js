@@ -3,18 +3,24 @@
 // HTML/assets. Browsers re-fetch this file on navigation, so shipping this
 // version makes those clients drop every cache and reload with fresh content.
 
-self.addEventListener('install', () => {
-  self.skipWaiting();
+// skipWaiting: activate this worker immediately, without waiting for old tabs to close.
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
-      await self.registration.unregister();
-      const clientList = await self.clients.matchAll({ type: 'window' });
-      clientList.forEach((client) => client.navigate(client.url));
+      try {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+        // clientsClaim: take control of already-open pages right away.
+        await self.clients.claim();
+        const clientList = await self.clients.matchAll({ type: 'window' });
+        await Promise.allSettled(clientList.map((client) => client.navigate(client.url)));
+      } finally {
+        await self.registration.unregister();
+      }
     })()
   );
 });
