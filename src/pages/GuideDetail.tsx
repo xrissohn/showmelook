@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Check, Clock, Sparkles, Wand2 } from "lucide-react";
@@ -14,6 +15,10 @@ const GuideDetail = () => {
   const { slug } = useParams();
   const guide = getGuideBySlug(slug);
   useAdsContentReady(Boolean(guide));
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [slug]);
 
   if (!guide) return <Navigate to="/guide" replace />;
 
