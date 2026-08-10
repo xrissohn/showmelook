@@ -43,6 +43,8 @@ import { MobilePurchaseCarousel } from '@/components/style/MobilePurchaseCarouse
 import { WatermarkOverlay, GalleryWatermarkOverlay, ModalWatermarkOverlay } from '@/components/style/WatermarkOverlay';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { SEOHead } from '@/components/SEOHead';
+import { claimGalleryPublicCredit, GALLERY_PUBLIC_CREDIT_TEXT } from '@/lib/galleryReward';
+
 interface StyleTrend {
   id: string;
   name: string;
