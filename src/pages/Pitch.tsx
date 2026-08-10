@@ -1771,9 +1771,9 @@ const Pitch = () => {
           </Button>
         </div>
       </header>
+      )}
 
       <h1 className="sr-only">쇼미룩 투자 제안 피치덱 — AI 가상피팅 커머스 플랫폼</h1>
-      )}
 
       {/* 슬라이드 컨텐츠 */}
       <main
