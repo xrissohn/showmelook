@@ -3,6 +3,7 @@ import type { TranslationKeys } from './index';
 export const en: TranslationKeys = {
   nav: {
     styleGallery: 'Style Gallery',
+    styleGuide: 'Style Guide',
     pricing: 'Pricing',
     install: 'Install App',
     mypage: 'My Page',

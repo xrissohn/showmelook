@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowRight, Clock } from "lucide-react";
@@ -11,6 +12,10 @@ const BASE_URL = "https://showmelook.com";
 
 const GuideHub = () => {
   useAdsContentReady(GUIDES.length > 0);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
 
   const itemListJsonLd = {
     "@context": "https://schema.org",
