@@ -35,8 +35,23 @@
     <!-- Preload critical font to break chain -->
     <link rel="preload" href="https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2105_2@1.0/Cafe24Ssurround.woff" as="font" type="font/woff" crossorigin />
     
-    <!-- Preload critical CSS to reduce render-blocking -->
-    <link rel="preload" href="/src/index.css" as="style" />
+    <!-- Service worker kill-switch, inline so it runs even if the app bundle fails to load -->
+    <script>
+      (function () {
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (regs) {
+              regs.forEach(function (r) { r.unregister(); });
+            }).catch(function () {});
+            if (window.caches) {
+              caches.keys().then(function (keys) {
+                keys.forEach(function (k) { caches.delete(k); });
+              }).catch(function () {});
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     
     <!-- Preload LCP image - Korean logo (critical for LCP) -->
     <link rel="preload" href="/showmelook-korean-logo.png" as="image" type="image/png" fetchpriority="high" />
