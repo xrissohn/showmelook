@@ -1,3 +1,4 @@
+import { SEOHead } from '@/components/SEOHead';
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -226,6 +227,7 @@ const SurveyShomi = () => {
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
+      <SEOHead pageKey="survey" />
       <div className="max-w-3xl mx-auto">
         <header className="text-center mb-8">
           <div className="flex justify-center mb-4">

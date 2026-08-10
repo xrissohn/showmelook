@@ -1,3 +1,4 @@
+import { SEOHead } from '@/components/SEOHead';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -202,6 +203,7 @@ const ProfileEdit = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      <SEOHead pageKey="profileEdit" />
       <MainNavigation 
         showBackButton
         rightContent={
