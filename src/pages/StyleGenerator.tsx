@@ -2961,7 +2961,10 @@ const StyleGenerator = () => {
   
   // 주관식 스타일 입력 모드 상태
   const [inputMode, setInputMode] = useState<'trend' | 'custom'>('custom'); // 기본값을 custom으로 변경
-  const [customStylePrompt, setCustomStylePrompt] = useState('');
+  const [customStylePrompt, setCustomStylePrompt] = useState(() => {
+    const p = searchParams.get('prompt');
+    return p ? p.slice(0, 300) : '';
+  });
   const [styleImagePreview, setStyleImagePreview] = useState<string | null>(null);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
   const styleImageInputRef = useRef<HTMLInputElement>(null);
