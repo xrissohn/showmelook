@@ -2,16 +2,12 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import shomiHero from "@/assets/shomi-channel-hero.png.asset.json";
+import { SHOMI_CHANNELS } from "@/lib/shomiChannels";
 
 const STORAGE_KEY = "shomi_channel_popup_dismissed_at";
 const HIDE_DAYS = 7;
 
-const CHANNELS = {
-  instagram: "https://www.instagram.com/showmi.look",
-  youtube: "https://www.youtube.com/@showmi_tv",
-  tiktok: "https://www.tiktok.com/@showmi.look",
-  threads: "https://www.threads.net/@showmi.look",
-};
+const CHANNELS = SHOMI_CHANNELS;
 
 // Brand SVG icons (official monograms)
 const InstagramIcon = ({ className }: { className?: string }) => (
