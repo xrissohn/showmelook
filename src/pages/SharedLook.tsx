@@ -12,6 +12,8 @@ import MainNavigation from "@/components/MainNavigation";
 import { getProductAffiliateDisclosure } from "@/lib/affiliateDisclosure";
 import { WatermarkOverlay } from "@/components/style/WatermarkOverlay";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAdsContentReady } from "@/hooks/useAdsContentReady";
+
 
 // 카카오톡 인앱 브라우저 감지
 const isKakaoInAppBrowser = (): boolean => {
