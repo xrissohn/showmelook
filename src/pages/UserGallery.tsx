@@ -109,24 +109,30 @@ const UserGallery = () => {
           </div>
 
           {isOwner && (
-            <div className="flex flex-wrap items-center gap-3 mb-4">
-              <Tabs value={filter} onValueChange={(v) => setFilter(v as VisibilityFilter)}>
-                <TabsList>
-                  <TabsTrigger value="all" className="font-korean text-xs">{t('community.byPhoto')}</TabsTrigger>
-                  <TabsTrigger value="public" className="font-korean text-xs">{t('community.popular')}</TabsTrigger>
-                  <TabsTrigger value="private" className="font-korean text-xs">Private</TabsTrigger>
-                </TabsList>
-              </Tabs>
-              <div className="flex gap-2 ml-auto">
-                <Button variant="outline" size="sm" onClick={() => bulkToggle(true)} className="font-korean text-xs rounded-full">
-                  <Globe className="w-3.5 h-3.5 mr-1" />Public All
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => bulkToggle(false)} className="font-korean text-xs rounded-full">
-                  <Lock className="w-3.5 h-3.5 mr-1" />Private All
-                </Button>
+            <>
+              <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs sm:text-sm text-foreground/80 font-korean">
+                🎁 {GALLERY_PUBLIC_CREDIT_TEXT}
               </div>
-            </div>
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <Tabs value={filter} onValueChange={(v) => setFilter(v as VisibilityFilter)}>
+                  <TabsList>
+                    <TabsTrigger value="all" className="font-korean text-xs">{t('community.byPhoto')}</TabsTrigger>
+                    <TabsTrigger value="public" className="font-korean text-xs">{t('community.popular')}</TabsTrigger>
+                    <TabsTrigger value="private" className="font-korean text-xs">Private</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <div className="flex gap-2 ml-auto">
+                  <Button variant="outline" size="sm" onClick={() => bulkToggle(true)} className="font-korean text-xs rounded-full">
+                    <Globe className="w-3.5 h-3.5 mr-1" />Public All
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => bulkToggle(false)} className="font-korean text-xs rounded-full">
+                    <Lock className="w-3.5 h-3.5 mr-1" />Private All
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
+
 
           {filteredLooks.length === 0 ? (
             <div className="text-center py-20">
