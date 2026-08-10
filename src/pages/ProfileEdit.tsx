@@ -202,6 +202,7 @@ const ProfileEdit = () => {
 
   return (
     <div className="min-h-screen bg-gradient-hero">
+      <SEOHead pageKey="profileEdit" />
       <MainNavigation 
         showBackButton
         rightContent={

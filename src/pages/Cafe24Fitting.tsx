@@ -91,6 +91,7 @@ export default function Cafe24Fitting() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 flex flex-col">
+      <SEOHead pageKey="cafe24Fitting" />
       {/* 헤더 */}
       <header className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">

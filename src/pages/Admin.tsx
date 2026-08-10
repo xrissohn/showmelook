@@ -1288,6 +1288,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background p-6">
+      <SEOHead pageKey="admin" />
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">

@@ -23,6 +23,7 @@ export default function Connect() {
           name="description"
           content="Connect ShowMeLook to ChatGPT or Claude so your AI assistant can search products and browse public looks."
         />
+        <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       <main className="min-h-screen bg-background text-foreground">
         <div className="max-w-3xl mx-auto px-6 py-12 space-y-10">
