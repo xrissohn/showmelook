@@ -5519,9 +5519,9 @@ const StyleGenerator = () => {
                       </div>
                       
                       {/* 타이틀 */}
-                      <h3 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-3 sm:mb-4 leading-tight tracking-tight">
+                      <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground mb-3 sm:mb-4 leading-tight tracking-tight">
                         {customResult.styleConcept}
-                      </h3>
+                      </h2>
 
                       {/* 📷 평가 모드: 구조화된 전용 UI */}
                       {customResult.mode === 'evaluation' ? (
