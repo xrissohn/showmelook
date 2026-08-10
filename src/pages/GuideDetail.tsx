@@ -1,6 +1,7 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { ArrowLeft, Check, Clock, Sparkles } from "lucide-react";
+import MainNavigation from "@/components/MainNavigation";
 import { getGuideBySlug, getRelatedGuides } from "@/content/guides";
 import ShomiTagFooter from "@/components/guide/ShomiTagFooter";
 import { useAdsContentReady } from "@/hooks/useAdsContentReady";
