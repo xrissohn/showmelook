@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ExternalLink, Copy, Check, Smartphone, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { detectInAppBrowser, getExternalBrowserUrl, copyToClipboard, InAppBrowserInfo } from '@/lib/inAppBrowserDetector';
-import showmelookLogo from '@/assets/showmelook-logo.webp';
+import showmelookLogo from '@/assets/showmelook-logo.png';
 
 /**
  * 인앱 브라우저에서 접속 시 외부 브라우저로 열기를 안내하는 전체화면 컴포넌트
