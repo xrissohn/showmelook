@@ -12,6 +12,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Images, Heart, Globe, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAdsContentReady } from '@/hooks/useAdsContentReady';
+import { GALLERY_PUBLIC_CREDIT_TEXT } from '@/lib/galleryReward';
+
 
 const UserGallery = () => {
   const { t, language } = useLanguage();
