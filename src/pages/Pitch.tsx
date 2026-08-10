@@ -1816,6 +1816,7 @@ const Pitch = () => {
             variant="ghost"
             size="sm"
             onClick={prevSlide}
+            aria-label="이전 슬라이드"
             disabled={currentSlide === 0}
             className="gap-1 px-2 md:px-4 shrink-0"
           >
@@ -1829,6 +1830,8 @@ const Pitch = () => {
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
+                aria-label={`슬라이드 ${index + 1}로 이동`}
+                aria-current={index === currentSlide}
                 className="p-1"
               >
                 <Circle
@@ -1850,6 +1853,7 @@ const Pitch = () => {
             variant="ghost"
             size="sm"
             onClick={nextSlide}
+            aria-label="다음 슬라이드"
             disabled={currentSlide === slides.length - 1}
             className="gap-1 px-2 md:px-4 shrink-0"
           >
