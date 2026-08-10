@@ -64,6 +64,8 @@ const LookCard = ({ look, isLiked, onToggleLike, onClick }: LookCardProps) => {
       {/* Like button */}
       <button
         onClick={handleLike}
+        aria-label={isLiked ? '좋아요 취소' : '이 룩에 좋아요'}
+        aria-pressed={isLiked}
         className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1.5 transition-colors hover:bg-black/60"
       >
         <Heart

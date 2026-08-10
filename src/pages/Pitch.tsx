@@ -1773,6 +1773,8 @@ const Pitch = () => {
       </header>
       )}
 
+      <h1 className="sr-only">쇼미룩 투자 제안 피치덱 — AI 가상피팅 커머스 플랫폼</h1>
+
       {/* 슬라이드 컨텐츠 */}
       <main
         className={cn('flex-1 flex flex-col items-center justify-center touch-pan-y', isCaptureMode ? 'p-0' : 'px-6 py-20 md:px-12')}
@@ -1814,6 +1816,7 @@ const Pitch = () => {
             variant="ghost"
             size="sm"
             onClick={prevSlide}
+            aria-label="이전 슬라이드"
             disabled={currentSlide === 0}
             className="gap-1 px-2 md:px-4 shrink-0"
           >
@@ -1827,6 +1830,8 @@ const Pitch = () => {
               <button
                 key={index}
                 onClick={() => goToSlide(index)}
+                aria-label={`슬라이드 ${index + 1}로 이동`}
+                aria-current={index === currentSlide}
                 className="p-1"
               >
                 <Circle
@@ -1848,6 +1853,7 @@ const Pitch = () => {
             variant="ghost"
             size="sm"
             onClick={nextSlide}
+            aria-label="다음 슬라이드"
             disabled={currentSlide === slides.length - 1}
             className="gap-1 px-2 md:px-4 shrink-0"
           >
