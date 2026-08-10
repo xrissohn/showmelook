@@ -51,6 +51,43 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     keywords: '쇼미룩 로그인, 회원가입, AI 패션 시작하기',
     canonical: `${BASE_URL}/auth`,
     ogImage: DEFAULT_OG_IMAGE,
+    noindex: true,
+  },
+  admin: {
+    title: '관리자 | 쇼미룩',
+    description: '쇼미룩 내부 관리자 페이지입니다.',
+    canonical: `${BASE_URL}/admin`,
+    noindex: true,
+  },
+  profileEdit: {
+    title: '프로필 수정 | 쇼미룩',
+    description: '내 프로필 정보를 수정합니다.',
+    canonical: `${BASE_URL}/profile-edit`,
+    noindex: true,
+  },
+  history: {
+    title: '내 생성 히스토리 | 쇼미룩',
+    description: '이전에 생성한 룩 갤러리를 날짜별로 모아 다시 열람할 수 있어요.',
+    canonical: `${BASE_URL}/history`,
+    noindex: true,
+  },
+  cafe24Fitting: {
+    title: '가상 피팅 | 쇼미룩',
+    description: '카페24 연동 가상 피팅 위젯 페이지입니다.',
+    canonical: `${BASE_URL}/cafe24-fitting`,
+    noindex: true,
+  },
+  survey: {
+    title: '쇼미 설문 | 쇼미룩',
+    description: '쇼미룩 설문 응답 페이지입니다.',
+    canonical: `${BASE_URL}/survey/shomi`,
+    noindex: true,
+  },
+  connect: {
+    title: 'Connect ShowMeLook to your AI assistant',
+    description: 'Connect ShowMeLook to ChatGPT or Claude so your AI assistant can search products and browse public looks.',
+    canonical: `${BASE_URL}/connect`,
+    noindex: true,
   },
   privacy: {
     title: '개인정보처리방침 | 쇼미룩',
