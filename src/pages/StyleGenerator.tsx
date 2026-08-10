@@ -1886,7 +1886,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         title: newPublic ? '갤러리에 공개됨' : '비공개로 전환',
         description: newPublic ? '이 룩이 스타일 갤러리에 공개됩니다.' : '이 룩이 비공개로 전환되었습니다.',
       });
+      if (newPublic) void claimGalleryPublicCredit(look.id);
     }
+
   };
 
   if (myLooks.length === 0) {
