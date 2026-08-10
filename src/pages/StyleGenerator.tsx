@@ -5219,6 +5219,7 @@ const StyleGenerator = () => {
       />
 
       <div className="w-full max-w-full overflow-x-hidden px-4 sm:px-6 pt-16 sm:pt-20 pb-24 lg:pb-8 mx-auto" style={{ maxWidth: '100vw' }}>
+        <h1 className="sr-only">{t('styleGen.pageTitle') || 'AI 스타일 생성기'}</h1>
         {activeTab === 'generate' ? (
           <div className="grid lg:grid-cols-[1fr_1fr] gap-4 sm:gap-6 lg:gap-8 w-full max-w-7xl mx-auto">
             {/* Left: Selection - order-2 on mobile, order-1 on desktop */}
