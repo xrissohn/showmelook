@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Images, Heart, Globe, Lock } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAdsContentReady } from '@/hooks/useAdsContentReady';
 
 const UserGallery = () => {
   const { t, language } = useLanguage();

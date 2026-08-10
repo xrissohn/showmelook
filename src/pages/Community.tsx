@@ -11,6 +11,7 @@ import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailMo
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Images, LayoutGrid } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAdsContentReady } from '@/hooks/useAdsContentReady';
 
 const Community = () => {
   const { t } = useLanguage();
@@ -18,6 +19,7 @@ const Community = () => {
   const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount } = useCommunityFeed();
   const { users, isLoading: galleryLoading } = useGalleryUsers();
   const lookIds = useMemo(() => looks.map(l => l.id), [looks]);
+  useAdsContentReady(!isLoading && looks.length > 0);
   const { likedLookIds, toggleLike } = useLookLikes(lookIds);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
