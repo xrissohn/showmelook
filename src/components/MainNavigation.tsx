@@ -133,6 +133,17 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                   <Images className="w-4 h-4 mr-1" />
                   {t('nav.styleGallery')}
                 </Button>
+
+                {/* 스타일 가이드 */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => navigate('/guide')} 
+                  className="font-korean text-sm px-3"
+                >
+                  <BookOpen className="w-4 h-4 mr-1" />
+                  {t('nav.styleGuide')}
+                </Button>
                 
                 {/* 요금제 */}
                 <Button 
@@ -278,6 +289,13 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               {t('nav.styleGallery')}
                             </button>
                             <button
+                              onClick={() => handleNavigate('/guide')}
+                              className={getMenuItemClass('/guide')}
+                            >
+                              <BookOpen className={`w-5 h-5 ${isActive('/guide') ? 'text-primary' : 'text-muted-foreground'}`} />
+                              {t('nav.styleGuide')}
+                            </button>
+                            <button
                               onClick={() => handleNavigate('/cart')}
                               className={getMenuItemClass('/cart')}
                             >
@@ -323,6 +341,13 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                             >
                               <User className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-muted-foreground'}`} />
                               {t('nav.login')}
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/guide')}
+                              className={getMenuItemClass('/guide')}
+                            >
+                              <BookOpen className={`w-5 h-5 ${isActive('/guide') ? 'text-primary' : 'text-muted-foreground'}`} />
+                              {t('nav.styleGuide')}
                             </button>
                             <div className="my-2 mx-4 border-t border-border" />
                             <button
