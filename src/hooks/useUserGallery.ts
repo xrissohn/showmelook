@@ -124,6 +124,8 @@ export function useUserGallery(userId: string | undefined) {
       .from('generated_looks')
       .update({ is_public: newPublic })
       .eq('id', lookId);
+
+    if (newPublic) void claimGalleryPublicCredit(lookId);
   }, []);
 
   const bulkToggle = useCallback(async (makePublic: boolean) => {
@@ -140,7 +142,15 @@ export function useUserGallery(userId: string | undefined) {
       .from('generated_looks')
       .update({ is_public: makePublic })
       .in('id', ids);
+
+    if (makePublic) {
+      for (const id of ids) {
+        // eslint-disable-next-line no-await-in-loop
+        await claimGalleryPublicCredit(id);
+      }
+    }
   }, [data]);
+
 
   const filteredLooks = data?.looks.filter((l) => {
     if (filter === 'public') return l.is_public;
