@@ -6,7 +6,7 @@ import { getGuideBySlug, getRelatedGuides } from "@/content/guides";
 import ShomiTagFooter from "@/components/guide/ShomiTagFooter";
 import { useAdsContentReady } from "@/hooks/useAdsContentReady";
 import { Button } from "@/components/ui/button";
-import shomiHero from "@/assets/shomi-channel-hero.png.asset.json";
+import shomiProfile from "@/assets/shomi-face-profile.png.asset.json";
 
 const BASE_URL = "https://showmelook.com";
 
@@ -79,12 +79,12 @@ const GuideDetail = () => {
           </header>
 
           <section className="mt-6 flex gap-4 rounded-2xl border border-border bg-muted/40 p-5">
-            <img
-              src={shomiHero.url}
-              alt="쇼미룩 AI 모델 쇼미"
-              loading="lazy"
-              className="h-16 w-16 shrink-0 rounded-full object-cover"
-            />
+          <img
+            src={shomiProfile.url}
+            alt="쇼미룩 AI 모델 쇼미"
+            loading="lazy"
+            className="h-16 w-16 shrink-0 rounded-full object-cover"
+          />
             <p className="text-sm leading-relaxed text-foreground break-keep">
               {guide.intro}
             </p>
