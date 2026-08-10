@@ -253,6 +253,35 @@ const SharedLook = () => {
           image_url: imageUrl,
           products,
         } as LookData);
+
+        setLookJsonLd({
+          '@context': 'https://schema.org',
+          '@type': 'ItemList',
+          name: dynamicTitle,
+          url: `https://showmelook.com/look/${lookId}`,
+          numberOfItems: products.length,
+          itemListElement: products.map((p, i) => ({
+            '@type': 'ListItem',
+            position: i + 1,
+            item: {
+              '@type': 'Product',
+              name: p.name,
+              image: p.image_url || imageUrl,
+              url: `https://showmelook.com/look/${lookId}`,
+              ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
+              ...(p.price
+                ? {
+                    offers: {
+                      '@type': 'Offer',
+                      price: p.price,
+                      priceCurrency: 'KRW',
+                      availability: 'https://schema.org/InStock',
+                    },
+                  }
+                : {}),
+            },
+          })),
+        });
       } catch (e) {
         console.error("Error fetching look:", e);
         setError(t('sharedLook.styleNotFound'));
@@ -266,6 +295,7 @@ const SharedLook = () => {
     // Cleanup: restore original meta tags on unmount
     return () => {
       document.title = "ShowMeLook - AI Fashion Styling";
+      setLookJsonLd(null);
     };
   }, [lookId, t]);
 
