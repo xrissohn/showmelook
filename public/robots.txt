@@ -5,7 +5,7 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /auth?*
+Disallow: /auth
 Disallow: /cart
 Disallow: /mypage
 Disallow: /profile-setup
@@ -19,27 +19,49 @@ Disallow: /history
 # Google
 User-agent: Googlebot
 Allow: /
+Disallow: /api/
+Disallow: /auth
 Disallow: /cart
 Disallow: /mypage
 Disallow: /profile-setup
 Disallow: /profile-edit
 Disallow: /admin
+Disallow: /cafe24-fitting
+Disallow: /survey
+Disallow: /connect
+Disallow: /history
 Crawl-delay: 1
 
 # Naver
 User-agent: Yeti
 Allow: /
+Disallow: /api/
+Disallow: /auth
 Disallow: /cart
 Disallow: /mypage
+Disallow: /profile-setup
+Disallow: /profile-edit
 Disallow: /admin
+Disallow: /cafe24-fitting
+Disallow: /survey
+Disallow: /connect
+Disallow: /history
 Crawl-delay: 1
 
 # Daum
 User-agent: Daumoa
 Allow: /
+Disallow: /api/
+Disallow: /auth
 Disallow: /cart
 Disallow: /mypage
+Disallow: /profile-setup
+Disallow: /profile-edit
 Disallow: /admin
+Disallow: /cafe24-fitting
+Disallow: /survey
+Disallow: /connect
+Disallow: /history
 Crawl-delay: 1
 
 # Social Media Crawlers
