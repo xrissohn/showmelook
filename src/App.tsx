@@ -66,6 +66,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <AppUpdateNotifier />
             <BrowserRouter>
               <ShomiChannelPopup />
               <AdSenseLoader />
