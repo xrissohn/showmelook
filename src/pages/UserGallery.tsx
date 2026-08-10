@@ -17,6 +17,7 @@ const UserGallery = () => {
   const { t, language } = useLanguage();
   const { userId } = useParams<{ userId: string }>();
   const { data, isLoading, isOwner, filter, setFilter, filteredLooks, togglePublic, bulkToggle } = useUserGallery(userId);
+  useAdsContentReady(!isLoading && (filteredLooks?.length ?? 0) > 0);
 
   const lookIds = useMemo(() => filteredLooks.map((l) => l.id), [filteredLooks]);
   const { likedLookIds, toggleLike } = useLookLikes(lookIds);

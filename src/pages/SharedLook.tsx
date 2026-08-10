@@ -112,6 +112,7 @@ const SharedLook = () => {
   const [error, setError] = useState<string | null>(null);
   const [addedToCart, setAddedToCart] = useState<Set<string>>(new Set());
   const [showKakaoRedirectUI, setShowKakaoRedirectUI] = useState(false);
+  useAdsContentReady(!loading && !error && Boolean(look));
   const [isKakaoWebView, setIsKakaoWebView] = useState(false);
 
   // 카카오톡 인앱 브라우저 감지 및 외부 브라우저 열기 시도
