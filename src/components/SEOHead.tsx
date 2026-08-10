@@ -9,9 +9,11 @@ import { PageSEO, getPageSEO } from '@/lib/seoConfig';
 interface SEOHeadProps {
   pageKey?: string;
   custom?: Partial<PageSEO>;
+  /** Optional JSON-LD structured data injected into <head> */
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 }
 
-export const SEOHead = ({ pageKey, custom }: SEOHeadProps) => {
+export const SEOHead = ({ pageKey, custom, jsonLd }: SEOHeadProps) => {
   const baseSEO = pageKey ? getPageSEO(pageKey) : {};
   const seo = { ...baseSEO, ...custom };
 
