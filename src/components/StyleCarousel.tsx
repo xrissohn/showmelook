@@ -2,17 +2,17 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
 
 // Style images - All optimized small WebP images from /public for LCP
-// These are ~50KB each instead of 1MB+, served directly for instant discovery
-const minimalistMale = '/carousel/minimalist-male-sm.webp';
-const minimalistFemale = '/carousel/minimalist-female-sm.webp';
-const streetMale = '/carousel/street-male-sm.webp';
-const streetFemale = '/carousel/street-female-sm.webp';
-const classicMale = '/carousel/classic-male-sm.webp';
-const classicFemale = '/carousel/classic-female-sm.webp';
-const casualMale = '/carousel/casual-male-sm.webp';
-const casualFemale = '/carousel/casual-female-sm.webp';
-const sportyMale = '/carousel/sporty-male-sm.webp';
-const sportyFemale = '/carousel/sporty-female-sm.webp';
+// Real WebP, ~10-30KB each (previously PNGs mislabeled as .webp at ~1MB)
+const minimalistMale = '/carousel/minimalist-male-opt.webp';
+const minimalistFemale = '/carousel/minimalist-female-opt.webp';
+const streetMale = '/carousel/street-male-opt.webp';
+const streetFemale = '/carousel/street-female-opt.webp';
+const classicMale = '/carousel/classic-male-opt.webp';
+const classicFemale = '/carousel/classic-female-opt.webp';
+const casualMale = '/carousel/casual-male-opt.webp';
+const casualFemale = '/carousel/casual-female-opt.webp';
+const sportyMale = '/carousel/sporty-male-opt.webp';
+const sportyFemale = '/carousel/sporty-female-opt.webp';
 
 interface StyleData {
   title: string;
