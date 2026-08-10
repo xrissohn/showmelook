@@ -40,7 +40,7 @@ const AppUpdateNotifier = () => {
           .catch(() => undefined)
           .finally(() => window.location.reload());
       } else {
-        window.location.reload();
+        location.reload();
       }
     };
 
