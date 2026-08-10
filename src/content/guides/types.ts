@@ -18,4 +18,6 @@ export interface GuideArticle {
   checklist: string[];
   outro: string;
   hashtags: string[];
+  /** 쇼미가 제안하는 룩 프롬프트 (스타일 만들기에 자동 입력) */
+  lookPrompts?: { label: string; prompt: string }[];
 }

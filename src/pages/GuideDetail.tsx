@@ -1,6 +1,6 @@
 import { Link, useParams, Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
-import { ArrowLeft, Check, Clock, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, Clock, Sparkles, Wand2 } from "lucide-react";
 import MainNavigation from "@/components/MainNavigation";
 import { getGuideBySlug, getRelatedGuides } from "@/content/guides";
 import ShomiTagFooter from "@/components/guide/ShomiTagFooter";
@@ -141,9 +141,36 @@ const GuideDetail = () => {
             <p className="mt-4 text-sm leading-relaxed text-muted-foreground break-keep">
               {guide.outro}
             </p>
-            <Button asChild className="mt-5">
-              <Link to="/style">쇼미룩에서 이 룩 만들어보기</Link>
-            </Button>
+            {guide.lookPrompts?.length ? (
+              <div className="mt-6 space-y-3">
+                <p className="text-sm font-semibold break-keep">
+                  쇼미가 제안하는 룩 — 누르면 프롬프트가 자동 입력돼요
+                </p>
+                <div className="grid gap-2">
+                  {guide.lookPrompts.map((lp) => (
+                    <Link
+                      key={lp.prompt}
+                      to={`/style?prompt=${encodeURIComponent(lp.prompt)}`}
+                      className="group flex items-start gap-3 rounded-xl border border-border bg-background p-4 transition-colors hover:border-primary/50"
+                    >
+                      <Wand2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium break-keep">
+                          {lp.label}
+                        </span>
+                        <span className="mt-1 block text-sm text-muted-foreground break-keep">
+                          {lp.prompt}
+                        </span>
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <Button asChild className="mt-5">
+                <Link to="/style">쇼미룩에서 이 룩 만들어보기</Link>
+              </Button>
+            )}
           </section>
 
           {related.length > 0 && (
