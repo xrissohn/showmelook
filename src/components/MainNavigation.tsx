@@ -82,14 +82,14 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
           >
             <img 
               src={showmelookLogo} 
-              alt="쇼미룩 로고" 
+              alt="ShowMeLook 브랜드 심볼" 
               width={40}
               height={40}
               className="object-contain w-8 h-8 sm:w-10 sm:h-10" 
             />
             <img 
               src={showmelookKoreanLogo} 
-              alt="쇼미룩" 
+              alt="ShowMeLook 브랜드 워드마크" 
               width={90}
               height={90}
               className="object-contain -ml-2 sm:-ml-3 h-[60px] sm:h-[90px]" 
@@ -246,7 +246,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       <div className="p-4 border-b border-border">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <img src={showmelookLogo} alt="쇼미룩" width={32} height={32} className="w-8 h-8" />
+                            <img src={showmelookLogo} alt="ShowMeLook 브랜드 워드마크" width={32} height={32} className="w-8 h-8" />
                             <span className="font-korean text-lg font-semibold text-foreground">{t('nav.showmelook')}</span>
                           </div>
                           <button

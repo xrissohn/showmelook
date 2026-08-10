@@ -349,7 +349,7 @@ export const LookDetailModal = ({
           >
             {/* Front - Image with product tags */}
             <div className="backface-hidden relative w-full h-full flex items-center justify-center bg-black/40 rounded-lg overflow-hidden shadow-2xl">
-              <img src={look.image_url} alt="AI가 생성한 패션 코디 룩 이미지" className="w-full h-full object-contain select-none" draggable={false} />
+              <img src={look.image_url} alt="AI가 완성한 전신 코디 착장" className="w-full h-full object-contain select-none" draggable={false} />
 
               <ModalWatermarkOverlay show={hasWatermark} />
 

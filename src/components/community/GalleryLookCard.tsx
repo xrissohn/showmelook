@@ -46,7 +46,7 @@ const GalleryLookCard = ({
     >
       <LazyImage
         src={look.image_url}
-        alt="Gallery look"
+        alt="AI로 만든 패션 코디 착장 사진"
         className="w-full h-full object-cover"
         fallbackClassName="w-full h-full"
       />
