@@ -100,7 +100,7 @@ const UserGallery = () => {
               <AvatarFallback className="text-lg bg-primary/10 text-primary">{displayName.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground">{displayName}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground">{displayName} - 스타일 갤러리</h1>
               <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1"><Images className="w-4 h-4" />{data.publicCount}</span>
                 <span className="flex items-center gap-1"><Heart className="w-4 h-4" />{data.totalLikes}</span>
