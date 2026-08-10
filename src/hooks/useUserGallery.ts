@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { claimGalleryPublicCredit } from '@/lib/galleryReward';
+
 
 export interface GalleryLook {
   id: string;
