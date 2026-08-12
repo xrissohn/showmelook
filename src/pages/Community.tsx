@@ -102,6 +102,9 @@ const Community = () => {
 
           {/* 섹션 소개 */}
           <div className="mb-6 rounded-xl border border-border/60 bg-card/60 p-4">
+            <h2 className="mb-2 font-korean text-base font-semibold text-foreground break-keep">
+              스타일 갤러리는 이런 공간이에요
+            </h2>
             <p className="font-korean text-sm leading-relaxed text-muted-foreground break-keep">
               쇼미룩 사용자들이 직접 만들고 공개한 AI 착장을 모아둔 공간입니다.
               사진 탭에서는 최신순·인기순으로 개별 룩을 볼 수 있고, 갤러리 탭에서는
@@ -128,6 +131,9 @@ const Community = () => {
 
             {/* Photos tab */}
             <TabsContent value="photos">
+              <h2 className="mb-4 font-korean text-base font-semibold text-foreground break-keep">
+                사용자들이 공개한 최신 AI 착장
+              </h2>
               {isLoading && looks.length === 0 ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -170,6 +176,9 @@ const Community = () => {
 
             {/* Galleries tab */}
             <TabsContent value="galleries">
+              <h2 className="mb-4 font-korean text-base font-semibold text-foreground break-keep">
+                사용자별 스타일 갤러리
+              </h2>
               {galleryLoading ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />

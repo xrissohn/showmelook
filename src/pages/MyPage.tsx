@@ -186,6 +186,9 @@ const MyPage = () => {
       <MainNavigation showBackButton />
 
       <main className="container max-w-4xl mx-auto px-4 pt-20 sm:pt-24 pb-6 space-y-6">
+        <h1 className="font-korean text-xl sm:text-2xl font-bold text-foreground break-keep">
+          마이페이지 - 내 등급·크레딧·스타일 관리
+        </h1>
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-4">
           <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" onClick={() => navigate('/style?tab=mylooks')}>

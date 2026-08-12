@@ -5187,6 +5187,7 @@ const StyleGenerator = () => {
               size="sm" 
               onClick={() => navigate('/mypage?tab=likes')} 
               className="p-2"
+              aria-label="찜한 상품 보기"
             >
               <Heart className="w-5 h-5" />
             </Button>
@@ -5195,6 +5196,7 @@ const StyleGenerator = () => {
               variant="ghost" 
               size="sm" 
               onClick={() => setActiveTab('mylooks')} 
+              aria-label="내 갤러리 열기"
               className={`p-2 relative ${activeTab === 'mylooks' ? 'text-accent bg-accent/10' : ''}`}
             >
               <Images className={`w-5 h-5 ${activeTab === 'mylooks' ? 'text-accent' : ''}`} />
@@ -5210,15 +5212,16 @@ const StyleGenerator = () => {
               size="sm" 
               onClick={() => navigate('/mypage')} 
               className="p-2"
+              aria-label="마이페이지로 이동"
             >
               <User className="w-5 h-5" />
             </Button>
             {/* 장바구니 */}
-            <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2" aria-label="장바구니 열기">
               <ShoppingBag className="w-5 h-5" />
             </Button>
             {/* 로그아웃 */}
-            <Button variant="ghost" size="sm" onClick={handleSignOut} className="p-2">
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="p-2" aria-label="로그아웃">
               <LogOut className="w-5 h-5" />
             </Button>
           </div>
