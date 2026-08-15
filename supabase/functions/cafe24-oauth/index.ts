@@ -547,6 +547,21 @@ serve(async (req) => {
         );
       }
 
+      // 인증: Cafe24 HMAC 서명 검증 필수 (webhook/install과 동일 기준)
+      const skipHmac = Deno.env.get('CAFE24_SKIP_HMAC') === 'true';
+      if (!skipHmac) {
+        const hmac = url.searchParams.get('hmac');
+        if (!hmac || !(await verifyHmac(url.searchParams, hmac))) {
+          console.error('Uninstall HMAC verification failed for mall:', mallId);
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+
+
+
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       const { error: updateError } = await supabase
         .from('cafe24_tenants')

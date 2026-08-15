@@ -250,13 +250,25 @@ serve(async (req) => {
       );
     }
 
-    // Extract user ID from token
+    // Extract user ID from token — must be a VALID session
     try {
       const token = authHeader.replace('Bearer ', '');
-      const { data: { user } } = await supabase.auth.getUser(token);
-      userId = user?.id || null;
+      const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+      userId = userData?.user?.id || null;
+      if (!userId || userErr) {
+        const { data: claimsData } = await supabase.auth.getClaims(token);
+        userId = (claimsData?.claims?.sub as string) || null;
+      }
     } catch (e) {
       console.log('[generate-style] Could not extract user from token');
+      userId = null;
+    }
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     requestPayload = await req.json();
