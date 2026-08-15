@@ -15,6 +15,47 @@ serve(async (req) => {
   }
 
   try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // 관리자 인증 필수
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const token = authHeader.replace('Bearer ', '');
+    let callerId: string | null = null;
+    try {
+      const { data: userData } = await supabase.auth.getUser(token);
+      callerId = userData?.user?.id || null;
+      if (!callerId) {
+        const { data: claimsData } = await supabase.auth.getClaims(token);
+        callerId = (claimsData?.claims?.sub as string) || null;
+      }
+    } catch (_e) {
+      callerId = null;
+    }
+    if (!callerId) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const { data: adminRole } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', callerId)
+      .eq('role', 'admin')
+      .maybeSingle();
+    if (!adminRole) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: admin role required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { action, mall_id, product_no } = await req.json();
 
     if (!mall_id) {
@@ -24,7 +65,6 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // 테넌트 조회 및 토큰 검증
     const { data: tenant, error: tenantError } = await supabase
