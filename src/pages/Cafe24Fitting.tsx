@@ -40,6 +40,22 @@ export default function Cafe24Fitting() {
     setError(null);
     
     try {
+      // 익명 쇼핑객 인증용 피팅 세션 확보
+      let token = sessionToken;
+      if (!token) {
+        const { data: sessionData, error: sessionErr } = await supabase.functions.invoke('cafe24-widget', {
+          body: {
+            action: 'create-session',
+            mall_id: mallId,
+            product_no: Number(productNo),
+          },
+        });
+        if (sessionErr || !sessionData?.session_token) {
+          throw new Error(sessionData?.error || '피팅 세션을 만들지 못했습니다');
+        }
+        token = sessionData.session_token as string;
+      }
+
       const { data, error: fnError } = await supabase.functions.invoke('generate-style', {
         body: {
           style: 'casual',
@@ -51,6 +67,7 @@ export default function Cafe24Fitting() {
           },
           userAvatarUrl: uploadedImage,
           useFaceComposite: true,
+          cafe24SessionToken: token,
         },
       });
 
