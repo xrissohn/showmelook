@@ -1068,7 +1068,7 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     const imageBytes = Uint8Array.from(atob(imageData), c => c.charCodeAt(0));
     
     // Use user folder structure for proper RLS enforcement
-    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+    const fileName = `${storageOwnerPath}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
     
     const { error: uploadError } = await supabase.storage
       .from('generated-looks')
