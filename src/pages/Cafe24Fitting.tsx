@@ -43,9 +43,8 @@ export default function Cafe24Fitting() {
       // 익명 쇼핑객 인증용 피팅 세션 확보
       let token = sessionToken;
       if (!token) {
-        const { data: sessionData, error: sessionErr } = await supabase.functions.invoke('cafe24-widget', {
+        const { data: sessionData, error: sessionErr } = await supabase.functions.invoke('cafe24-widget/create-session', {
           body: {
-            action: 'create-session',
             mall_id: mallId,
             product_no: Number(productNo),
           },
@@ -78,10 +77,9 @@ export default function Cafe24Fitting() {
         
         // 결과 저장 (세션 토큰이 있는 경우)
         if (sessionToken) {
-          await supabase.functions.invoke('cafe24-widget', {
+          await supabase.functions.invoke('cafe24-widget/save-result', {
             body: {
-              action: 'save-result',
-              session_token: sessionToken,
+              session_token: token,
               fitting_result_url: data.imageUrl,
             },
           });
