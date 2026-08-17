@@ -76,7 +76,7 @@ export default function Cafe24Fitting() {
         setResultImage(data.imageUrl);
         
         // 결과 저장 (세션 토큰이 있는 경우)
-        if (sessionToken) {
+        if (token) {
           await supabase.functions.invoke('cafe24-widget/save-result', {
             body: {
               session_token: token,
