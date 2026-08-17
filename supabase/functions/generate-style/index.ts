@@ -264,13 +264,6 @@ serve(async (req) => {
       userId = null;
     }
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired authentication token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     requestPayload = await req.json();
     const {
       style,
@@ -281,8 +274,33 @@ serve(async (req) => {
       useFaceComposite,
       userAvatarUrl,
       styleTrendId,
-      productIds
+      productIds,
+      cafe24SessionToken
     } = requestPayload;
+
+    // Cafe24 storefront widget: anonymous shoppers are authorized via a valid fitting session
+    let cafe24TenantId: string | null = null;
+    if (!userId && typeof cafe24SessionToken === 'string' && /^[0-9a-f-]{36}$/i.test(cafe24SessionToken)) {
+      const { data: fittingSession } = await supabase
+        .from('cafe24_fitting_sessions')
+        .select('id, tenant_id, cafe24_tenants!inner(is_active)')
+        .eq('session_token', cafe24SessionToken)
+        .maybeSingle();
+
+      if (fittingSession && (fittingSession as any).cafe24_tenants?.is_active) {
+        cafe24TenantId = fittingSession.tenant_id;
+        console.log('[generate-style] Authorized via Cafe24 fitting session');
+      }
+    }
+
+    if (!userId && !cafe24TenantId) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired authentication token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const storageOwnerPath = userId ?? `cafe24/${cafe24TenantId}`;
 
     console.log('[generate-style] Starting generation');
     console.log('[generate-style] Style:', style);
