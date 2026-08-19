@@ -464,8 +464,10 @@ const SharedLook = () => {
               variant="ghost"
               size="icon"
               onClick={handleViewCart}
+              aria-label="장바구니 보기"
               className="relative"
             >
+
               <ShoppingCart className="w-5 h-5" />
               {cartItemCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center">
@@ -481,8 +483,16 @@ const SharedLook = () => {
       />
 
       <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-6 max-w-4xl">
+        <h1 className="sr-only">
+          {look.tags && look.tags.length > 0
+            ? `${look.tags.slice(0, 3).join(", ")} 스타일 - 쇼미룩 AI 코디`
+            : look.prompt_used
+              ? `${look.prompt_used} - 쇼미룩 AI 코디`
+              : "쇼미룩 AI가 완성한 전신 코디 룩"}
+        </h1>
         {/* Style Image - 전신이 다 보이도록 */}
         <div className="rounded-2xl overflow-hidden shadow-xl mb-4 relative">
+
           <img
             src={look.image_url}
             alt="AI가 완성한 전신 코디 착장"
