@@ -464,8 +464,10 @@ const SharedLook = () => {
               variant="ghost"
               size="icon"
               onClick={handleViewCart}
+              aria-label="장바구니 보기"
               className="relative"
             >
+
               <ShoppingCart className="w-5 h-5" />
               {cartItemCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent text-accent-foreground text-xs rounded-full flex items-center justify-center">
