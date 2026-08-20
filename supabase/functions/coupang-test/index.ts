@@ -155,10 +155,54 @@ function generateDNA(product: {
   return { dna_meta, dna_text };
 }
 
+// Auth helper: require admin user OR service-role key
+async function requireAdminOrService(req: Request): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const authHeader = req.headers.get('Authorization') || '';
+  const unauthorized = (msg: string, status: number) => ({
+    ok: false as const,
+    response: new Response(JSON.stringify({ error: msg }), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    }),
+  });
+
+  if (!authHeader.startsWith('Bearer ')) return unauthorized('Unauthorized', 401);
+
+  const token = authHeader.replace('Bearer ', '').trim();
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  if (token === serviceKey) return { ok: true };
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+  const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } } });
+
+  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+  let userId: string | null = claimsData?.claims?.sub ?? null;
+  if (claimsError || !userId) {
+    const { data: { user } } = await userClient.auth.getUser();
+    userId = user?.id ?? null;
+  }
+  if (!userId) return unauthorized('Unauthorized', 401);
+
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  const { data: role } = await adminClient
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  if (!role) return unauthorized('Admin access required', 403);
+
+  return { ok: true };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const auth = await requireAdminOrService(req);
+  if (!auth.ok) return auth.response;
 
   try {
     const accessKey = Deno.env.get("COUPANG_ACCESS_KEY");

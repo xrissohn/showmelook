@@ -52,6 +52,49 @@ async function checkUrl(url: string): Promise<{ alive: boolean; status: number }
   }
 }
 
+// Auth helper: require admin user OR service-role key
+async function requireAdminOrService(
+  req: Request,
+  supabaseUrl: string,
+  serviceKey: string,
+): Promise<{ ok: true } | { ok: false; response: Response }> {
+  const authHeader = req.headers.get("Authorization") || "";
+  const deny = (msg: string, status: number) => ({
+    ok: false as const,
+    response: new Response(JSON.stringify({ error: msg }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    }),
+  });
+
+  if (!authHeader.startsWith("Bearer ")) return deny("Unauthorized", 401);
+  const token = authHeader.replace("Bearer ", "").trim();
+  if (token === serviceKey) return { ok: true };
+
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const userClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: authHeader } },
+  });
+  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
+  let userId: string | null = claimsData?.claims?.sub ?? null;
+  if (claimsError || !userId) {
+    const { data: { user } } = await userClient.auth.getUser();
+    userId = user?.id ?? null;
+  }
+  if (!userId) return deny("Unauthorized", 401);
+
+  const adminClient = createClient(supabaseUrl, serviceKey);
+  const { data: role } = await adminClient
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!role) return deny("Admin access required", 403);
+
+  return { ok: true };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -61,13 +104,31 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  const auth = await requireAdminOrService(req, supabaseUrl, serviceRoleKey);
+  if (!auth.ok) return auth.response;
+
   try {
     const body = await req.json();
 
     // === Single-item check (Layer 2) ===
     if (body.url && body.productId) {
-      const { url, productId } = body as SingleCheckRequest;
-      const result = await checkUrl(url);
+      const { productId } = body as SingleCheckRequest;
+
+      // Never fetch a caller-supplied URL (SSRF): always use the stored product_url
+      const { data: product, error: productError } = await supabase
+        .from("products_cache")
+        .select("id, product_url")
+        .eq("id", productId)
+        .maybeSingle();
+
+      if (productError || !product?.product_url) {
+        return new Response(
+          JSON.stringify({ error: "Product not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+      const result = await checkUrl(product.product_url);
 
       if (!result.alive) {
         const { error } = await supabase
@@ -177,14 +238,12 @@ Deno.serve(async (req) => {
           `Self-chaining: nextOffset=${nextOffset}, checked so far=${grandChecked}, deleted so far=${grandDeleted}`
         );
 
-        const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? "";
-
         // Fire-and-forget: don't await to avoid cascading timeout
         fetch(`${supabaseUrl}/functions/v1/product-health-check`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${anonKey}`,
+            Authorization: `Bearer ${serviceRoleKey}`,
           },
           body: JSON.stringify({
             batch: true,
