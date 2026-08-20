@@ -11,6 +11,15 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  * or via the Edge Function URL directly
  */
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -69,7 +78,7 @@ serve(async (req) => {
       // Use og-image-gen to create a proper 1200x630 PNG
       // This prevents KakaoTalk from cropping the portrait image
       if (look.image_url) {
-        imageUrl = `${supabaseUrl}/functions/v1/og-image-gen?lookId=${lookId}`;
+        imageUrl = `${supabaseUrl}/functions/v1/og-image-gen?lookId=${encodeURIComponent(lookId)}`;
         imageWidth = 1200;
         imageHeight = 630;
       }
@@ -96,15 +105,15 @@ serve(async (req) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>${title}</title>
-  <meta name="description" content="${description}">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
   
   <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${pageUrl}">
-  <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${description}">
-  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">` : ''}
+  <meta property="og:url" content="${escapeHtml(pageUrl)}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  ${imageUrl ? `<meta property="og:image" content="${escapeHtml(imageUrl)}">` : ''}
   
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -216,7 +225,7 @@ serve(async (req) => {
 </head>
 <body>
   <div class="container">
-    ${look ? `<img src="${imageUrl}" alt="스타일 미리보기" class="preview-img" onerror="this.style.display='none'">` : ''}
+    ${look ? `<img src="${escapeHtml(imageUrl)}" alt="스타일 미리보기" class="preview-img" onerror="this.style.display='none'">` : ''}
     
     <div class="icon">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -254,7 +263,7 @@ serve(async (req) => {
       
       ${isIOS ? '<p class="hint">링크를 복사한 후 Safari에서 붙여넣기 해주세요</p>' : ''}
       
-      <a href="${pageUrl}" class="btn btn-ghost">이대로 보기</a>
+      <a href="${escapeHtml(pageUrl)}" class="btn btn-ghost">이대로 보기</a>
     </div>
   </div>
   
@@ -262,7 +271,7 @@ serve(async (req) => {
   
   <script>
     function copyLink() {
-      const url = "${pageUrl}";
+      const url = ${JSON.stringify(pageUrl)};
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function() {
           showToast();
@@ -317,15 +326,15 @@ serve(async (req) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <meta name="description" content="${description}">
+  <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(description)}">
   
   <!-- Open Graph -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${pageUrl}">
-  <meta property="og:title" content="${title}">
-  <meta property="og:description" content="${description}">
-  ${imageUrl ? `<meta property="og:image" content="${imageUrl}">
+  <meta property="og:url" content="${escapeHtml(pageUrl)}">
+  <meta property="og:title" content="${escapeHtml(title)}">
+  <meta property="og:description" content="${escapeHtml(description)}">
+  ${imageUrl ? `<meta property="og:image" content="${escapeHtml(imageUrl)}">
   <meta property="og:image:width" content="${imageWidth}">
   <meta property="og:image:height" content="${imageHeight}">` : ''}
   <meta property="og:locale" content="ko_KR">
@@ -333,14 +342,14 @@ serve(async (req) => {
   
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:url" content="${pageUrl}">
-  <meta name="twitter:title" content="${title}">
-  <meta name="twitter:description" content="${description}">
-  ${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ''}
+  <meta name="twitter:url" content="${escapeHtml(pageUrl)}">
+  <meta name="twitter:title" content="${escapeHtml(title)}">
+  <meta name="twitter:description" content="${escapeHtml(description)}">
+  ${imageUrl ? `<meta name="twitter:image" content="${escapeHtml(imageUrl)}">` : ''}
   
 </head>
 <body>
-  <p><a href="${pageUrl}">${title}</a></p>
+  <p><a href="${escapeHtml(pageUrl)}">${escapeHtml(title)}</a></p>
 </body>
 </html>`;
 
