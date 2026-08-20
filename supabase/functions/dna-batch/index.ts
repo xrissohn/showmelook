@@ -311,8 +311,8 @@ function inferSeasonFit(name: string, category: string, itemSlot: DNAMeta['item_
   if (itemSlot === 'swimwear') return ['summer'];
 
   const summerKeywords = ['반팔', '반바지', 'shorts', '샌들', 'sandal', '린넨', 'linen', '슬리퍼', 'sleeveless', '민소매', '크롭', 'crop', '비치', 'beach', '래쉬가드', '수영', '서핑', '탱크탑', 'tank', '플립플랍', 'flip flop', '에스파드리유', '슬라이드', '쿨링', '쿨', 'cool', '시어', 'sheer', '메쉬', 'mesh'];
-  const winterKeywords = ['패딩', 'padding', 'puffer', '코트', 'coat', '다운', 'down', '기모', '울', 'wool', '캐시미어', 'cashmere', '부츠', 'boots', '털', 'fur', '머플러', 'muffler', '장갑', 'gloves', '방한', '무스탕', 'shearling', '바라클라바', '넥워머', '이어머프', '퍼', 'fur', '양모', '앙고라', 'angora', '플리스', 'fleece', '후리스', '두꺼운', '히트텍', '발열'];
-  const springFallKeywords = ['가디건', 'cardigan', '트렌치', 'trench', '자켓', 'jacket', '니트', 'knit', '블레이저', 'blazer', '윈드브레이커', 'windbreaker', '아노락', '스웨터', 'sweater'];
+  const winterKeywords = ['패딩', 'padding', 'puffer', '코트', 'coat', '다운', 'down', '기모', '울', 'wool', '캐시미어', 'cashmere', '부츠', 'boots', '털', 'fur', '머플러', 'muffler', '장갑', 'gloves', '방한', '무스탕', 'shearling', '바라클라바', '넥워머', '이어머프', '퍼', 'fur', '양모', '앙고라', 'angora', '플리스', 'fleece', '후리스', '두꺼운', '히트텍', '발열', '누빔', '퀼팅', 'quilt', '터틀넥', 'turtleneck', '기모바지', '방울', '벨벳', 'velvet'];
+  const springFallKeywords = ['가디건', 'cardigan', '트렌치', 'trench', '자켓', 'jacket', '니트', 'knit', '블레이저', 'blazer', '윈드브레이커', 'windbreaker', '아노락', '스웨터', 'sweater', '맨투맨', '스웨트', 'sweat', '후드', 'hood', '긴팔', 'long sleeve', '롱슬리브', '코듀로이', 'corduroy', '트위드', 'tweed'];
 
   const seasons: string[] = [];
   if (summerKeywords.some(k => combined.includes(k))) seasons.push('summer');

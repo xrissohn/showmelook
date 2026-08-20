@@ -1246,9 +1246,9 @@ function extractOccasions(request: string): string[] {
 function detectSeason(request: string): string | null {
   const seasonKeywords: Record<string, string[]> = {
     '봄': ['봄', 'spring', '3월', '4월', '5월'],
-    '여름': ['여름', 'summer', '6월', '7월', '8월', '시원한', '시원하게'],
+    '여름': ['여름', 'summer', '6월', '7월', '8월', '시원한', '시원하게', '무더위', '더울', '더운', '폭염', '장마', '바캉스', '휴가', '해변', '비치', '피서', '한여름', '땀'],
     '가을': ['가을', 'fall', 'autumn', '9월', '10월', '11월'],
-    '겨울': ['겨울', 'winter', '12월', '1월', '2월', '따뜻한', '따뜻하게'],
+    '겨울': ['겨울', 'winter', '12월', '1월', '2월', '따뜻한', '따뜻하게', '추울', '추운', '한파', '방한', '한겨울'],
   };
   
   const lower = request.toLowerCase();
@@ -2317,7 +2317,7 @@ serve(async (req) => {
     // 시즌 필터링
     const seasonExcludeKeywords: Record<string, string[]> = {
       '겨울': ['shorts', '반바지', '샌들', 'sandal', '민소매', 'sleeveless', 'crop', '크롭', '린넨', 'linen', '슬리퍼'],
-      '여름': ['패딩', 'padding', 'puffer', '코트', 'coat', '기모', '털', 'fur', '울', 'wool', '캐시미어', '다운', 'down'],
+      '여름': ['패딩', 'padding', 'puffer', '코트', 'coat', '기모', '털', 'fur', '울', 'wool', '캐시미어', 'cashmere', '다운', 'down', '니트', 'knit', '스웨터', 'sweater', '후드', 'hood', '맨투맨', '스웨트', 'sweat', '플리스', 'fleece', '후리스', '부츠', 'boots', '트위드', 'tweed', '코듀로이', 'corduroy', '벨벳', 'velvet', '무스탕', 'shearling', '앙고라', 'angora', '양모', '머플러', '장갑', '히트텍', '발열', '누빔', '퀼팅', 'quilt', '긴팔', 'long sleeve', '롱슬리브', '터틀넥', 'turtleneck', '기모바지'],
       '봄': ['패딩', 'padding', 'puffer', '기모', '털', 'fur'],
       '가을': ['샌들', 'sandal', '슬리퍼', '반바지', 'shorts'],
     };
@@ -2336,6 +2336,29 @@ serve(async (req) => {
       return !excludeKeywords.some(keyword => combined.includes(keyword.toLowerCase()));
     });
     console.log(`[style-recommend] After season filter: ${allProducts.length}`);
+
+    // 시즌 가점: 해당 계절 전용 상품을 앞으로 정렬 (사계절 기본값 상품에 묻히지 않도록)
+    const seasonBoostKeywords: Record<string, string[]> = {
+      '여름': ['반팔', '반바지', 'shorts', '린넨', 'linen', '샌들', 'sandal', '슬리퍼', '민소매', 'sleeveless', '탱크', 'tank', '메쉬', 'mesh', '시어서커', '쿨', 'cool', '래쉬가드', '비치', '크롭'],
+      '겨울': ['패딩', 'padding', '코트', 'coat', '니트', 'knit', '기모', '울', 'wool', '캐시미어', '부츠', 'boots', '플리스', '무스탕'],
+      '봄': ['가디건', 'cardigan', '트렌치', 'trench', '블레이저', 'blazer', '얇은', '경량'],
+      '가을': ['가디건', 'cardigan', '트렌치', 'trench', '자켓', 'jacket', '니트', 'knit', '코듀로이'],
+    };
+    const boostKeywords = seasonBoostKeywords[requestedSeason] || [];
+    const seasonRank = (product: any): number => {
+      const combined = `${product.name} ${product.category} ${product.sub_category || ''}`.toLowerCase();
+      const fit: string[] = product.dna_meta?.season_fit || [];
+      let rank = 0;
+      if (boostKeywords.some(k => combined.includes(k.toLowerCase()))) rank += 2;
+      if (fit.includes(seasonEn) && fit.length <= 2) rank += 2;
+      else if (fit.includes(seasonEn) && fit.length === 3) rank += 1;
+      return rank;
+    };
+    allProducts = allProducts
+      .map(p => ({ p, r: seasonRank(p) }))
+      .sort((a, b) => b.r - a.r)
+      .map(x => x.p);
+    console.log(`[style-recommend] Season boost applied for ${requestedSeason}`);
     
     // ============= 🏪 머천트/브랜드 필터링 =============
     if (merchantPref.isExclusive && merchantPref.merchantIds.length > 0) {
