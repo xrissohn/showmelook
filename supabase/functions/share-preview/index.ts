@@ -47,8 +47,9 @@ serve(async (req) => {
     const isIOS = /iphone|ipad|ipod/i.test(userAgent);
     const isAndroid = /android/i.test(userAgent);
 
-    if (!lookId) {
-      // Redirect to main site if no lookId
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!lookId || !UUID_RE.test(lookId)) {
+      // Redirect to main site if no/invalid lookId
       return new Response(null, {
         status: 302,
         headers: { ...corsHeaders, "Location": "https://showmelook.com" },
