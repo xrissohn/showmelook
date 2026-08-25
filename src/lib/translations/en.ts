@@ -118,7 +118,7 @@ export const en: TranslationKeys = {
   },
   pricing: {
     purchaseBasedSystem: 'Purchase-Based Tier System',
-    moreBenefits: 'More Benefits with Every Purchase!',
+    moreBenefits: 'ShowMeLook Pricing and Membership Tier Benefits',
     autoUpgrade: 'Your tier automatically upgrades based on purchase amount',
     myCurrentTier: 'My Current Tier',
     accumPurchase: 'Total Purchases',
