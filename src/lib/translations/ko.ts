@@ -118,7 +118,7 @@ export const ko: TranslationKeys = {
   },
   pricing: {
     purchaseBasedSystem: '구매 기반 등급 시스템',
-    moreBenefits: '구매할수록 더 많은 혜택을!',
+    moreBenefits: '쇼미룩 요금제 및 멤버십 등급 혜택',
     autoUpgrade: '추천 상품 구매 금액에 따라 등급이 자동으로 업그레이드됩니다',
     myCurrentTier: '내 현재 등급',
     accumPurchase: '누적 구매',
