@@ -266,6 +266,7 @@ const SharedLook = () => {
             item: {
               '@type': 'Product',
               name: p.name,
+              description: `${p.brand ? `${p.brand} ` : ''}${p.name} - 쇼미룩 AI 코디 룩에 포함된 ${p.category} 상품입니다.`,
               image: p.image_url || imageUrl,
               url: `https://showmelook.com/look/${lookId}`,
               ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
@@ -276,11 +277,50 @@ const SharedLook = () => {
                       price: p.price,
                       priceCurrency: 'KRW',
                       availability: 'https://schema.org/InStock',
+                      itemCondition: 'https://schema.org/NewCondition',
+                      url: p.product_url,
+                      ...(p.brand ? { seller: { '@type': 'Organization', name: p.brand } } : {}),
+                      shippingDetails: {
+                        '@type': 'OfferShippingDetails',
+                        shippingRate: {
+                          '@type': 'MonetaryAmount',
+                          value: 0,
+                          currency: 'KRW',
+                        },
+                        shippingDestination: {
+                          '@type': 'DefinedRegion',
+                          addressCountry: 'KR',
+                        },
+                        deliveryTime: {
+                          '@type': 'ShippingDeliveryTime',
+                          handlingTime: {
+                            '@type': 'QuantitativeValue',
+                            minValue: 0,
+                            maxValue: 2,
+                            unitCode: 'DAY',
+                          },
+                          transitTime: {
+                            '@type': 'QuantitativeValue',
+                            minValue: 1,
+                            maxValue: 5,
+                            unitCode: 'DAY',
+                          },
+                        },
+                      },
+                      hasMerchantReturnPolicy: {
+                        '@type': 'MerchantReturnPolicy',
+                        applicableCountry: 'KR',
+                        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+                        merchantReturnDays: 7,
+                        returnMethod: 'https://schema.org/ReturnByMail',
+                        returnFees: 'https://schema.org/ReturnShippingFees',
+                      },
                     },
                   }
                 : {}),
             },
           })),
+
         });
       } catch (e) {
         console.error("Error fetching look:", e);
