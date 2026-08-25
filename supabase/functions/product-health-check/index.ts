@@ -78,12 +78,23 @@ async function requireAuth(
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-  let userId: string | null = claimsData?.claims?.sub ?? null;
-  if (claimsError || !userId) {
-    const { data: { user } } = await userClient.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const anyAuth = userClient.auth as unknown as {
+      getClaims?: (t: string) => Promise<{ data?: { claims?: { sub?: string } } }>;
+    };
+    if (typeof anyAuth.getClaims === "function") {
+      const { data: claimsData } = await anyAuth.getClaims(token);
+      userId = claimsData?.claims?.sub ?? null;
+    }
+  } catch (_e) {
+    userId = null;
+  }
+  if (!userId) {
+    const { data: { user } } = await userClient.auth.getUser(token);
     userId = user?.id ?? null;
   }
+
   if (!userId) return deny("Unauthorized", 401);
 
   if (mode === "user") return { ok: true };
