@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
 
 
     // === Single-item check (Layer 2) ===
-    if (body.url && body.productId) {
+    if (isSingle) {
       const { productId } = body as SingleCheckRequest;
 
       // Never fetch a caller-supplied URL (SSRF): always use the stored product_url
