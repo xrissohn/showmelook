@@ -52,11 +52,14 @@ async function checkUrl(url: string): Promise<{ alive: boolean; status: number }
   }
 }
 
-// Auth helper: require admin user OR service-role key
-async function requireAdminOrService(
+// Auth helper: resolve caller identity
+// mode "admin": require service-role key or admin user
+// mode "user": require service-role key or any authenticated user
+async function requireAuth(
   req: Request,
   supabaseUrl: string,
   serviceKey: string,
+  mode: "admin" | "user",
 ): Promise<{ ok: true } | { ok: false; response: Response }> {
   const authHeader = req.headers.get("Authorization") || "";
   const deny = (msg: string, status: number) => ({
@@ -75,13 +78,26 @@ async function requireAdminOrService(
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
   });
-  const { data: claimsData, error: claimsError } = await userClient.auth.getClaims(token);
-  let userId: string | null = claimsData?.claims?.sub ?? null;
-  if (claimsError || !userId) {
-    const { data: { user } } = await userClient.auth.getUser();
+  let userId: string | null = null;
+  try {
+    const anyAuth = userClient.auth as unknown as {
+      getClaims?: (t: string) => Promise<{ data?: { claims?: { sub?: string } } }>;
+    };
+    if (typeof anyAuth.getClaims === "function") {
+      const { data: claimsData } = await anyAuth.getClaims(token);
+      userId = claimsData?.claims?.sub ?? null;
+    }
+  } catch (_e) {
+    userId = null;
+  }
+  if (!userId) {
+    const { data: { user } } = await userClient.auth.getUser(token);
     userId = user?.id ?? null;
   }
+
   if (!userId) return deny("Unauthorized", 401);
+
+  if (mode === "user") return { ok: true };
 
   const adminClient = createClient(supabaseUrl, serviceKey);
   const { data: role } = await adminClient
@@ -104,14 +120,23 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-  const auth = await requireAdminOrService(req, supabaseUrl, serviceRoleKey);
-  if (!auth.ok) return auth.response;
-
   try {
     const body = await req.json();
 
+    // Single-item checks are allowed for any signed-in shopper;
+    // batch runs stay admin/service-only.
+    const isSingle = Boolean(body?.productId) && body?.batch !== true;
+    const auth = await requireAuth(
+      req,
+      supabaseUrl,
+      serviceRoleKey,
+      isSingle ? "user" : "admin",
+    );
+    if (!auth.ok) return auth.response;
+
+
     // === Single-item check (Layer 2) ===
-    if (body.url && body.productId) {
+    if (isSingle) {
       const { productId } = body as SingleCheckRequest;
 
       // Never fetch a caller-supplied URL (SSRF): always use the stored product_url
