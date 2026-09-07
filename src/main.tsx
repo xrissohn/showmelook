@@ -28,24 +28,54 @@ if (document.readyState === 'complete') {
 
 createRoot(document.getElementById("root")!).render(<App />);
 
-// Auto-recover from stale chunk references (after redeploys)
-// When a dynamic import fails because the old chunk no longer exists,
-// unregister the service worker and reload once to fetch the fresh index.html.
-window.addEventListener('error', (event) => {
-  const message = event?.message || '';
-  if (message.includes('Failed to fetch dynamically imported module') || message.includes('Importing a module script failed')) {
-    const reloadKey = '__chunk_reload_attempted__';
-    if (!sessionStorage.getItem(reloadKey)) {
-      sessionStorage.setItem(reloadKey, '1');
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then((regs) => {
-          Promise.all(regs.map((r) => r.unregister())).finally(() => window.location.reload());
-        }).catch(() => window.location.reload());
-      } else {
-        window.location.reload();
-      }
-    }
+// Auto-recover from stale chunk references (after redeploys).
+// A missing chunk can surface either as a window error or as an unhandled
+// promise rejection (React.lazy), so both are handled.
+const isStaleChunkError = (message: string) =>
+  message.includes('Failed to fetch dynamically imported module') ||
+  message.includes('Importing a module script failed') ||
+  message.includes('error loading dynamically imported module');
+
+const recoverFromStaleChunk = () => {
+  const reloadKey = '__chunk_reload_attempted__';
+  if (sessionStorage.getItem(reloadKey)) return;
+  sessionStorage.setItem(reloadKey, '1');
+
+  const hardReload = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', Date.now().toString(36));
+    window.location.replace(url.toString());
+  };
+
+  const cleanup: Promise<unknown>[] = [];
+  if ('serviceWorker' in navigator) {
+    cleanup.push(
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .catch(() => undefined),
+    );
   }
+  if ('caches' in window) {
+    cleanup.push(
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+        .catch(() => undefined),
+    );
+  }
+  Promise.all(cleanup).finally(hardReload);
+};
+
+window.addEventListener('error', (event) => {
+  if (isStaleChunkError(event?.message || '')) recoverFromStaleChunk();
 });
+
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event?.reason;
+  const message = typeof reason === 'string' ? reason : reason?.message || '';
+  if (isStaleChunkError(message)) recoverFromStaleChunk();
+});
+
 
 
