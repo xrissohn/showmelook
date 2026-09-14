@@ -4986,8 +4986,8 @@ const StyleGenerator = () => {
       // Handle limit exceeded error
       if (data?.limitExceeded) {
         toast({
-          title: '일일 생성 횟수 초과',
-          description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+          title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+          description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
           variant: 'destructive',
         });
         refetchLimit();
@@ -5018,11 +5018,11 @@ const StyleGenerator = () => {
         // Show appropriate toast
         const toastDescription = useFaceComposite && avatarToUse
           ? selectedGenerationProfile?.type === 'family'
-            ? `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`
-            : '당신의 얼굴이 합성된 룩이 완성되었습니다.'
-          : '스타일 룩이 완성되었습니다.';
+            ? (language === 'en' ? `A look featuring ${selectedGenerationProfile.full_name} is ready.` : `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`)
+            : (language === 'en' ? 'Your face-composited look is ready.' : '당신의 얼굴이 합성된 룩이 완성되었습니다.')
+          : (language === 'en' ? 'Your styled look is ready.' : '스타일 룩이 완성되었습니다.');
         toast({
-          title: '스타일 생성 완료!',
+          title: language === 'en' ? 'Style generation complete!' : '스타일 생성 완료!',
           description: toastDescription,
         });
 
@@ -5071,31 +5071,31 @@ const StyleGenerator = () => {
       const errorCode = error?.errorCode || error?.code || '';
       const statusCode = error?.status || error?.statusCode || '';
       
-      let errorTitle = '생성 실패';
-      let errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      let errorTitle = language === 'en' ? 'Generation failed' : '생성 실패';
+      let errorMessage = error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
       let showRetryButton = false;
       
       // Rate Limit (429) 에러
       if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
-        errorTitle = '⏳ 서버가 바쁩니다';
-        errorMessage = '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
+        errorTitle = language === 'en' ? '⏳ Server is busy' : '⏳ 서버가 바쁩니다';
+        errorMessage = language === 'en' ? 'Please wait a moment. You can retry in 30 seconds.' : '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
         showRetryButton = true;
       }
       // Payment Required (402) 에러  
       else if (statusCode === 402 || errorCode === '402' || errorMessage?.includes('Payment required') || errorMessage?.includes('402')) {
-        errorTitle = '💳 크레딧 부족';
-        errorMessage = '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
+        errorTitle = language === 'en' ? '💳 Insufficient credits' : '💳 크레딧 부족';
+        errorMessage = language === 'en' ? 'Service credits are insufficient. Please contact support.' : '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
       }
       // 이미지 생성 실패
       else if (errorCode === 'NO_IMAGE' || errorMessage?.includes('No image')) {
-        errorTitle = '🖼️ 이미지 생성 실패';
-        errorMessage = 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
+        errorTitle = language === 'en' ? '🖼️ Image generation failed' : '🖼️ 이미지 생성 실패';
+        errorMessage = language === 'en' ? 'AI could not generate the image. Please try again.' : 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
         showRetryButton = true;
       }
       // 네트워크 에러
       else if (errorMessage?.includes('Network') || errorMessage?.includes('fetch')) {
-        errorTitle = '📶 네트워크 오류';
-        errorMessage = '인터넷 연결을 확인하고 다시 시도해주세요.';
+        errorTitle = language === 'en' ? '📶 Network error' : '📶 네트워크 오류';
+        errorMessage = language === 'en' ? 'Check your internet connection and try again.' : '인터넷 연결을 확인하고 다시 시도해주세요.';
         showRetryButton = true;
       }
       
@@ -5139,8 +5139,8 @@ const StyleGenerator = () => {
       if (error) throw error;
 
       toast({
-        title: '장바구니에 추가됨',
-        description: `${product.name_ko}이(가) 장바구니에 추가되었습니다.`,
+        title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
+        description: language === 'en' ? `${product.name_ko} was added to your cart.` : `${product.name_ko}이(가) 장바구니에 추가되었습니다.`,
       });
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -5154,11 +5154,11 @@ const StyleGenerator = () => {
   }, {} as Record<string, Product[]>);
 
   const categoryLabels: Record<string, string> = {
-    top: '상의',
-    bottom: '하의',
-    outerwear: '아우터',
-    shoes: '신발',
-    accessory: '액세서리',
+    top: language === 'en' ? 'Tops' : '상의',
+    bottom: language === 'en' ? 'Bottoms' : '하의',
+    outerwear: language === 'en' ? 'Outerwear' : '아우터',
+    shoes: language === 'en' ? 'Shoes' : '신발',
+    accessory: language === 'en' ? 'Accessories' : '액세서리',
   };
 
   if (authLoading) {
