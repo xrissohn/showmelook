@@ -196,6 +196,7 @@ export interface TranslationKeys {
     syncDesc: string;
   };
   mypage: {
+    pageTitle: string;
     myGallery: string;
     cart: string;
     subscription: string;
@@ -251,6 +252,25 @@ export interface TranslationKeys {
     addedToCartDesc: string;
     addFailed: string;
     items: string;
+  };
+  creditHistory: {
+    title: string;
+    description: string;
+    availableBalance: string;
+    credits: string;
+    usageNotice: string;
+    empty: string;
+    earnedHistory: string;
+    signupReferralBonus: string;
+    referralBonus: string;
+    surveyReward: string;
+    welcomeBonus: string;
+    expires: string;
+    permanent: string;
+    remaining: string;
+    usedOrExpired: string;
+    infoReferral: string;
+    infoCampaigns: string;
   };
   tierStatus: {
     myTier: string;
