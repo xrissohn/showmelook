@@ -5433,19 +5433,19 @@ const StyleGenerator = () => {
                         >
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="female" id="custom-female" className="shrink-0" />
-                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-xs sm:text-sm truncate">여성</Label>
+                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.female')}</Label>
                           </div>
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="male" id="custom-male" className="shrink-0" />
-                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-xs sm:text-sm truncate">남성</Label>
+                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.male')}</Label>
                           </div>
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="unisex" id="custom-unisex" className="shrink-0" />
-                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-xs sm:text-sm truncate">🌈 유니섹스</Label>
+                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.unisex')}</Label>
                           </div>
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="kids" id="custom-kids" className="shrink-0" />
-                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-xs sm:text-sm truncate">👶 키즈</Label>
+                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.kids')}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -5528,7 +5528,7 @@ const StyleGenerator = () => {
                         <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
                         </div>
-                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{customResult.mode === 'evaluation' ? '📷 AI 스타일 평가' : 'AI 스타일리스트 추천'}</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{language === 'en' ? (customResult.mode === 'evaluation' ? '📷 AI STYLE REVIEW' : 'AI STYLIST RECOMMENDATION') : (customResult.mode === 'evaluation' ? '📷 AI 스타일 평가' : 'AI 스타일리스트 추천')}</span>
                       </div>
                       
                       {/* 타이틀 */}
@@ -5626,15 +5626,15 @@ const StyleGenerator = () => {
                       {/* 피드백 버튼 */}
                       <div className="mt-4 sm:mt-5 pt-4 border-t border-border/30">
                         <p className="text-xs sm:text-sm text-muted-foreground font-korean mb-2 sm:mb-3">
-                          {customResult.mode === 'evaluation' ? '이 평가가 도움이 되셨나요?' : '이 추천이 마음에 드시나요?'}
+                          {language === 'en' ? (customResult.mode === 'evaluation' ? 'Was this review helpful?' : 'Do you like this recommendation?') : (customResult.mode === 'evaluation' ? '이 평가가 도움이 되셨나요?' : '이 추천이 마음에 드시나요?')}
                         </p>
                         <div className="flex gap-2 sm:gap-3">
                           <button
                             onClick={() => {
                               setFeedbackGiven('positive');
                               toast({
-                                title: '감사합니다! 💕',
-                                description: '피드백이 더 나은 추천에 반영됩니다.',
+                                title: language === 'en' ? 'Thank you! 💕' : '감사합니다! 💕',
+                                description: language === 'en' ? 'Your feedback will improve future recommendations.' : '피드백이 더 나은 추천에 반영됩니다.',
                               });
                             }}
                             disabled={feedbackGiven !== null}
@@ -5647,14 +5647,14 @@ const StyleGenerator = () => {
                             }`}
                           >
                             <ThumbsUp className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                            {feedbackGiven === 'positive' ? '감사해요!' : '좋아요'}
+                            {language === 'en' ? (feedbackGiven === 'positive' ? 'Thanks!' : 'Like it') : (feedbackGiven === 'positive' ? '감사해요!' : '좋아요')}
                           </button>
                           <button
                             onClick={() => {
                               setFeedbackGiven('negative');
                               toast({
-                                title: '피드백 감사합니다',
-                                description: '다음에는 더 나은 추천을 드릴게요.',
+                                title: language === 'en' ? 'Thanks for your feedback' : '피드백 감사합니다',
+                                description: language === 'en' ? 'We will improve your next recommendation.' : '다음에는 더 나은 추천을 드릴게요.',
                               });
                             }}
                             disabled={feedbackGiven !== null}
@@ -5667,7 +5667,7 @@ const StyleGenerator = () => {
                             }`}
                           >
                             <ThumbsDown className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                            {feedbackGiven === 'negative' ? '개선할게요' : '아쉬워요'}
+                            {language === 'en' ? (feedbackGiven === 'negative' ? 'We’ll improve' : 'Not for me') : (feedbackGiven === 'negative' ? '개선할게요' : '아쉬워요')}
                           </button>
                         </div>
                       </div>
@@ -5683,9 +5683,9 @@ const StyleGenerator = () => {
                         </div>
                         <div>
                           <h4 className="font-korean text-sm sm:text-base font-semibold text-foreground">
-                            추천 아이템
+                            {language === 'en' ? 'Recommended items' : '추천 아이템'}
                           </h4>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">스와이프하여 둘러보세요</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">{language === 'en' ? 'Swipe to browse' : '스와이프하여 둘러보세요'}</p>
                         </div>
                       </div>
                       {/* 캐러셀 네비게이션 */}
@@ -5839,12 +5839,12 @@ const StyleGenerator = () => {
                                       {selectedTrendProducts.find(p => p.id === product.id) ? (
                                         <>
                                           <Check className="w-3.5 sm:w-4 h-3.5 sm:h-4" strokeWidth={2.5} />
-                                          선택됨
+                                          {language === 'en' ? 'Selected' : '선택됨'}
                                         </>
                                       ) : (
                                         <>
                                           <Plus className="w-3.5 sm:w-4 h-3.5 sm:h-4" strokeWidth={2.5} />
-                                          담기
+                                          {language === 'en' ? 'Add' : '담기'}
                                         </>
                                       )}
                                     </button>
@@ -5852,7 +5852,7 @@ const StyleGenerator = () => {
                                       onClick={() => handlePurchase(product)}
                                       disabled={purchasingProductId === product.id}
                                       className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-secondary hover:bg-accent hover:text-white text-foreground transition-all duration-300 disabled:opacity-50 hover:shadow-md"
-                                      title="구매하기"
+                                      title={language === 'en' ? 'Buy' : '구매하기'}
                                     >
                                       {purchasingProductId === product.id ? (
                                         <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
@@ -5867,7 +5867,7 @@ const StyleGenerator = () => {
                                     className="w-full text-[10px] sm:text-xs py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg sm:rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 font-korean flex items-center justify-center gap-1.5 sm:gap-2 group"
                                   >
                                     <RefreshCw className="w-3 sm:w-3.5 h-3 sm:h-3.5 group-hover:rotate-180 transition-transform duration-500" />
-                                    다른 {product.category} 보기
+                                    {language === 'en' ? `View other ${product.category} items` : `다른 ${product.category} 보기`}
                                   </button>
                                 </div>
                               </div>
@@ -5884,7 +5884,7 @@ const StyleGenerator = () => {
                           <Heart className="w-3 sm:w-4 h-3 sm:h-4 text-red-500 fill-red-500" />
                         </div>
                         <span className="text-xs sm:text-sm font-medium font-korean text-red-600 dark:text-red-400">
-                          {likedProducts.size}개 상품을 좋아요 했어요!
+                          {language === 'en' ? `${likedProducts.size} products favorited!` : `${likedProducts.size}개 상품을 좋아요 했어요!`}
                         </span>
                       </div>
                     )}
@@ -5899,14 +5899,14 @@ const StyleGenerator = () => {
                     <div className="relative flex justify-between items-center">
                       {/* 선택 현황 */}
                       <div className="space-y-0.5 sm:space-y-1">
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">선택한 아이템</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">{language === 'en' ? 'Selected items' : '선택한 아이템'}</span>
                         <div className="flex items-baseline gap-1">
                           <span className="text-xl sm:text-2xl font-bold text-foreground">{selectedTrendProducts.length}</span>
-                          <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}개</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}{language === 'en' ? '' : '개'}</span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">총 금액</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">{language === 'en' ? 'Total' : '총 금액'}</span>
                         <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
                           ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                         </p>
@@ -5924,7 +5924,7 @@ const StyleGenerator = () => {
                                   ₩{originalPrice.toLocaleString()}
                                 </span>
                                 <span className="text-[10px] sm:text-xs font-semibold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">
-                                  {discountRate}% 절약
+                                  {language === 'en' ? `Save ${discountRate}%` : `${discountRate}% 절약`}
                                 </span>
                               </div>
                             );
