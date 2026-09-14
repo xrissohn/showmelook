@@ -3148,8 +3148,8 @@ const StyleGenerator = () => {
   const toggleLike = async (product: CachedProduct) => {
     if (!user) {
       toast({
-        title: '로그인이 필요합니다',
-        description: '좋아요 기능을 사용하려면 로그인해주세요.',
+        title: language === 'en' ? 'Sign in required' : '로그인이 필요합니다',
+        description: language === 'en' ? 'Sign in to use favorites.' : '좋아요 기능을 사용하려면 로그인해주세요.',
         variant: 'destructive',
       });
       return;
@@ -3175,8 +3175,8 @@ const StyleGenerator = () => {
           return newSet;
         });
         toast({
-          title: '좋아요 취소',
-          description: '관심 상품에서 제거되었습니다.',
+          title: language === 'en' ? 'Removed from favorites' : '좋아요 취소',
+          description: language === 'en' ? 'The product was removed from your favorites.' : '관심 상품에서 제거되었습니다.',
         });
       } else {
         // 좋아요 - DB에 저장
@@ -3210,15 +3210,15 @@ const StyleGenerator = () => {
           return newSet;
         });
         toast({
-          title: '💕 좋아요!',
-          description: '관심 상품에 저장되었습니다.',
+          title: language === 'en' ? '💕 Added to favorites!' : '💕 좋아요!',
+          description: language === 'en' ? 'The product was saved to your favorites.' : '관심 상품에 저장되었습니다.',
         });
       }
     } catch (error: any) {
       console.error('Like toggle error:', error);
       toast({
-        title: '오류 발생',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Something went wrong' : '오류 발생',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     }
@@ -3228,7 +3228,7 @@ const StyleGenerator = () => {
   const addCachedProductToCart = async (product: CachedProduct) => {
     if (!user) {
       toast({
-        title: '로그인이 필요합니다',
+        title: language === 'en' ? 'Sign in required' : '로그인이 필요합니다',
         variant: 'destructive',
       });
       return;
@@ -3260,14 +3260,14 @@ const StyleGenerator = () => {
       if (error) throw error;
 
       toast({
-        title: '장바구니에 추가됨',
-        description: `${product.name}이(가) 장바구니에 추가되었습니다.`,
+        title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
+        description: language === 'en' ? `${product.name} was added to your cart.` : `${product.name}이(가) 장바구니에 추가되었습니다.`,
       });
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       toast({
-        title: '오류 발생',
-        description: error.message || '장바구니 추가에 실패했습니다.',
+        title: language === 'en' ? 'Something went wrong' : '오류 발생',
+        description: error.message || (language === 'en' ? 'Failed to add the product to your cart.' : '장바구니 추가에 실패했습니다.'),
         variant: 'destructive',
       });
     }
@@ -3277,7 +3277,7 @@ const StyleGenerator = () => {
   const addAllToCart = async () => {
     if (!user) {
       toast({
-        title: '로그인이 필요합니다',
+        title: language === 'en' ? 'Sign in required' : '로그인이 필요합니다',
         variant: 'destructive',
       });
       return;
@@ -3303,14 +3303,14 @@ const StyleGenerator = () => {
       await Promise.all(insertPromises);
 
       toast({
-        title: '장바구니에 추가됨',
-        description: `${selectedTrendProducts.length}개 상품이 장바구니에 추가되었습니다.`,
+        title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
+        description: language === 'en' ? `${selectedTrendProducts.length} products were added to your cart.` : `${selectedTrendProducts.length}개 상품이 장바구니에 추가되었습니다.`,
       });
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       toast({
-        title: '오류 발생',
-        description: error.message || '장바구니 추가에 실패했습니다.',
+        title: language === 'en' ? 'Something went wrong' : '오류 발생',
+        description: error.message || (language === 'en' ? 'Failed to add products to your cart.' : '장바구니 추가에 실패했습니다.'),
         variant: 'destructive',
       });
     }
@@ -4252,7 +4252,7 @@ const StyleGenerator = () => {
     
     // 파일 크기 체크 (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: '이미지가 너무 큽니다', description: '5MB 이하의 이미지를 선택해주세요.', variant: 'destructive' });
+      toast({ title: language === 'en' ? 'Image is too large' : '이미지가 너무 큽니다', description: language === 'en' ? 'Choose an image smaller than 5MB.' : '5MB 이하의 이미지를 선택해주세요.', variant: 'destructive' });
       return;
     }
 
@@ -4317,14 +4317,14 @@ const StyleGenerator = () => {
       const styleInfo = [data.overallStyle, data.season, data.tpo].filter(Boolean).join(' · ');
       
       toast({ 
-        title: '📷 AI가 스타일을 분석했습니다', 
+        title: language === 'en' ? '📷 AI analyzed the style' : '📷 AI가 스타일을 분석했습니다', 
         description: itemSummary 
           ? `${itemSummary} (${styleInfo})` 
-          : '프롬프트를 수정하거나 바로 추천을 받아보세요.' 
+          : (language === 'en' ? 'Edit the prompt or get recommendations now.' : '프롬프트를 수정하거나 바로 추천을 받아보세요.') 
       });
     } catch (err: any) {
       console.error('[StyleGenerator] Image analysis error:', err);
-      toast({ title: '사진 분석 실패', description: err?.message || '다시 시도해주세요.', variant: 'destructive' });
+      toast({ title: language === 'en' ? 'Photo analysis failed' : '사진 분석 실패', description: err?.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'), variant: 'destructive' });
       setStyleImagePreview(null);
     } finally {
       setIsAnalyzingImage(false);
@@ -4343,7 +4343,7 @@ const StyleGenerator = () => {
   const handleCustomStyleSearch = async () => {
     if (!customStylePrompt.trim()) {
       toast({
-        title: '스타일 프롬프트를 입력해주세요',
+        title: language === 'en' ? 'Enter a style prompt' : '스타일 프롬프트를 입력해주세요',
         variant: 'destructive',
       });
       return;
