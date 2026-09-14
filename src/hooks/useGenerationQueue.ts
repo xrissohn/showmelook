@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface GenerationJob {
   id: string;
@@ -37,6 +38,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
   const [currentJob, setCurrentJob] = useState<GenerationJob | null>(null);
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const { toast } = useToast();
+  const { language } = useLanguage();
 
   // Fetch queue status from edge function
   const fetchQueueStatus = useCallback(async () => {
@@ -108,8 +110,8 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
             // Show toast on completion
             if (job.status === 'completed') {
               toast({
-                title: '✨ 스타일 생성 완료!',
-                description: '새로운 룩이 준비되었습니다.',
+                title: language === 'en' ? '✨ Style complete!' : '✨ 스타일 생성 완료!',
+                description: language === 'en' ? 'Your new look is ready.' : '새로운 룩이 준비되었습니다.',
               });
               
               // Keep job for result extraction, clear after longer delay
@@ -119,8 +121,8 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
               }, 5000);
             } else if (job.status === 'failed') {
               toast({
-                title: '생성 실패',
-                description: job.error_message || '다시 시도해주세요.',
+                title: language === 'en' ? 'Generation failed' : '생성 실패',
+                description: job.error_message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
                 variant: 'destructive',
               });
               
@@ -137,7 +139,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, toast, fetchActiveJob]);
+  }, [userId, toast, fetchActiveJob, language]);
 
   // Poll queue status while job is queued
   useEffect(() => {
@@ -168,8 +170,8 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
 
       if (existingJob) {
         toast({
-          title: '이미 처리 중인 작업이 있습니다',
-          description: '현재 작업이 완료된 후 다시 시도해주세요.',
+          title: language === 'en' ? 'A job is already in progress' : '이미 처리 중인 작업이 있습니다',
+          description: language === 'en' ? 'Please try again after the current job finishes.' : '현재 작업이 완료된 후 다시 시도해주세요.',
           variant: 'destructive',
         });
         return null;
@@ -204,26 +206,26 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
 
       if (error) throw error;
 
-      const planLabel = subscription?.plan === 'premium' ? '프리미엄 우선 처리' 
-                      : subscription?.plan === 'pro' ? '프로 우선 처리'
-                      : '일반 처리';
+      const planLabel = language === 'en'
+        ? subscription?.plan === 'premium' ? 'Premium priority' : subscription?.plan === 'pro' ? 'Pro priority' : 'Standard processing'
+        : subscription?.plan === 'premium' ? '프리미엄 우선 처리' : subscription?.plan === 'pro' ? '프로 우선 처리' : '일반 처리';
 
       toast({
-        title: '🎨 스타일 생성 시작',
-        description: `${planLabel} - 잠시만 기다려주세요...`,
+        title: language === 'en' ? '🎨 Style generation started' : '🎨 스타일 생성 시작',
+        description: `${planLabel} - ${language === 'en' ? 'Please wait...' : '잠시만 기다려주세요...'}`,
       });
 
       return job?.id || null;
     } catch (error) {
       console.error('Failed to submit job:', error);
       toast({
-        title: '작업 등록 실패',
-        description: '다시 시도해주세요.',
+        title: language === 'en' ? 'Could not start generation' : '작업 등록 실패',
+        description: language === 'en' ? 'Please try again.' : '다시 시도해주세요.',
         variant: 'destructive',
       });
       return null;
     }
-  }, [userId, toast]);
+  }, [userId, toast, language]);
 
   const cancelJob = useCallback(async (jobId: string) => {
     try {
@@ -240,13 +242,13 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
       setQueueStatus(null);
       
       toast({
-        title: '작업 취소됨',
-        description: '스타일 생성이 취소되었습니다.',
+        title: language === 'en' ? 'Job cancelled' : '작업 취소됨',
+        description: language === 'en' ? 'Style generation was cancelled.' : '스타일 생성이 취소되었습니다.',
       });
     } catch (error) {
       console.error('Failed to cancel job:', error);
     }
-  }, [toast]);
+  }, [toast, language]);
 
   const refreshJob = useCallback(async () => {
     await fetchActiveJob();
