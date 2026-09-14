@@ -68,17 +68,11 @@ export function useLookLikes(lookIds: string[]) {
         if (error) throw error;
       }
 
-      // Recalculate actual count via security-definer RPC (look_likes is now private)
+      // The database trigger persists the aggregate count after insert/delete.
       const { data: countData } = await supabase
         .rpc('get_look_like_count', { _look_id: lookId });
 
       const actualCount = typeof countData === 'number' ? countData : Math.max(0, newCount);
-
-
-      await supabase
-        .from('generated_looks')
-        .update({ like_count: actualCount })
-        .eq('id', lookId);
 
       return { liked: newLiked, newCount: actualCount };
     } catch (error) {

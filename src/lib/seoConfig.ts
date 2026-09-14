@@ -37,6 +37,13 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     canonical: `${BASE_URL}/pricing`,
     ogImage: DEFAULT_OG_IMAGE,
   },
+  install: {
+    title: '쇼미룩 앱 설치 - 모바일 홈 화면 빠른 실행',
+    description: '쇼미룩을 휴대폰과 PC에 설치해 홈 화면에서 빠르게 AI 가상 피팅과 맞춤 스타일링을 시작하세요.',
+    keywords: '쇼미룩 앱 설치, PWA, 홈 화면 추가, AI 가상 피팅 앱',
+    canonical: `${BASE_URL}/install`,
+    ogImage: DEFAULT_OG_IMAGE,
+  },
   mypage: {
     title: '마이페이지 - 내 스타일 관리 | 쇼미룩',
     description: '생성한 스타일 히스토리, 찜한 상품, 등급 현황을 한눈에 확인하세요. 가족 프로필로 소중한 사람들의 스타일도 관리할 수 있어요.',

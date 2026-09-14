@@ -1,0 +1,19 @@
+{
+  "name": "쇼미룩 - AI 패션 스타일링",
+  "short_name": "쇼미룩",
+  "description": "AI 가상 피팅과 개인 맞춤 패션 스타일링",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#a855f7",
+  "lang": "ko-KR",
+  "categories": ["lifestyle", "shopping"],
+  "icons": [
+    { "src": "/pwa-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

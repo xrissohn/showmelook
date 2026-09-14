@@ -73,6 +73,7 @@ interface LookDetailModalProps {
   onToggleLike?: (lookId: string, currentCount: number) => Promise<{ liked: boolean; newCount: number } | null>;
   isLiked?: boolean;
   hasWatermark?: boolean;
+  isCommunityPost?: boolean;
 }
 
 const DEFAULT_TAG_OPTIONS = ['데일리', '특별한 날', '데이트', '출근룩', '주말', '파티', '여행', '계절감'];
@@ -93,6 +94,7 @@ export const LookDetailModal = ({
   onToggleLike,
   isLiked = false,
   hasWatermark = false,
+  isCommunityPost = false,
 }: LookDetailModalProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -218,7 +220,7 @@ export const LookDetailModal = ({
 
   // Memo/tag editing
   const startEditingMemo = () => {
-    setEditMemo(look.memo || '');
+    setEditMemo((isCommunityPost ? look.caption : look.memo) || '');
     setEditTags(look.tags || []);
     setIsEditingMemo(true);
   };
@@ -229,11 +231,14 @@ export const LookDetailModal = ({
   const saveMemoAndTags = async () => {
     setIsSavingMemo(true);
     try {
+      const textValue = editMemo.trim() || null;
       const { error } = await supabase.from('generated_looks')
-        .update({ memo: editMemo.trim() || null, tags: editTags.length > 0 ? editTags : null })
+        .update(isCommunityPost
+          ? { caption: textValue, memo: textValue, tags: editTags.length > 0 ? editTags : null }
+          : { memo: textValue, tags: editTags.length > 0 ? editTags : null })
         .eq('id', look.id);
       if (error) throw error;
-      onUpdateMemoTags?.(look.id, editMemo.trim() || null, editTags.length > 0 ? editTags : null);
+      onUpdateMemoTags?.(look.id, textValue, editTags.length > 0 ? editTags : null);
       setIsEditingMemo(false);
     } catch (e: any) { console.error('Save memo error:', e); }
     finally { setIsSavingMemo(false); }
@@ -243,6 +248,13 @@ export const LookDetailModal = ({
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
+      if (isCommunityPost) {
+        const { error } = await supabase.from('generated_looks').update({ is_public: false }).eq('id', look.id);
+        if (error) throw error;
+        onDelete?.(look.id);
+        onClose();
+        return;
+      }
       if (look.image_url && !look.image_url.startsWith('http') && !look.image_url.startsWith('data:')) {
         await supabase.storage.from('generated-looks').remove([look.image_url]);
       }
@@ -511,12 +523,12 @@ export const LookDetailModal = ({
                 )}
 
                 {/* Memo */}
-                {look.memo && (
+                {(isCommunityPost ? look.caption : look.memo) && (
                   <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                     <h4 className="text-sm font-semibold text-white font-korean mb-1.5 flex items-center gap-1.5">
                       <MessageCircle className="w-4 h-4 text-muted-foreground" />{t('lookDetail.memo')}
                     </h4>
-                    <p className="text-sm text-white/70 font-korean italic">"{look.memo}"</p>
+                    <p className="text-sm text-white/70 font-korean italic">"{isCommunityPost ? look.caption : look.memo}"</p>
                   </div>
                 )}
               </div>
@@ -546,7 +558,7 @@ export const LookDetailModal = ({
         {!isEditingMemo && (
           <>
             {/* Tags/memo display */}
-            {(look.tags?.length || look.memo) && !isFlipped && (
+            {(look.tags?.length || (isCommunityPost ? look.caption : look.memo)) && !isFlipped && (
               <div className="mt-3 text-center max-w-md">
                 {look.tags && look.tags.length > 0 && (
                   <div className="flex flex-wrap justify-center gap-1 mb-2">
@@ -555,7 +567,7 @@ export const LookDetailModal = ({
                     ))}
                   </div>
                 )}
-                {look.memo && <p className="text-white/70 text-sm font-korean line-clamp-2">"{look.memo}"</p>}
+                {(isCommunityPost ? look.caption : look.memo) && <p className="text-white/70 text-sm font-korean line-clamp-2">"{isCommunityPost ? look.caption : look.memo}"</p>}
               </div>
             )}
 
@@ -579,7 +591,7 @@ export const LookDetailModal = ({
                   {onUpdateMemoTags && (
                     <button onClick={startEditingMemo} className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
                       <Tag className="w-4 h-4 text-white" />
-                      <span className="text-white text-sm font-korean hidden sm:inline">{look.memo || look.tags?.length ? t('lookDetail.edit') : t('lookDetail.memoTags')}</span>
+                      <span className="text-white text-sm font-korean hidden sm:inline">{(isCommunityPost ? look.caption : look.memo) || look.tags?.length ? t('lookDetail.edit') : t('lookDetail.memoTags')}</span>
                     </button>
                   )}
                   
@@ -687,12 +699,12 @@ export const LookDetailModal = ({
       {showDeleteConfirm && isOwner && (
         <div className="fixed inset-0 z-[110] bg-black/80 flex items-center justify-center p-4" onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); }}>
           <div className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-center font-korean mb-2">{t('lookDetail.deleteTitle')}</h3>
-            <p className="text-sm text-muted-foreground text-center font-korean mb-6 whitespace-pre-line">{t('lookDetail.deleteConfirm')}</p>
+            <h3 className="text-lg font-bold text-center font-korean mb-2">{isCommunityPost ? (language === 'en' ? 'Remove this post?' : '이 게시물을 내릴까요?') : t('lookDetail.deleteTitle')}</h3>
+            <p className="text-sm text-muted-foreground text-center font-korean mb-6 whitespace-pre-line">{isCommunityPost ? (language === 'en' ? 'The generated look stays in My Gallery.' : '생성한 룩은 마이 갤러리에 그대로 보관됩니다.') : t('lookDetail.deleteConfirm')}</p>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1 font-korean" onClick={() => setShowDeleteConfirm(false)} disabled={isDeleting}>{t('lookDetail.cancel')}</Button>
               <Button variant="destructive" className="flex-1 font-korean" onClick={handleDelete} disabled={isDeleting}>
-                {isDeleting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('lookDetail.deleting')}</> : <><Trash2 className="w-4 h-4 mr-2" />{t('lookDetail.delete')}</>}
+                {isDeleting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t('lookDetail.deleting')}</> : <><Trash2 className="w-4 h-4 mr-2" />{isCommunityPost ? (language === 'en' ? 'Remove post' : '게시물 내리기') : t('lookDetail.delete')}</>}
               </Button>
             </div>
           </div>
