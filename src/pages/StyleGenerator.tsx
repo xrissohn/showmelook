@@ -3557,8 +3557,8 @@ const StyleGenerator = () => {
     } catch (error) {
       console.error('Error fetching alternatives:', error);
       toast({
-        title: '대체 상품 조회 실패',
-        description: '다시 시도해주세요.',
+        title: language === 'en' ? 'Failed to load alternatives' : '대체 상품 조회 실패',
+        description: language === 'en' ? 'Please try again.' : '다시 시도해주세요.',
         variant: 'destructive',
       });
     } finally {
@@ -3587,8 +3587,8 @@ const StyleGenerator = () => {
 
     setAlternativeModalOpen(false);
     toast({
-      title: '상품 교체됨',
-      description: `${newProduct.name}(으)로 변경되었습니다.`,
+      title: language === 'en' ? 'Product replaced' : '상품 교체됨',
+      description: language === 'en' ? `Replaced with ${newProduct.name}.` : `${newProduct.name}(으)로 변경되었습니다.`,
     });
   };
   // 딥링크 변환 후 구매 페이지로 이동하는 함수 - pre-open window to avoid popup blocking
@@ -3651,8 +3651,8 @@ const StyleGenerator = () => {
             setCustomResult(prev => prev ? { ...prev, items: prev.items.filter(p => p.id !== product.id) } : null);
           }
           toast({
-            title: '판매 종료',
-            description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+            title: language === 'en' ? 'No longer available' : '판매 종료',
+            description: language === 'en' ? 'This product is no longer available and was removed.' : '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
             variant: 'destructive',
           });
           return;
@@ -3681,8 +3681,8 @@ const StyleGenerator = () => {
     // product_url이 없으면 에러
     if (!product.product_url) {
       toast({
-        title: '구매 링크 없음',
-        description: '이 상품의 구매 링크가 없습니다.',
+        title: language === 'en' ? 'Purchase link unavailable' : '구매 링크 없음',
+        description: language === 'en' ? 'This product has no purchase link.' : '이 상품의 구매 링크가 없습니다.',
         variant: 'destructive',
       });
       return;
@@ -3706,8 +3706,8 @@ const StyleGenerator = () => {
           setCustomResult(prev => prev ? { ...prev, items: prev.items.filter(p => p.id !== product.id) } : null);
         }
         toast({
-          title: '판매 종료',
-          description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+          title: language === 'en' ? 'No longer available' : '판매 종료',
+          description: language === 'en' ? 'This product is no longer available and was removed.' : '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
           variant: 'destructive',
         });
         setPurchasingProductId(null);
@@ -3735,8 +3735,8 @@ const StyleGenerator = () => {
           window.location.href = finalUrl;
         }
         toast({
-          title: '구매 페이지 이동',
-          description: `${product.name} 구매 페이지로 이동합니다.`,
+          title: language === 'en' ? 'Opening purchase page' : '구매 페이지 이동',
+          description: language === 'en' ? `Opening the purchase page for ${product.name}.` : `${product.name} 구매 페이지로 이동합니다.`,
         });
       } else {
         console.warn('[handlePurchase] Deeplink failed, using original URL:', product.product_url);
@@ -3746,8 +3746,8 @@ const StyleGenerator = () => {
           window.location.href = product.product_url;
         }
         toast({
-          title: '딥링크 변환 실패',
-          description: '제휴 링크 생성에 실패하여 원본 URL로 이동합니다.',
+          title: language === 'en' ? 'Affiliate link unavailable' : '딥링크 변환 실패',
+          description: language === 'en' ? 'Opening the original product URL instead.' : '제휴 링크 생성에 실패하여 원본 URL로 이동합니다.',
           variant: 'destructive',
         });
       }
@@ -3759,8 +3759,8 @@ const StyleGenerator = () => {
         window.location.href = product.product_url;
       }
       toast({
-        title: '딥링크 오류',
-        description: '제휴 링크 생성 중 오류가 발생했습니다.',
+        title: language === 'en' ? 'Affiliate link error' : '딥링크 오류',
+        description: language === 'en' ? 'An error occurred while creating the affiliate link.' : '제휴 링크 생성 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
@@ -4421,7 +4421,7 @@ const StyleGenerator = () => {
 
         setCustomResult({
           items: transformedItems,
-          styleConcept: data.look.styleConcept || data.look.name || '스타일 추천',
+          styleConcept: data.look.styleConcept || data.look.name || (language === 'en' ? 'Style recommendation' : '스타일 추천'),
           styleReasoning: data.look.styleReasoning || data.look.stylingTips || '',
           totalPrice: data.look.totalPrice || 0,
           autoSelectedTotal: data.look.autoSelectedTotal || 0,
@@ -4435,10 +4435,10 @@ const StyleGenerator = () => {
 
         const isEvalMode = data.mode === 'evaluation';
         toast({
-          title: isEvalMode ? 'AI 스타일 평가 완료!' : '스타일 추천 완료!',
-          description: isEvalMode 
-            ? `${transformedItems.length}개의 유사 아이템을 매칭하고 스타일을 평가했어요.`
-            : `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
+          title: language === 'en' ? (isEvalMode ? 'AI style review complete!' : 'Style recommendation ready!') : (isEvalMode ? 'AI 스타일 평가 완료!' : '스타일 추천 완료!'),
+          description: language === 'en'
+            ? (isEvalMode ? `Matched ${transformedItems.length} similar items and reviewed the style.` : `Recommended ${transformedItems.length} items.`)
+            : (isEvalMode ? `${transformedItems.length}개의 유사 아이템을 매칭하고 스타일을 평가했어요.` : `${transformedItems.length}개의 아이템을 추천해드렸어요.`),
         });
 
         // 히스토리 저장 및 피드백용 ID 설정
@@ -4479,8 +4479,8 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Custom style recommendation error:', error);
       toast({
-        title: '추천 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Recommendation failed' : '추천 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
