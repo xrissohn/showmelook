@@ -5999,18 +5999,24 @@ const StyleGenerator = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <TierBadge tier={currentTier} size="sm" showTooltip={true} />
                         <span className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                          {isPremium ? '무제한 생성' : '오늘 남은 횟수'}
+                          {isPremium
+                            ? (language === 'en' ? 'Unlimited Generations' : '무제한 생성')
+                            : (language === 'en' ? "Today's Remaining" : '오늘 남은 횟수')}
                         </span>
                       </div>
                       <p className="text-xs sm:text-sm text-muted-foreground font-korean truncate">
                         {limitLoading ? (
-                          '로딩 중...'
+                          language === 'en' ? 'Loading...' : '로딩 중...'
                         ) : isPremium ? (
-                          '모든 기능 무제한'
+                          language === 'en' ? 'Unlimited access to all features' : '모든 기능 무제한'
                         ) : bonusCredits > 0 ? (
-                          `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회`
+                          language === 'en'
+                            ? `${remainingCount} standard + ${bonusCredits} bonus`
+                            : `기본 ${remainingCount}회 + 보너스 ${bonusCredits}회`
                         ) : (
-                          `${remainingCount}회 남음 (일일 ${TIER_CONFIG[currentTier]?.dailyLimit || 5}회)`
+                          language === 'en'
+                            ? `${remainingCount} remaining (${TIER_CONFIG[currentTier]?.dailyLimit || 5} daily)`
+                            : `${remainingCount}회 남음 (일일 ${TIER_CONFIG[currentTier]?.dailyLimit || 5}회)`
                         )}
                       </p>
                     </div>
