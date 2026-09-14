@@ -8,7 +8,7 @@ export const en: TranslationKeys = {
     install: 'Install App',
     mypage: 'My Page',
     cart: 'Cart',
-    createStyle: 'Create My Style',
+    createStyle: 'Create',
     login: 'Log In',
     getStarted: 'Get Started',
     logout: 'Log Out',

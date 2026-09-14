@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Wand2, ShoppingBag, Palette, ArrowRight, Star, Sparkles, Download, Check, Crown, Images, Heart, Gift, Users } from 'lucide-react';
-import { TIER_CONFIG, formatAmountKo } from '@/lib/tierConfig';
+import { TIER_CONFIG, formatAmount } from '@/lib/tierConfig';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import { SEOHead } from '@/components/SEOHead';
 
@@ -701,13 +701,13 @@ const Landing = () => {
               {/* Text */}
               <div className="flex-1 text-center sm:text-left">
                 <h3 className="font-korean text-xl sm:text-2xl md:text-3xl text-white font-bold mb-1 sm:mb-2">
-                  친구 추천하면 보너스 5회 🎁
+                  {language === 'en' ? 'Invite a Friend, Get 5 Bonus Styles 🎁' : '친구 추천하면 보너스 5회 🎁'}
                 </h3>
                 <p className="font-korean text-white/80 text-sm sm:text-base">
-                  추천 코드를 공유하고, 친구도 나도 스타일 생성 보너스를 받으세요! 
+                  {language === 'en' ? 'Share your referral code so you and your friend both receive bonus generations!' : '추천 코드를 공유하고, 친구도 나도 스타일 생성 보너스를 받으세요!'} 
                   <span className="inline-flex items-center gap-1 ml-1">
                     <Users className="w-3.5 h-3.5" />
-                    최대 10명까지
+                    {language === 'en' ? 'Up to 10 friends' : '최대 10명까지'}
                   </span>
                 </p>
               </div>
@@ -715,7 +715,9 @@ const Landing = () => {
               {/* CTA Button */}
               <div className="flex-shrink-0">
                 <div className="bg-white text-foreground font-korean font-semibold px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-sm sm:text-base group-hover:scale-105 transition-transform duration-200 flex items-center gap-2 shadow-lg">
-                  {user ? '내 추천 코드 보기' : '가입하고 코드 받기'}
+                  {language === 'en'
+                    ? (user ? 'View My Code' : 'Sign Up for a Code')
+                    : (user ? '내 추천 코드 보기' : '가입하고 코드 받기')}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
@@ -774,7 +776,7 @@ const Landing = () => {
                   {isBronze && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <span className="bg-gradient-brand text-white text-xs font-medium px-3 py-1 rounded-full shadow-md whitespace-nowrap">
-                        첫 구매 시
+                        {language === 'en' ? 'First Purchase' : '첫 구매 시'}
                       </span>
                     </div>
                   )}
@@ -790,20 +792,28 @@ const Landing = () => {
                   
                   <div className="text-center mb-3">
                     <h3 className="font-korean text-base sm:text-lg font-semibold text-foreground mb-1">
-                      {tier.nameKo}
+                      {language === 'en' ? tier.name : tier.nameKo}
                     </h3>
                     <div className="text-xs sm:text-sm text-muted-foreground">
-                      {tier.minAmount === 0 
-                        ? '가입 즉시' 
-                        : isBronze 
-                        ? '첫 제품 구매시'
-                        : `구매누적 ${formatAmountKo(tier.minAmount)}+`}
+                      {tier.minAmount === 0
+                        ? (language === 'en' ? 'Upon signup' : '가입 즉시')
+                        : isBronze
+                        ? (language === 'en' ? 'With first purchase' : '첫 제품 구매시')
+                        : (language === 'en' ? `${formatAmount(tier.minAmount, language)} total spend` : `구매누적 ${formatAmount(tier.minAmount, language)}+`)}
                     </div>
                   </div>
                   
                   {/* Key features - show top 3 (4 for platinum) */}
                   <ul className="space-y-1.5 mb-4">
-                    {tier.features.slice(0, isPlatinum ? 4 : 3).map((feature, j) => (
+                    {(language === 'en'
+                      ? [
+                          tier.dailyLimit === -1 ? 'Unlimited style generations' : `${tier.dailyLimit} style generations daily`,
+                          tier.monthlyLimit === -1 ? 'Unlimited monthly generations' : `${tier.monthlyLimit} monthly generations`,
+                          tier.canPreviewRecommendations ? 'Preview product recommendations' : `${tier.galleryLimit} gallery saves`,
+                          !tier.hasWatermark ? 'Watermark-free images' : '7-day style history',
+                        ]
+                      : tier.features
+                    ).slice(0, isPlatinum ? 4 : 3).map((feature, j) => (
                       <li key={j} className="flex items-start gap-1.5 text-xs sm:text-sm">
                         <Check className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
                           tier.highlightFeatures?.some(h => feature.includes(h.replace('일일 ', '').replace('회', '')))
@@ -820,7 +830,7 @@ const Landing = () => {
                       <li className="flex items-start gap-1.5 text-xs sm:text-sm">
                         <Check className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-accent" />
                         <span className="font-korean text-muted-foreground">
-                          +100만원당 모델 1명 추가
+                          {language === 'en' ? '+1 model for every ₩1M spent' : '+100만원당 모델 1명 추가'}
                         </span>
                       </li>
                     )}
@@ -832,7 +842,7 @@ const Landing = () => {
                     className="w-full font-korean rounded-full text-xs sm:text-sm"
                     onClick={() => navigate('/pricing')}
                   >
-                    자세히 보기
+                    {language === 'en' ? 'View Details' : '자세히 보기'}
                   </Button>
                 </HoverParticleCard>
               );
@@ -846,7 +856,7 @@ const Landing = () => {
               onClick={() => navigate('/pricing')}
               className="font-korean text-muted-foreground hover:text-primary group"
             >
-              모든 기능 비교하기
+              {language === 'en' ? 'Compare All Benefits' : '모든 기능 비교하기'}
               <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>
@@ -894,14 +904,14 @@ const Landing = () => {
               <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-4 sm:h-4 text-coral opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
               <img 
                 src={showmelookLogo} 
-                alt="쇼미룩 로고" 
+                alt={language === 'en' ? 'ShowMeLook logo' : '쇼미룩 로고'}
                 width={40}
                 height={40}
                 className="w-8 h-8 sm:w-10 sm:h-10 object-contain group-hover:animate-float" 
               />
               <img 
                 src={showmelookKoreanLogo} 
-                alt="쇼미룩" 
+                alt={language === 'en' ? 'ShowMeLook' : '쇼미룩'}
                 width={70}
                 height={70}
                 className="h-[50px] sm:h-[60px] md:h-[70px] object-contain -ml-1.5 sm:-ml-2" 
@@ -916,7 +926,7 @@ const Landing = () => {
                 className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors relative group flex items-center gap-1"
               >
                 <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="font-korean">앱 설치</span>
+                <span className="font-korean">{t('nav.install')}</span>
                 <Sparkles className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-2 h-2 sm:w-3 sm:h-3 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
               </button>
               {['Instagram', 'Twitter', 'Blog'].map((social, i) => (
@@ -936,14 +946,14 @@ const Landing = () => {
                 onClick={() => navigate('/privacy')}
                 className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
               >
-                개인정보 처리방침
+                {t('landing.footer.privacy')}
               </button>
               <span className="text-muted-foreground/50">|</span>
               <button 
                 onClick={() => navigate('/terms')}
                 className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
               >
-                서비스 이용약관
+                {t('landing.footer.terms')}
               </button>
             </div>
             
