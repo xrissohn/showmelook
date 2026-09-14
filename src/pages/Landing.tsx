@@ -900,6 +900,7 @@ const Landing = () => {
             <button 
               onClick={() => navigate('/')} 
               className="flex items-center justify-center gap-0 mb-4 sm:mb-6 hover:opacity-80 transition-opacity group relative"
+              aria-label={language === 'en' ? 'Go to ShowMeLook home' : '쇼미룩 홈으로 이동'}
             >
               <Sparkles className="absolute -top-1 -left-2 sm:-top-2 sm:-left-4 w-3 h-3 sm:w-4 sm:h-4 text-coral opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />
               <img 
@@ -924,6 +925,7 @@ const Landing = () => {
               <button 
                 onClick={() => navigate('/install')}
                 className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors relative group flex items-center gap-1"
+                aria-label={language === 'en' ? 'Install the ShowMeLook app' : '쇼미룩 앱 설치하기'}
               >
                 <Download className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="font-korean">{t('nav.install')}</span>
@@ -933,6 +935,7 @@ const Landing = () => {
                 <button 
                   key={social}
                   className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors relative group"
+                  aria-label={language === 'en' ? `Open ShowMeLook on ${social}` : `쇼미룩 ${social} 열기`}
                 >
                   {social}
                   <Sparkles className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-2 h-2 sm:w-3 sm:h-3 text-primary opacity-0 group-hover:opacity-100 animate-sparkle transition-opacity" />

@@ -17,8 +17,8 @@ export const en: TranslationKeys = {
   },
   landing: {
     aiService: 'AI Fashion Styling Service',
-    heroTitle1: 'Your Personal Style,',
-    heroTitle2: 'Completed by AI',
+    heroTitle1: 'ShowMeLook AI Personal',
+    heroTitle2: 'Fashion Styling Service',
     heroDesc1: 'Experience trendy styles with just one photo.',
     heroDesc2: 'AI suggests the perfect fashion for you.',
     freeStart: 'Start Free',
