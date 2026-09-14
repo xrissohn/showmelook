@@ -44,6 +44,12 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
     { value: '선택안함', label: t('familyProfile.genders.preferNotToSay'), emoji: '🔒' },
   ];
 
+  const relationshipLabel = (value: string) =>
+    relationships.find((relationship) => relationship.value === value)?.label || value;
+
+  const genderLabel = (value: string) =>
+    genders.find((gender) => gender.value === value)?.label || value;
+
   const bodyTypes = [
     { value: 'slim', label: t('profileSetup.bodyTypes.slim') },
     { value: 'average', label: t('profileSetup.bodyTypes.average') },
@@ -432,12 +438,12 @@ export const FamilyProfileManager = ({ userId, maxProfiles = 5 }: FamilyProfileM
                 <span className="font-semibold font-korean">{profile.full_name}</span>
                 {profile.relationship && (
                   <Badge variant="outline" className="text-xs">
-                    {relationships.find(r => r.value === profile.relationship)?.emoji} {profile.relationship}
+                     {relationships.find(r => r.value === profile.relationship)?.emoji} {relationshipLabel(profile.relationship)}
                   </Badge>
                 )}
               </div>
               <div className="text-sm text-muted-foreground font-korean">
-                {profile.gender && <span>{profile.gender}</span>}
+                 {profile.gender && <span>{genderLabel(profile.gender)}</span>}
                 {profile.height && <span> · {profile.height}cm</span>}
                 {profile.weight && <span> · {profile.weight}kg</span>}
               </div>
