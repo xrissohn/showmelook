@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Images, Loader2, Plus, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -86,13 +86,12 @@ export function CommunityPostComposer({ onPublished }: CommunityPostComposerProp
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button onClick={handleOpen} className="shrink-0 font-korean">
-          <Plus className="mr-1.5 h-4 w-4" />{copy.button}
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+    <>
+      <Button onClick={handleOpen} className="shrink-0 font-korean">
+        <Plus className="mr-1.5 h-4 w-4" />{copy.button}
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-korean">{copy.title}</DialogTitle>
           <DialogDescription className="font-korean">{copy.description}</DialogDescription>
@@ -143,7 +142,8 @@ export function CommunityPostComposer({ onPublished }: CommunityPostComposerProp
             </Button>
           </>
         )}
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

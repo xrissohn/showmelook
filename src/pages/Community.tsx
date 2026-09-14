@@ -12,11 +12,16 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Loader2, Images, LayoutGrid } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAdsContentReady } from '@/hooks/useAdsContentReady';
+import { useAuth } from '@/hooks/useAuth';
+import { useGeneratedLooks } from '@/hooks/useGeneratedLooks';
+import { CommunityPostComposer } from '@/components/community/CommunityPostComposer';
 
 const Community = () => {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('photos');
-  const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount } = useCommunityFeed();
+  const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount, updateLookContent, removeLook, refetch } = useCommunityFeed();
+  const { looks: ownLooks, refetch: refetchOwnLooks } = useGeneratedLooks();
   const { users, isLoading: galleryLoading } = useGalleryUsers();
   const lookIds = useMemo(() => looks.map(l => l.id), [looks]);
   useAdsContentReady(!isLoading && looks.length > 0);
@@ -50,10 +55,12 @@ const Community = () => {
   };
 
   const handleLookClick = (look: typeof looks[0], index: number) => {
+    const ownedLook = ownLooks.find((item) => item.id === look.id);
     setSelectedLook({
       ...look,
       is_favorite: false,
       is_public: true,
+      user_id: ownedLook && user ? user.id : look.user_id,
       user_name: look.user_name,
       user_avatar: look.user_avatar,
     });
@@ -86,14 +93,15 @@ const Community = () => {
         <div className="container mx-auto px-3 sm:px-6 py-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground flex items-center gap-2">
-                <Images className="w-6 h-6 text-primary" />
-                {t('community.title')}
-              </h1>
-              <p className="text-sm text-muted-foreground font-korean mt-1">
-                {t('community.description')}
-              </p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground flex items-center gap-2">
+                  <Images className="w-6 h-6 text-primary" />
+                  {t('community.title')}
+                </h1>
+                <CommunityPostComposer onPublished={() => { setSortBy('latest'); void refetch(); void refetchOwnLooks(); }} />
+              </div>
+              <p className="text-sm text-muted-foreground font-korean mt-1">{t('community.description')}</p>
             </div>
             {activeTab === 'photos' && (
               <CommunityFilters sortBy={sortBy} onSortChange={setSortBy} />
@@ -232,6 +240,16 @@ const Community = () => {
             return result;
           }}
           isLiked={likedLookIds.has(selectedLook.id)}
+          isCommunityPost
+          onUpdateMemoTags={(lookId, caption, tags) => {
+            updateLookContent(lookId, caption, tags);
+            setSelectedLook(prev => prev ? { ...prev, caption, memo: caption, tags } : null);
+            void refetchOwnLooks();
+          }}
+          onDelete={(lookId) => {
+            removeLook(lookId);
+            void refetchOwnLooks();
+          }}
         />
       )}
     </>
