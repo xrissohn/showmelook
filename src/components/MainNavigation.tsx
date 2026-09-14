@@ -258,6 +258,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                           <button
                             onClick={toggleLanguage}
                             className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                             aria-label={language === 'en' ? '한국어로 변경' : 'Switch to English'}
                           >
                             <Globe className="w-3.5 h-3.5" />
                             {language === 'ko' ? 'EN' : 'KO'}

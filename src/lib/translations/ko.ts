@@ -17,8 +17,8 @@ export const ko: TranslationKeys = {
   },
   landing: {
     aiService: 'AI 패션 스타일링 서비스',
-    heroTitle1: '나만의 스타일을',
-    heroTitle2: 'AI가 완성합니다',
+    heroTitle1: '쇼미룩 AI 맞춤 패션',
+    heroTitle2: '스타일링 서비스',
     heroDesc1: '사진 한 장으로 트렌디한 스타일을 경험하세요.',
     heroDesc2: 'AI가 당신에게 딱 맞는 패션을 제안합니다.',
     freeStart: '무료로 시작하기',
