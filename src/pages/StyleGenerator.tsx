@@ -4223,21 +4223,21 @@ const StyleGenerator = () => {
         // 캐시 히트 시 알림
         if (data.cacheHit) {
           toast({
-            title: '캐시된 스타일 불러옴!',
-            description: `${foundProducts.length}개 아이템 (API 비용 절약 🎉)`,
+            title: language === 'en' ? 'Cached style loaded!' : '캐시된 스타일 불러옴!',
+            description: language === 'en' ? `${foundProducts.length} items (saved an API request 🎉)` : `${foundProducts.length}개 아이템 (API 비용 절약 🎉)`,
           });
         } else {
           toast({
-            title: '상품 검색 완료!',
-            description: `${foundProducts.length}개의 ${trend.name_ko} 스타일 아이템을 찾았어요.`,
+            title: language === 'en' ? 'Product search complete!' : '상품 검색 완료!',
+            description: language === 'en' ? `Found ${foundProducts.length} items for this style.` : `${foundProducts.length}개의 ${trend.name_ko} 스타일 아이템을 찾았어요.`,
           });
         }
       }
     } catch (error) {
       console.error('Error searching products:', error);
       toast({
-        title: '검색 실패',
-        description: '상품 검색 중 오류가 발생했습니다.',
+        title: language === 'en' ? 'Search failed' : '검색 실패',
+        description: language === 'en' ? 'An error occurred while searching for products.' : '상품 검색 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
