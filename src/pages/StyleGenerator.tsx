@@ -6279,7 +6279,7 @@ const StyleGenerator = () => {
                       onShare={(platform, result) => {
                         if (result.message) {
                           toast({
-                            title: result.success ? '성공' : '알림',
+                            title: language === 'en' ? (result.success ? 'Success' : 'Notice') : (result.success ? '성공' : '알림'),
                             description: result.message,
                             variant: result.success ? 'default' : 'destructive',
                           });
@@ -6311,8 +6311,8 @@ const StyleGenerator = () => {
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                       <img src={showmelookLogo} alt="" className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 opacity-50" />
-                      <p className="text-base sm:text-lg font-medium font-korean">AI 스타일 미리보기</p>
-                      <p className="text-xs sm:text-sm mt-2 font-korean">트렌드와 아이템을 선택하고 생성하세요</p>
+                      <p className="text-base sm:text-lg font-medium font-korean">{language === 'en' ? 'AI Style Preview' : 'AI 스타일 미리보기'}</p>
+                      <p className="text-xs sm:text-sm mt-2 font-korean">{language === 'en' ? 'Choose a trend and items, then generate your style' : '트렌드와 아이템을 선택하고 생성하세요'}</p>
                     </div>
                   )}
                 </div>
@@ -6332,13 +6332,13 @@ const StyleGenerator = () => {
                             .eq('id', generatedLookId);
                           if (error) {
                             setGeneratedLookIsPublic(!newPublic);
-                            toast({ title: '변경 실패', description: '다시 시도해주세요.', variant: 'destructive' });
+                            toast({ title: language === 'en' ? 'Update failed' : '변경 실패', description: language === 'en' ? 'Please try again.' : '다시 시도해주세요.', variant: 'destructive' });
                           } else {
                             // 로컬 myLooks 동기화
                             setMyLooks(prev => prev.map(l => l.id === generatedLookId ? { ...l, is_public: newPublic } : l));
                             toast({
-                              title: newPublic ? '커뮤니티에 공개됨 🌐' : '비공개로 전환됨 🔒',
-                              description: newPublic ? '스타일 갤러리에서 다른 사람들이 볼 수 있어요.' : '나만 볼 수 있는 비공개 상태입니다.',
+                               title: language === 'en' ? (newPublic ? 'Published to community 🌐' : 'Made private 🔒') : (newPublic ? '커뮤니티에 공개됨 🌐' : '비공개로 전환됨 🔒'),
+                               description: language === 'en' ? (newPublic ? 'Others can now see it in the Style Gallery.' : 'Only you can see this look.') : (newPublic ? '스타일 갤러리에서 다른 사람들이 볼 수 있어요.' : '나만 볼 수 있는 비공개 상태입니다.'),
                             });
                             if (newPublic) void claimGalleryPublicCredit(generatedLookId);
                           }
@@ -6350,12 +6350,12 @@ const StyleGenerator = () => {
                         }`}
                       >
                         {generatedLookIsPublic ? <Globe className="w-4 h-4" /> : <LockKeyhole className="w-4 h-4" />}
-                        {generatedLookIsPublic ? '커뮤니티 공개 중' : '비공개 (커뮤니티에 공개하기)'}
+                         {language === 'en' ? (generatedLookIsPublic ? 'Public in community' : 'Private (publish to community)') : (generatedLookIsPublic ? '커뮤니티 공개 중' : '비공개 (커뮤니티에 공개하기)')}
                       </button>
                     )}
                     {generatedLookId && !generatedLookIsPublic && (
                       <p className="text-[11px] sm:text-xs text-primary/80 font-korean text-center max-w-xs">
-                        🎁 {GALLERY_PUBLIC_CREDIT_TEXT}
+                         🎁 {language === 'en' ? 'Earn 1 bonus generation when you publish this look.' : GALLERY_PUBLIC_CREDIT_TEXT}
                       </p>
                     )}
 
@@ -6375,7 +6375,7 @@ const StyleGenerator = () => {
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      다른 스타일 시도하기
+                       {language === 'en' ? 'Try another style' : '다른 스타일 시도하기'}
                     </Button>
                   </div>
                 )}
@@ -6383,7 +6383,7 @@ const StyleGenerator = () => {
               {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
                 <div className="mt-4 sm:mt-6 w-full">
-                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
+                   <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">{language === 'en' ? 'Shop selected items' : '선택된 아이템 구매하기'}</h3>
                   
                   {/* 모바일/태블릿: Embla 캐러셀 사용 */}
                   <div className="lg:hidden">
@@ -6442,7 +6442,7 @@ const StyleGenerator = () => {
                             {purchasingProductId === product.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                              '구매'
+                               language === 'en' ? 'Buy' : '구매'
                             )}
                           </Button>
                         </div>
@@ -6458,7 +6458,7 @@ const StyleGenerator = () => {
                       className="w-full font-korean text-xs sm:text-sm h-9 sm:h-10"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                      전체 장바구니 담기
+                       {language === 'en' ? 'Add all to cart' : '전체 장바구니 담기'}
                     </Button>
                     <Button
                       variant="hero"
@@ -6471,12 +6471,12 @@ const StyleGenerator = () => {
                       className="w-full font-korean text-xs sm:text-sm h-9 sm:h-10"
                     >
                       <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                      전체 구매하기
+                       {language === 'en' ? 'Buy all' : '전체 구매하기'}
                     </Button>
                   </div>
                   <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-accent/10 rounded-lg sm:rounded-xl text-center">
                     <p className="text-xs sm:text-sm text-accent font-korean">
-                      총 ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                       {language === 'en' ? 'Total' : '총'} ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -6485,7 +6485,7 @@ const StyleGenerator = () => {
               {/* 기존 상품 테이블에서 선택한 아이템 */}
               {generatedImage && selectedProducts.length > 0 && (
                 <div className="mt-4 sm:mt-6 w-full">
-                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">기본 아이템 구매하기</h3>
+                   <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">{language === 'en' ? 'Shop original items' : '기본 아이템 구매하기'}</h3>
                   <div className="space-y-2 w-full">
                     {selectedProducts.map((product) => (
                       <div
@@ -6504,7 +6504,7 @@ const StyleGenerator = () => {
                           onClick={() => addToCart(product)}
                           className="font-korean text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8 flex-shrink-0"
                         >
-                          담기
+                           {language === 'en' ? 'Add' : '담기'}
                         </Button>
                       </div>
                     ))}
@@ -6515,7 +6515,7 @@ const StyleGenerator = () => {
                     className="w-full mt-3 sm:mt-4 font-korean text-xs sm:text-sm h-9 sm:h-10"
                     onClick={() => navigate('/cart')}
                   >
-                    장바구니로 이동
+                     {language === 'en' ? 'Go to cart' : '장바구니로 이동'}
                     <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Button>
                 </div>
@@ -6584,7 +6584,7 @@ const StyleGenerator = () => {
                   </Button>
                   {!isEditingProfile && (
                     <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)} className="font-korean">
-                      빠른 수정
+                      {language === 'en' ? 'Quick edit' : '빠른 수정'}
                     </Button>
                   )}
                 {isEditingProfile && (
@@ -6598,10 +6598,10 @@ const StyleGenerator = () => {
                         style_preferences: userProfile?.style_preferences || [],
                       });
                     }}>
-                      취소
+                      {language === 'en' ? 'Cancel' : '취소'}
                     </Button>
                     <Button variant="hero" size="sm" onClick={saveProfile} disabled={isSavingProfile} className="font-korean">
-                      {isSavingProfile ? '저장 중...' : '저장'}
+                      {language === 'en' ? (isSavingProfile ? 'Saving...' : 'Save') : (isSavingProfile ? '저장 중...' : '저장')}
                     </Button>
                   </>
                 )}
@@ -6612,7 +6612,7 @@ const StyleGenerator = () => {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-height" className="font-korean">키 (cm)</Label>
+                      <Label htmlFor="edit-height" className="font-korean">{language === 'en' ? 'Height (cm)' : '키 (cm)'}</Label>
                       <Input
                         id="edit-height"
                         type="number"
@@ -6622,7 +6622,7 @@ const StyleGenerator = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-weight" className="font-korean">몸무게 (kg)</Label>
+                      <Label htmlFor="edit-weight" className="font-korean">{language === 'en' ? 'Weight (kg)' : '몸무게 (kg)'}</Label>
                       <Input
                         id="edit-weight"
                         type="number"
@@ -6634,7 +6634,7 @@ const StyleGenerator = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="font-korean">체형</Label>
+                    <Label className="font-korean">{language === 'en' ? 'Body type' : '체형'}</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {bodyTypes.map((type) => (
                         <button
@@ -6653,7 +6653,7 @@ const StyleGenerator = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="font-korean">선호 스타일</Label>
+                    <Label className="font-korean">{language === 'en' ? 'Preferred styles' : '선호 스타일'}</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {styleOptions.map((style) => (
                         <button
@@ -6681,13 +6681,13 @@ const StyleGenerator = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground font-korean">키</p>
+                      <p className="text-sm text-muted-foreground font-korean">{language === 'en' ? 'Height' : '키'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.height ? `${userProfile.height}cm` : '-'}
                       </p>
                     </div>
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground font-korean">몸무게</p>
+                      <p className="text-sm text-muted-foreground font-korean">{language === 'en' ? 'Weight' : '몸무게'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.weight ? `${userProfile.weight}kg` : '-'}
                       </p>
@@ -6695,23 +6695,23 @@ const StyleGenerator = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground mb-2 font-korean">성별</p>
+                      <p className="text-sm text-muted-foreground mb-2 font-korean">{language === 'en' ? 'Gender' : '성별'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
-                        {userProfile?.gender === 'male' ? '남성' : 
-                         userProfile?.gender === 'female' ? '여성' : 
-                         userProfile?.gender === 'unisex' ? '유니섹스' : 
-                         userProfile?.gender === 'prefer_not_to_say' ? '비공개' : '-'}
+                        {userProfile?.gender === 'male' ? (language === 'en' ? 'Male' : '남성') : 
+                         userProfile?.gender === 'female' ? (language === 'en' ? 'Female' : '여성') : 
+                         userProfile?.gender === 'unisex' ? (language === 'en' ? 'Unisex' : '유니섹스') : 
+                         userProfile?.gender === 'prefer_not_to_say' ? (language === 'en' ? 'Prefer not to say' : '비공개') : '-'}
                       </p>
                     </div>
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground mb-2 font-korean">체형</p>
+                      <p className="text-sm text-muted-foreground mb-2 font-korean">{language === 'en' ? 'Body type' : '체형'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
                         {bodyTypes.find(t => t.id === userProfile?.body_type)?.label || '-'}
                       </p>
                     </div>
                   </div>
                   <div className="p-4 bg-background rounded-xl">
-                    <p className="text-sm text-muted-foreground mb-2 font-korean">선호 스타일</p>
+                    <p className="text-sm text-muted-foreground mb-2 font-korean">{language === 'en' ? 'Preferred styles' : '선호 스타일'}</p>
                     <div className="flex flex-wrap gap-2">
                       {userProfile?.style_preferences?.length ? (
                         userProfile.style_preferences.map(styleId => {
@@ -6735,13 +6735,13 @@ const StyleGenerator = () => {
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
                 <p className="text-3xl font-korean text-foreground">{myLooks.length}</p>
-                <p className="text-muted-foreground font-korean">생성된 룩</p>
+                <p className="text-muted-foreground font-korean">{language === 'en' ? 'Created looks' : '생성된 룩'}</p>
               </div>
               <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
                 <p className="text-3xl font-korean text-foreground">
                   {myLooks.filter(l => l.is_favorite).length}
                 </p>
-                <p className="text-muted-foreground font-korean">즐겨찾기</p>
+                <p className="text-muted-foreground font-korean">{language === 'en' ? 'Favorites' : '즐겨찾기'}</p>
               </div>
             </div>
           </div>
@@ -6755,8 +6755,8 @@ const StyleGenerator = () => {
             {/* 모달 헤더 */}
             <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background/95 backdrop-blur-sm">
               <div>
-                <h3 className="font-semibold text-lg font-korean text-foreground">다른 {alternativeCategory} 보기</h3>
-                <p className="text-xs text-muted-foreground font-korean">원하는 상품을 선택해 교체하세요</p>
+                <h3 className="font-semibold text-lg font-korean text-foreground">{language === 'en' ? `View other ${alternativeCategory} items` : `다른 ${alternativeCategory} 보기`}</h3>
+                <p className="text-xs text-muted-foreground font-korean">{language === 'en' ? 'Choose a product to replace the current one' : '원하는 상품을 선택해 교체하세요'}</p>
               </div>
               <button
                 onClick={() => setAlternativeModalOpen(false)}
@@ -6771,12 +6771,12 @@ const StyleGenerator = () => {
               {isLoadingAlternatives ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-accent mb-3" />
-                  <p className="text-muted-foreground font-korean text-sm">대체 상품을 찾고 있어요...</p>
+                  <p className="text-muted-foreground font-korean text-sm">{language === 'en' ? 'Finding alternative products...' : '대체 상품을 찾고 있어요...'}</p>
                 </div>
               ) : alternativeProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <ShoppingBag className="w-12 h-12 text-muted-foreground/30 mb-3" />
-                  <p className="text-muted-foreground font-korean">같은 카테고리의 다른 상품이 없습니다.</p>
+                  <p className="text-muted-foreground font-korean">{language === 'en' ? 'No other products are available in this category.' : '같은 카테고리의 다른 상품이 없습니다.'}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
