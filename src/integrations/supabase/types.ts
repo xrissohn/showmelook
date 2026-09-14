@@ -1973,6 +1973,7 @@ export type Database = {
         Returns: boolean
       }
       has_user_liked_look: { Args: { _look_id: string }; Returns: boolean }
+      sync_look_like_count: { Args: { _look_id: string }; Returns: number }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
