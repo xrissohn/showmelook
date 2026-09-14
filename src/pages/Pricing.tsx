@@ -10,7 +10,7 @@ import { TierPolicyNotice } from '@/components/subscription/TierPolicyNotice';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent } from '@/components/ui/card';
-import { TIER_CONFIG, TierType, TIER_ORDER, formatAmountKo } from '@/lib/tierConfig';
+import { TIER_CONFIG, TierType, TIER_ORDER, formatAmount, getTierName } from '@/lib/tierConfig';
 import { CheckCircle2, HelpCircle, ShoppingBag, TrendingUp, Crown, Sparkles } from 'lucide-react';
 import { SEOHead } from '@/components/SEOHead';
 import { Helmet } from 'react-helmet-async';
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/accordion';
 
 const Pricing = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const { stats, nextTierInfo, progressToNextTier, isLoading } = usePurchaseStats(user?.id);
   
@@ -85,7 +85,7 @@ const Pricing = () => {
                       <TierBadge tier={currentTier} size="md" showIcon />
                     </div>
                     <p className="text-xl font-bold font-korean">
-                      {t('pricing.accumPurchase')} {formatAmountKo(totalAmount)}
+                      {t('pricing.accumPurchase')} {formatAmount(totalAmount, language)}
                     </p>
                   </div>
                 </div>
@@ -94,11 +94,11 @@ const Pricing = () => {
                   <div className="w-full sm:w-48">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-muted-foreground font-korean">{t('pricing.toNextTier')}</span>
-                      <span className="font-medium text-primary">{formatAmountKo(nextTierInfo.amountNeeded)}</span>
+                      <span className="font-medium text-primary">{formatAmount(nextTierInfo.amountNeeded, language)}</span>
                     </div>
                     <Progress value={progressToNextTier} className="h-2" />
                     <p className="text-xs text-muted-foreground mt-1 text-right font-korean">
-                      → {TIER_CONFIG[nextTierInfo.nextTier].nameKo}
+                      → {getTierName(nextTierInfo.nextTier, language)}
                     </p>
                   </div>
                 )}
@@ -110,7 +110,7 @@ const Pricing = () => {
                       <span className="font-medium font-korean">{t('pricing.topTier')}</span>
                     </div>
                     <p className="text-xs text-muted-foreground font-korean mt-1">
-                      {t('pricing.toNextSlot')} {formatAmountKo(nextTierInfo.amountNeeded)}
+                      {t('pricing.toNextSlot')} {formatAmount(nextTierInfo.amountNeeded, language)}
                     </p>
                   </div>
                 )}
@@ -147,7 +147,7 @@ const Pricing = () => {
                     {t(`pricing.tierNames.${tier}`)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {tier === 'free' ? '₩0' : formatAmountKo(TIER_CONFIG[tier].minAmount) + '+'}
+                    {tier === 'free' ? '₩0' : formatAmount(TIER_CONFIG[tier].minAmount, language) + '+'}
                   </p>
                 </div>
               );
@@ -209,7 +209,7 @@ const Pricing = () => {
                 </div>
                 <h3 className="font-bold font-korean">{t(`pricing.tierNames.${tier}`)}</h3>
                 <p className="text-xs text-muted-foreground mb-3">
-                  {tier === 'free' ? t('pricing.freeSignup') : `${formatAmountKo(config.minAmount)}+`}
+                  {tier === 'free' ? t('pricing.freeSignup') : `${formatAmount(config.minAmount, language)}+`}
                 </p>
                 
                 <ul className="space-y-1 text-xs">
@@ -237,7 +237,7 @@ const Pricing = () => {
                 {isNextTier && (
                   <div className="mt-3 pt-2 border-t border-primary/20">
                     <p className="text-xs text-primary font-medium font-korean">
-                      {formatAmountKo(nextTierInfo.amountNeeded)} {t('pricing.moreToAchieve')}
+                      {formatAmount(nextTierInfo.amountNeeded, language)} {t('pricing.moreToAchieve')}
                     </p>
                   </div>
                 )}

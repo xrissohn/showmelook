@@ -12,6 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { TierType, TIER_CONFIG } from '@/lib/tierConfig';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TierBadgeProps {
   tier: TierType;
@@ -40,28 +41,37 @@ const iconSizes = {
 };
 
 // 등급별 혜택 요약 (툴팁용)
-const getTierBenefits = (tier: TierType): string[] => {
+const getTierBenefits = (tier: TierType, language: 'ko' | 'en'): string[] => {
   const config = TIER_CONFIG[tier];
   const benefits: string[] = [];
-  
-  benefits.push(`일일 ${config.dailyLimit === -1 ? '무제한' : `${config.dailyLimit}회`}`);
-  benefits.push(`월간 ${config.monthlyLimit === -1 ? '무제한' : `${config.monthlyLimit}회`}`);
-  benefits.push(config.hasWatermark ? '워터마크 있음' : '워터마크 없음');
-  
-  if (config.hdDownload) benefits.push('고화질 다운로드');
-  if (tier === 'platinum') benefits.push('모델 프로필 추가 가능');
+
+  if (language === 'en') {
+    benefits.push(`Daily: ${config.dailyLimit === -1 ? 'Unlimited' : config.dailyLimit}`);
+    benefits.push(`Monthly: ${config.monthlyLimit === -1 ? 'Unlimited' : config.monthlyLimit}`);
+    benefits.push(config.hasWatermark ? 'Includes watermark' : 'No watermark');
+    if (config.hdDownload) benefits.push('HD download');
+    if (tier === 'platinum') benefits.push('Additional model profiles');
+  } else {
+    benefits.push(`일일 ${config.dailyLimit === -1 ? '무제한' : `${config.dailyLimit}회`}`);
+    benefits.push(`월간 ${config.monthlyLimit === -1 ? '무제한' : `${config.monthlyLimit}회`}`);
+    benefits.push(config.hasWatermark ? '워터마크 있음' : '워터마크 없음');
+    if (config.hdDownload) benefits.push('고화질 다운로드');
+    if (tier === 'platinum') benefits.push('모델 프로필 추가 가능');
+  }
   
   return benefits;
 };
 
 // 툴팁/팝오버 콘텐츠 컴포넌트
 const TierBenefitsContent = ({ tier }: { tier: TierType }) => {
+  const { language } = useLanguage();
   const config = TIER_CONFIG[tier];
-  const benefits = getTierBenefits(tier);
+  const benefits = getTierBenefits(tier, language);
+  const tierName = language === 'en' ? config.name : config.nameKo;
   
   return (
     <div className="space-y-1">
-      <p className="font-bold text-sm font-korean">{config.nameKo} 등급</p>
+      <p className="font-bold text-sm font-korean">{language === 'en' ? `${tierName} Tier` : `${tierName} 등급`}</p>
       <ul className="text-xs space-y-0.5">
         {benefits.map((benefit, idx) => (
           <li key={idx} className="text-muted-foreground font-korean">
@@ -71,7 +81,9 @@ const TierBenefitsContent = ({ tier }: { tier: TierType }) => {
       </ul>
       {tier !== 'free' && (
         <p className="text-[10px] text-muted-foreground pt-1 border-t border-border mt-2 font-korean">
-          누적 구매 {tier === 'bronze' ? '1원' : `${TIER_CONFIG[tier].minAmount.toLocaleString()}원`} 이상
+          {language === 'en'
+            ? `Cumulative purchases of ₩${TIER_CONFIG[tier].minAmount.toLocaleString()} or more`
+            : `누적 구매 ${tier === 'bronze' ? '1원' : `${TIER_CONFIG[tier].minAmount.toLocaleString()}원`} 이상`}
         </p>
       )}
     </div>
@@ -85,6 +97,7 @@ export const TierBadge = ({
   showTooltip = true,
   className 
 }: TierBadgeProps) => {
+  const { language } = useLanguage();
   const config = TIER_CONFIG[tier];
   const isMobile = useIsMobile();
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -99,7 +112,7 @@ export const TierBadge = ({
       )}
     >
       {showIcon && <Crown className={cn(iconSizes[size], 'mr-0.5')} />}
-      {config.nameKo}
+      {language === 'en' ? config.name : config.nameKo}
     </Badge>
   );
 

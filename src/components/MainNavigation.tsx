@@ -71,7 +71,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
         {/* Left side - Back button or Logo */}
         <div className="flex items-center gap-1 sm:gap-2">
           {showBackButton && (
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2" aria-label="이전 페이지로 돌아가기">
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="p-2" aria-label={language === 'en' ? 'Go back' : '이전 페이지로 돌아가기'}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
@@ -84,7 +84,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
           >
             <img 
               src={showmelookLogo} 
-              alt="ShowMeLook 브랜드 심볼" 
+              alt={language === 'en' ? 'ShowMeLook brand symbol' : 'ShowMeLook 브랜드 심볼'}
               width={40}
               height={40}
               className="h-8 w-8 object-contain sm:h-10 sm:w-10" 
@@ -181,7 +181,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       size="icon" 
                       onClick={() => navigate('/cart')} 
                       className="w-9 h-9 rounded-full"
-                      aria-label="장바구니 열기"
+                      aria-label={language === 'en' ? 'Open cart' : '장바구니 열기'}
                     >
                       <ShoppingBag className="w-5 h-5" />
                     </Button>
@@ -233,15 +233,15 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                     className="font-korean text-xs sm:text-sm px-2.5 sm:px-3 h-8 sm:h-9 rounded-full shadow-md"
                   >
                     <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-0.5 sm:mr-1" />
-                    <span className="hidden sm:inline">스타일 만들기</span>
-                    <span className="sm:hidden">시작</span>
+                    <span className="hidden sm:inline">{t('nav.createStyle')}</span>
+                    <span className="sm:hidden">{language === 'en' ? 'Start' : '시작'}</span>
                   </Button>
                 )}
                 
                 {/* Hamburger Menu */}
                 <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full" aria-label="메인 메뉴 열기">
+                    <Button variant="ghost" size="icon" className="w-8 h-8 rounded-full" aria-label={language === 'en' ? 'Open main menu' : '메인 메뉴 열기'}>
                       <Menu className="w-5 h-5" />
                     </Button>
                   </SheetTrigger>
@@ -252,7 +252,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       <div className="p-4 border-b border-border">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <img src={showmelookLogo} alt="ShowMeLook 브랜드 워드마크" width={32} height={32} className="w-8 h-8" />
+                            <img src={showmelookLogo} alt={language === 'en' ? 'ShowMeLook brand symbol' : 'ShowMeLook 브랜드 심볼'} width={32} height={32} className="w-8 h-8" />
                             <span className="font-korean text-lg font-semibold text-foreground">{t('nav.showmelook')}</span>
                           </div>
                           <button

@@ -148,7 +148,7 @@ export const MobilePurchaseCarousel = ({
                 {purchasingProductId === product.id ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
-                  '구매'
+                  language === 'en' ? 'Buy' : '구매'
                 )}
               </Button>
             </div>

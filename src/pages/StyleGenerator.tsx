@@ -148,6 +148,7 @@ const orbitDots = [
 
 // 이미지 스켈레톤 로딩 컴포넌트 with Progressive Loading (블러 -> 선명)
 const ProductImage = ({ src, alt, className, rounded }: { src: string; alt: string; className?: string; rounded?: string }) => {
+  const { language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -169,7 +170,7 @@ const ProductImage = ({ src, alt, className, rounded }: { src: string; alt: stri
       {hasError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted">
           <ImageOff className="w-12 h-12 text-muted-foreground/30 mb-2" />
-          <span className="text-xs text-muted-foreground">이미지를 불러올 수 없습니다</span>
+          <span className="text-xs text-muted-foreground">{language === 'en' ? 'Image unavailable' : '이미지를 불러올 수 없습니다'}</span>
         </div>
       ) : (
         <img 
@@ -764,6 +765,7 @@ const ShareButtons = ({
   prompt?: string;
   tags?: string[];
 }) => {
+  const { language, t } = useLanguage();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -781,9 +783,9 @@ const ShareButtons = ({
     setIsDownloading(false);
     const message = success 
       ? !shouldAddWatermark 
-        ? '이미지가 저장되었습니다!' 
-        : '이미지가 저장되었습니다! (워터마크 포함)'
-      : '저장에 실패했습니다.';
+        ? t('shareUI.saveSuccess')
+        : t('shareUI.saveSuccessWatermark')
+      : t('shareUI.saveFailed');
     onShare?.('download', { success, message });
   };
 
@@ -835,7 +837,7 @@ const ShareButtons = ({
         () => onShare?.('kakao', { success: true }),
         (e: Error) => {
           if (e?.name === 'AbortError') {
-            onShare?.('kakao', { success: true, message: '공유가 취소되었습니다.' });
+            onShare?.('kakao', { success: true, message: t('shareUI.shareCancelled') });
             return;
           }
           copyToClipboard(shareUrl).then((copied) => {
@@ -877,7 +879,7 @@ const ShareButtons = ({
         try {
           Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
           markPublic();
-          onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+          onShare?.('kakao', { success: true, message: language === 'en' ? 'KakaoTalk share window opened.' : '카카오톡 공유 창이 열렸습니다.' });
         } catch (e) {
           console.error('[Kakao Share] sendDefault error:', e);
           fallbackCopy();
@@ -937,7 +939,7 @@ const ShareButtons = ({
           onClick={handleDownload}
           disabled={isDownloading}
           className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-          title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+          title={!shouldAddWatermark ? t('shareUI.saveTitle') : t('shareUI.saveTitleWatermark')}
         >
           {isDownloading ? (
             <Loader2 className="w-5 h-5 animate-spin text-foreground" />
@@ -949,13 +951,13 @@ const ShareButtons = ({
           <button
             onClick={() => setIsShareOpen(!isShareOpen)}
             className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-            title="공유하기"
+            title={t('shareUI.share')}
           >
             <Share2 className="w-5 h-5 text-foreground" />
           </button>
           <Popover open={isShareOpen} onOpenChange={setIsShareOpen}>
             <PopoverTrigger asChild>
-              <span className="sr-only">공유 메뉴 열기</span>
+              <span className="sr-only">{t('shareUI.shareMenu')}</span>
             </PopoverTrigger>
             <PopoverContent 
               align="end" 
@@ -968,7 +970,7 @@ const ShareButtons = ({
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    첫 구매 시 워터마크 없이 저장
+                    {t('shareUI.watermarkHint')}
                   </p>
                 </div>
               )}
@@ -998,7 +1000,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
-                <span className="text-sm font-korean text-foreground">카카오톡</span>
+                <span className="text-sm font-korean text-foreground">KakaoTalk</span>
               </button>
               <div className="my-1 border-t border-border" />
               <button
@@ -1006,7 +1008,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">🔗</span>
-                <span className="text-sm font-korean text-foreground">링크 복사</span>
+                <span className="text-sm font-korean text-foreground">{t('shareUI.copyLink')}</span>
               </button>
             </PopoverContent>
           </Popover>
@@ -1023,14 +1025,14 @@ const ShareButtons = ({
         onClick={handleDownload}
         disabled={isDownloading}
         className="font-korean"
-        title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+        title={!shouldAddWatermark ? t('shareUI.saveTitle') : t('shareUI.saveTitleWatermark')}
       >
         {isDownloading ? (
           <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
         ) : (
           <Download className="w-4 h-4 mr-1.5" />
         )}
-        저장{shouldAddWatermark && ' 🏷️'}
+        {t('shareUI.save')}{shouldAddWatermark && ' 🏷️'}
       </Button>
       <div className="relative">
         <Button
@@ -1040,7 +1042,7 @@ const ShareButtons = ({
           className="font-korean"
         >
           <Share2 className="w-4 h-4 mr-1.5" />
-          공유
+          {t('shareUI.share')}
         </Button>
         {isShareOpen && (
           <>
@@ -1050,7 +1052,7 @@ const ShareButtons = ({
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    첫 구매 시 워터마크 없이 저장
+                    {t('shareUI.watermarkHint')}
                   </p>
                 </div>
               )}
@@ -1080,7 +1082,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
-                <span className="text-sm font-korean text-foreground">카카오톡</span>
+                <span className="text-sm font-korean text-foreground">KakaoTalk</span>
               </button>
               <div className="my-1 border-t border-border" />
               <button
@@ -1088,7 +1090,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">🔗</span>
-                <span className="text-sm font-korean text-foreground">링크 복사</span>
+                <span className="text-sm font-korean text-foreground">{t('shareUI.copyLink')}</span>
               </button>
             </div>
           </>
@@ -1147,6 +1149,7 @@ const GeneratedStyleImage = ({
   cachedTagPositions?: any[];
   onTagPositionsAnalyzed?: (positions: any[]) => void;
 }) => {
+  const { language } = useLanguage();
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -1271,7 +1274,7 @@ const GeneratedStyleImage = ({
               <p className="text-3xl font-bold bg-gradient-to-r from-accent via-primary to-sky-500 bg-clip-text text-transparent">
                 {loadingProgress}%
               </p>
-              <p className="text-sm text-muted-foreground mt-1 font-korean">스타일 이미지 로딩 중...</p>
+              <p className="text-sm text-muted-foreground mt-1 font-korean">{language === 'en' ? 'Loading style image...' : '스타일 이미지 로딩 중...'}</p>
             </div>
             
             {/* 하단 로딩 바 */}
@@ -1288,7 +1291,7 @@ const GeneratedStyleImage = ({
       {hasError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted">
           <ImageOff className="w-16 h-16 text-muted-foreground/30 mb-3" />
-          <span className="text-sm text-muted-foreground font-korean">이미지를 불러올 수 없습니다</span>
+          <span className="text-sm text-muted-foreground font-korean">{language === 'en' ? 'Image unavailable' : '이미지를 불러올 수 없습니다'}</span>
         </div>
       ) : imageUrl && (
         <>
@@ -1344,6 +1347,7 @@ interface MyLooksGalleryProps {
 }
 
 const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark, isLoading }: MyLooksGalleryProps) => {
+  const { language, t } = useLanguage();
 
   // 필터 상태
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -1383,7 +1387,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   const minSwipeDistance = 50;
   
   // 사전 정의된 태그 옵션
-  const tagOptions = ['데일리', '특별한 날', '데이트', '출근룩', '주말', '파티', '여행', '계절감'];
+  const tagOptions = t('lookDetail.tagOptions') as unknown as string[];
   
   // 필터링된 아이템
   const filteredLooks = showFavoritesOnly 
@@ -1469,8 +1473,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setMyLooks(prev => prev.filter(l => !selectedIds.has(l.id)));
       
       toast({
-        title: '삭제 완료',
-        description: `${idsToDelete.length}개의 룩이 삭제되었습니다.`,
+        title: language === 'en' ? 'Deleted' : '삭제 완료',
+        description: language === 'en' ? `${idsToDelete.length} looks were deleted.` : `${idsToDelete.length}개의 룩이 삭제되었습니다.`,
       });
       
       setShowBulkDeleteConfirm(false);
@@ -1478,8 +1482,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     } catch (error: any) {
       console.error('Bulk delete error:', error);
       toast({
-        title: '삭제 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Delete failed' : '삭제 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -1531,16 +1535,16 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setSelectedLook(updatedLook);
       
       toast({
-        title: '저장 완료',
-        description: '메모와 태그가 저장되었습니다.',
+        title: language === 'en' ? 'Saved' : '저장 완료',
+        description: language === 'en' ? 'Your note and tags were saved.' : '메모와 태그가 저장되었습니다.',
       });
       
       setIsEditingMemo(false);
     } catch (error: any) {
       console.error('Save memo error:', error);
       toast({
-        title: '저장 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Save failed' : '저장 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -1681,8 +1685,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   const handleProductPurchase = async (product: CachedProduct) => {
     if (!product.product_url) {
       toast({
-        title: '구매 링크 없음',
-        description: '이 상품의 구매 링크가 없습니다.',
+          title: language === 'en' ? 'Purchase link unavailable' : '구매 링크 없음',
+          description: language === 'en' ? 'This product has no purchase link.' : '이 상품의 구매 링크가 없습니다.',
         variant: 'destructive',
       });
       return;
@@ -1703,8 +1707,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         if (newWindow) newWindow.close();
         setLookProducts(prev => prev.filter(p => p.id !== product.id));
         toast({
-          title: '판매 종료',
-          description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+          title: language === 'en' ? 'No longer available' : '판매 종료',
+          description: language === 'en' ? 'This product is no longer available and was removed.' : '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
           variant: 'destructive',
         });
         setPurchasingProductId(null);
@@ -1746,8 +1750,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({
-        title: '로그인 필요',
-        description: '좋아요를 하려면 로그인이 필요합니다.',
+        title: language === 'en' ? 'Sign in required' : '로그인 필요',
+        description: language === 'en' ? 'Sign in to like products.' : '좋아요를 하려면 로그인이 필요합니다.',
         variant: 'destructive',
       });
       return;
@@ -1825,8 +1829,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setMyLooks(prev => prev.filter(l => l.id !== selectedLook.id));
       
       toast({
-        title: '삭제 완료',
-        description: '룩이 삭제되었습니다.',
+        title: language === 'en' ? 'Deleted' : '삭제 완료',
+        description: language === 'en' ? 'The look was deleted.' : '룩이 삭제되었습니다.',
       });
       
       // 모달 닫기
@@ -1835,8 +1839,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     } catch (error: any) {
       console.error('Delete error:', error);
       toast({
-        title: '삭제 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Delete failed' : '삭제 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -1862,8 +1866,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         setSelectedLook({ ...look, is_favorite: newFavorite });
       }
       toast({
-        title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
-        description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
+        title: language === 'en' ? (newFavorite ? 'Added to favorites' : 'Removed from favorites') : (newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제'),
+        description: language === 'en' ? (newFavorite ? 'The look was added to favorites.' : 'The look was removed from favorites.') : (newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.'),
       });
     }
   };
@@ -1885,8 +1889,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         setSelectedLook({ ...look, is_public: newPublic });
       }
       toast({
-        title: newPublic ? '갤러리에 공개됨' : '비공개로 전환',
-        description: newPublic ? '이 룩이 스타일 갤러리에 공개됩니다.' : '이 룩이 비공개로 전환되었습니다.',
+        title: language === 'en' ? (newPublic ? 'Published to gallery' : 'Made private') : (newPublic ? '갤러리에 공개됨' : '비공개로 전환'),
+        description: language === 'en' ? (newPublic ? 'This look is now visible in the Style Gallery.' : 'This look is now private.') : (newPublic ? '이 룩이 스타일 갤러리에 공개됩니다.' : '이 룩이 비공개로 전환되었습니다.'),
       });
       if (newPublic) void claimGalleryPublicCredit(look.id);
     }
@@ -1915,13 +1919,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     return (
       <div className="text-center py-20">
         <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
-        <p className="text-lg text-muted-foreground font-korean">아직 생성된 룩이 없습니다</p>
+        <p className="text-lg text-muted-foreground font-korean">{language === 'en' ? 'No looks created yet' : '아직 생성된 룩이 없습니다'}</p>
         <Button
           variant="hero"
           className="mt-4 font-korean"
           onClick={() => setActiveTab('generate')}
         >
-          첫 스타일 만들기
+          {language === 'en' ? 'Create your first style' : '첫 스타일 만들기'}
         </Button>
       </div>
     );
@@ -1934,8 +1938,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground font-korean">
-            {isSelectMode ? `${selectedIds.size}개 선택됨` : `${visibleItems.length} / ${filteredLooks.length}개`}
-            {showFavoritesOnly && !isSelectMode && ` (즐겨찾기)`}
+            {isSelectMode ? (language === 'en' ? `${selectedIds.size} selected` : `${selectedIds.size}개 선택됨`) : `${visibleItems.length} / ${filteredLooks.length}`}
+            {showFavoritesOnly && !isSelectMode && (language === 'en' ? ' (Favorites)' : ' (즐겨찾기)')}
           </p>
         </div>
         
@@ -1949,7 +1953,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 onClick={toggleSelectAll}
                 className="font-korean text-xs"
               >
-                {selectedIds.size === filteredLooks.length ? '전체 해제' : '전체 선택'}
+                {language === 'en' ? (selectedIds.size === filteredLooks.length ? 'Deselect all' : 'Select all') : (selectedIds.size === filteredLooks.length ? '전체 해제' : '전체 선택')}
               </Button>
               <Button
                 variant="destructive"
@@ -1959,7 +1963,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="font-korean text-xs"
               >
                 <Trash2 className="w-4 h-4 mr-1" />
-                {selectedIds.size}개 삭제
+                {language === 'en' ? `Delete ${selectedIds.size}` : `${selectedIds.size}개 삭제`}
               </Button>
               <Button
                 variant="outline"
@@ -1967,7 +1971,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 onClick={exitSelectMode}
                 className="font-korean text-xs"
               >
-                취소
+                {language === 'en' ? 'Cancel' : '취소'}
               </Button>
             </>
           ) : (
@@ -1979,7 +1983,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="font-korean text-xs"
               >
                 <Check className="w-4 h-4 mr-1" />
-                선택
+                {language === 'en' ? 'Select' : '선택'}
               </Button>
               {/* 필터 버튼 */}
               {showFavoritesOnly ? (
@@ -1990,7 +1994,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className="flex items-center gap-1"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span className="font-korean">전체 갤러리</span>
+                  <span className="font-korean">{language === 'en' ? 'All looks' : '전체 갤러리'}</span>
                 </Button>
               ) : (
                 <Button
@@ -2000,7 +2004,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className="flex items-center gap-1"
                 >
                   <Heart className="w-4 h-4" />
-                  <span className="font-korean hidden sm:inline">즐겨찾기</span>
+                  <span className="font-korean hidden sm:inline">{language === 'en' ? 'Favorites' : '즐겨찾기'}</span>
                   {favoriteCount > 0 && (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent text-accent-foreground">
                       {favoriteCount}
@@ -2017,13 +2021,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       {filteredLooks.length === 0 && showFavoritesOnly && (
         <div className="text-center py-16">
           <Heart className="w-12 h-12 mx-auto opacity-30 text-muted-foreground mb-4" />
-          <p className="text-lg text-muted-foreground font-korean">즐겨찾기한 룩이 없습니다</p>
+          <p className="text-lg text-muted-foreground font-korean">{language === 'en' ? 'No favorite looks yet' : '즐겨찾기한 룩이 없습니다'}</p>
           <Button
             variant="outline"
             className="mt-4 font-korean"
             onClick={() => setShowFavoritesOnly(false)}
           >
-            전체 보기
+            {language === 'en' ? 'View all' : '전체 보기'}
           </Button>
         </div>
       )}
@@ -2079,7 +2083,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className={`absolute top-3 ${look.is_favorite ? 'left-10' : 'left-3'} z-10 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                     look.is_public ? 'bg-primary/80 text-primary-foreground' : 'bg-black/40 text-white/70'
                   } backdrop-blur-sm hover:scale-110`}
-                  title={look.is_public ? '공개 중 (클릭하여 비공개로 변경)' : '비공개 (클릭하여 공개로 변경)'}
+                  title={language === 'en' ? (look.is_public ? 'Public (click to make private)' : 'Private (click to publish)') : (look.is_public ? '공개 중 (클릭하여 비공개로 변경)' : '비공개 (클릭하여 공개로 변경)')}
                 >
                   {look.is_public ? <Globe className="w-3.5 h-3.5" /> : <LockKeyhole className="w-3.5 h-3.5" />}
                 </button>
@@ -2109,7 +2113,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   {/* 하단 날짜 */}
                   <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <p className="text-sm text-white/90 font-korean">
-                      {new Date(look.created_at).toLocaleDateString('ko-KR')}
+                      {new Date(look.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR')}
                     </p>
                   </div>
                   
@@ -2122,7 +2126,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         onShare={(platform, result) => {
                           if (result.message) {
                             toast({
-                              title: result.success ? '성공' : '알림',
+                              title: language === 'en' ? (result.success ? 'Success' : 'Notice') : (result.success ? '성공' : '알림'),
                               description: result.message,
                               variant: result.success ? 'default' : 'destructive',
                             });
@@ -2167,7 +2171,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         >
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm font-korean">더 불러오는 중...</span>
+            <span className="text-sm font-korean">{language === 'en' ? 'Loading more...' : '더 불러오는 중...'}</span>
           </div>
         </div>
       )}
@@ -2176,7 +2180,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       {!hasMore && filteredLooks.length > 12 && (
         <div className="text-center py-6">
           <p className="text-sm text-muted-foreground font-korean">
-            모든 룩을 불러왔습니다 ✨
+            {language === 'en' ? 'All looks loaded ✨' : '모든 룩을 불러왔습니다 ✨'}
           </p>
         </div>
       )}
@@ -2340,14 +2344,14 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   {isLoadingProducts && selectedLook.product_ids?.length && (
                     <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-foreground text-xs rounded-full flex items-center gap-1.5">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      상품 정보 로딩 중...
+                      {language === 'en' ? 'Loading product information...' : '상품 정보 로딩 중...'}
                     </div>
                   )}
                   
                   {/* 상품 없음 표시 */}
                   {!isLoadingProducts && selectedLook.product_ids?.length && lookProducts.length === 0 && (
                     <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-muted-foreground text-xs rounded-full">
-                      상품 정보를 찾을 수 없음
+                      {language === 'en' ? 'Product information unavailable' : '상품 정보를 찾을 수 없음'}
                     </div>
                   )}
                   
@@ -2355,7 +2359,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   {!isFlipped && (
                     <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean backface-hidden">
                       <RotateCcw className="w-3.5 h-3.5" />
-                      탭하여 상세 정보 보기
+                      {language === 'en' ? 'Tap for details' : '탭하여 상세 정보 보기'}
                     </div>
                   )}
                 </div>
@@ -2397,7 +2401,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         <div className="w-4 h-4 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 h-2.5 text-white" />
                         </div>
-                        <span className="text-[10px] font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                        <span className="text-[10px] font-semibold text-accent tracking-wide">{language === 'en' ? 'AI STYLIST RECOMMENDATION' : 'AI 스타일리스트 추천'}</span>
                       </div>
                       
                       {/* 제목 (prompt_used에서 제품명 제외) */}
@@ -2411,8 +2415,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       <div className="relative pl-3 border-l-2 border-accent/40 space-y-1">
                         {(selectedLook.style_reasoning || (
                           lookProducts.length > 0 
-                            ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`
-                            : '스타일리시한 코디가 완성되었어요!'
+                            ? (language === 'en' ? `This look combines pieces from ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')}.` : `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`)
+                            : (language === 'en' ? 'Your stylish outfit is ready!' : '스타일리시한 코디가 완성되었어요!')
                         )).split('\n').filter(line => line.trim()).map((line, i) => {
                           const trimmed = line.trim();
                           const isEmoji = /^(😏|✨|🔥|💡|👗|📋|🎨|🌟|💎|👑|★)/.test(trimmed);
@@ -2439,7 +2443,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                         <h4 className="text-sm font-semibold text-white font-korean mb-3 flex items-center gap-1.5">
                           <ShoppingBag className="w-4 h-4 text-accent" />
-                          추천 상품 ({lookProducts.length}개)
+                          {language === 'en' ? `Recommended products (${lookProducts.length})` : `추천 상품 (${lookProducts.length}개)`}
                         </h4>
                         <div className="space-y-2">
                           {lookProducts.map((product, idx) => (
@@ -2462,7 +2466,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                                   {product.name}
                                 </span>
                                 <span className="text-white font-semibold text-sm">
-                                  {product.price?.toLocaleString()}원
+                                  {language === 'en' ? `₩${product.price?.toLocaleString()}` : `${product.price?.toLocaleString()}원`}
                                 </span>
                                 {/* 제휴 공시 문구 */}
                                 <span className="text-white/50 block text-[8px] mt-0.5 leading-tight">
@@ -2482,7 +2486,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                                 }}
                               >
                                 <ExternalLink className="w-3 h-3 mr-1" />
-                                구매
+                                {language === 'en' ? 'Buy' : '구매'}
                               </Button>
                             </div>
                           ))}
@@ -2491,9 +2495,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         {/* 총 가격 */}
                         <div className="border-t border-white/20 pt-3 mt-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-white font-korean">총 가격</span>
+                            <span className="text-sm font-semibold text-white font-korean">{language === 'en' ? 'Total' : '총 가격'}</span>
                             <span className="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                              {lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}원
+                              {language === 'en' ? `₩${lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}` : `${lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}원`}
                             </span>
                           </div>
                         </div>
@@ -2502,7 +2506,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     {/* 태그 */}
                     {selectedLook.tags && selectedLook.tags.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-white font-korean mb-2">태그</h4>
+                        <h4 className="text-sm font-semibold text-white font-korean mb-2">{language === 'en' ? 'Tags' : '태그'}</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedLook.tags.map((tag, i) => (
                             <span 
@@ -2521,7 +2525,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                         <h4 className="text-sm font-semibold text-white font-korean mb-1.5 flex items-center gap-1.5">
                           <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                          메모
+                          {language === 'en' ? 'Note' : '메모'}
                         </h4>
                         <p className="text-sm text-white/70 font-korean italic">"{selectedLook.memo}"</p>
                       </div>
@@ -2532,10 +2536,10 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   <div className="relative border-t border-white/10 px-5 py-3 flex items-center justify-between bg-black/30 backdrop-blur-sm">
                     <div className="flex items-center gap-1.5 text-xs text-white/60 font-korean cursor-pointer hover:text-white/80 transition-colors">
                       <RotateCcw className="w-3.5 h-3.5 hover:animate-spin" />
-                      탭하여 이미지로
+                      {language === 'en' ? 'Tap to view image' : '탭하여 이미지로'}
                     </div>
                     <span className="text-xs text-white/60 font-korean">
-                      {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                      {new Date(selectedLook.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
@@ -2551,7 +2555,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             
             {/* 스와이프 힌트 - 모바일만 */}
             <div className="sm:hidden text-center mt-2">
-              <p className="text-white/40 text-xs font-korean">← 스와이프하여 탐색 →</p>
+              <p className="text-white/40 text-xs font-korean">{language === 'en' ? '← Swipe to browse →' : '← 스와이프하여 탐색 →'}</p>
             </div>
             
             {/* 메모/태그 모달 - fixed overlay로 화면 중앙에 표시 */}
@@ -2564,15 +2568,15 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className="bg-card rounded-2xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h3 className="text-lg font-bold text-foreground font-korean mb-4">메모/태그 편집</h3>
+                  <h3 className="text-lg font-bold text-foreground font-korean mb-4">{language === 'en' ? 'Edit note and tags' : '메모/태그 편집'}</h3>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">메모</label>
+                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">{language === 'en' ? 'Note' : '메모'}</label>
                       <Textarea
                         value={editMemo}
                         onChange={(e) => setEditMemo(e.target.value)}
-                        placeholder="이 룩에 대한 메모를 입력하세요..."
+                        placeholder={language === 'en' ? 'Add a note about this look...' : '이 룩에 대한 메모를 입력하세요...'}
                         className="resize-none h-20 font-korean"
                         maxLength={200}
                       />
@@ -2580,7 +2584,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">태그</label>
+                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">{language === 'en' ? 'Tags' : '태그'}</label>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {editTags.map((tag, i) => (
                           <span 
@@ -2599,12 +2603,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                           value={newTag}
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))}
-                          placeholder="태그 입력..."
+                          placeholder={language === 'en' ? 'Enter tag...' : '태그 입력...'}
                           className="flex-1 h-8 text-sm"
                           maxLength={20}
                         />
                         <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
-                          추가
+                          {language === 'en' ? 'Add' : '추가'}
                         </Button>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
@@ -2627,7 +2631,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       className="flex-1 font-korean" 
                       onClick={() => setIsEditingMemo(false)}
                     >
-                      취소
+                      {language === 'en' ? 'Cancel' : '취소'}
                     </Button>
                     <Button 
                       className="flex-1 font-korean" 
@@ -2635,7 +2639,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       disabled={isSavingMemo}
                     >
                       {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      저장
+                      {language === 'en' ? 'Save' : '저장'}
                     </Button>
                   </div>
                 </div>
@@ -2666,7 +2670,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 {/* 하단 정보 및 액션 */}
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-4">
                   <p className="text-white/80 text-sm font-korean">
-                    {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                    {new Date(selectedLook.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
@@ -2688,7 +2692,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   >
                     <Tag className="w-4 h-4 text-white" />
                     <span className="text-white text-sm font-korean hidden sm:inline">
-                      {selectedLook.memo || selectedLook.tags?.length ? '편집' : '메모/태그'}
+                      {language === 'en' ? (selectedLook.memo || selectedLook.tags?.length ? 'Edit' : 'Note/Tags') : (selectedLook.memo || selectedLook.tags?.length ? '편집' : '메모/태그')}
                     </span>
                   </button>
                   
@@ -2706,7 +2710,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       : <LockKeyhole className="w-4 h-4 text-white" />
                     }
                     <span className="text-white text-sm font-korean hidden sm:inline">
-                      {selectedLook.is_public ? '공개 중' : '비공개'}
+                      {language === 'en' ? (selectedLook.is_public ? 'Public' : 'Private') : (selectedLook.is_public ? '공개 중' : '비공개')}
                     </span>
                   </button>
                   
@@ -2717,7 +2721,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   >
                     <Heart className={`w-4 h-4 ${selectedLook.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
                     <span className="text-white text-sm font-korean hidden sm:inline">
-                      {selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
+                      {language === 'en' ? (selectedLook.is_favorite ? 'Favorited' : 'Favorite') : (selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기')}
                     </span>
                   </button>
                   
@@ -2727,7 +2731,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     onShare={(platform, result) => {
                       if (result.message) {
                         toast({
-                          title: result.success ? '성공' : '알림',
+                          title: language === 'en' ? (result.success ? 'Success' : 'Notice') : (result.success ? '성공' : '알림'),
                           description: result.message,
                           variant: result.success ? 'default' : 'destructive',
                         });
@@ -2755,9 +2759,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-lg font-bold text-center font-korean mb-2">룩 삭제</h3>
+                <h3 className="text-lg font-bold text-center font-korean mb-2">{language === 'en' ? 'Delete look' : '룩 삭제'}</h3>
                 <p className="text-sm text-muted-foreground text-center font-korean mb-6">
-                  이 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.
+                  {language === 'en' ? <>Delete this look?<br/>Deleted looks cannot be recovered.</> : <>이 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.</>}
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -2766,7 +2770,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     onClick={() => setShowDeleteConfirm(false)}
                     disabled={isDeleting}
                   >
-                    취소
+                    {language === 'en' ? 'Cancel' : '취소'}
                   </Button>
                   <Button
                     variant="destructive"
@@ -2777,12 +2781,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     {isDeleting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        삭제 중...
+                        {language === 'en' ? 'Deleting...' : '삭제 중...'}
                       </>
                     ) : (
                       <>
                         <Trash2 className="w-4 h-4 mr-2" />
-                        삭제
+                        {language === 'en' ? 'Delete' : '삭제'}
                       </>
                     )}
                   </Button>
@@ -2804,11 +2808,10 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-center font-korean mb-2">
-              {selectedIds.size}개 룩 삭제
+              {language === 'en' ? `Delete ${selectedIds.size} looks` : `${selectedIds.size}개 룩 삭제`}
             </h3>
             <p className="text-sm text-muted-foreground text-center font-korean mb-6">
-              선택한 {selectedIds.size}개의 룩을 삭제하시겠습니까?<br/>
-              삭제된 룩은 복구할 수 없습니다.
+              {language === 'en' ? <>Delete the {selectedIds.size} selected looks?<br/>Deleted looks cannot be recovered.</> : <>선택한 {selectedIds.size}개의 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.</>}
             </p>
             <div className="flex gap-3">
               <Button
@@ -2817,7 +2820,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 onClick={() => setShowBulkDeleteConfirm(false)}
                 disabled={isDeleting}
               >
-                취소
+                {language === 'en' ? 'Cancel' : '취소'}
               </Button>
               <Button
                 variant="destructive"
@@ -2828,12 +2831,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 {isDeleting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    삭제 중...
+                    {language === 'en' ? 'Deleting...' : '삭제 중...'}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {selectedIds.size}개 삭제
+                    {language === 'en' ? `Delete ${selectedIds.size}` : `${selectedIds.size}개 삭제`}
                   </>
                 )}
               </Button>
@@ -2850,7 +2853,7 @@ const StyleGenerator = () => {
   const [searchParams] = useSearchParams();
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   // 구독 상태 (스타일 추천 먼저 받기 제한용)
   const subscription = useSubscription(user?.id);
   // 구매 기반 등급 정보
@@ -3145,8 +3148,8 @@ const StyleGenerator = () => {
   const toggleLike = async (product: CachedProduct) => {
     if (!user) {
       toast({
-        title: '로그인이 필요합니다',
-        description: '좋아요 기능을 사용하려면 로그인해주세요.',
+        title: language === 'en' ? 'Sign in required' : '로그인이 필요합니다',
+        description: language === 'en' ? 'Sign in to use favorites.' : '좋아요 기능을 사용하려면 로그인해주세요.',
         variant: 'destructive',
       });
       return;
@@ -3172,8 +3175,8 @@ const StyleGenerator = () => {
           return newSet;
         });
         toast({
-          title: '좋아요 취소',
-          description: '관심 상품에서 제거되었습니다.',
+          title: language === 'en' ? 'Removed from favorites' : '좋아요 취소',
+          description: language === 'en' ? 'The product was removed from your favorites.' : '관심 상품에서 제거되었습니다.',
         });
       } else {
         // 좋아요 - DB에 저장
@@ -3207,15 +3210,15 @@ const StyleGenerator = () => {
           return newSet;
         });
         toast({
-          title: '💕 좋아요!',
-          description: '관심 상품에 저장되었습니다.',
+          title: language === 'en' ? '💕 Added to favorites!' : '💕 좋아요!',
+          description: language === 'en' ? 'The product was saved to your favorites.' : '관심 상품에 저장되었습니다.',
         });
       }
     } catch (error: any) {
       console.error('Like toggle error:', error);
       toast({
-        title: '오류 발생',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Something went wrong' : '오류 발생',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     }
@@ -3225,7 +3228,7 @@ const StyleGenerator = () => {
   const addCachedProductToCart = async (product: CachedProduct) => {
     if (!user) {
       toast({
-        title: '로그인이 필요합니다',
+        title: language === 'en' ? 'Sign in required' : '로그인이 필요합니다',
         variant: 'destructive',
       });
       return;
@@ -3257,14 +3260,14 @@ const StyleGenerator = () => {
       if (error) throw error;
 
       toast({
-        title: '장바구니에 추가됨',
-        description: `${product.name}이(가) 장바구니에 추가되었습니다.`,
+        title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
+        description: language === 'en' ? `${product.name} was added to your cart.` : `${product.name}이(가) 장바구니에 추가되었습니다.`,
       });
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       toast({
-        title: '오류 발생',
-        description: error.message || '장바구니 추가에 실패했습니다.',
+        title: language === 'en' ? 'Something went wrong' : '오류 발생',
+        description: error.message || (language === 'en' ? 'Failed to add the product to your cart.' : '장바구니 추가에 실패했습니다.'),
         variant: 'destructive',
       });
     }
@@ -3274,7 +3277,7 @@ const StyleGenerator = () => {
   const addAllToCart = async () => {
     if (!user) {
       toast({
-        title: '로그인이 필요합니다',
+        title: language === 'en' ? 'Sign in required' : '로그인이 필요합니다',
         variant: 'destructive',
       });
       return;
@@ -3300,14 +3303,14 @@ const StyleGenerator = () => {
       await Promise.all(insertPromises);
 
       toast({
-        title: '장바구니에 추가됨',
-        description: `${selectedTrendProducts.length}개 상품이 장바구니에 추가되었습니다.`,
+        title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
+        description: language === 'en' ? `${selectedTrendProducts.length} products were added to your cart.` : `${selectedTrendProducts.length}개 상품이 장바구니에 추가되었습니다.`,
       });
     } catch (error: any) {
       console.error('Error adding to cart:', error);
       toast({
-        title: '오류 발생',
-        description: error.message || '장바구니 추가에 실패했습니다.',
+        title: language === 'en' ? 'Something went wrong' : '오류 발생',
+        description: error.message || (language === 'en' ? 'Failed to add products to your cart.' : '장바구니 추가에 실패했습니다.'),
         variant: 'destructive',
       });
     }
@@ -3554,8 +3557,8 @@ const StyleGenerator = () => {
     } catch (error) {
       console.error('Error fetching alternatives:', error);
       toast({
-        title: '대체 상품 조회 실패',
-        description: '다시 시도해주세요.',
+        title: language === 'en' ? 'Failed to load alternatives' : '대체 상품 조회 실패',
+        description: language === 'en' ? 'Please try again.' : '다시 시도해주세요.',
         variant: 'destructive',
       });
     } finally {
@@ -3584,8 +3587,8 @@ const StyleGenerator = () => {
 
     setAlternativeModalOpen(false);
     toast({
-      title: '상품 교체됨',
-      description: `${newProduct.name}(으)로 변경되었습니다.`,
+      title: language === 'en' ? 'Product replaced' : '상품 교체됨',
+      description: language === 'en' ? `Replaced with ${newProduct.name}.` : `${newProduct.name}(으)로 변경되었습니다.`,
     });
   };
   // 딥링크 변환 후 구매 페이지로 이동하는 함수 - pre-open window to avoid popup blocking
@@ -3648,8 +3651,8 @@ const StyleGenerator = () => {
             setCustomResult(prev => prev ? { ...prev, items: prev.items.filter(p => p.id !== product.id) } : null);
           }
           toast({
-            title: '판매 종료',
-            description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+            title: language === 'en' ? 'No longer available' : '판매 종료',
+            description: language === 'en' ? 'This product is no longer available and was removed.' : '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
             variant: 'destructive',
           });
           return;
@@ -3678,8 +3681,8 @@ const StyleGenerator = () => {
     // product_url이 없으면 에러
     if (!product.product_url) {
       toast({
-        title: '구매 링크 없음',
-        description: '이 상품의 구매 링크가 없습니다.',
+        title: language === 'en' ? 'Purchase link unavailable' : '구매 링크 없음',
+        description: language === 'en' ? 'This product has no purchase link.' : '이 상품의 구매 링크가 없습니다.',
         variant: 'destructive',
       });
       return;
@@ -3703,8 +3706,8 @@ const StyleGenerator = () => {
           setCustomResult(prev => prev ? { ...prev, items: prev.items.filter(p => p.id !== product.id) } : null);
         }
         toast({
-          title: '판매 종료',
-          description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+          title: language === 'en' ? 'No longer available' : '판매 종료',
+          description: language === 'en' ? 'This product is no longer available and was removed.' : '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
           variant: 'destructive',
         });
         setPurchasingProductId(null);
@@ -3732,8 +3735,8 @@ const StyleGenerator = () => {
           window.location.href = finalUrl;
         }
         toast({
-          title: '구매 페이지 이동',
-          description: `${product.name} 구매 페이지로 이동합니다.`,
+          title: language === 'en' ? 'Opening purchase page' : '구매 페이지 이동',
+          description: language === 'en' ? `Opening the purchase page for ${product.name}.` : `${product.name} 구매 페이지로 이동합니다.`,
         });
       } else {
         console.warn('[handlePurchase] Deeplink failed, using original URL:', product.product_url);
@@ -3743,8 +3746,8 @@ const StyleGenerator = () => {
           window.location.href = product.product_url;
         }
         toast({
-          title: '딥링크 변환 실패',
-          description: '제휴 링크 생성에 실패하여 원본 URL로 이동합니다.',
+          title: language === 'en' ? 'Affiliate link unavailable' : '딥링크 변환 실패',
+          description: language === 'en' ? 'Opening the original product URL instead.' : '제휴 링크 생성에 실패하여 원본 URL로 이동합니다.',
           variant: 'destructive',
         });
       }
@@ -3756,8 +3759,8 @@ const StyleGenerator = () => {
         window.location.href = product.product_url;
       }
       toast({
-        title: '딥링크 오류',
-        description: '제휴 링크 생성 중 오류가 발생했습니다.',
+        title: language === 'en' ? 'Affiliate link error' : '딥링크 오류',
+        description: language === 'en' ? 'An error occurred while creating the affiliate link.' : '제휴 링크 생성 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
@@ -4103,14 +4106,14 @@ const StyleGenerator = () => {
       setUserProfile(prev => prev ? { ...prev, avatar_url: signedData?.signedUrl || storagePath } : null);
       
       toast({
-        title: '프로필 사진 변경됨',
-        description: '새 프로필 사진이 저장되었습니다.',
+        title: language === 'en' ? 'Profile photo updated' : '프로필 사진 변경됨',
+        description: language === 'en' ? 'Your new profile photo was saved.' : '새 프로필 사진이 저장되었습니다.',
       });
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast({
-        title: '업로드 실패',
-        description: '프로필 사진 업로드 중 오류가 발생했습니다.',
+        title: language === 'en' ? 'Upload failed' : '업로드 실패',
+        description: language === 'en' ? 'An error occurred while uploading your profile photo.' : '프로필 사진 업로드 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     }
@@ -4143,14 +4146,14 @@ const StyleGenerator = () => {
       
       setIsEditingProfile(false);
       toast({
-        title: '프로필 저장됨',
-        description: '프로필 정보가 업데이트되었습니다.',
+        title: language === 'en' ? 'Profile saved' : '프로필 저장됨',
+        description: language === 'en' ? 'Your profile information was updated.' : '프로필 정보가 업데이트되었습니다.',
       });
     } catch (error) {
       console.error('Error saving profile:', error);
       toast({
-        title: '저장 실패',
-        description: '프로필 저장 중 오류가 발생했습니다.',
+        title: language === 'en' ? 'Save failed' : '저장 실패',
+        description: language === 'en' ? 'An error occurred while saving your profile.' : '프로필 저장 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
@@ -4220,21 +4223,21 @@ const StyleGenerator = () => {
         // 캐시 히트 시 알림
         if (data.cacheHit) {
           toast({
-            title: '캐시된 스타일 불러옴!',
-            description: `${foundProducts.length}개 아이템 (API 비용 절약 🎉)`,
+            title: language === 'en' ? 'Cached style loaded!' : '캐시된 스타일 불러옴!',
+            description: language === 'en' ? `${foundProducts.length} items (saved an API request 🎉)` : `${foundProducts.length}개 아이템 (API 비용 절약 🎉)`,
           });
         } else {
           toast({
-            title: '상품 검색 완료!',
-            description: `${foundProducts.length}개의 ${trend.name_ko} 스타일 아이템을 찾았어요.`,
+            title: language === 'en' ? 'Product search complete!' : '상품 검색 완료!',
+            description: language === 'en' ? `Found ${foundProducts.length} items for this style.` : `${foundProducts.length}개의 ${trend.name_ko} 스타일 아이템을 찾았어요.`,
           });
         }
       }
     } catch (error) {
       console.error('Error searching products:', error);
       toast({
-        title: '검색 실패',
-        description: '상품 검색 중 오류가 발생했습니다.',
+        title: language === 'en' ? 'Search failed' : '검색 실패',
+        description: language === 'en' ? 'An error occurred while searching for products.' : '상품 검색 중 오류가 발생했습니다.',
         variant: 'destructive',
       });
     } finally {
@@ -4249,7 +4252,7 @@ const StyleGenerator = () => {
     
     // 파일 크기 체크 (5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast({ title: '이미지가 너무 큽니다', description: '5MB 이하의 이미지를 선택해주세요.', variant: 'destructive' });
+      toast({ title: language === 'en' ? 'Image is too large' : '이미지가 너무 큽니다', description: language === 'en' ? 'Choose an image smaller than 5MB.' : '5MB 이하의 이미지를 선택해주세요.', variant: 'destructive' });
       return;
     }
 
@@ -4314,14 +4317,14 @@ const StyleGenerator = () => {
       const styleInfo = [data.overallStyle, data.season, data.tpo].filter(Boolean).join(' · ');
       
       toast({ 
-        title: '📷 AI가 스타일을 분석했습니다', 
+        title: language === 'en' ? '📷 AI analyzed the style' : '📷 AI가 스타일을 분석했습니다', 
         description: itemSummary 
           ? `${itemSummary} (${styleInfo})` 
-          : '프롬프트를 수정하거나 바로 추천을 받아보세요.' 
+          : (language === 'en' ? 'Edit the prompt or get recommendations now.' : '프롬프트를 수정하거나 바로 추천을 받아보세요.') 
       });
     } catch (err: any) {
       console.error('[StyleGenerator] Image analysis error:', err);
-      toast({ title: '사진 분석 실패', description: err?.message || '다시 시도해주세요.', variant: 'destructive' });
+      toast({ title: language === 'en' ? 'Photo analysis failed' : '사진 분석 실패', description: err?.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'), variant: 'destructive' });
       setStyleImagePreview(null);
     } finally {
       setIsAnalyzingImage(false);
@@ -4340,7 +4343,7 @@ const StyleGenerator = () => {
   const handleCustomStyleSearch = async () => {
     if (!customStylePrompt.trim()) {
       toast({
-        title: '스타일 프롬프트를 입력해주세요',
+        title: language === 'en' ? 'Enter a style prompt' : '스타일 프롬프트를 입력해주세요',
         variant: 'destructive',
       });
       return;
@@ -4418,7 +4421,7 @@ const StyleGenerator = () => {
 
         setCustomResult({
           items: transformedItems,
-          styleConcept: data.look.styleConcept || data.look.name || '스타일 추천',
+          styleConcept: data.look.styleConcept || data.look.name || (language === 'en' ? 'Style recommendation' : '스타일 추천'),
           styleReasoning: data.look.styleReasoning || data.look.stylingTips || '',
           totalPrice: data.look.totalPrice || 0,
           autoSelectedTotal: data.look.autoSelectedTotal || 0,
@@ -4432,10 +4435,10 @@ const StyleGenerator = () => {
 
         const isEvalMode = data.mode === 'evaluation';
         toast({
-          title: isEvalMode ? 'AI 스타일 평가 완료!' : '스타일 추천 완료!',
-          description: isEvalMode 
-            ? `${transformedItems.length}개의 유사 아이템을 매칭하고 스타일을 평가했어요.`
-            : `${transformedItems.length}개의 아이템을 추천해드렸어요.`,
+          title: language === 'en' ? (isEvalMode ? 'AI style review complete!' : 'Style recommendation ready!') : (isEvalMode ? 'AI 스타일 평가 완료!' : '스타일 추천 완료!'),
+          description: language === 'en'
+            ? (isEvalMode ? `Matched ${transformedItems.length} similar items and reviewed the style.` : `Recommended ${transformedItems.length} items.`)
+            : (isEvalMode ? `${transformedItems.length}개의 유사 아이템을 매칭하고 스타일을 평가했어요.` : `${transformedItems.length}개의 아이템을 추천해드렸어요.`),
         });
 
         // 히스토리 저장 및 피드백용 ID 설정
@@ -4476,8 +4479,8 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Custom style recommendation error:', error);
       toast({
-        title: '추천 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Recommendation failed' : '추천 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -4492,8 +4495,8 @@ const StyleGenerator = () => {
     // Check limit before generating
     if (!canGenerate) {
       toast({
-        title: '일일 생성 횟수 초과',
-        description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+        title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+        description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
         variant: 'destructive',
       });
       return;
@@ -4503,16 +4506,16 @@ const StyleGenerator = () => {
     const willUseBonus = remainingCount === 0 && bonusCredits > 0;
     if (willUseBonus) {
       toast({
-        title: '✨ 보너스 크레딧 사용',
-        description: `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
+        title: language === 'en' ? '✨ Using bonus credit' : '✨ 보너스 크레딧 사용',
+        description: language === 'en' ? `Using 1 of ${bonusCredits} bonus credits.` : `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
       });
     }
 
     // 프롬프트 필수
     if (!customStylePrompt.trim()) {
       toast({
-        title: '스타일 프롬프트를 입력해주세요',
-        description: '원하는 스타일을 설명해주세요.',
+        title: language === 'en' ? 'Enter a style prompt' : '스타일 프롬프트를 입력해주세요',
+        description: language === 'en' ? 'Describe the style you want.' : '원하는 스타일을 설명해주세요.',
         variant: 'destructive',
       });
       return;
@@ -4724,8 +4727,8 @@ const StyleGenerator = () => {
       // Handle limit exceeded error
       if (genData?.limitExceeded) {
         toast({
-          title: '일일 생성 횟수 초과',
-          description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+          title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+          description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
           variant: 'destructive',
         });
         refetchLimit();
@@ -4758,11 +4761,11 @@ const StyleGenerator = () => {
         const currentAvatarUrl = selectedGenerationProfile?.avatar_url || userProfile?.avatar_url;
         const toastDescription = useFaceComposite && currentAvatarUrl
           ? selectedGenerationProfile?.type === 'family'
-            ? `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`
-            : '당신의 얼굴이 합성된 룩이 완성되었습니다.'
-          : '스타일 룩이 완성되었습니다.';
+            ? (language === 'en' ? `A look featuring ${selectedGenerationProfile.full_name} is ready.` : `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`)
+            : (language === 'en' ? 'Your face-composited look is ready.' : '당신의 얼굴이 합성된 룩이 완성되었습니다.')
+          : (language === 'en' ? 'Your styled look is ready.' : '스타일 룩이 완성되었습니다.');
         toast({
-          title: '스타일 생성 완료!',
+          title: language === 'en' ? 'Style generation complete!' : '스타일 생성 완료!',
           description: toastDescription,
         });
 
@@ -4809,31 +4812,31 @@ const StyleGenerator = () => {
       const errorCode = error?.errorCode || error?.code || '';
       const statusCode = error?.status || error?.statusCode || '';
       
-      let errorTitle = '생성 실패';
-      let errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      let errorTitle = language === 'en' ? 'Generation failed' : '생성 실패';
+      let errorMessage = error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
       let showRetryButton = false;
       
       // Rate Limit (429) 에러
       if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
-        errorTitle = '⏳ 서버가 바쁩니다';
-        errorMessage = '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
+        errorTitle = language === 'en' ? '⏳ Server is busy' : '⏳ 서버가 바쁩니다';
+        errorMessage = language === 'en' ? 'Please wait a moment. You can retry in 30 seconds.' : '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
         showRetryButton = true;
       }
       // Payment Required (402) 에러  
       else if (statusCode === 402 || errorCode === '402' || errorMessage?.includes('Payment required') || errorMessage?.includes('402')) {
-        errorTitle = '💳 크레딧 부족';
-        errorMessage = '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
+        errorTitle = language === 'en' ? '💳 Insufficient credits' : '💳 크레딧 부족';
+        errorMessage = language === 'en' ? 'Service credits are insufficient. Please contact support.' : '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
       }
       // 이미지 생성 실패
       else if (errorCode === 'NO_IMAGE' || errorMessage?.includes('No image')) {
-        errorTitle = '🖼️ 이미지 생성 실패';
-        errorMessage = 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
+        errorTitle = language === 'en' ? '🖼️ Image generation failed' : '🖼️ 이미지 생성 실패';
+        errorMessage = language === 'en' ? 'AI could not generate the image. Please try again.' : 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
         showRetryButton = true;
       }
       // 네트워크 에러
       else if (errorMessage?.includes('Network') || errorMessage?.includes('fetch')) {
-        errorTitle = '📶 네트워크 오류';
-        errorMessage = '인터넷 연결을 확인하고 다시 시도해주세요.';
+        errorTitle = language === 'en' ? '📶 Network error' : '📶 네트워크 오류';
+        errorMessage = language === 'en' ? 'Check your internet connection and try again.' : '인터넷 연결을 확인하고 다시 시도해주세요.';
         showRetryButton = true;
       }
       
@@ -4848,8 +4851,8 @@ const StyleGenerator = () => {
       if (showRetryButton && (statusCode === 429 || errorCode === '429')) {
         setTimeout(() => {
           toast({
-            title: '🔄 재시도 가능',
-            description: '이제 다시 생성해보세요!',
+            title: language === 'en' ? '🔄 Ready to retry' : '🔄 재시도 가능',
+            description: language === 'en' ? 'You can try generating again now.' : '이제 다시 생성해보세요!',
             duration: 5000,
           });
         }, 30000);
@@ -4867,8 +4870,8 @@ const StyleGenerator = () => {
     // Check limit before generating
     if (!canGenerate) {
       toast({
-        title: '일일 생성 횟수 초과',
-        description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+        title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+        description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
         variant: 'destructive',
       });
       return;
@@ -4878,8 +4881,8 @@ const StyleGenerator = () => {
     const willUseBonus = remainingCount === 0 && bonusCredits > 0;
     if (willUseBonus) {
       toast({
-        title: '✨ 보너스 크레딧 사용',
-        description: `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
+        title: language === 'en' ? '✨ Using bonus credit' : '✨ 보너스 크레딧 사용',
+        description: language === 'en' ? `Using 1 of ${bonusCredits} bonus credits.` : `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
       });
     }
 
@@ -4889,8 +4892,8 @@ const StyleGenerator = () => {
     
     if (productsToUse.length === 0 && !selectedTrend && !customResult) {
       toast({
-        title: '상품을 선택해주세요',
-        description: '스타일 생성을 위해 최소 1개의 상품을 선택해주세요.',
+        title: language === 'en' ? 'Select a product' : '상품을 선택해주세요',
+        description: language === 'en' ? 'Select at least one product to generate a style.' : '스타일 생성을 위해 최소 1개의 상품을 선택해주세요.',
         variant: 'destructive',
       });
       return;
@@ -4983,8 +4986,8 @@ const StyleGenerator = () => {
       // Handle limit exceeded error
       if (data?.limitExceeded) {
         toast({
-          title: '일일 생성 횟수 초과',
-          description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+          title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+          description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
           variant: 'destructive',
         });
         refetchLimit();
@@ -5015,11 +5018,11 @@ const StyleGenerator = () => {
         // Show appropriate toast
         const toastDescription = useFaceComposite && avatarToUse
           ? selectedGenerationProfile?.type === 'family'
-            ? `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`
-            : '당신의 얼굴이 합성된 룩이 완성되었습니다.'
-          : '스타일 룩이 완성되었습니다.';
+            ? (language === 'en' ? `A look featuring ${selectedGenerationProfile.full_name} is ready.` : `${selectedGenerationProfile.full_name}님의 얼굴이 합성된 룩이 완성되었습니다.`)
+            : (language === 'en' ? 'Your face-composited look is ready.' : '당신의 얼굴이 합성된 룩이 완성되었습니다.')
+          : (language === 'en' ? 'Your styled look is ready.' : '스타일 룩이 완성되었습니다.');
         toast({
-          title: '스타일 생성 완료!',
+          title: language === 'en' ? 'Style generation complete!' : '스타일 생성 완료!',
           description: toastDescription,
         });
 
@@ -5068,31 +5071,31 @@ const StyleGenerator = () => {
       const errorCode = error?.errorCode || error?.code || '';
       const statusCode = error?.status || error?.statusCode || '';
       
-      let errorTitle = '생성 실패';
-      let errorMessage = error?.message || '스타일 생성 중 문제가 발생했습니다.';
+      let errorTitle = language === 'en' ? 'Generation failed' : '생성 실패';
+      let errorMessage = error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
       let showRetryButton = false;
       
       // Rate Limit (429) 에러
       if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
-        errorTitle = '⏳ 서버가 바쁩니다';
-        errorMessage = '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
+        errorTitle = language === 'en' ? '⏳ Server is busy' : '⏳ 서버가 바쁩니다';
+        errorMessage = language === 'en' ? 'Please wait a moment. You can retry in 30 seconds.' : '잠시 후 다시 시도해주세요. 30초 후에 자동으로 재시도할 수 있습니다.';
         showRetryButton = true;
       }
       // Payment Required (402) 에러  
       else if (statusCode === 402 || errorCode === '402' || errorMessage?.includes('Payment required') || errorMessage?.includes('402')) {
-        errorTitle = '💳 크레딧 부족';
-        errorMessage = '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
+        errorTitle = language === 'en' ? '💳 Insufficient credits' : '💳 크레딧 부족';
+        errorMessage = language === 'en' ? 'Service credits are insufficient. Please contact support.' : '서비스 크레딧이 부족합니다. 관리자에게 문의해주세요.';
       }
       // 이미지 생성 실패
       else if (errorCode === 'NO_IMAGE' || errorMessage?.includes('No image')) {
-        errorTitle = '🖼️ 이미지 생성 실패';
-        errorMessage = 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
+        errorTitle = language === 'en' ? '🖼️ Image generation failed' : '🖼️ 이미지 생성 실패';
+        errorMessage = language === 'en' ? 'AI could not generate the image. Please try again.' : 'AI가 이미지를 생성하지 못했습니다. 다시 시도해주세요.';
         showRetryButton = true;
       }
       // 네트워크 에러
       else if (errorMessage?.includes('Network') || errorMessage?.includes('fetch')) {
-        errorTitle = '📶 네트워크 오류';
-        errorMessage = '인터넷 연결을 확인하고 다시 시도해주세요.';
+        errorTitle = language === 'en' ? '📶 Network error' : '📶 네트워크 오류';
+        errorMessage = language === 'en' ? 'Check your internet connection and try again.' : '인터넷 연결을 확인하고 다시 시도해주세요.';
         showRetryButton = true;
       }
       
@@ -5107,8 +5110,8 @@ const StyleGenerator = () => {
       if (showRetryButton && (statusCode === 429 || errorCode === '429')) {
         setTimeout(() => {
           toast({
-            title: '🔄 재시도 가능',
-            description: '이제 다시 생성해보세요!',
+            title: language === 'en' ? '🔄 Ready to retry' : '🔄 재시도 가능',
+            description: language === 'en' ? 'You can try generating again now.' : '이제 다시 생성해보세요!',
             duration: 5000,
           });
         }, 30000);
@@ -5136,8 +5139,8 @@ const StyleGenerator = () => {
       if (error) throw error;
 
       toast({
-        title: '장바구니에 추가됨',
-        description: `${product.name_ko}이(가) 장바구니에 추가되었습니다.`,
+        title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
+        description: language === 'en' ? `${product.name_ko} was added to your cart.` : `${product.name_ko}이(가) 장바구니에 추가되었습니다.`,
       });
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -5151,11 +5154,11 @@ const StyleGenerator = () => {
   }, {} as Record<string, Product[]>);
 
   const categoryLabels: Record<string, string> = {
-    top: '상의',
-    bottom: '하의',
-    outerwear: '아우터',
-    shoes: '신발',
-    accessory: '액세서리',
+    top: language === 'en' ? 'Tops' : '상의',
+    bottom: language === 'en' ? 'Bottoms' : '하의',
+    outerwear: language === 'en' ? 'Outerwear' : '아우터',
+    shoes: language === 'en' ? 'Shoes' : '신발',
+    accessory: language === 'en' ? 'Accessories' : '액세서리',
   };
 
   if (authLoading) {
@@ -5430,19 +5433,19 @@ const StyleGenerator = () => {
                         >
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="female" id="custom-female" className="shrink-0" />
-                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-xs sm:text-sm truncate">여성</Label>
+                            <Label htmlFor="custom-female" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.female')}</Label>
                           </div>
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="male" id="custom-male" className="shrink-0" />
-                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-xs sm:text-sm truncate">남성</Label>
+                            <Label htmlFor="custom-male" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.male')}</Label>
                           </div>
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="unisex" id="custom-unisex" className="shrink-0" />
-                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-xs sm:text-sm truncate">🌈 유니섹스</Label>
+                            <Label htmlFor="custom-unisex" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.unisex')}</Label>
                           </div>
                           <div className="flex items-center space-x-2 min-w-0">
                             <RadioGroupItem value="kids" id="custom-kids" className="shrink-0" />
-                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-xs sm:text-sm truncate">👶 키즈</Label>
+                            <Label htmlFor="custom-kids" className="cursor-pointer font-korean text-xs sm:text-sm truncate">{t('styleGen.kids')}</Label>
                           </div>
                         </RadioGroup>
                       </div>
@@ -5525,7 +5528,7 @@ const StyleGenerator = () => {
                         <div className="w-4 sm:w-5 h-4 sm:h-5 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 sm:w-3 h-2.5 sm:h-3 text-white" />
                         </div>
-                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{customResult.mode === 'evaluation' ? '📷 AI 스타일 평가' : 'AI 스타일리스트 추천'}</span>
+                        <span className="text-[10px] sm:text-xs font-semibold text-accent tracking-wide">{language === 'en' ? (customResult.mode === 'evaluation' ? '📷 AI STYLE REVIEW' : 'AI STYLIST RECOMMENDATION') : (customResult.mode === 'evaluation' ? '📷 AI 스타일 평가' : 'AI 스타일리스트 추천')}</span>
                       </div>
                       
                       {/* 타이틀 */}
@@ -5623,15 +5626,15 @@ const StyleGenerator = () => {
                       {/* 피드백 버튼 */}
                       <div className="mt-4 sm:mt-5 pt-4 border-t border-border/30">
                         <p className="text-xs sm:text-sm text-muted-foreground font-korean mb-2 sm:mb-3">
-                          {customResult.mode === 'evaluation' ? '이 평가가 도움이 되셨나요?' : '이 추천이 마음에 드시나요?'}
+                          {language === 'en' ? (customResult.mode === 'evaluation' ? 'Was this review helpful?' : 'Do you like this recommendation?') : (customResult.mode === 'evaluation' ? '이 평가가 도움이 되셨나요?' : '이 추천이 마음에 드시나요?')}
                         </p>
                         <div className="flex gap-2 sm:gap-3">
                           <button
                             onClick={() => {
                               setFeedbackGiven('positive');
                               toast({
-                                title: '감사합니다! 💕',
-                                description: '피드백이 더 나은 추천에 반영됩니다.',
+                                title: language === 'en' ? 'Thank you! 💕' : '감사합니다! 💕',
+                                description: language === 'en' ? 'Your feedback will improve future recommendations.' : '피드백이 더 나은 추천에 반영됩니다.',
                               });
                             }}
                             disabled={feedbackGiven !== null}
@@ -5644,14 +5647,14 @@ const StyleGenerator = () => {
                             }`}
                           >
                             <ThumbsUp className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                            {feedbackGiven === 'positive' ? '감사해요!' : '좋아요'}
+                            {language === 'en' ? (feedbackGiven === 'positive' ? 'Thanks!' : 'Like it') : (feedbackGiven === 'positive' ? '감사해요!' : '좋아요')}
                           </button>
                           <button
                             onClick={() => {
                               setFeedbackGiven('negative');
                               toast({
-                                title: '피드백 감사합니다',
-                                description: '다음에는 더 나은 추천을 드릴게요.',
+                                title: language === 'en' ? 'Thanks for your feedback' : '피드백 감사합니다',
+                                description: language === 'en' ? 'We will improve your next recommendation.' : '다음에는 더 나은 추천을 드릴게요.',
                               });
                             }}
                             disabled={feedbackGiven !== null}
@@ -5664,7 +5667,7 @@ const StyleGenerator = () => {
                             }`}
                           >
                             <ThumbsDown className="w-3.5 sm:w-4 h-3.5 sm:h-4" />
-                            {feedbackGiven === 'negative' ? '개선할게요' : '아쉬워요'}
+                            {language === 'en' ? (feedbackGiven === 'negative' ? 'We’ll improve' : 'Not for me') : (feedbackGiven === 'negative' ? '개선할게요' : '아쉬워요')}
                           </button>
                         </div>
                       </div>
@@ -5680,9 +5683,9 @@ const StyleGenerator = () => {
                         </div>
                         <div>
                           <h4 className="font-korean text-sm sm:text-base font-semibold text-foreground">
-                            추천 아이템
+                            {language === 'en' ? 'Recommended items' : '추천 아이템'}
                           </h4>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground">스와이프하여 둘러보세요</p>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground">{language === 'en' ? 'Swipe to browse' : '스와이프하여 둘러보세요'}</p>
                         </div>
                       </div>
                       {/* 캐러셀 네비게이션 */}
@@ -5836,12 +5839,12 @@ const StyleGenerator = () => {
                                       {selectedTrendProducts.find(p => p.id === product.id) ? (
                                         <>
                                           <Check className="w-3.5 sm:w-4 h-3.5 sm:h-4" strokeWidth={2.5} />
-                                          선택됨
+                                          {language === 'en' ? 'Selected' : '선택됨'}
                                         </>
                                       ) : (
                                         <>
                                           <Plus className="w-3.5 sm:w-4 h-3.5 sm:h-4" strokeWidth={2.5} />
-                                          담기
+                                          {language === 'en' ? 'Add' : '담기'}
                                         </>
                                       )}
                                     </button>
@@ -5849,7 +5852,7 @@ const StyleGenerator = () => {
                                       onClick={() => handlePurchase(product)}
                                       disabled={purchasingProductId === product.id}
                                       className="p-2.5 sm:p-3 rounded-lg sm:rounded-xl bg-secondary hover:bg-accent hover:text-white text-foreground transition-all duration-300 disabled:opacity-50 hover:shadow-md"
-                                      title="구매하기"
+                                      title={language === 'en' ? 'Buy' : '구매하기'}
                                     >
                                       {purchasingProductId === product.id ? (
                                         <Loader2 className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" />
@@ -5864,7 +5867,7 @@ const StyleGenerator = () => {
                                     className="w-full text-[10px] sm:text-xs py-2 sm:py-2.5 px-3 sm:px-4 rounded-lg sm:rounded-xl bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-all duration-300 font-korean flex items-center justify-center gap-1.5 sm:gap-2 group"
                                   >
                                     <RefreshCw className="w-3 sm:w-3.5 h-3 sm:h-3.5 group-hover:rotate-180 transition-transform duration-500" />
-                                    다른 {product.category} 보기
+                                    {language === 'en' ? `View other ${product.category} items` : `다른 ${product.category} 보기`}
                                   </button>
                                 </div>
                               </div>
@@ -5881,7 +5884,7 @@ const StyleGenerator = () => {
                           <Heart className="w-3 sm:w-4 h-3 sm:h-4 text-red-500 fill-red-500" />
                         </div>
                         <span className="text-xs sm:text-sm font-medium font-korean text-red-600 dark:text-red-400">
-                          {likedProducts.size}개 상품을 좋아요 했어요!
+                          {language === 'en' ? `${likedProducts.size} products favorited!` : `${likedProducts.size}개 상품을 좋아요 했어요!`}
                         </span>
                       </div>
                     )}
@@ -5896,14 +5899,14 @@ const StyleGenerator = () => {
                     <div className="relative flex justify-between items-center">
                       {/* 선택 현황 */}
                       <div className="space-y-0.5 sm:space-y-1">
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">선택한 아이템</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">{language === 'en' ? 'Selected items' : '선택한 아이템'}</span>
                         <div className="flex items-baseline gap-1">
                           <span className="text-xl sm:text-2xl font-bold text-foreground">{selectedTrendProducts.length}</span>
-                          <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}개</span>
+                          <span className="text-xs sm:text-sm text-muted-foreground">/ {customResult.items.length}{language === 'en' ? '' : '개'}</span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">총 금액</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-korean">{language === 'en' ? 'Total' : '총 금액'}</span>
                         <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
                           ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                         </p>
@@ -5921,7 +5924,7 @@ const StyleGenerator = () => {
                                   ₩{originalPrice.toLocaleString()}
                                 </span>
                                 <span className="text-[10px] sm:text-xs font-semibold text-green-500 bg-green-500/10 px-1.5 py-0.5 rounded-full">
-                                  {discountRate}% 절약
+                                  {language === 'en' ? `Save ${discountRate}%` : `${discountRate}% 절약`}
                                 </span>
                               </div>
                             );
@@ -6276,7 +6279,7 @@ const StyleGenerator = () => {
                       onShare={(platform, result) => {
                         if (result.message) {
                           toast({
-                            title: result.success ? '성공' : '알림',
+                            title: language === 'en' ? (result.success ? 'Success' : 'Notice') : (result.success ? '성공' : '알림'),
                             description: result.message,
                             variant: result.success ? 'default' : 'destructive',
                           });
@@ -6308,8 +6311,8 @@ const StyleGenerator = () => {
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
                       <img src={showmelookLogo} alt="" className="w-12 h-12 sm:w-16 sm:h-16 mb-3 sm:mb-4 opacity-50" />
-                      <p className="text-base sm:text-lg font-medium font-korean">AI 스타일 미리보기</p>
-                      <p className="text-xs sm:text-sm mt-2 font-korean">트렌드와 아이템을 선택하고 생성하세요</p>
+                      <p className="text-base sm:text-lg font-medium font-korean">{language === 'en' ? 'AI Style Preview' : 'AI 스타일 미리보기'}</p>
+                      <p className="text-xs sm:text-sm mt-2 font-korean">{language === 'en' ? 'Choose a trend and items, then generate your style' : '트렌드와 아이템을 선택하고 생성하세요'}</p>
                     </div>
                   )}
                 </div>
@@ -6329,13 +6332,13 @@ const StyleGenerator = () => {
                             .eq('id', generatedLookId);
                           if (error) {
                             setGeneratedLookIsPublic(!newPublic);
-                            toast({ title: '변경 실패', description: '다시 시도해주세요.', variant: 'destructive' });
+                            toast({ title: language === 'en' ? 'Update failed' : '변경 실패', description: language === 'en' ? 'Please try again.' : '다시 시도해주세요.', variant: 'destructive' });
                           } else {
                             // 로컬 myLooks 동기화
                             setMyLooks(prev => prev.map(l => l.id === generatedLookId ? { ...l, is_public: newPublic } : l));
                             toast({
-                              title: newPublic ? '커뮤니티에 공개됨 🌐' : '비공개로 전환됨 🔒',
-                              description: newPublic ? '스타일 갤러리에서 다른 사람들이 볼 수 있어요.' : '나만 볼 수 있는 비공개 상태입니다.',
+                               title: language === 'en' ? (newPublic ? 'Published to community 🌐' : 'Made private 🔒') : (newPublic ? '커뮤니티에 공개됨 🌐' : '비공개로 전환됨 🔒'),
+                               description: language === 'en' ? (newPublic ? 'Others can now see it in the Style Gallery.' : 'Only you can see this look.') : (newPublic ? '스타일 갤러리에서 다른 사람들이 볼 수 있어요.' : '나만 볼 수 있는 비공개 상태입니다.'),
                             });
                             if (newPublic) void claimGalleryPublicCredit(generatedLookId);
                           }
@@ -6347,12 +6350,12 @@ const StyleGenerator = () => {
                         }`}
                       >
                         {generatedLookIsPublic ? <Globe className="w-4 h-4" /> : <LockKeyhole className="w-4 h-4" />}
-                        {generatedLookIsPublic ? '커뮤니티 공개 중' : '비공개 (커뮤니티에 공개하기)'}
+                         {language === 'en' ? (generatedLookIsPublic ? 'Public in community' : 'Private (publish to community)') : (generatedLookIsPublic ? '커뮤니티 공개 중' : '비공개 (커뮤니티에 공개하기)')}
                       </button>
                     )}
                     {generatedLookId && !generatedLookIsPublic && (
                       <p className="text-[11px] sm:text-xs text-primary/80 font-korean text-center max-w-xs">
-                        🎁 {GALLERY_PUBLIC_CREDIT_TEXT}
+                         🎁 {language === 'en' ? 'Earn 1 bonus generation when you publish this look.' : GALLERY_PUBLIC_CREDIT_TEXT}
                       </p>
                     )}
 
@@ -6372,7 +6375,7 @@ const StyleGenerator = () => {
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
-                      다른 스타일 시도하기
+                       {language === 'en' ? 'Try another style' : '다른 스타일 시도하기'}
                     </Button>
                   </div>
                 )}
@@ -6380,7 +6383,7 @@ const StyleGenerator = () => {
               {/* 선택된 트렌드 상품 구매하기 - 모바일 캐러셀 */}
               {selectedTrendProducts.length > 0 && (
                 <div className="mt-4 sm:mt-6 w-full">
-                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">선택된 아이템 구매하기</h3>
+                   <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">{language === 'en' ? 'Shop selected items' : '선택된 아이템 구매하기'}</h3>
                   
                   {/* 모바일/태블릿: Embla 캐러셀 사용 */}
                   <div className="lg:hidden">
@@ -6439,7 +6442,7 @@ const StyleGenerator = () => {
                             {purchasingProductId === product.id ? (
                               <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                              '구매'
+                               language === 'en' ? 'Buy' : '구매'
                             )}
                           </Button>
                         </div>
@@ -6455,7 +6458,7 @@ const StyleGenerator = () => {
                       className="w-full font-korean text-xs sm:text-sm h-9 sm:h-10"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                      전체 장바구니 담기
+                       {language === 'en' ? 'Add all to cart' : '전체 장바구니 담기'}
                     </Button>
                     <Button
                       variant="hero"
@@ -6468,12 +6471,12 @@ const StyleGenerator = () => {
                       className="w-full font-korean text-xs sm:text-sm h-9 sm:h-10"
                     >
                       <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
-                      전체 구매하기
+                       {language === 'en' ? 'Buy all' : '전체 구매하기'}
                     </Button>
                   </div>
                   <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-accent/10 rounded-lg sm:rounded-xl text-center">
                     <p className="text-xs sm:text-sm text-accent font-korean">
-                      총 ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
+                       {language === 'en' ? 'Total' : '총'} ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -6482,7 +6485,7 @@ const StyleGenerator = () => {
               {/* 기존 상품 테이블에서 선택한 아이템 */}
               {generatedImage && selectedProducts.length > 0 && (
                 <div className="mt-4 sm:mt-6 w-full">
-                  <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">기본 아이템 구매하기</h3>
+                   <h3 className="font-medium text-foreground mb-2 sm:mb-3 font-korean text-sm sm:text-base">{language === 'en' ? 'Shop original items' : '기본 아이템 구매하기'}</h3>
                   <div className="space-y-2 w-full">
                     {selectedProducts.map((product) => (
                       <div
@@ -6501,7 +6504,7 @@ const StyleGenerator = () => {
                           onClick={() => addToCart(product)}
                           className="font-korean text-xs sm:text-sm px-2 sm:px-3 h-7 sm:h-8 flex-shrink-0"
                         >
-                          담기
+                           {language === 'en' ? 'Add' : '담기'}
                         </Button>
                       </div>
                     ))}
@@ -6512,7 +6515,7 @@ const StyleGenerator = () => {
                     className="w-full mt-3 sm:mt-4 font-korean text-xs sm:text-sm h-9 sm:h-10"
                     onClick={() => navigate('/cart')}
                   >
-                    장바구니로 이동
+                     {language === 'en' ? 'Go to cart' : '장바구니로 이동'}
                     <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                   </Button>
                 </div>
@@ -6565,7 +6568,7 @@ const StyleGenerator = () => {
                 </label>
               </div>
               <h2 className="font-korean text-2xl text-foreground mt-4">
-                {userProfile?.full_name || user?.email?.split('@')[0] || '사용자'}
+                {userProfile?.full_name || user?.email?.split('@')[0] || (language === 'en' ? 'User' : '사용자')}
               </h2>
               <p className="text-muted-foreground font-korean">{user?.email}</p>
             </div>
@@ -6573,15 +6576,15 @@ const StyleGenerator = () => {
             {/* Profile Info */}
             <div className="bg-secondary/50 rounded-2xl p-6 border border-border">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-korean text-xl text-foreground">프로필 정보</h3>
+                <h3 className="font-korean text-xl text-foreground">{language === 'en' ? 'Profile information' : '프로필 정보'}</h3>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => navigate('/profile-edit')} className="font-korean">
                     <Settings className="w-4 h-4 mr-1" />
-                    전체 수정
+                    {language === 'en' ? 'Edit all' : '전체 수정'}
                   </Button>
                   {!isEditingProfile && (
                     <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)} className="font-korean">
-                      빠른 수정
+                      {language === 'en' ? 'Quick edit' : '빠른 수정'}
                     </Button>
                   )}
                 {isEditingProfile && (
@@ -6595,10 +6598,10 @@ const StyleGenerator = () => {
                         style_preferences: userProfile?.style_preferences || [],
                       });
                     }}>
-                      취소
+                      {language === 'en' ? 'Cancel' : '취소'}
                     </Button>
                     <Button variant="hero" size="sm" onClick={saveProfile} disabled={isSavingProfile} className="font-korean">
-                      {isSavingProfile ? '저장 중...' : '저장'}
+                      {language === 'en' ? (isSavingProfile ? 'Saving...' : 'Save') : (isSavingProfile ? '저장 중...' : '저장')}
                     </Button>
                   </>
                 )}
@@ -6609,7 +6612,7 @@ const StyleGenerator = () => {
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="edit-height" className="font-korean">키 (cm)</Label>
+                      <Label htmlFor="edit-height" className="font-korean">{language === 'en' ? 'Height (cm)' : '키 (cm)'}</Label>
                       <Input
                         id="edit-height"
                         type="number"
@@ -6619,7 +6622,7 @@ const StyleGenerator = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="edit-weight" className="font-korean">몸무게 (kg)</Label>
+                      <Label htmlFor="edit-weight" className="font-korean">{language === 'en' ? 'Weight (kg)' : '몸무게 (kg)'}</Label>
                       <Input
                         id="edit-weight"
                         type="number"
@@ -6631,7 +6634,7 @@ const StyleGenerator = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="font-korean">체형</Label>
+                    <Label className="font-korean">{language === 'en' ? 'Body type' : '체형'}</Label>
                     <div className="grid grid-cols-2 gap-3">
                       {bodyTypes.map((type) => (
                         <button
@@ -6650,7 +6653,7 @@ const StyleGenerator = () => {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="font-korean">선호 스타일</Label>
+                    <Label className="font-korean">{language === 'en' ? 'Preferred styles' : '선호 스타일'}</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {styleOptions.map((style) => (
                         <button
@@ -6678,13 +6681,13 @@ const StyleGenerator = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground font-korean">키</p>
+                      <p className="text-sm text-muted-foreground font-korean">{language === 'en' ? 'Height' : '키'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.height ? `${userProfile.height}cm` : '-'}
                       </p>
                     </div>
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground font-korean">몸무게</p>
+                      <p className="text-sm text-muted-foreground font-korean">{language === 'en' ? 'Weight' : '몸무게'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
                         {userProfile?.weight ? `${userProfile.weight}kg` : '-'}
                       </p>
@@ -6692,23 +6695,23 @@ const StyleGenerator = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground mb-2 font-korean">성별</p>
+                      <p className="text-sm text-muted-foreground mb-2 font-korean">{language === 'en' ? 'Gender' : '성별'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
-                        {userProfile?.gender === 'male' ? '남성' : 
-                         userProfile?.gender === 'female' ? '여성' : 
-                         userProfile?.gender === 'unisex' ? '유니섹스' : 
-                         userProfile?.gender === 'prefer_not_to_say' ? '비공개' : '-'}
+                        {userProfile?.gender === 'male' ? (language === 'en' ? 'Male' : '남성') : 
+                         userProfile?.gender === 'female' ? (language === 'en' ? 'Female' : '여성') : 
+                         userProfile?.gender === 'unisex' ? (language === 'en' ? 'Unisex' : '유니섹스') : 
+                         userProfile?.gender === 'prefer_not_to_say' ? (language === 'en' ? 'Prefer not to say' : '비공개') : '-'}
                       </p>
                     </div>
                     <div className="p-4 bg-background rounded-xl">
-                      <p className="text-sm text-muted-foreground mb-2 font-korean">체형</p>
+                      <p className="text-sm text-muted-foreground mb-2 font-korean">{language === 'en' ? 'Body type' : '체형'}</p>
                       <p className="text-lg font-medium text-foreground font-korean">
                         {bodyTypes.find(t => t.id === userProfile?.body_type)?.label || '-'}
                       </p>
                     </div>
                   </div>
                   <div className="p-4 bg-background rounded-xl">
-                    <p className="text-sm text-muted-foreground mb-2 font-korean">선호 스타일</p>
+                    <p className="text-sm text-muted-foreground mb-2 font-korean">{language === 'en' ? 'Preferred styles' : '선호 스타일'}</p>
                     <div className="flex flex-wrap gap-2">
                       {userProfile?.style_preferences?.length ? (
                         userProfile.style_preferences.map(styleId => {
@@ -6732,13 +6735,13 @@ const StyleGenerator = () => {
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
                 <p className="text-3xl font-korean text-foreground">{myLooks.length}</p>
-                <p className="text-muted-foreground font-korean">생성된 룩</p>
+                <p className="text-muted-foreground font-korean">{language === 'en' ? 'Created looks' : '생성된 룩'}</p>
               </div>
               <div className="p-6 bg-secondary/50 rounded-2xl border border-border text-center">
                 <p className="text-3xl font-korean text-foreground">
                   {myLooks.filter(l => l.is_favorite).length}
                 </p>
-                <p className="text-muted-foreground font-korean">즐겨찾기</p>
+                <p className="text-muted-foreground font-korean">{language === 'en' ? 'Favorites' : '즐겨찾기'}</p>
               </div>
             </div>
           </div>
@@ -6752,8 +6755,8 @@ const StyleGenerator = () => {
             {/* 모달 헤더 */}
             <div className="sticky top-0 z-10 flex items-center justify-between p-4 border-b border-border bg-background/95 backdrop-blur-sm">
               <div>
-                <h3 className="font-semibold text-lg font-korean text-foreground">다른 {alternativeCategory} 보기</h3>
-                <p className="text-xs text-muted-foreground font-korean">원하는 상품을 선택해 교체하세요</p>
+                <h3 className="font-semibold text-lg font-korean text-foreground">{language === 'en' ? `View other ${alternativeCategory} items` : `다른 ${alternativeCategory} 보기`}</h3>
+                <p className="text-xs text-muted-foreground font-korean">{language === 'en' ? 'Choose a product to replace the current one' : '원하는 상품을 선택해 교체하세요'}</p>
               </div>
               <button
                 onClick={() => setAlternativeModalOpen(false)}
@@ -6768,12 +6771,12 @@ const StyleGenerator = () => {
               {isLoadingAlternatives ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-accent mb-3" />
-                  <p className="text-muted-foreground font-korean text-sm">대체 상품을 찾고 있어요...</p>
+                  <p className="text-muted-foreground font-korean text-sm">{language === 'en' ? 'Finding alternative products...' : '대체 상품을 찾고 있어요...'}</p>
                 </div>
               ) : alternativeProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <ShoppingBag className="w-12 h-12 text-muted-foreground/30 mb-3" />
-                  <p className="text-muted-foreground font-korean">같은 카테고리의 다른 상품이 없습니다.</p>
+                  <p className="text-muted-foreground font-korean">{language === 'en' ? 'No other products are available in this category.' : '같은 카테고리의 다른 상품이 없습니다.'}</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

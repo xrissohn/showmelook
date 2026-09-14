@@ -17,7 +17,7 @@ import { useGeneratedLooks } from '@/hooks/useGeneratedLooks';
 import { CommunityPostComposer } from '@/components/community/CommunityPostComposer';
 
 const Community = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('photos');
   const { looks, isLoading, sortBy, setSortBy, hasMore, loadMore, updateLookLikeCount, updateLookContent, removeLook, refetch } = useCommunityFeed();
@@ -74,9 +74,9 @@ const Community = () => {
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'CollectionPage',
-          name: '쇼미룩 커뮤니티 스타일 갤러리',
+           name: language === 'en' ? 'ShowMeLook Community Style Gallery' : '쇼미룩 커뮤니티 스타일 갤러리',
           url: 'https://showmelook.com/community',
-          description: '쇼미룩 사용자들이 AI로 만든 코디를 공유하는 공개 스타일 갤러리입니다.',
+           description: language === 'en' ? 'A public gallery where ShowMeLook users share AI-created outfits.' : '쇼미룩 사용자들이 AI로 만든 코디를 공유하는 공개 스타일 갤러리입니다.',
           mainEntity: {
             '@type': 'ItemList',
             numberOfItems: looks.length,
@@ -111,16 +111,15 @@ const Community = () => {
           {/* 섹션 소개 */}
           <div className="mb-6 rounded-xl border border-border/60 bg-card/60 p-4">
             <h2 className="mb-2 font-korean text-base font-semibold text-foreground break-keep">
-              스타일 갤러리는 이런 공간이에요
+               {language === 'en' ? 'About the Style Gallery' : '스타일 갤러리는 이런 공간이에요'}
             </h2>
             <p className="font-korean text-sm leading-relaxed text-muted-foreground break-keep">
-              쇼미룩 사용자들이 직접 만들고 공개한 AI 착장을 모아둔 공간입니다.
-              사진 탭에서는 최신순·인기순으로 개별 룩을 볼 수 있고, 갤러리 탭에서는
-              사용자별 스타일을 이어서 살펴볼 수 있어요. 마음에 드는 룩을 누르면
-              사용된 상품 구성과 코디 포인트를 확인할 수 있습니다.
+               {language === 'en'
+                 ? 'Discover AI outfits created and shared by ShowMeLook users. Browse individual looks by latest or popular, explore each user’s gallery, and open a look to see its products and styling points.'
+                 : '쇼미룩 사용자들이 직접 만들고 공개한 AI 착장을 모아둔 공간입니다. 사진 탭에서는 최신순·인기순으로 개별 룩을 볼 수 있고, 갤러리 탭에서는 사용자별 스타일을 이어서 살펴볼 수 있어요. 마음에 드는 룩을 누르면 사용된 상품 구성과 코디 포인트를 확인할 수 있습니다.'}
             </p>
             <p className="mt-2 font-korean text-sm text-muted-foreground break-keep">
-              코디 기준이 궁금하다면 <a href="/guide" className="text-primary underline">쇼미가 제안하는 스타일 가이드</a>를 먼저 읽어보세요.
+               {language === 'en' ? 'Want more styling guidance? Start with the ' : '코디 기준이 궁금하다면 '}<a href="/guide" className="text-primary underline">{language === 'en' ? 'ShowMeLook Style Guide' : '쇼미가 제안하는 스타일 가이드'}</a>{language === 'en' ? '.' : '를 먼저 읽어보세요.'}
             </p>
           </div>
 
@@ -140,7 +139,7 @@ const Community = () => {
             {/* Photos tab */}
             <TabsContent value="photos">
               <h2 className="mb-4 font-korean text-base font-semibold text-foreground break-keep">
-                사용자들이 공개한 최신 AI 착장
+                 {language === 'en' ? 'Latest AI outfits shared by users' : '사용자들이 공개한 최신 AI 착장'}
               </h2>
               {isLoading && looks.length === 0 ? (
                 <div className="flex items-center justify-center py-20">
@@ -185,7 +184,7 @@ const Community = () => {
             {/* Galleries tab */}
             <TabsContent value="galleries">
               <h2 className="mb-4 font-korean text-base font-semibold text-foreground break-keep">
-                사용자별 스타일 갤러리
+                 {language === 'en' ? 'Style galleries by user' : '사용자별 스타일 갤러리'}
               </h2>
               {galleryLoading ? (
                 <div className="flex items-center justify-center py-20">

@@ -72,14 +72,14 @@ const UserGallery = () => {
     <>
       <SEOHead
         custom={{
-          title: `${displayName} - 스타일 갤러리 | ShowMeLook`,
-          description: `${displayName}님이 쇼미룩 AI로 만든 코디 갤러리입니다. 공개된 착장과 스타일 아이디어를 살펴보고 마음에 드는 룩을 직접 만들어 보세요.`,
+          title: language === 'en' ? `${displayName} - Style Gallery | ShowMeLook` : `${displayName} - 스타일 갤러리 | ShowMeLook`,
+          description: language === 'en' ? `Explore ${displayName}'s AI-created outfits and style ideas on ShowMeLook.` : `${displayName}님이 쇼미룩 AI로 만든 코디 갤러리입니다. 공개된 착장과 스타일 아이디어를 살펴보고 마음에 드는 룩을 직접 만들어 보세요.`,
           canonical: `https://showmelook.com/gallery/${userId}`,
         }}
         jsonLd={{
           '@context': 'https://schema.org',
           '@type': 'ImageGallery',
-          name: `${displayName} - 스타일 갤러리`,
+           name: language === 'en' ? `${displayName} - Style Gallery` : `${displayName} - 스타일 갤러리`,
           url: `https://showmelook.com/gallery/${userId}`,
           author: { '@type': 'Person', name: displayName },
           mainEntity: {
@@ -102,7 +102,7 @@ const UserGallery = () => {
               <AvatarFallback className="text-lg bg-primary/10 text-primary">{displayName.charAt(0)}</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground">{displayName} - 스타일 갤러리</h1>
+              <h1 className="text-xl sm:text-2xl font-bold font-korean text-foreground">{displayName} - {language === 'en' ? 'Style Gallery' : '스타일 갤러리'}</h1>
               <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1"><Images className="w-4 h-4" />{data.publicCount}</span>
                 <span className="flex items-center gap-1"><Heart className="w-4 h-4" />{data.totalLikes}</span>
@@ -113,22 +113,22 @@ const UserGallery = () => {
           {isOwner && (
             <>
               <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-xs sm:text-sm text-foreground/80 font-korean">
-                🎁 {GALLERY_PUBLIC_CREDIT_TEXT}
+                🎁 {language === 'en' ? 'Earn 1 bonus generation when you publish a look (once per look, up to 10).' : GALLERY_PUBLIC_CREDIT_TEXT}
               </div>
               <div className="flex flex-wrap items-center gap-3 mb-4">
                 <Tabs value={filter} onValueChange={(v) => setFilter(v as VisibilityFilter)}>
                   <TabsList>
-                    <TabsTrigger value="all" className="font-korean text-xs">{t('community.byPhoto')}</TabsTrigger>
-                    <TabsTrigger value="public" className="font-korean text-xs">{t('community.popular')}</TabsTrigger>
-                    <TabsTrigger value="private" className="font-korean text-xs">Private</TabsTrigger>
+                     <TabsTrigger value="all" className="font-korean text-xs">{language === 'en' ? 'All' : '전체'}</TabsTrigger>
+                     <TabsTrigger value="public" className="font-korean text-xs">{language === 'en' ? 'Public' : '공개'}</TabsTrigger>
+                     <TabsTrigger value="private" className="font-korean text-xs">{language === 'en' ? 'Private' : '비공개'}</TabsTrigger>
                   </TabsList>
                 </Tabs>
                 <div className="flex gap-2 ml-auto">
                   <Button variant="outline" size="sm" onClick={() => bulkToggle(true)} className="font-korean text-xs rounded-full">
-                    <Globe className="w-3.5 h-3.5 mr-1" />Public All
+                     <Globe className="w-3.5 h-3.5 mr-1" />{language === 'en' ? 'Make all public' : '전체 공개'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => bulkToggle(false)} className="font-korean text-xs rounded-full">
-                    <Lock className="w-3.5 h-3.5 mr-1" />Private All
+                     <Lock className="w-3.5 h-3.5 mr-1" />{language === 'en' ? 'Make all private' : '전체 비공개'}
                   </Button>
                 </div>
               </div>
