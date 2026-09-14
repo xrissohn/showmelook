@@ -239,7 +239,7 @@ const useMouseParticles = () => {
 const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
   const { particles, addParticle, removeParticle } = useMouseParticles();
   const [isMobile, setIsMobile] = useState(false);
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   useEffect(() => {
     // Check for mobile once on mount to disable heavy mouse effects
     setIsMobile(window.matchMedia('(max-width: 768px)').matches);
