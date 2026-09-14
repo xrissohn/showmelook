@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { GUIDES } from "@/content/guides";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const HOW_TO_STEPS = [
   {
@@ -50,11 +51,40 @@ const FAQ_ITEMS = [
   },
 ];
 
+const HOW_TO_STEPS_EN = [
+  { title: "1. Add a Clear Face Photo", body: "A front-facing photo without heavy shadows is enough. Your photo is used only to create your looks." },
+  { title: "2. Enter Your Measurements and Taste", body: "Accurate height, weight, and body details help reflect top lengths and trouser hems more naturally." },
+  { title: "3. Describe the Occasion", body: "For better results, describe the occasion, mood, and items—for example, ‘an autumn dinner date, muted tones, knitwear and slacks.’" },
+  { title: "4. Compare Looks and Shop", body: "Save looks you love, then browse real products in the categories used to create each look." },
+];
+
+const FAQ_ITEMS_EN = [
+  { q: "What exactly is AI styling?", a: "AI styling uses your body information, preferences, and occasion to build an outfit and visualize it as a worn look. ShowMeLook connects that look to real products you can purchase." },
+  { q: "Can I use ShowMeLook for free?", a: "Yes. New members receive free generations. Purchasing recommended products can raise your tier and unlock more style generations without requiring a monthly subscription." },
+  { q: "Are my photos and generated looks public?", a: "They are private by default. Only looks you choose to publish appear in the Style Gallery, and you can make them private again anytime." },
+  { q: "How close is the result to the actual fit?", a: "It is useful for checking silhouette and color combinations, but it does not replace garment measurements. Please review shoulder width, length, and other measurements before purchasing." },
+  { q: "What if I do not know what to wear?", a: "Start with Shomi’s Style Guide. It covers body-shape styling, personal color, layering, and practical sizing tips." },
+];
+
+const GUIDE_TITLES_EN: Record<string, string> = {
+  "date-office-casual-look": "How to Style Date, Office, and Casual Looks",
+  "body-type-coordination": "Outfit Formulas for Every Body Type",
+  "ai-virtual-fitting-tips": "How to Get the Most from AI Virtual Fitting",
+  "minimal-look-principles": "Five Principles of Minimal Style",
+  "seasonal-layering": "A Practical Guide to Seasonal Layering",
+  "size-selection-guide": "How to Choose the Right Size",
+  "personal-color-outfit": "Choosing Clothes for Your Personal Color",
+  "proportion-styling": "Styling Tips for Better Proportions",
+};
+
 const LandingContentSections = () => {
+  const { language } = useLanguage();
+  const howToSteps = language === 'en' ? HOW_TO_STEPS_EN : HOW_TO_STEPS;
+  const faqItems = language === 'en' ? FAQ_ITEMS_EN : FAQ_ITEMS;
   const faqJsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: FAQ_ITEMS.map((item) => ({
+    mainEntity: faqItems.map((item) => ({
       "@type": "Question",
       name: item.q,
       acceptedAnswer: { "@type": "Answer", text: item.a },
@@ -69,14 +99,15 @@ const LandingContentSections = () => {
 
       <div className="mx-auto max-w-4xl">
         <h2 className="font-korean text-2xl font-bold sm:text-3xl break-keep">
-          쇼미룩 사용법
+          {language === 'en' ? 'How to Use ShowMeLook' : '쇼미룩 사용법'}
         </h2>
         <p className="mt-3 font-korean text-muted-foreground break-keep">
-          처음 오셨다면 네 단계만 따라오시면 됩니다. 옷을 고르는 시간을 줄이고,
-          실패하는 구매를 줄이는 것이 쇼미룩의 목표예요.
+          {language === 'en'
+            ? 'New here? Follow these four steps. ShowMeLook helps you spend less time choosing clothes and make more confident purchases.'
+            : '처음 오셨다면 네 단계만 따라오시면 됩니다. 옷을 고르는 시간을 줄이고, 실패하는 구매를 줄이는 것이 쇼미룩의 목표예요.'}
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {HOW_TO_STEPS.map((step) => (
+          {howToSteps.map((step) => (
             <article
               key={step.title}
               className="rounded-2xl border border-border bg-card p-5"
@@ -90,10 +121,12 @@ const LandingContentSections = () => {
         </div>
 
         <h2 className="mt-14 font-korean text-2xl font-bold sm:text-3xl break-keep">
-          쇼미가 제안하는 스타일 가이드
+          {language === 'en' ? "Shomi’s Style Guide" : '쇼미가 제안하는 스타일 가이드'}
         </h2>
         <p className="mt-3 font-korean text-muted-foreground break-keep">
-          쇼미룩의 공식 AI 모델 쇼미가 직접 비교하고 확인한 기준을 글로 정리했어요.
+          {language === 'en'
+            ? 'Practical fashion advice researched and curated by Shomi, the official AI model of ShowMeLook.'
+            : '쇼미룩의 공식 AI 모델 쇼미가 직접 비교하고 확인한 기준을 글로 정리했어요.'}
         </p>
         <ul className="mt-5 grid gap-3 sm:grid-cols-2">
           {GUIDES.slice(0, 6).map((guide) => (
@@ -103,7 +136,7 @@ const LandingContentSections = () => {
                 className="block rounded-xl border border-border p-4 transition-colors hover:border-primary/50"
               >
                 <span className="font-korean text-sm font-medium break-keep">
-                  {guide.title}
+                  {language === 'en' ? (GUIDE_TITLES_EN[guide.slug] || guide.title) : guide.title}
                 </span>
               </Link>
             </li>
@@ -113,14 +146,14 @@ const LandingContentSections = () => {
           to="/guide"
           className="mt-4 inline-block font-korean text-sm font-medium text-primary"
         >
-          스타일 가이드 전체 보기 →
+          {language === 'en' ? 'View All Style Guides →' : '스타일 가이드 전체 보기 →'}
         </Link>
 
         <h2 className="mt-14 font-korean text-2xl font-bold sm:text-3xl break-keep">
-          자주 묻는 질문
+          {language === 'en' ? 'Frequently Asked Questions' : '자주 묻는 질문'}
         </h2>
         <Accordion type="single" collapsible className="mt-4">
-          {FAQ_ITEMS.map((item) => (
+          {faqItems.map((item) => (
             <AccordionItem key={item.q} value={item.q}>
               <AccordionTrigger className="text-left font-korean break-keep">
                 {item.q}
