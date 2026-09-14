@@ -13,7 +13,6 @@ import { Download, Sparkles, ShoppingBag, ArrowLeft, Menu, User, LogOut, ImageIc
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { useLanguage } from '@/contexts/LanguageContext';
 import showmelookLogo from '@/assets/showmelook-logo.png';
-import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 
 interface MainNavigationProps {
   showBackButton?: boolean;
@@ -76,25 +75,21 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
-          <button 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => navigate('/')} 
-            className="flex items-center gap-0 hover:opacity-80 transition-all duration-300"
+            className="h-9 w-9 shrink-0 rounded-full p-0 sm:h-11 sm:w-11"
+            aria-label={t('nav.showmelook')}
           >
             <img 
               src={showmelookLogo} 
               alt="ShowMeLook 브랜드 심볼" 
               width={40}
               height={40}
-              className="object-contain w-8 h-8 sm:w-10 sm:h-10" 
+              className="h-8 w-8 object-contain sm:h-10 sm:w-10" 
             />
-            <img 
-              src={showmelookKoreanLogo} 
-              alt="ShowMeLook 브랜드 워드마크" 
-              width={90}
-              height={90}
-              className="object-contain -ml-2 sm:-ml-3 h-[60px] sm:h-[90px]" 
-            />
-          </button>
+          </Button>
         </div>
         
         {/* Center - Title (optional) */}
