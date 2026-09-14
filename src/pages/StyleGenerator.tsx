@@ -2344,14 +2344,14 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   {isLoadingProducts && selectedLook.product_ids?.length && (
                     <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-foreground text-xs rounded-full flex items-center gap-1.5">
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      상품 정보 로딩 중...
+                      {language === 'en' ? 'Loading product information...' : '상품 정보 로딩 중...'}
                     </div>
                   )}
                   
                   {/* 상품 없음 표시 */}
                   {!isLoadingProducts && selectedLook.product_ids?.length && lookProducts.length === 0 && (
                     <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-background/80 backdrop-blur-sm text-muted-foreground text-xs rounded-full">
-                      상품 정보를 찾을 수 없음
+                      {language === 'en' ? 'Product information unavailable' : '상품 정보를 찾을 수 없음'}
                     </div>
                   )}
                   
@@ -2359,7 +2359,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   {!isFlipped && (
                     <div className="absolute bottom-3 left-3 z-20 text-xs bg-background/70 backdrop-blur-sm text-foreground/80 px-2.5 py-1.5 rounded-full flex items-center gap-1.5 font-korean backface-hidden">
                       <RotateCcw className="w-3.5 h-3.5" />
-                      탭하여 상세 정보 보기
+                      {language === 'en' ? 'Tap for details' : '탭하여 상세 정보 보기'}
                     </div>
                   )}
                 </div>
@@ -2401,7 +2401,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         <div className="w-4 h-4 rounded-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                           <Sparkles className="w-2.5 h-2.5 text-white" />
                         </div>
-                        <span className="text-[10px] font-semibold text-accent tracking-wide">AI 스타일리스트 추천</span>
+                        <span className="text-[10px] font-semibold text-accent tracking-wide">{language === 'en' ? 'AI STYLIST RECOMMENDATION' : 'AI 스타일리스트 추천'}</span>
                       </div>
                       
                       {/* 제목 (prompt_used에서 제품명 제외) */}
@@ -2415,8 +2415,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       <div className="relative pl-3 border-l-2 border-accent/40 space-y-1">
                         {(selectedLook.style_reasoning || (
                           lookProducts.length > 0 
-                            ? `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`
-                            : '스타일리시한 코디가 완성되었어요!'
+                            ? (language === 'en' ? `This look combines pieces from ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')}.` : `이 룩은 ${lookProducts.map(p => p.brand || p.name.split(' ')[0]).filter((v, i, a) => a.indexOf(v) === i).slice(0, 3).join(' × ')} 브랜드 조합으로 완성되었어요.`)
+                            : (language === 'en' ? 'Your stylish outfit is ready!' : '스타일리시한 코디가 완성되었어요!')
                         )).split('\n').filter(line => line.trim()).map((line, i) => {
                           const trimmed = line.trim();
                           const isEmoji = /^(😏|✨|🔥|💡|👗|📋|🎨|🌟|💎|👑|★)/.test(trimmed);
@@ -2443,7 +2443,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                         <h4 className="text-sm font-semibold text-white font-korean mb-3 flex items-center gap-1.5">
                           <ShoppingBag className="w-4 h-4 text-accent" />
-                          추천 상품 ({lookProducts.length}개)
+                          {language === 'en' ? `Recommended products (${lookProducts.length})` : `추천 상품 (${lookProducts.length}개)`}
                         </h4>
                         <div className="space-y-2">
                           {lookProducts.map((product, idx) => (
@@ -2466,7 +2466,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                                   {product.name}
                                 </span>
                                 <span className="text-white font-semibold text-sm">
-                                  {product.price?.toLocaleString()}원
+                                  {language === 'en' ? `₩${product.price?.toLocaleString()}` : `${product.price?.toLocaleString()}원`}
                                 </span>
                                 {/* 제휴 공시 문구 */}
                                 <span className="text-white/50 block text-[8px] mt-0.5 leading-tight">
@@ -2486,7 +2486,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                                 }}
                               >
                                 <ExternalLink className="w-3 h-3 mr-1" />
-                                구매
+                                {language === 'en' ? 'Buy' : '구매'}
                               </Button>
                             </div>
                           ))}
@@ -2495,9 +2495,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         {/* 총 가격 */}
                         <div className="border-t border-white/20 pt-3 mt-3">
                           <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-white font-korean">총 가격</span>
+                            <span className="text-sm font-semibold text-white font-korean">{language === 'en' ? 'Total' : '총 가격'}</span>
                             <span className="text-xl font-bold bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
-                              {lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}원
+                              {language === 'en' ? `₩${lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}` : `${lookProducts.reduce((sum, p) => sum + (p.price || 0), 0).toLocaleString()}원`}
                             </span>
                           </div>
                         </div>
@@ -2506,7 +2506,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     {/* 태그 */}
                     {selectedLook.tags && selectedLook.tags.length > 0 && (
                       <div>
-                        <h4 className="text-sm font-semibold text-white font-korean mb-2">태그</h4>
+                        <h4 className="text-sm font-semibold text-white font-korean mb-2">{language === 'en' ? 'Tags' : '태그'}</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {selectedLook.tags.map((tag, i) => (
                             <span 
@@ -2525,7 +2525,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10">
                         <h4 className="text-sm font-semibold text-white font-korean mb-1.5 flex items-center gap-1.5">
                           <MessageCircle className="w-4 h-4 text-muted-foreground" />
-                          메모
+                          {language === 'en' ? 'Note' : '메모'}
                         </h4>
                         <p className="text-sm text-white/70 font-korean italic">"{selectedLook.memo}"</p>
                       </div>
@@ -2536,10 +2536,10 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   <div className="relative border-t border-white/10 px-5 py-3 flex items-center justify-between bg-black/30 backdrop-blur-sm">
                     <div className="flex items-center gap-1.5 text-xs text-white/60 font-korean cursor-pointer hover:text-white/80 transition-colors">
                       <RotateCcw className="w-3.5 h-3.5 hover:animate-spin" />
-                      탭하여 이미지로
+                      {language === 'en' ? 'Tap to view image' : '탭하여 이미지로'}
                     </div>
                     <span className="text-xs text-white/60 font-korean">
-                      {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                      {new Date(selectedLook.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
@@ -2555,7 +2555,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             
             {/* 스와이프 힌트 - 모바일만 */}
             <div className="sm:hidden text-center mt-2">
-              <p className="text-white/40 text-xs font-korean">← 스와이프하여 탐색 →</p>
+              <p className="text-white/40 text-xs font-korean">{language === 'en' ? '← Swipe to browse →' : '← 스와이프하여 탐색 →'}</p>
             </div>
             
             {/* 메모/태그 모달 - fixed overlay로 화면 중앙에 표시 */}
@@ -2568,15 +2568,15 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className="bg-card rounded-2xl p-5 w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <h3 className="text-lg font-bold text-foreground font-korean mb-4">메모/태그 편집</h3>
+                  <h3 className="text-lg font-bold text-foreground font-korean mb-4">{language === 'en' ? 'Edit note and tags' : '메모/태그 편집'}</h3>
                   
                   <div className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">메모</label>
+                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">{language === 'en' ? 'Note' : '메모'}</label>
                       <Textarea
                         value={editMemo}
                         onChange={(e) => setEditMemo(e.target.value)}
-                        placeholder="이 룩에 대한 메모를 입력하세요..."
+                        placeholder={language === 'en' ? 'Add a note about this look...' : '이 룩에 대한 메모를 입력하세요...'}
                         className="resize-none h-20 font-korean"
                         maxLength={200}
                       />
@@ -2584,7 +2584,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     </div>
                     
                     <div>
-                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">태그</label>
+                      <label className="text-sm font-medium text-foreground font-korean mb-2 block">{language === 'en' ? 'Tags' : '태그'}</label>
                       <div className="flex flex-wrap gap-2 mb-2">
                         {editTags.map((tag, i) => (
                           <span 
@@ -2603,12 +2603,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                           value={newTag}
                           onChange={(e) => setNewTag(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag(newTag))}
-                          placeholder="태그 입력..."
+                          placeholder={language === 'en' ? 'Enter tag...' : '태그 입력...'}
                           className="flex-1 h-8 text-sm"
                           maxLength={20}
                         />
                         <Button size="sm" variant="outline" onClick={() => addTag(newTag)} disabled={!newTag.trim()}>
-                          추가
+                          {language === 'en' ? 'Add' : '추가'}
                         </Button>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
@@ -2631,7 +2631,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       className="flex-1 font-korean" 
                       onClick={() => setIsEditingMemo(false)}
                     >
-                      취소
+                      {language === 'en' ? 'Cancel' : '취소'}
                     </Button>
                     <Button 
                       className="flex-1 font-korean" 
@@ -2639,7 +2639,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       disabled={isSavingMemo}
                     >
                       {isSavingMemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-                      저장
+                      {language === 'en' ? 'Save' : '저장'}
                     </Button>
                   </div>
                 </div>
@@ -2670,7 +2670,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 {/* 하단 정보 및 액션 */}
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 px-4">
                   <p className="text-white/80 text-sm font-korean">
-                    {new Date(selectedLook.created_at).toLocaleDateString('ko-KR', {
+                    {new Date(selectedLook.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR', {
                       year: 'numeric',
                       month: 'long',
                       day: 'numeric'
@@ -2692,7 +2692,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   >
                     <Tag className="w-4 h-4 text-white" />
                     <span className="text-white text-sm font-korean hidden sm:inline">
-                      {selectedLook.memo || selectedLook.tags?.length ? '편집' : '메모/태그'}
+                      {language === 'en' ? (selectedLook.memo || selectedLook.tags?.length ? 'Edit' : 'Note/Tags') : (selectedLook.memo || selectedLook.tags?.length ? '편집' : '메모/태그')}
                     </span>
                   </button>
                   
@@ -2710,7 +2710,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                       : <LockKeyhole className="w-4 h-4 text-white" />
                     }
                     <span className="text-white text-sm font-korean hidden sm:inline">
-                      {selectedLook.is_public ? '공개 중' : '비공개'}
+                      {language === 'en' ? (selectedLook.is_public ? 'Public' : 'Private') : (selectedLook.is_public ? '공개 중' : '비공개')}
                     </span>
                   </button>
                   
@@ -2721,7 +2721,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   >
                     <Heart className={`w-4 h-4 ${selectedLook.is_favorite ? 'fill-accent text-accent' : 'text-white'}`} />
                     <span className="text-white text-sm font-korean hidden sm:inline">
-                      {selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기'}
+                      {language === 'en' ? (selectedLook.is_favorite ? 'Favorited' : 'Favorite') : (selectedLook.is_favorite ? '즐겨찾기됨' : '즐겨찾기')}
                     </span>
                   </button>
                   
@@ -2731,7 +2731,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     onShare={(platform, result) => {
                       if (result.message) {
                         toast({
-                          title: result.success ? '성공' : '알림',
+                          title: language === 'en' ? (result.success ? 'Success' : 'Notice') : (result.success ? '성공' : '알림'),
                           description: result.message,
                           variant: result.success ? 'default' : 'destructive',
                         });
@@ -2759,9 +2759,9 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="bg-card rounded-2xl p-6 max-w-sm w-full shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h3 className="text-lg font-bold text-center font-korean mb-2">룩 삭제</h3>
+                <h3 className="text-lg font-bold text-center font-korean mb-2">{language === 'en' ? 'Delete look' : '룩 삭제'}</h3>
                 <p className="text-sm text-muted-foreground text-center font-korean mb-6">
-                  이 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.
+                  {language === 'en' ? <>Delete this look?<br/>Deleted looks cannot be recovered.</> : <>이 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.</>}
                 </p>
                 <div className="flex gap-3">
                   <Button
@@ -2770,7 +2770,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     onClick={() => setShowDeleteConfirm(false)}
                     disabled={isDeleting}
                   >
-                    취소
+                    {language === 'en' ? 'Cancel' : '취소'}
                   </Button>
                   <Button
                     variant="destructive"
@@ -2781,12 +2781,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     {isDeleting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        삭제 중...
+                        {language === 'en' ? 'Deleting...' : '삭제 중...'}
                       </>
                     ) : (
                       <>
                         <Trash2 className="w-4 h-4 mr-2" />
-                        삭제
+                        {language === 'en' ? 'Delete' : '삭제'}
                       </>
                     )}
                   </Button>
@@ -2808,11 +2808,10 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-center font-korean mb-2">
-              {selectedIds.size}개 룩 삭제
+              {language === 'en' ? `Delete ${selectedIds.size} looks` : `${selectedIds.size}개 룩 삭제`}
             </h3>
             <p className="text-sm text-muted-foreground text-center font-korean mb-6">
-              선택한 {selectedIds.size}개의 룩을 삭제하시겠습니까?<br/>
-              삭제된 룩은 복구할 수 없습니다.
+              {language === 'en' ? <>Delete the {selectedIds.size} selected looks?<br/>Deleted looks cannot be recovered.</> : <>선택한 {selectedIds.size}개의 룩을 삭제하시겠습니까?<br/>삭제된 룩은 복구할 수 없습니다.</>}
             </p>
             <div className="flex gap-3">
               <Button
@@ -2821,7 +2820,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 onClick={() => setShowBulkDeleteConfirm(false)}
                 disabled={isDeleting}
               >
-                취소
+                {language === 'en' ? 'Cancel' : '취소'}
               </Button>
               <Button
                 variant="destructive"
@@ -2832,12 +2831,12 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 {isDeleting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    삭제 중...
+                    {language === 'en' ? 'Deleting...' : '삭제 중...'}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {selectedIds.size}개 삭제
+                    {language === 'en' ? `Delete ${selectedIds.size}` : `${selectedIds.size}개 삭제`}
                   </>
                 )}
               </Button>
