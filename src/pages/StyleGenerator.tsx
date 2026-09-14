@@ -765,6 +765,7 @@ const ShareButtons = ({
   prompt?: string;
   tags?: string[];
 }) => {
+  const { language, t } = useLanguage();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -782,9 +783,9 @@ const ShareButtons = ({
     setIsDownloading(false);
     const message = success 
       ? !shouldAddWatermark 
-        ? '이미지가 저장되었습니다!' 
-        : '이미지가 저장되었습니다! (워터마크 포함)'
-      : '저장에 실패했습니다.';
+        ? t('shareUI.saveSuccess')
+        : t('shareUI.saveSuccessWatermark')
+      : t('shareUI.saveFailed');
     onShare?.('download', { success, message });
   };
 
@@ -836,7 +837,7 @@ const ShareButtons = ({
         () => onShare?.('kakao', { success: true }),
         (e: Error) => {
           if (e?.name === 'AbortError') {
-            onShare?.('kakao', { success: true, message: '공유가 취소되었습니다.' });
+            onShare?.('kakao', { success: true, message: t('shareUI.shareCancelled') });
             return;
           }
           copyToClipboard(shareUrl).then((copied) => {
@@ -878,7 +879,7 @@ const ShareButtons = ({
         try {
           Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
           markPublic();
-          onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+          onShare?.('kakao', { success: true, message: language === 'en' ? 'KakaoTalk share window opened.' : '카카오톡 공유 창이 열렸습니다.' });
         } catch (e) {
           console.error('[Kakao Share] sendDefault error:', e);
           fallbackCopy();
@@ -938,7 +939,7 @@ const ShareButtons = ({
           onClick={handleDownload}
           disabled={isDownloading}
           className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-          title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+          title={!shouldAddWatermark ? t('shareUI.saveTitle') : t('shareUI.saveTitleWatermark')}
         >
           {isDownloading ? (
             <Loader2 className="w-5 h-5 animate-spin text-foreground" />
@@ -950,13 +951,13 @@ const ShareButtons = ({
           <button
             onClick={() => setIsShareOpen(!isShareOpen)}
             className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors border border-border/50"
-            title="공유하기"
+            title={t('shareUI.share')}
           >
             <Share2 className="w-5 h-5 text-foreground" />
           </button>
           <Popover open={isShareOpen} onOpenChange={setIsShareOpen}>
             <PopoverTrigger asChild>
-              <span className="sr-only">공유 메뉴 열기</span>
+              <span className="sr-only">{t('shareUI.shareMenu')}</span>
             </PopoverTrigger>
             <PopoverContent 
               align="end" 
@@ -969,7 +970,7 @@ const ShareButtons = ({
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    첫 구매 시 워터마크 없이 저장
+                    {t('shareUI.watermarkHint')}
                   </p>
                 </div>
               )}
@@ -999,7 +1000,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
-                <span className="text-sm font-korean text-foreground">카카오톡</span>
+                <span className="text-sm font-korean text-foreground">KakaoTalk</span>
               </button>
               <div className="my-1 border-t border-border" />
               <button
@@ -1007,7 +1008,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">🔗</span>
-                <span className="text-sm font-korean text-foreground">링크 복사</span>
+                <span className="text-sm font-korean text-foreground">{t('shareUI.copyLink')}</span>
               </button>
             </PopoverContent>
           </Popover>
@@ -1024,14 +1025,14 @@ const ShareButtons = ({
         onClick={handleDownload}
         disabled={isDownloading}
         className="font-korean"
-        title={!shouldAddWatermark ? '이미지 저장' : '이미지 저장 (워터마크 포함)'}
+        title={!shouldAddWatermark ? t('shareUI.saveTitle') : t('shareUI.saveTitleWatermark')}
       >
         {isDownloading ? (
           <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
         ) : (
           <Download className="w-4 h-4 mr-1.5" />
         )}
-        저장{shouldAddWatermark && ' 🏷️'}
+        {t('shareUI.save')}{shouldAddWatermark && ' 🏷️'}
       </Button>
       <div className="relative">
         <Button
@@ -1041,7 +1042,7 @@ const ShareButtons = ({
           className="font-korean"
         >
           <Share2 className="w-4 h-4 mr-1.5" />
-          공유
+          {t('shareUI.share')}
         </Button>
         {isShareOpen && (
           <>
@@ -1051,7 +1052,7 @@ const ShareButtons = ({
                 <div className="px-3 py-2 mb-1 bg-accent/10 rounded-lg">
                   <p className="text-[10px] text-accent font-korean flex items-center gap-1">
                     <Crown className="w-3 h-3" />
-                    첫 구매 시 워터마크 없이 저장
+                    {t('shareUI.watermarkHint')}
                   </p>
                 </div>
               )}
@@ -1081,7 +1082,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">💬</span>
-                <span className="text-sm font-korean text-foreground">카카오톡</span>
+                <span className="text-sm font-korean text-foreground">KakaoTalk</span>
               </button>
               <div className="my-1 border-t border-border" />
               <button
@@ -1089,7 +1090,7 @@ const ShareButtons = ({
                 className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
               >
                 <span className="text-lg">🔗</span>
-                <span className="text-sm font-korean text-foreground">링크 복사</span>
+                <span className="text-sm font-korean text-foreground">{t('shareUI.copyLink')}</span>
               </button>
             </div>
           </>
