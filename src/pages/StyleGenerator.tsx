@@ -148,6 +148,7 @@ const orbitDots = [
 
 // 이미지 스켈레톤 로딩 컴포넌트 with Progressive Loading (블러 -> 선명)
 const ProductImage = ({ src, alt, className, rounded }: { src: string; alt: string; className?: string; rounded?: string }) => {
+  const { language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
 
@@ -169,7 +170,7 @@ const ProductImage = ({ src, alt, className, rounded }: { src: string; alt: stri
       {hasError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted">
           <ImageOff className="w-12 h-12 text-muted-foreground/30 mb-2" />
-          <span className="text-xs text-muted-foreground">이미지를 불러올 수 없습니다</span>
+          <span className="text-xs text-muted-foreground">{language === 'en' ? 'Image unavailable' : '이미지를 불러올 수 없습니다'}</span>
         </div>
       ) : (
         <img 
@@ -1147,6 +1148,7 @@ const GeneratedStyleImage = ({
   cachedTagPositions?: any[];
   onTagPositionsAnalyzed?: (positions: any[]) => void;
 }) => {
+  const { language } = useLanguage();
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -1271,7 +1273,7 @@ const GeneratedStyleImage = ({
               <p className="text-3xl font-bold bg-gradient-to-r from-accent via-primary to-sky-500 bg-clip-text text-transparent">
                 {loadingProgress}%
               </p>
-              <p className="text-sm text-muted-foreground mt-1 font-korean">스타일 이미지 로딩 중...</p>
+              <p className="text-sm text-muted-foreground mt-1 font-korean">{language === 'en' ? 'Loading style image...' : '스타일 이미지 로딩 중...'}</p>
             </div>
             
             {/* 하단 로딩 바 */}
@@ -1288,7 +1290,7 @@ const GeneratedStyleImage = ({
       {hasError ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-secondary to-muted">
           <ImageOff className="w-16 h-16 text-muted-foreground/30 mb-3" />
-          <span className="text-sm text-muted-foreground font-korean">이미지를 불러올 수 없습니다</span>
+          <span className="text-sm text-muted-foreground font-korean">{language === 'en' ? 'Image unavailable' : '이미지를 불러올 수 없습니다'}</span>
         </div>
       ) : imageUrl && (
         <>
@@ -1344,6 +1346,7 @@ interface MyLooksGalleryProps {
 }
 
 const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark, isLoading }: MyLooksGalleryProps) => {
+  const { language, t } = useLanguage();
 
   // 필터 상태
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
@@ -1383,7 +1386,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   const minSwipeDistance = 50;
   
   // 사전 정의된 태그 옵션
-  const tagOptions = ['데일리', '특별한 날', '데이트', '출근룩', '주말', '파티', '여행', '계절감'];
+  const tagOptions = t('lookDetail.tagOptions') as unknown as string[];
   
   // 필터링된 아이템
   const filteredLooks = showFavoritesOnly 
@@ -1469,8 +1472,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setMyLooks(prev => prev.filter(l => !selectedIds.has(l.id)));
       
       toast({
-        title: '삭제 완료',
-        description: `${idsToDelete.length}개의 룩이 삭제되었습니다.`,
+        title: language === 'en' ? 'Deleted' : '삭제 완료',
+        description: language === 'en' ? `${idsToDelete.length} looks were deleted.` : `${idsToDelete.length}개의 룩이 삭제되었습니다.`,
       });
       
       setShowBulkDeleteConfirm(false);
@@ -1478,8 +1481,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     } catch (error: any) {
       console.error('Bulk delete error:', error);
       toast({
-        title: '삭제 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Delete failed' : '삭제 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -1531,16 +1534,16 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setSelectedLook(updatedLook);
       
       toast({
-        title: '저장 완료',
-        description: '메모와 태그가 저장되었습니다.',
+        title: language === 'en' ? 'Saved' : '저장 완료',
+        description: language === 'en' ? 'Your note and tags were saved.' : '메모와 태그가 저장되었습니다.',
       });
       
       setIsEditingMemo(false);
     } catch (error: any) {
       console.error('Save memo error:', error);
       toast({
-        title: '저장 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Save failed' : '저장 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -1681,8 +1684,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   const handleProductPurchase = async (product: CachedProduct) => {
     if (!product.product_url) {
       toast({
-        title: '구매 링크 없음',
-        description: '이 상품의 구매 링크가 없습니다.',
+          title: language === 'en' ? 'Purchase link unavailable' : '구매 링크 없음',
+          description: language === 'en' ? 'This product has no purchase link.' : '이 상품의 구매 링크가 없습니다.',
         variant: 'destructive',
       });
       return;
@@ -1703,8 +1706,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         if (newWindow) newWindow.close();
         setLookProducts(prev => prev.filter(p => p.id !== product.id));
         toast({
-          title: '판매 종료',
-          description: '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
+          title: language === 'en' ? 'No longer available' : '판매 종료',
+          description: language === 'en' ? 'This product is no longer available and was removed.' : '해당 상품은 더 이상 판매되지 않아 목록에서 제거되었습니다.',
           variant: 'destructive',
         });
         setPurchasingProductId(null);
@@ -1746,8 +1749,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       toast({
-        title: '로그인 필요',
-        description: '좋아요를 하려면 로그인이 필요합니다.',
+        title: language === 'en' ? 'Sign in required' : '로그인 필요',
+        description: language === 'en' ? 'Sign in to like products.' : '좋아요를 하려면 로그인이 필요합니다.',
         variant: 'destructive',
       });
       return;
@@ -2850,7 +2853,7 @@ const StyleGenerator = () => {
   const [searchParams] = useSearchParams();
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   // 구독 상태 (스타일 추천 먼저 받기 제한용)
   const subscription = useSubscription(user?.id);
   // 구매 기반 등급 정보
@@ -6565,7 +6568,7 @@ const StyleGenerator = () => {
                 </label>
               </div>
               <h2 className="font-korean text-2xl text-foreground mt-4">
-                {userProfile?.full_name || user?.email?.split('@')[0] || '사용자'}
+                {userProfile?.full_name || user?.email?.split('@')[0] || (language === 'en' ? 'User' : '사용자')}
               </h2>
               <p className="text-muted-foreground font-korean">{user?.email}</p>
             </div>
@@ -6573,11 +6576,11 @@ const StyleGenerator = () => {
             {/* Profile Info */}
             <div className="bg-secondary/50 rounded-2xl p-6 border border-border">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="font-korean text-xl text-foreground">프로필 정보</h3>
+                <h3 className="font-korean text-xl text-foreground">{language === 'en' ? 'Profile information' : '프로필 정보'}</h3>
                 <div className="flex gap-2">
                   <Button variant="ghost" size="sm" onClick={() => navigate('/profile-edit')} className="font-korean">
                     <Settings className="w-4 h-4 mr-1" />
-                    전체 수정
+                    {language === 'en' ? 'Edit all' : '전체 수정'}
                   </Button>
                   {!isEditingProfile && (
                     <Button variant="ghost" size="sm" onClick={() => setIsEditingProfile(true)} className="font-korean">
