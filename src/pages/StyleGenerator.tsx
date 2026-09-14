@@ -4495,8 +4495,8 @@ const StyleGenerator = () => {
     // Check limit before generating
     if (!canGenerate) {
       toast({
-        title: '일일 생성 횟수 초과',
-        description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+        title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+        description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
         variant: 'destructive',
       });
       return;
@@ -4506,16 +4506,16 @@ const StyleGenerator = () => {
     const willUseBonus = remainingCount === 0 && bonusCredits > 0;
     if (willUseBonus) {
       toast({
-        title: '✨ 보너스 크레딧 사용',
-        description: `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
+        title: language === 'en' ? '✨ Using bonus credit' : '✨ 보너스 크레딧 사용',
+        description: language === 'en' ? `Using 1 of ${bonusCredits} bonus credits.` : `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
       });
     }
 
     // 프롬프트 필수
     if (!customStylePrompt.trim()) {
       toast({
-        title: '스타일 프롬프트를 입력해주세요',
-        description: '원하는 스타일을 설명해주세요.',
+        title: language === 'en' ? 'Enter a style prompt' : '스타일 프롬프트를 입력해주세요',
+        description: language === 'en' ? 'Describe the style you want.' : '원하는 스타일을 설명해주세요.',
         variant: 'destructive',
       });
       return;
@@ -4851,8 +4851,8 @@ const StyleGenerator = () => {
       if (showRetryButton && (statusCode === 429 || errorCode === '429')) {
         setTimeout(() => {
           toast({
-            title: '🔄 재시도 가능',
-            description: '이제 다시 생성해보세요!',
+            title: language === 'en' ? '🔄 Ready to retry' : '🔄 재시도 가능',
+            description: language === 'en' ? 'You can try generating again now.' : '이제 다시 생성해보세요!',
             duration: 5000,
           });
         }, 30000);
@@ -4870,8 +4870,8 @@ const StyleGenerator = () => {
     // Check limit before generating
     if (!canGenerate) {
       toast({
-        title: '일일 생성 횟수 초과',
-        description: '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
+        title: language === 'en' ? 'Daily generation limit reached' : '일일 생성 횟수 초과',
+        description: language === 'en' ? 'Shop on ShowMeLook to raise your tier and generate more styles.' : '등급이 높아지면 더 많이 생성할 수 있어요. 쇼미룩에서 쇼핑하고 등급을 올려보세요!',
         variant: 'destructive',
       });
       return;
@@ -4881,8 +4881,8 @@ const StyleGenerator = () => {
     const willUseBonus = remainingCount === 0 && bonusCredits > 0;
     if (willUseBonus) {
       toast({
-        title: '✨ 보너스 크레딧 사용',
-        description: `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
+        title: language === 'en' ? '✨ Using bonus credit' : '✨ 보너스 크레딧 사용',
+        description: language === 'en' ? `Using 1 of ${bonusCredits} bonus credits.` : `보너스 ${bonusCredits}회 중 1회를 사용합니다.`,
       });
     }
 
@@ -4892,8 +4892,8 @@ const StyleGenerator = () => {
     
     if (productsToUse.length === 0 && !selectedTrend && !customResult) {
       toast({
-        title: '상품을 선택해주세요',
-        description: '스타일 생성을 위해 최소 1개의 상품을 선택해주세요.',
+        title: language === 'en' ? 'Select a product' : '상품을 선택해주세요',
+        description: language === 'en' ? 'Select at least one product to generate a style.' : '스타일 생성을 위해 최소 1개의 상품을 선택해주세요.',
         variant: 'destructive',
       });
       return;
@@ -5110,8 +5110,8 @@ const StyleGenerator = () => {
       if (showRetryButton && (statusCode === 429 || errorCode === '429')) {
         setTimeout(() => {
           toast({
-            title: '🔄 재시도 가능',
-            description: '이제 다시 생성해보세요!',
+            title: language === 'en' ? '🔄 Ready to retry' : '🔄 재시도 가능',
+            description: language === 'en' ? 'You can try generating again now.' : '이제 다시 생성해보세요!',
             duration: 5000,
           });
         }, 30000);
