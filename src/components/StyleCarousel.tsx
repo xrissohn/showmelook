@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Style images - All optimized small WebP images from /public for LCP
 // Optimized progressive JPEGs (~25-40KB each) for max browser compatibility
@@ -17,6 +18,8 @@ const sportyFemale = '/carousel/sporty-female-opt.jpg';
 interface StyleData {
   title: string;
   desc: string;
+  titleEn: string;
+  descEn: string;
   gradient: string;
   maleImage: string;
   femaleImage: string;
@@ -26,6 +29,8 @@ const styles: StyleData[] = [
   {
     title: '미니멀리스트',
     desc: '깔끔한 라인의 현대적 스타일',
+    titleEn: 'Minimalist',
+    descEn: 'Modern style with clean lines',
     gradient: 'from-coral to-magenta',
     maleImage: minimalistMale,
     femaleImage: minimalistFemale,
@@ -33,6 +38,8 @@ const styles: StyleData[] = [
   {
     title: '스트릿 스타일',
     desc: '도시적인 캐주얼 감성',
+    titleEn: 'Street Style',
+    descEn: 'Urban casual attitude',
     gradient: 'from-magenta to-purple',
     maleImage: streetMale,
     femaleImage: streetFemale,
@@ -40,6 +47,8 @@ const styles: StyleData[] = [
   {
     title: '클래식 엘레강스',
     desc: '시간을 초월한 우아함',
+    titleEn: 'Classic Elegance',
+    descEn: 'Timeless sophistication',
     gradient: 'from-purple to-sky',
     maleImage: classicMale,
     femaleImage: classicFemale,
@@ -47,6 +56,8 @@ const styles: StyleData[] = [
   {
     title: '캐주얼 룩',
     desc: '편안한 일상의 스타일',
+    titleEn: 'Casual Look',
+    descEn: 'Relaxed everyday style',
     gradient: 'from-sky to-coral',
     maleImage: casualMale,
     femaleImage: casualFemale,
@@ -54,6 +65,8 @@ const styles: StyleData[] = [
   {
     title: '스포티 액티브',
     desc: '역동적인 활동적 스타일',
+    titleEn: 'Sporty Active',
+    descEn: 'Dynamic, active styling',
     gradient: 'from-coral to-purple',
     maleImage: sportyMale,
     femaleImage: sportyFemale,
@@ -61,6 +74,7 @@ const styles: StyleData[] = [
 ];
 
 const StyleCarousel = () => {
+  const { language } = useLanguage();
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
@@ -291,7 +305,7 @@ const StyleCarousel = () => {
                   >
                     <img
                       src={currentImage}
-                      alt={`${style.title} 모델`}
+                      alt={language === 'en' ? `${style.titleEn} model` : `${style.title} 모델`}
                       className="w-full h-full object-cover"
                       width={228}
                       height={285}
@@ -313,7 +327,7 @@ const StyleCarousel = () => {
                   >
                     <img
                       src={backImage}
-                      alt={`${style.title} 모델`}
+                      alt={language === 'en' ? `${style.titleEn} model` : `${style.title} 모델`}
                       className="w-full h-full object-cover"
                       width={228}
                       height={285}
@@ -329,10 +343,10 @@ const StyleCarousel = () => {
               {/* Text content */}
               <div>
                 <h3 className="font-korean text-xs sm:text-sm md:text-lg text-foreground mb-0.5 sm:mb-1 group-hover:text-primary transition-colors truncate">
-                  {style.title}
+                  {language === 'en' ? style.titleEn : style.title}
                 </h3>
                 <p className="text-[10px] sm:text-xs md:text-sm font-korean text-muted-foreground line-clamp-2 hidden sm:block">
-                  {style.desc}
+                  {language === 'en' ? style.descEn : style.desc}
                 </p>
               </div>
 
