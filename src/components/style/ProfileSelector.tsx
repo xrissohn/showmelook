@@ -14,6 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export interface SelectedProfile {
   id: string;
@@ -56,6 +57,7 @@ export const ProfileSelector = ({
   onProfileSelect,
   isProfileLoading = false,
 }: ProfileSelectorProps) => {
+  const { language } = useLanguage();
   const { profiles: familyProfiles, isLoading } = useFamilyProfiles(userId, 5);
   const [isOpen, setIsOpen] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
@@ -165,20 +167,22 @@ export const ProfileSelector = ({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                  {isProfileLoading ? '프로필 로딩 중...' : (userProfile?.full_name || '내 프로필')}
+                  {isProfileLoading
+                    ? (language === 'en' ? 'Loading profile...' : '프로필 로딩 중...')
+                    : (userProfile?.full_name || (language === 'en' ? 'My Profile' : '내 프로필'))}
                 </p>
                 {!isProfileLoading && (
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent">
-                    나
+                    {language === 'en' ? 'Me' : '나'}
                   </Badge>
                 )}
               </div>
               <p className="text-xs text-muted-foreground font-korean truncate">
-                {isProfileLoading ? '사진과 체형 정보를 불러오는 중...' : (
+                 {isProfileLoading ? (language === 'en' ? 'Loading photo and body information...' : '사진과 체형 정보를 불러오는 중...') : (
                   <>
                     {userProfile?.height ? `${userProfile.height}cm` : ''} 
                     {userProfile?.weight ? ` · ${userProfile.weight}kg` : ''}
-                    {userProfile?.gender ? ` · ${userProfile.gender === 'male' || userProfile.gender === '남성' ? '남성' : userProfile.gender === 'female' || userProfile.gender === '여성' ? '여성' : userProfile.gender}` : ''}
+                    {userProfile?.gender ? ` · ${userProfile.gender === 'male' || userProfile.gender === '남성' ? (language === 'en' ? 'Male' : '남성') : userProfile.gender === 'female' || userProfile.gender === '여성' ? (language === 'en' ? 'Female' : '여성') : userProfile.gender}` : ''}
                   </>
                 )}
               </p>
@@ -195,14 +199,14 @@ export const ProfileSelector = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">추가 모델</p>
+                  <p className="font-medium text-muted-foreground font-korean text-sm sm:text-base">{language === 'en' ? 'Additional Model' : '추가 모델'}</p>
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-600 dark:text-purple-400">
                     <Crown className="w-3 h-3 mr-0.5" />
-                    플래티넘
+                    {language === 'en' ? 'Platinum' : '플래티넘'}
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground font-korean truncate">
-                  누적 구매 100만원 이상 시 모델 프로필 추가 가능
+                  {language === 'en' ? 'Add model profiles after ₩1M in total purchases' : '누적 구매 100만원 이상 시 모델 프로필 추가 가능'}
                 </p>
               </div>
             </div>
@@ -253,7 +257,9 @@ export const ProfileSelector = ({
               <div className="min-w-0 text-left">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground font-korean text-sm sm:text-base truncate">
-                    {isProfileLoading ? '프로필 로딩 중...' : (currentDisplayProfile.full_name || '프로필 선택')}
+                    {isProfileLoading
+                      ? (language === 'en' ? 'Loading profile...' : '프로필 로딩 중...')
+                      : (currentDisplayProfile.full_name || (language === 'en' ? 'Select Profile' : '프로필 선택'))}
                   </p>
                   {!isProfileLoading && (
                     <Badge 
@@ -264,12 +270,14 @@ export const ProfileSelector = ({
                           : 'bg-primary/20 text-primary'
                       }`}
                     >
-                      {currentDisplayProfile.type === 'self' ? '나' : '모델'}
+                      {currentDisplayProfile.type === 'self' ? (language === 'en' ? 'Me' : '나') : (language === 'en' ? 'Model' : '모델')}
                     </Badge>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground font-korean truncate">
-                  {isProfileLoading ? '사진과 체형 정보를 불러오는 중...' : '누구를 위한 스타일을 생성할까요?'}
+                  {isProfileLoading
+                    ? (language === 'en' ? 'Loading photo and body information...' : '사진과 체형 정보를 불러오는 중...')
+                    : (language === 'en' ? 'Who are you creating this style for?' : '누구를 위한 스타일을 생성할까요?')}
                 </p>
               </div>
             </div>
@@ -298,9 +306,9 @@ export const ProfileSelector = ({
               </Avatar>
               <div className="flex-1 min-w-0 text-left">
                 <p className="font-medium text-foreground font-korean text-sm truncate">
-                  {userProfile?.full_name || '나'}
+                  {userProfile?.full_name || (language === 'en' ? 'Me' : '나')}
                 </p>
-                <p className="text-xs text-muted-foreground font-korean">본인</p>
+                <p className="text-xs text-muted-foreground font-korean">{language === 'en' ? 'Self' : '본인'}</p>
               </div>
               {currentDisplayProfile.type === 'self' && (
                 <Check className="w-5 h-5 text-accent flex-shrink-0" />
@@ -311,7 +319,7 @@ export const ProfileSelector = ({
             {familyProfiles.length > 0 && (
               <div className="flex items-center gap-2 py-2">
                 <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground font-korean">추가 모델</span>
+                <span className="text-xs text-muted-foreground font-korean">{language === 'en' ? 'Additional Models' : '추가 모델'}</span>
                 <div className="flex-1 h-px bg-border" />
               </div>
             )}
@@ -319,13 +327,13 @@ export const ProfileSelector = ({
             {/* 모델 프로필들 */}
             {isLoading ? (
               <div className="p-4 text-center">
-                <p className="text-xs text-muted-foreground font-korean">로딩 중...</p>
+                <p className="text-xs text-muted-foreground font-korean">{language === 'en' ? 'Loading...' : '로딩 중...'}</p>
               </div>
             ) : familyProfiles.length === 0 ? (
               <div className="p-4 text-center">
                 <Users className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="text-xs text-muted-foreground font-korean">
-                  마이페이지에서 추가 모델을 등록해보세요
+                  {language === 'en' ? 'Add another model from My Page' : '마이페이지에서 추가 모델을 등록해보세요'}
                 </p>
               </div>
             ) : (
@@ -350,8 +358,8 @@ export const ProfileSelector = ({
                       {profile.full_name}
                     </p>
                     <p className="text-xs text-muted-foreground font-korean">
-                      {profile.relationship || '모델'}
-                      {profile.gender && ` · ${profile.gender}`}
+                      {profile.relationship || (language === 'en' ? 'Model' : '모델')}
+                      {profile.gender && ` · ${profile.gender === '남성' ? (language === 'en' ? 'Male' : '남성') : profile.gender === '여성' ? (language === 'en' ? 'Female' : '여성') : profile.gender}`}
                     </p>
                   </div>
                   {currentDisplayProfile.id === profile.id && (
