@@ -3009,13 +3009,13 @@ const StyleGenerator = () => {
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
 
   // 동적 트렌드 키워드 상태 (인기도 추가)
-  const [trendKeywords, setTrendKeywords] = useState<{ emoji: string; text: string; desc: string; popularity: number }[]>([
-    { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디', popularity: 98 },
-    { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼', popularity: 85 },
-    { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일', popularity: 92 },
-    { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일', popularity: 76 },
-    { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩', popularity: 88 },
-    { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일', popularity: 71 },
+  const [trendKeywords, setTrendKeywords] = useState<{ emoji: string; text: string; desc: string; textEn: string; descEn: string; popularity: number }[]>([
+    { emoji: '☕', text: '편안한 카페 데이트룩', desc: '여유로운 분위기의 데이트에 어울리는 편안한 코디', textEn: 'Relaxed Café Date Look', descEn: 'A comfortable outfit for a laid-back café date', popularity: 98 },
+    { emoji: '💼', text: '캐주얼 오피스룩', desc: '격식과 편안함을 동시에 잡는 스마트 캐주얼', textEn: 'Casual Office Look', descEn: 'Smart casual balancing polish and comfort', popularity: 85 },
+    { emoji: '🌸', text: '봄나들이 페미닌 코디', desc: '화사하고 로맨틱한 봄 시즌 스타일', textEn: 'Feminine Spring Outing', descEn: 'A bright, romantic look for spring', popularity: 92 },
+    { emoji: '🖤', text: '모던 시크 룩', desc: '세련되고 도시적인 올블랙 베이스 스타일', textEn: 'Modern Chic Look', descEn: 'A polished, urban look built around black', popularity: 76 },
+    { emoji: '🏃', text: '스포티 캐주얼', desc: '활동적이면서도 스타일리시한 애슬레저 룩', textEn: 'Sporty Casual', descEn: 'An active yet stylish athleisure look', popularity: 88 },
+    { emoji: '✨', text: '파티 글램 룩', desc: '특별한 날을 위한 화려하고 섹시한 스타일', textEn: 'Party Glam Look', descEn: 'A glamorous statement look for special occasions', popularity: 71 },
   ]);
   const [isLoadingKeywords, setIsLoadingKeywords] = useState(false);
   
@@ -5352,14 +5352,14 @@ const StyleGenerator = () => {
                                       key={`trend-${repeatIdx}-${index}-${keyword.text}`}
                                       onClick={() => {
                                         if (!isDragging) {
-                                          setCustomStylePrompt(`${keyword.text} - ${keyword.desc}`);
+                                          setCustomStylePrompt(language === 'en' ? `${keyword.textEn} - ${keyword.descEn}` : `${keyword.text} - ${keyword.desc}`);
                                         }
                                       }}
                                       disabled={isCustomSearching}
                                       className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0 relative"
                                     >
                                       <span>{keyword.emoji}</span>
-                                      <span>{keyword.text}</span>
+                                      <span>{language === 'en' ? keyword.textEn : keyword.text}</span>
                                       {/* 인기도 배지 */}
                                       {keyword.popularity >= 90 && (
                                         <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-rose-500/20 text-rose-500 rounded-full text-[10px] font-medium">
@@ -5393,7 +5393,7 @@ const StyleGenerator = () => {
                                         key={`db-${repeatIdx}-${trend.id}`}
                                         onClick={() => {
                                           if (!isDragging) {
-                                            setCustomStylePrompt(`${trend.name_ko} - ${trend.description || ''}`);
+                                            setCustomStylePrompt(`${language === 'en' ? trend.name : trend.name_ko} - ${trend.description || ''}`);
                                             setSelectedTrend(trend);
                                           }
                                         }}
@@ -5401,7 +5401,7 @@ const StyleGenerator = () => {
                                         className="inline-flex items-center gap-1.5 pl-2.5 pr-2 py-1 bg-secondary/50 hover:bg-secondary rounded-full text-xs font-korean transition-colors disabled:opacity-50 shrink-0"
                                       >
                                         <span>{trendEmojis[trend.name] || '🎨'}</span>
-                                        <span>{trend.name_ko}</span>
+                                        <span>{language === 'en' ? trend.name : trend.name_ko}</span>
                                         {trendPopularity >= 80 && (
                                           <span className="flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-500/20 text-amber-600 rounded-full text-[10px] font-medium">
                                             ⬆️ {trendPopularity}
