@@ -5,6 +5,7 @@ import { Share, MoreVertical, Plus, Download, Smartphone, Monitor, Apple, Chrome
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import MainNavigation from '@/components/MainNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { SEOHead } from '@/components/SEOHead';
 
 type DeviceType = 'ios' | 'android' | 'desktop' | 'unknown';
 
@@ -74,6 +75,7 @@ const Install = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEOHead pageKey="install" />
       <MainNavigation showBackButton />
 
       <main className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-2xl">

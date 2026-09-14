@@ -79,6 +79,14 @@ export function useCommunityFeed() {
     setLooks(prev => prev.map(l => l.id === lookId ? { ...l, like_count: newCount } : l));
   }, []);
 
+  const updateLookContent = useCallback((lookId: string, caption: string | null, tags: string[] | null) => {
+    setLooks(prev => prev.map(l => l.id === lookId ? { ...l, caption, tags } : l));
+  }, []);
+
+  const removeLook = useCallback((lookId: string) => {
+    setLooks(prev => prev.filter(l => l.id !== lookId));
+  }, []);
+
   return {
     looks,
     isLoading,
@@ -87,5 +95,8 @@ export function useCommunityFeed() {
     hasMore,
     loadMore,
     updateLookLikeCount,
+    updateLookContent,
+    removeLook,
+    refetch: () => fetchLooks(true),
   };
 }
