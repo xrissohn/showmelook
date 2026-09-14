@@ -1829,8 +1829,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       setMyLooks(prev => prev.filter(l => l.id !== selectedLook.id));
       
       toast({
-        title: '삭제 완료',
-        description: '룩이 삭제되었습니다.',
+        title: language === 'en' ? 'Deleted' : '삭제 완료',
+        description: language === 'en' ? 'The look was deleted.' : '룩이 삭제되었습니다.',
       });
       
       // 모달 닫기
@@ -1839,8 +1839,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     } catch (error: any) {
       console.error('Delete error:', error);
       toast({
-        title: '삭제 실패',
-        description: error.message || '다시 시도해주세요.',
+        title: language === 'en' ? 'Delete failed' : '삭제 실패',
+        description: error.message || (language === 'en' ? 'Please try again.' : '다시 시도해주세요.'),
         variant: 'destructive',
       });
     } finally {
@@ -1866,8 +1866,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         setSelectedLook({ ...look, is_favorite: newFavorite });
       }
       toast({
-        title: newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제',
-        description: newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.',
+        title: language === 'en' ? (newFavorite ? 'Added to favorites' : 'Removed from favorites') : (newFavorite ? '즐겨찾기 추가' : '즐겨찾기 해제'),
+        description: language === 'en' ? (newFavorite ? 'The look was added to favorites.' : 'The look was removed from favorites.') : (newFavorite ? '룩이 즐겨찾기에 추가되었습니다.' : '즐겨찾기가 해제되었습니다.'),
       });
     }
   };
@@ -1889,8 +1889,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         setSelectedLook({ ...look, is_public: newPublic });
       }
       toast({
-        title: newPublic ? '갤러리에 공개됨' : '비공개로 전환',
-        description: newPublic ? '이 룩이 스타일 갤러리에 공개됩니다.' : '이 룩이 비공개로 전환되었습니다.',
+        title: language === 'en' ? (newPublic ? 'Published to gallery' : 'Made private') : (newPublic ? '갤러리에 공개됨' : '비공개로 전환'),
+        description: language === 'en' ? (newPublic ? 'This look is now visible in the Style Gallery.' : 'This look is now private.') : (newPublic ? '이 룩이 스타일 갤러리에 공개됩니다.' : '이 룩이 비공개로 전환되었습니다.'),
       });
       if (newPublic) void claimGalleryPublicCredit(look.id);
     }
@@ -1919,13 +1919,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
     return (
       <div className="text-center py-20">
         <img src={showmelookLogo} alt="" className="w-16 h-16 mx-auto opacity-50 mb-4" />
-        <p className="text-lg text-muted-foreground font-korean">아직 생성된 룩이 없습니다</p>
+        <p className="text-lg text-muted-foreground font-korean">{language === 'en' ? 'No looks created yet' : '아직 생성된 룩이 없습니다'}</p>
         <Button
           variant="hero"
           className="mt-4 font-korean"
           onClick={() => setActiveTab('generate')}
         >
-          첫 스타일 만들기
+          {language === 'en' ? 'Create your first style' : '첫 스타일 만들기'}
         </Button>
       </div>
     );
@@ -1938,8 +1938,8 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
         <div className="flex items-center gap-2">
           <p className="text-sm text-muted-foreground font-korean">
-            {isSelectMode ? `${selectedIds.size}개 선택됨` : `${visibleItems.length} / ${filteredLooks.length}개`}
-            {showFavoritesOnly && !isSelectMode && ` (즐겨찾기)`}
+            {isSelectMode ? (language === 'en' ? `${selectedIds.size} selected` : `${selectedIds.size}개 선택됨`) : `${visibleItems.length} / ${filteredLooks.length}`}
+            {showFavoritesOnly && !isSelectMode && (language === 'en' ? ' (Favorites)' : ' (즐겨찾기)')}
           </p>
         </div>
         
@@ -1953,7 +1953,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 onClick={toggleSelectAll}
                 className="font-korean text-xs"
               >
-                {selectedIds.size === filteredLooks.length ? '전체 해제' : '전체 선택'}
+                {language === 'en' ? (selectedIds.size === filteredLooks.length ? 'Deselect all' : 'Select all') : (selectedIds.size === filteredLooks.length ? '전체 해제' : '전체 선택')}
               </Button>
               <Button
                 variant="destructive"
@@ -1963,7 +1963,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="font-korean text-xs"
               >
                 <Trash2 className="w-4 h-4 mr-1" />
-                {selectedIds.size}개 삭제
+                {language === 'en' ? `Delete ${selectedIds.size}` : `${selectedIds.size}개 삭제`}
               </Button>
               <Button
                 variant="outline"
@@ -1971,7 +1971,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 onClick={exitSelectMode}
                 className="font-korean text-xs"
               >
-                취소
+                {language === 'en' ? 'Cancel' : '취소'}
               </Button>
             </>
           ) : (
@@ -1983,7 +1983,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                 className="font-korean text-xs"
               >
                 <Check className="w-4 h-4 mr-1" />
-                선택
+                {language === 'en' ? 'Select' : '선택'}
               </Button>
               {/* 필터 버튼 */}
               {showFavoritesOnly ? (
@@ -1994,7 +1994,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className="flex items-center gap-1"
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  <span className="font-korean">전체 갤러리</span>
+                  <span className="font-korean">{language === 'en' ? 'All looks' : '전체 갤러리'}</span>
                 </Button>
               ) : (
                 <Button
@@ -2004,7 +2004,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className="flex items-center gap-1"
                 >
                   <Heart className="w-4 h-4" />
-                  <span className="font-korean hidden sm:inline">즐겨찾기</span>
+                  <span className="font-korean hidden sm:inline">{language === 'en' ? 'Favorites' : '즐겨찾기'}</span>
                   {favoriteCount > 0 && (
                     <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent text-accent-foreground">
                       {favoriteCount}
@@ -2021,13 +2021,13 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       {filteredLooks.length === 0 && showFavoritesOnly && (
         <div className="text-center py-16">
           <Heart className="w-12 h-12 mx-auto opacity-30 text-muted-foreground mb-4" />
-          <p className="text-lg text-muted-foreground font-korean">즐겨찾기한 룩이 없습니다</p>
+          <p className="text-lg text-muted-foreground font-korean">{language === 'en' ? 'No favorite looks yet' : '즐겨찾기한 룩이 없습니다'}</p>
           <Button
             variant="outline"
             className="mt-4 font-korean"
             onClick={() => setShowFavoritesOnly(false)}
           >
-            전체 보기
+            {language === 'en' ? 'View all' : '전체 보기'}
           </Button>
         </div>
       )}
@@ -2083,7 +2083,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   className={`absolute top-3 ${look.is_favorite ? 'left-10' : 'left-3'} z-10 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
                     look.is_public ? 'bg-primary/80 text-primary-foreground' : 'bg-black/40 text-white/70'
                   } backdrop-blur-sm hover:scale-110`}
-                  title={look.is_public ? '공개 중 (클릭하여 비공개로 변경)' : '비공개 (클릭하여 공개로 변경)'}
+                  title={language === 'en' ? (look.is_public ? 'Public (click to make private)' : 'Private (click to publish)') : (look.is_public ? '공개 중 (클릭하여 비공개로 변경)' : '비공개 (클릭하여 공개로 변경)')}
                 >
                   {look.is_public ? <Globe className="w-3.5 h-3.5" /> : <LockKeyhole className="w-3.5 h-3.5" />}
                 </button>
@@ -2113,7 +2113,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                   {/* 하단 날짜 */}
                   <div className="absolute bottom-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <p className="text-sm text-white/90 font-korean">
-                      {new Date(look.created_at).toLocaleDateString('ko-KR')}
+                      {new Date(look.created_at).toLocaleDateString(language === 'en' ? 'en-US' : 'ko-KR')}
                     </p>
                   </div>
                   
@@ -2126,7 +2126,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                         onShare={(platform, result) => {
                           if (result.message) {
                             toast({
-                              title: result.success ? '성공' : '알림',
+                              title: language === 'en' ? (result.success ? 'Success' : 'Notice') : (result.success ? '성공' : '알림'),
                               description: result.message,
                               variant: result.success ? 'default' : 'destructive',
                             });
@@ -2171,7 +2171,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
         >
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin" />
-            <span className="text-sm font-korean">더 불러오는 중...</span>
+            <span className="text-sm font-korean">{language === 'en' ? 'Loading more...' : '더 불러오는 중...'}</span>
           </div>
         </div>
       )}
@@ -2180,7 +2180,7 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
       {!hasMore && filteredLooks.length > 12 && (
         <div className="text-center py-6">
           <p className="text-sm text-muted-foreground font-korean">
-            모든 룩을 불러왔습니다 ✨
+            {language === 'en' ? 'All looks loaded ✨' : '모든 룩을 불러왔습니다 ✨'}
           </p>
         </div>
       )}
