@@ -260,29 +260,29 @@ export const shareToSNS = async (
       try {
         const Kakao = (window as any).Kakao;
         if (!Kakao) {
-          if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
-          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
+          if (await copyToClipboard(shareUrl)) return { success: true, message: getShareLinkCopiedMessage(language) };
+          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl, language) };
         }
         if (!Kakao.isInitialized()) {
           try { Kakao.init(KAKAO_JS_KEY); } catch (initErr) { console.error('[Kakao Share] init error:', initErr); }
         }
         if (!Kakao.isInitialized()) {
-          if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
-          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
+          if (await copyToClipboard(shareUrl)) return { success: true, message: getShareLinkCopiedMessage(language) };
+          return { success: false, message: getShareLinkCopyFailedMessage(shareUrl, language) };
         }
-        Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+        Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt, language));
         return { success: true };
       } catch (err) {
         console.error('[Kakao Share] sendDefault error:', err);
-        if (await copyToClipboard(shareUrl)) return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
-        return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
+        if (await copyToClipboard(shareUrl)) return { success: true, message: getShareLinkCopiedMessage(language) };
+        return { success: false, message: getShareLinkCopyFailedMessage(shareUrl, language) };
       }
     }
     case 'copy':
       if (await copyToClipboard(shareUrl)) {
-        return { success: true, message: SHARE_LINK_COPIED_MESSAGE };
+        return { success: true, message: getShareLinkCopiedMessage(language) };
       }
-      return { success: false, message: getShareLinkCopyFailedMessage(shareUrl) };
+      return { success: false, message: getShareLinkCopyFailedMessage(shareUrl, language) };
     default:
       return { success: false };
   }
@@ -313,7 +313,7 @@ export const ShareButtons = ({
   tags,
   showDownload = true,
 }: ShareButtonsProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const shouldAddWatermark = hasWatermark ?? true;
@@ -329,7 +329,7 @@ export const ShareButtons = ({
   };
 
   const handleShare = async (platform: 'instagram' | 'twitter' | 'facebook' | 'kakao' | 'copy') => {
-    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, lookId, prompt, tags);
+    const result = await shareToSNS(imageUrl, platform, shouldAddWatermark, logoUrl, lookId, prompt, tags, language);
     setIsShareOpen(false);
     if (platform === 'copy' && result.message) {
       (result.success ? toast.success : toast.error)(result.message, { duration: result.success ? 5000 : 8000 });
@@ -357,7 +357,7 @@ export const ShareButtons = ({
         void supabase.from('generated_looks').update({ is_public: true }).eq('id', lookId).then(() => {}, () => {});
       }
       copyToClipboard(shareUrl).then((copied) => {
-        const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
+        const message = copied ? getShareLinkCopiedMessage(language) : getShareLinkCopyFailedMessage(shareUrl, language);
         (copied ? toast.success : toast.error)(message, { duration: copied ? 5000 : 8000 });
         onShare?.('kakao', { success: copied });
       });
@@ -367,8 +367,8 @@ export const ShareButtons = ({
     if (isMobile && typeof navigator.share === 'function') {
       // 동기 컨텍스트에서 즉시 호출 (await 금지)
       const sharePromise = navigator.share({
-        title: '👗 쇼미룩 AI 스타일',
-        text: prompt ? prompt.slice(0, 80) : 'AI가 만든 나만의 스타일을 확인해보세요!',
+        title: t('shareUI.shareTitle'),
+        text: prompt ? prompt.slice(0, 80) : t('shareUI.kakaoDefaultDesc'),
         url: shareUrl,
       });
       // 부수 작업은 이후로 미룬다
@@ -380,12 +380,12 @@ export const ShareButtons = ({
         () => onShare?.('kakao', { success: true }),
         (e: Error) => {
           if (e?.name === 'AbortError') {
-            onShare?.('kakao', { success: true, message: '공유가 취소되었습니다.' });
+            onShare?.('kakao', { success: true, message: t('shareUI.shareCancelled') });
             return;
           }
           // 실패 시 링크 복사 fallback
           copyToClipboard(shareUrl).then((copied) => {
-            const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
+            const message = copied ? getShareLinkCopiedMessage(language) : getShareLinkCopyFailedMessage(shareUrl, language);
             (copied ? toast.success : toast.error)(message, { duration: copied ? 5000 : 8000 });
             onShare?.('kakao', { success: copied });
           });
@@ -410,11 +410,11 @@ export const ShareButtons = ({
       };
       const fallbackCopy = () => {
         const notifyCopied = () => {
-          toast.success(SHARE_LINK_COPIED_MESSAGE, { duration: 5000 });
+          toast.success(getShareLinkCopiedMessage(language), { duration: 5000 });
           onShare?.('kakao', { success: true });
         };
         const notifyManual = () => {
-          const manualMsg = getShareLinkCopyFailedMessage(shareUrl);
+          const manualMsg = getShareLinkCopyFailedMessage(shareUrl, language);
           toast.error(manualMsg, { duration: 8000 });
           onShare?.('kakao', { success: false });
         };
@@ -422,9 +422,9 @@ export const ShareButtons = ({
       };
       const doShare = () => {
         try {
-          Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt));
+          Kakao.Share.sendDefault(getKakaoSharePayload(imageUrl, shareUrl, prompt, language));
           markPublic();
-          onShare?.('kakao', { success: true, message: '카카오톡 공유 창이 열렸습니다.' });
+          onShare?.('kakao', { success: true, message: language === 'en' ? 'KakaoTalk share window opened.' : '카카오톡 공유 창이 열렸습니다.' });
         } catch (e) {
           console.error('[Kakao Share] sendDefault error:', e);
           fallbackCopy();
@@ -471,7 +471,7 @@ export const ShareButtons = ({
       console.error('[Kakao Share] desktop flow error:', err);
       setIsShareOpen(false);
       copyToClipboard(shareUrl).then((copied) => {
-        const message = copied ? SHARE_LINK_COPIED_MESSAGE : getShareLinkCopyFailedMessage(shareUrl);
+        const message = copied ? getShareLinkCopiedMessage(language) : getShareLinkCopyFailedMessage(shareUrl, language);
         (copied ? toast.success : toast.error)(message, { duration: copied ? 5000 : 8000 });
         onShare?.('kakao', { success: copied });
       });
