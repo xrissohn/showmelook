@@ -11,5 +11,5 @@
 
 ## Service facts (`supabase/functions/_shared/serviceFacts.ts`)
 
-- Tier numbers, ongoing bonuses, time-limited promotions and official service copy live only in this file; `src/lib/tierConfig.ts`, the About page and `shomi-chat` (knowledge + FAQ) all derive from it. Rationale: a price or promo change edited once reaches the pricing page and Shomi together.
+- Tier numbers, ongoing bonuses, time-limited promotions, official service copy and the service policy list (which Shomi treats as overriding any other knowledge) live only in this file; `src/lib/tierConfig.ts`, the About page and `shomi-chat` (knowledge + FAQ) all derive from it. Rationale: a price or promo change edited once reaches the pricing page and Shomi together.
 - `shomi-chat` hashes its full system prompt and clears `shomi_answer_cache` when the hash in `shomi_meta` changes. Rationale: saved answers must never repeat outdated prices.
