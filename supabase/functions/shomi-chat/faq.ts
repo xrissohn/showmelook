@@ -141,6 +141,87 @@ export const FAQ_ENTRIES: FaqEntry[] = [
       en: "My birthday is September 21 and I walk around Seongsu the most. Iced latte is basically a default, and I love basil pasta and pistachio gelato. My signature is navy tailoring with pink satin and a half-and-half wide-brim hat.",
     },
   },
+  {
+    id: "login",
+    ko: [["로그인"], ["회원가입"], ["가입", "어떻게"], ["가입하"], ["계정"]],
+    en: [["login"], ["log", "in"], ["sign", "up"], ["signup"], ["account"], ["register"]],
+    answer: {
+      ko: "가입은 구글 계정이나 이메일 인증으로 1분이면 끝나. 가입하면 바로 무료 생성 횟수가 생기니까 /auth 에서 시작해서 /style 로 넘어가 봐!",
+      en: "Sign-up takes about a minute with Google or email verification, and you get free style credits right away. Start at /auth, then head to /style!",
+    },
+  },
+  {
+    id: "accuracy",
+    ko: [["실제", "비슷"], ["실제", "똑같"], ["정확"], ["진짜", "같"], ["실물"]],
+    en: [["accurate"], ["accuracy"], ["realistic"], ["real", "life"], ["look", "real"]],
+    answer: {
+      ko: "실루엣이랑 색 조합의 인상을 미리 보는 데는 꽤 쓸모 있어. 다만 실측 사이즈를 대신하진 않으니까, 사기 전엔 상품 페이지의 어깨너비·총장 같은 실측도 꼭 같이 봐줘. 사이즈 고르는 팁은 /guide/size-selection-guide 에 있어.",
+      en: "It's great for previewing the silhouette and color mix, but it doesn't replace real measurements. Before buying, check the product's shoulder width and length too. Sizing tips: /guide/size-selection-guide.",
+    },
+  },
+  {
+    id: "size",
+    ko: [["사이즈"], ["치수"], ["실측"], ["핏", "고르"]],
+    en: [["size"], ["sizing"], ["measurement"], ["fit", "choose"]],
+    answer: {
+      ko: "S/M/L보다 실측 수치를 봐. 잘 맞는 내 옷을 눕혀 재고 비교하면 돼 — 어깨 ±1cm, 가슴단면 상의 ±2cm·아우터 ±3cm, 총장 ±2cm 안이면 실패가 거의 없어. 자세한 건 /guide/size-selection-guide!",
+      en: "Look at real measurements, not S/M/L. Lay a well-fitting piece of yours flat and compare — within ±1cm on shoulders, ±2cm chest for tops (±3cm outerwear) and ±2cm length, you rarely go wrong. More: /guide/size-selection-guide.",
+    },
+  },
+  {
+    id: "buy",
+    ko: [["구매"], ["어디서", "사"], ["주문"], ["결제"], ["배송"], ["환불"], ["반품"], ["교환"]],
+    en: [["buy"], ["purchase"], ["order"], ["shipping"], ["delivery"], ["refund"], ["return"], ["exchange"]],
+    answer: {
+      ko: "룩에 나온 상품을 누르면 실제 판매하는 파트너 쇼핑몰로 이동해서 거기서 결제해. 그래서 배송·교환·환불은 그 쇼핑몰 정책을 따라. 참고로 구매 링크는 제휴 링크라 쇼미룩이 수수료를 받을 수 있고, 구매가 쌓이면 네 등급도 올라가(/pricing).",
+      en: "Tapping a product in your look takes you to the partner store that sells it, and you pay there — so shipping, exchanges and refunds follow that store's policy. Purchase links are affiliate links (ShowMeLook may earn a commission), and your purchases also raise your tier (/pricing).",
+    },
+  },
+  {
+    id: "photo",
+    ko: [["사진", "어떤"], ["사진", "잘"], ["얼굴", "사진"], ["사진", "팁"], ["사진", "없"]],
+    en: [["photo", "tips"], ["which", "photo"], ["what", "photo"], ["face", "photo"], ["no", "photo"]],
+    answer: {
+      ko: "얼굴 사진은 정면, 어깨까지 나오게, 그림자 없는 고른 조명이 제일 좋아. 필터·보정은 최소로, 모자랑 선글라스는 빼줘. 사진이 없어도 체형 정보만으로 시작할 수 있어. 더 많은 팁은 /guide/ai-virtual-fitting-tips!",
+      en: "Best face photo: front-facing, shoulders visible, even light with no shadows. Keep filters minimal and skip hats and sunglasses. No photo? You can start with body info alone. More tips: /guide/ai-virtual-fitting-tips.",
+    },
+  },
+  {
+    id: "prompt",
+    ko: [["프롬프트"], ["뭐라고", "입력"], ["어떻게", "입력"], ["검색어"]],
+    en: [["prompt"], ["what", "type"], ["what", "write"]],
+    answer: {
+      ko: "'상황 + 분위기 + 아이템' 순서로 3개 정도만 적어봐. 예를 들면 '주말 브런치, 밝은 톤, 데님 재킷'. '멋있게 아무거나'보다 훨씬 잘 나와. 그리고 한 번에 판단하지 말고 하나씩만 바꿔서 비교해 봐!",
+      en: "Write 'situation + mood + item', about three conditions — e.g. 'weekend brunch, bright tones, denim jacket'. Works way better than 'anything cool'. Then change one thing at a time and compare!",
+    },
+  },
+  {
+    id: "limit",
+    ko: [["횟수", "다"], ["횟수", "초과"], ["더", "만들"], ["생성", "안"], ["한도"], ["다 썼"]],
+    en: [["limit"], ["out", "of", "credits"], ["no", "more"], ["ran", "out"], ["used", "up"]],
+    answer: {
+      ko: "하루 생성 횟수를 다 쓰면 다음 날 다시 채워져. 바로 더 만들고 싶으면 룩을 공개로 등록해서 보너스 크레딧(최대 10회)을 받거나, 친구 추천 코드로 보너스를 받을 수 있어. 첫 구매로 브론즈가 되면 월 제한도 없어져(/pricing).",
+      en: "When you use up today's styles, they refill the next day. Want more now? Publish a look for a bonus credit (up to 10) or share your referral code. A first purchase gets you Bronze with no monthly cap (/pricing).",
+    },
+  },
+  {
+    id: "withdraw",
+    ko: [["탈퇴"], ["계정", "삭제"], ["회원", "삭제"]],
+    en: [["delete", "account"], ["close", "account"], ["deactivate"]],
+    answer: {
+      ko: "계정과 내 정보 관리는 /mypage 에서 할 수 있고, 개인정보 처리와 삭제 기준은 /privacy 에 정리돼 있어.",
+      en: "You can manage your account and info on /mypage, and how personal data is handled and deleted is explained in /privacy.",
+    },
+  },
+  {
+    id: "language",
+    ko: [["영어"], ["언어"]],
+    en: [["english"], ["korean"], ["language"]],
+    answer: {
+      ko: "쇼미룩은 한국어와 영어를 지원해. 화면 위쪽 언어 버튼으로 바꿀 수 있고, 나도 영어로 대답할 수 있어!",
+      en: "ShowMeLook supports Korean and English — switch with the language button at the top. I can chat in English too!",
+    },
+  },
 ];
 
 // 개인 체형 정보가 들어간 질문은 선답변으로 처리하지 않고 AI에게 넘긴다.
