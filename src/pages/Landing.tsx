@@ -946,6 +946,13 @@ const Landing = () => {
             {/* Legal links */}
             <div className="flex items-center gap-4 sm:gap-6 mb-4 sm:mb-6">
               <button 
+                onClick={() => navigate('/about')}
+                className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
+              >
+                {language === 'en' ? 'About' : '쇼미룩 소개'}
+              </button>
+              <span className="text-muted-foreground/50">|</span>
+              <button 
                 onClick={() => navigate('/privacy')}
                 className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
               >

@@ -36,6 +36,7 @@ const UserGallery = lazy(() => import("./pages/UserGallery"));
 const History = lazy(() => import("./pages/History"));
 const SurveyShomi = lazy(() => import("./pages/SurveyShomi"));
 const Connect = lazy(() => import("./pages/Connect"));
+const About = lazy(() => import("./pages/About"));
 const GuideHub = lazy(() => import("./pages/GuideHub"));
 const GuideDetail = lazy(() => import("./pages/GuideDetail"));
 
@@ -95,6 +96,7 @@ const App = () => (
                   <Route path="/gallery/:userId" element={<UserGallery />} />
                   <Route path="/survey/shomi" element={<SurveyShomi />} />
                   <Route path="/connect" element={<Connect />} />
+                  <Route path="/about" element={<About />} />
                   <Route path="/guide" element={<GuideHub />} />
                   <Route path="/guide/:slug" element={<GuideDetail />} />
                   <Route path="/shomi" element={<Navigate to="/?shomi=open" replace />} />

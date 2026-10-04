@@ -285,6 +285,13 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               {t('nav.styleGallery')}
                             </button>
                             <button
+                              onClick={() => handleNavigate('/about')}
+                              className={getMenuItemClass('/about')}
+                            >
+                              <Sparkles className={`w-5 h-5 ${isActive('/about') ? 'text-primary' : 'text-muted-foreground'}`} />
+                              {language === 'en' ? 'About ShowMeLook' : '쇼미룩 소개'}
+                            </button>
+                            <button
                               onClick={() => handleNavigate('/guide')}
                               className={getMenuItemClass('/guide')}
                             >
@@ -337,6 +344,13 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                             >
                               <User className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-muted-foreground'}`} />
                               {t('nav.login')}
+                            </button>
+                            <button
+                              onClick={() => handleNavigate('/about')}
+                              className={getMenuItemClass('/about')}
+                            >
+                              <Sparkles className={`w-5 h-5 ${isActive('/about') ? 'text-primary' : 'text-muted-foreground'}`} />
+                              {language === 'en' ? 'About ShowMeLook' : '쇼미룩 소개'}
                             </button>
                             <button
                               onClick={() => handleNavigate('/guide')}
