@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Send, X, Loader2 } from "lucide-react";
-import shomiAvatar from "@/assets/shomi-a-character.png.asset.json";
+import shomiAvatar from "@/assets/shomi-face-profile.png.asset.json";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -108,7 +108,7 @@ export default function ShomiChatbot() {
       {open && (
         <div className="fixed bottom-24 right-4 z-[60] flex h-[min(560px,calc(100vh-8rem))] w-[min(380px,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-2xl animate-in fade-in slide-in-from-bottom-4">
           <div className="flex items-center gap-3 border-b border-border bg-primary px-4 py-3 text-primary-foreground">
-            <img src={shomiAvatar.url} alt="" className="h-9 w-9 rounded-full bg-background object-cover object-top" />
+            <img src={shomiAvatar.url} alt="" className="h-9 w-9 rounded-full bg-background object-cover object-center" />
             <div className="flex-1">
               <div className="text-sm font-semibold">{en ? "Shomi" : "쇼미"}</div>
               <div className="text-xs opacity-80">{en ? "ShowMeLook style curator" : "쇼미룩 스타일 큐레이터"}</div>
@@ -163,7 +163,7 @@ export default function ShomiChatbot() {
         aria-label={en ? "Chat with Shomi" : "쇼미와 대화하기"}
         className="fixed bottom-5 right-4 z-[60] h-16 w-16 overflow-hidden rounded-full border-2 border-primary bg-background shadow-xl transition hover:scale-105"
       >
-        <img src={shomiAvatar.url} alt="" className="h-full w-full object-cover object-top" />
+        <img src={shomiAvatar.url} alt="" className="h-full w-full object-cover object-center" />
       </button>
     </>
   );
