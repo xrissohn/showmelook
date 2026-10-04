@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
     return null; // images, zip, etc.
   };
 
-  const summarize = async (name: string, text: string): Promise<string> => {
+  type Usage = { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } };
+  const summarize = async (name: string, text: string): Promise<{ out: string; usage: Usage | null }> => {
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${lovKey}`, "X-Lovable-AIG-SDK": "fetch" },
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
         model: "openai/gpt-6-astra",
         reasoning_effort: "low",
         stream: true,
+        stream_options: { include_usage: true },
         messages: [
           {
             role: "system",
@@ -87,6 +89,7 @@ Deno.serve(async (req) => {
     if (!r.ok || !r.body) throw new Error(`AI ${r.status}: ${(await r.text()).slice(0, 300)}`);
     const reader = r.body.pipeThrough(new TextDecoderStream()).getReader();
     let buf = "", out = "";
+    let usage: Usage | null = null;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -96,10 +99,14 @@ Deno.serve(async (req) => {
       for (const l of lines) {
         const d = l.replace(/^data:\s*/, "").trim();
         if (!l.startsWith("data:") || !d || d === "[DONE]") continue;
-        try { out += JSON.parse(d).choices?.[0]?.delta?.content ?? ""; } catch { /* partial */ }
+        try {
+          const j = JSON.parse(d);
+          out += j.choices?.[0]?.delta?.content ?? "";
+          if (j.usage) usage = j.usage;
+        } catch { /* partial */ }
       }
     }
-    return out.trim();
+    return { out: out.trim(), usage };
   };
 
   try {
@@ -130,9 +137,17 @@ Deno.serve(async (req) => {
           results[f.name] = "skipped";
           continue;
         }
-        const summary = await summarize(f.name, text);
+        const { out: summary, usage } = await summarize(f.name, text);
         const useful = summary && summary !== "없음";
-        await db.from("shomi_knowledge_files").upsert({ ...base, status: useful ? "active" : "skipped", summary: useful ? summary : null, error: null });
+        // Credit rates (per 1k tokens): uncached input 0.04, cached input 0.004, output 0.2.
+        const inTok = usage?.prompt_tokens ?? 0, outTok = usage?.completion_tokens ?? 0;
+        const cached = usage?.prompt_tokens_details?.cached_tokens ?? 0;
+        const cost = ((inTok - cached) * 0.04 + cached * 0.004 + outTok * 0.2) / 1000;
+        await db.from("shomi_knowledge_files").upsert({
+          ...base, status: useful ? "active" : "skipped", summary: useful ? summary : null, error: null,
+          source_chars: text.length, summary_chars: useful ? summary.length : 0,
+          input_tokens: inTok, output_tokens: outTok, sync_cost_credits: Number(cost.toFixed(4)),
+        });
         if (useful) knowledgeChanged = true;
         results[f.name] = useful ? "active" : "skipped";
       } catch (e) {

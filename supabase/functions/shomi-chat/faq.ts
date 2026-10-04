@@ -29,8 +29,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["등급"], ["브론즈"], ["실버"], ["골드"], ["플래티넘"]],
     en: [["tier"], ["bronze"], ["silver"], ["gold"], ["platinum"]],
     answer: {
-      ko: "등급은 월 구독이 아니라 누적 구매액으로 올라가. 무료는 하루 5회·월 25회 생성에 갤러리 10장이야. 첫 구매만 하면 브론즈로 자동 전환되면서 월 무제한 생성, 워터마크 제거, 고화질 다운로드가 열려. 그 다음부터는 누적 10만원부터 실버(하루 10회·상품 추천 먼저보기), 30만원부터 골드(하루 20회·히스토리 영구), 100만원부터 플래티넘(무제한 생성·모델 프로필 추가·우선 대기열)이야. 표는 /pricing 에 있어.",
-      en: "Tiers grow with your total purchase, not a monthly subscription. Free gives you 5 styles a day, 25 a month and 10 gallery saves. Your first purchase moves you to Bronze automatically — unlimited monthly styles, no watermark, HD downloads. Then Silver starts at 100,000 KRW (10 a day, early access to product picks), Gold at 300,000 KRW (20 a day, permanent history) and Platinum at 1,000,000 KRW (unlimited styles, extra model profiles, priority queue). Full table: /pricing.",
+      ko: "등급은 월 구독이 아니라 누적 구매액으로 올라가.\n- 무료: 하루 5회·월 25회 생성, 갤러리 10장, 히스토리 7일, 워터마크 있음\n- 브론즈(첫 구매): 하루 5회·월 무제한, 워터마크 없음, 고화질 다운로드, 갤러리 30장, 히스토리 30일\n- 실버(누적 10만원~): 하루 10회, 상품 추천 먼저보기, 갤러리 50장, 히스토리 90일\n- 골드(누적 30만원~): 하루 20회, 갤러리 100장, 히스토리 영구\n- 플래티넘(누적 100만원~): 무제한 생성, 갤러리 무제한, 모델 프로필 100만원당 +1명, 우선 대기열\n표는 /pricing 에 있어.",
+      en: "Tiers grow with your total purchases, not a monthly subscription.\n- Free: 5 styles a day, 25 a month, 10 gallery saves, 7-day history, watermark\n- Bronze (first purchase): 5 a day, unlimited monthly, no watermark, HD downloads, 30 gallery saves, 30-day history\n- Silver (from 100,000 KRW): 10 a day, early access to product picks, 50 gallery saves, 90-day history\n- Gold (from 300,000 KRW): 20 a day, 100 gallery saves, permanent history\n- Platinum (from 1,000,000 KRW): unlimited styles and gallery, +1 model profile per 1,000,000 KRW, priority queue\nFull table: /pricing.",
     },
   },
   {
