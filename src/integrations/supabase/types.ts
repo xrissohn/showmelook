@@ -1554,6 +1554,39 @@ export type Database = {
         }
         Relationships: []
       }
+      shomi_answer_cache: {
+        Row: {
+          answer: string
+          created_at: string
+          hit_count: number
+          id: string
+          language: string
+          last_hit_at: string | null
+          question: string
+          question_norm: string
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          hit_count?: number
+          id?: string
+          language: string
+          last_hit_at?: string | null
+          question: string
+          question_norm: string
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          hit_count?: number
+          id?: string
+          language?: string
+          last_hit_at?: string | null
+          question?: string
+          question_norm?: string
+        }
+        Relationships: []
+      }
       style_cache: {
         Row: {
           cache_key: string
@@ -1973,6 +2006,14 @@ export type Database = {
         Returns: boolean
       }
       has_user_liked_look: { Args: { _look_id: string }; Returns: boolean }
+      match_shomi_answer: {
+        Args: { p_language: string; p_norm: string; p_threshold?: number }
+        Returns: {
+          answer: string
+          id: string
+          score: number
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
