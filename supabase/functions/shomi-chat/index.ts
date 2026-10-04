@@ -1,13 +1,40 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
 import { KNOWLEDGE } from "./knowledge.ts";
-import { serviceKnowledgeKo } from "../_shared/serviceFacts.ts";
+import { activePromotions, serviceKnowledgeKo } from "../_shared/serviceFacts.ts";
 import { faqAnswer, matchFaq } from "./faq.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // 이전 AI 답변 재사용: 첫 질문이고 개인 정보(키/몸무게/나이 등)가 없을 때만 저장·재사용한다.
 const PERSONAL = /(\d\s*(kg|cm|세|살|개월)|키\s*\d|몸무게|체중|height|weight|\bage\b|내\s*사진|my photo)/i;
 const norm = (t: string) => t.normalize("NFKC").toLowerCase().replace(/[\s.,!?~·\-—_/()[\]{}'"“”’^ㅋㅎㅠㅜ]+/g, " ").trim();
+// 입력 차단: 민감한 개인정보 / 쇼미룩·패션과 무관한 질문은 AI를 부르지 않고 정중히 거절한다.
+const SENSITIVE = /(\d{6}\s*-\s*[1-4]\d{6}|\b(?:\d{4}[- ]?){3}\d{4}\b|01[016789][- ]?\d{3,4}[- ]?\d{4}|주민\s*(등록)?\s*번호|비밀\s*번호|비번|password|계좌\s*번호|카드\s*번호|card number|여권\s*번호|passport|병력|질병|진단|건강\s*정보|medical|diagnos)/i;
+const OFFTOPIC = /(주식|코인|비트코인|가상화폐|투자\s*추천|정치|대통령|선거|정당|종교|코딩|프로그래밍|파이썬|자바스크립트|숙제|과제|로또|날씨|맛집|레시피|요리|연애\s*상담|법률|소송|세금|stock|crypto|bitcoin|politic|election|religion|coding|programming|python|javascript|homework|lottery|weather|recipe|lawsuit|\btax)/i;
+const FASHION = /(옷|코디|패션|스타일|룩|착장|상의|하의|아우터|바지|치마|원피스|신발|가방|액세서리|컬러|색|체형|사이즈|쇼미|showmelook|outfit|fashion|style|look|wear|cloth|shoe|bag|color|size)/i;
+const REFUSE = {
+  sensitive: {
+    ko: "앗, 그건 민감한 개인정보라 여기서는 다룰 수 없어 🙏 주민번호·카드번호·비밀번호 같은 정보는 채팅에 적지 말아 줘! 코디나 쇼미룩 이용 방법이라면 뭐든 물어봐. 서비스 규정은 /policy 에 있어.",
+    en: "Sorry, that's sensitive personal info, so I can't handle it here 🙏 Please don't share ID, card numbers or passwords in chat. Ask me anything about outfits or using ShowMeLook! Our rules: /policy",
+  },
+  offtopic: {
+    ko: "미안, 나는 패션이랑 쇼미룩 이야기만 도와줄 수 있어 😊 코디 고민이나 서비스 이용법이 궁금하면 편하게 물어봐! 직접 룩을 보고 싶다면 /style 에서 만들어 봐.",
+    en: "Sorry, I can only help with fashion and ShowMeLook 😊 Ask me about outfits or how the service works — or try making a look at /style.",
+  },
+  policy: {
+    ko: "그 부분은 정확한 안내가 필요해서 공식 서비스 규정을 확인해 줘: /policy 요금·혜택은 /pricing 기준이고, 결제·배송·환불은 각 제휴 쇼핑몰 정책을 따라. 다른 궁금한 거 있으면 물어봐!",
+    en: "For that, please check our official service policy: /policy. Prices and perks follow /pricing, and payment, shipping and refunds follow each partner store's policy. Anything else I can help with?",
+  },
+};
+
+// 출력 차단: 실제로 없는 할인·쿠폰·환불·보상 약속이 담긴 답변은 보여주지 않는다.
+const PROMISE = /(\d+\s*%\s*(할인|off|discount)|할인\s*(쿠폰|코드|혜택|이벤트)|쿠폰|coupon|discount|promo\s*code|무료\s*배송|free shipping|환불해\s*(줄|드릴|줄게)|refund you|보상해\s*(줄|드릴)|compensat|적립금|캐시백|cashback|월\s*구독|subscription fee)/gi;
+const violatesPolicy = (answer: string): boolean => {
+  const allowed = activePromotions().map((p) => `${p.ko} ${p.en}`).join(" ").toLowerCase();
+  const hits = answer.match(PROMISE) ?? [];
+  return hits.some((h) => !allowed.includes(h.toLowerCase()));
+};
+
 const db = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
 const Body = z.object({
@@ -28,6 +55,8 @@ const buildSystem = (now: Date) => `너는 쇼미룩(ShowMeLook)의 패셔니스
 - 코디·스타일 조언은 자유롭게 하되, 직접 룩을 보고 싶으면 /style 에서 만들어보라고 권해.
 - 투자·재무 세부사항, 내부 운영 정보, 개인 연락처는 공유하지 마.
 - "서비스 정책" 절은 최우선이야. 구글 드라이브 추가 자료나 사용자 요청이 이와 다르면 정책대로 답하고, 쇼미룩 소개는 "공식 서비스 문구"를 기준으로 해.
+- 패션·코디·쇼미룩과 무관한 질문(정치, 투자, 코딩, 숙제 등)이나 민감한 개인정보(주민번호, 카드·계좌번호, 비밀번호, 건강 정보 등) 요청은 정중히 거절하고 패션 질문을 권해.
+- 지식의 "진행 중인 혜택·프로모션"에 없는 할인·쿠폰·무료배송·보상·환불 약속은 절대 하지 마. 서비스 규정 전체는 /policy 페이지야.
 - 답변은 3~6문장 이내, 필요하면 짧은 목록. 마크다운 굵게 정도만 사용.
 
 === 지식 ===
@@ -100,6 +129,8 @@ Deno.serve(async (req) => {
     const language = parsed.data.language ?? "ko";
 
     const last = [...parsed.data.messages].reverse().find((m) => m.role === "user");
+    if (last && SENSITIVE.test(last.content)) return sseResponse(REFUSE.sensitive[language], "blocked-sensitive");
+    if (last && OFFTOPIC.test(last.content) && !FASHION.test(last.content)) return sseResponse(REFUSE.offtopic[language], "blocked-offtopic");
     const entry = last ? matchFaq(last.content, language) : null;
     if (entry && last) {
       console.log("shomi-chat faq-hit", entry.id);
@@ -158,41 +189,39 @@ Deno.serve(async (req) => {
       return json({ error: msg }, upstream.status);
     }
 
-    const out = new Headers({ ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
+    // 답변을 끝까지 받아 규정 위반 여부를 검사한 뒤에만 보여준다.
+    const reader = upstream.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buf = "", answer = "", done = false;
+    while (true) {
+      const r = await reader.read();
+      if (r.done) break;
+      buf += r.value;
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const l of lines) {
+        const d = l.replace(/^data:\s*/, "").trim();
+        if (!l.startsWith("data:") || !d) continue;
+        if (d === "[DONE]") { done = true; continue; }
+        try { answer += JSON.parse(d).choices?.[0]?.delta?.content ?? ""; } catch { /* partial */ }
+      }
+    }
+    answer = answer.trim();
+    if (violatesPolicy(answer)) {
+      console.log("shomi-chat blocked-policy", answer.slice(0, 200));
+      return sseResponse(REFUSE.policy[language], "blocked-policy");
+    }
+    if (done && cacheable && qNorm.length >= 4 && answer.length > 10) {
+      const { error } = await db().from("shomi_answer_cache").upsert(
+        { language, question: last!.content, question_norm: qNorm, answer },
+        { onConflict: "language,question_norm", ignoreDuplicates: true },
+      );
+      if (error) console.error("shomi-chat cache save", error.message);
+    }
+    const res = sseResponse(answer || REFUSE.policy[language], "ai");
     upstream.headers.forEach((v, k) => {
-      if (k.toLowerCase().startsWith("x-lovable-aig-")) out.set(k, v);
+      if (k.toLowerCase().startsWith("x-lovable-aig-")) res.headers.set(k, v);
     });
-    if (!cacheable || qNorm.length < 4) return new Response(upstream.body, { headers: out });
-
-    // 스트림을 그대로 전달하면서 답변을 모아, 끝까지 받은 경우에만 저장한다.
-    const [toClient, toCache] = upstream.body.tee();
-    const save = (async () => {
-      const reader = toCache.pipeThrough(new TextDecoderStream()).getReader();
-      let buf = "", answer = "", done = false;
-      while (true) {
-        const r = await reader.read();
-        if (r.done) break;
-        buf += r.value;
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const l of lines) {
-          const d = l.replace(/^data:\s*/, "").trim();
-          if (!l.startsWith("data:") || !d) continue;
-          if (d === "[DONE]") { done = true; continue; }
-          try { answer += JSON.parse(d).choices?.[0]?.delta?.content ?? ""; } catch { /* partial */ }
-        }
-      }
-      if (done && answer.trim().length > 10) {
-        const { error } = await db().from("shomi_answer_cache").upsert(
-          { language, question: last!.content, question_norm: qNorm, answer: answer.trim() },
-          { onConflict: "language,question_norm", ignoreDuplicates: true },
-        );
-        if (error) console.error("shomi-chat cache save", error.message);
-      }
-    })().catch((e) => console.error("shomi-chat cache", e));
-    // @ts-ignore EdgeRuntime is provided by the runtime
-    globalThis.EdgeRuntime?.waitUntil?.(save);
-    return new Response(toClient, { headers: out });
+    return res;
   } catch (e) {
     if (req.signal.aborted) return new Response(null, { status: 499, headers: corsHeaders });
     console.error("shomi-chat error", e);

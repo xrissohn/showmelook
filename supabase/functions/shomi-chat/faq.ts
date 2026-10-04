@@ -61,6 +61,15 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     },
   },
   {
+    id: "policy",
+    ko: [["규정"], ["서비스", "규정"], ["규정", "어디"], ["서비스", "정책"], ["운영", "정책"]],
+    en: [["policy"], ["rules"]],
+    answer: {
+      ko: "쇼미룩 서비스 규정은 /policy 에 한눈에 정리돼 있어! 가입은 무료·월 구독 없음, 결제·배송·환불은 제휴 쇼핑몰 정책, 사진과 룩은 기본 비공개 같은 기준이 다 있고, 요금제가 바뀌면 그 페이지도 자동으로 바뀌어.",
+      en: "All of ShowMeLook's rules are on /policy — free sign-up with no monthly subscription, payment/shipping/refunds handled by partner stores, private-by-default photos and looks, and more. It updates automatically when pricing changes.",
+    },
+  },
+  {
     id: "howto",
     ko: [["어떻게", "만들"], ["사용법"], ["어디서"], ["시작"], ["하는법"], ["하는 법"], ["방법"]],
     en: [["how", "does", "it", "work"], ["how", "start"], ["how", "use"], ["how", "make"], ["get", "started"], ["tutorial"]],

@@ -71,6 +71,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://showmelook.com/policy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://showmelook.com/guide</loc>
     <lastmod>2026-08-10</lastmod>
     <changefreq>weekly</changefreq>

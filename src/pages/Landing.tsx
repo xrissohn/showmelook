@@ -960,6 +960,13 @@ const Landing = () => {
               </button>
               <span className="text-muted-foreground/50">|</span>
               <button 
+                onClick={() => navigate('/policy')}
+                className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
+              >
+                {language === 'en' ? 'Service Policy' : '서비스 규정'}
+              </button>
+              <span className="text-muted-foreground/50">|</span>
+              <button 
                 onClick={() => navigate('/terms')}
                 className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors font-korean"
               >

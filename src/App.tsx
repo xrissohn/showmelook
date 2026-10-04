@@ -14,6 +14,7 @@ import AdSenseLoader from "@/components/AdSenseLoader";
 import AppUpdateNotifier from "@/components/AppUpdateNotifier";
 import ShomiChatbot from "@/components/ShomiChatbot";
 // Lazy load pages for code splitting
+const Policy = lazy(() => import("./pages/Policy"));
 const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
@@ -97,6 +98,7 @@ const App = () => (
                   <Route path="/survey/shomi" element={<SurveyShomi />} />
                   <Route path="/connect" element={<Connect />} />
                   <Route path="/about" element={<About />} />
+                  <Route path="/policy" element={<Policy />} />
                   <Route path="/guide" element={<GuideHub />} />
                   <Route path="/guide/:slug" element={<GuideDetail />} />
                   <Route path="/shomi" element={<Navigate to="/?shomi=open" replace />} />
