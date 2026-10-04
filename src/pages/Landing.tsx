@@ -12,7 +12,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import StyleCarousel from '@/components/StyleCarousel';
 import MainNavigation from '@/components/MainNavigation';
-import { LiquidCursor } from '@/components/LiquidCursor';
+import { StaticGlow } from '@/components/StaticGlow';
 import { supabase } from '@/integrations/supabase/client';
 import { LazyImage } from '@/components/LazyImage';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
@@ -490,7 +490,7 @@ const Landing = () => {
   };
   return <div className="min-h-screen bg-background">
       <SEOHead pageKey="landing" />
-      <LiquidCursor />
+      <StaticGlow />
       {/* Navigation - using shared component */}
       <MainNavigation />
 
