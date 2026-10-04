@@ -181,7 +181,7 @@ export default function ShomiChatbot() {
                     m.role === "user" ? "rounded-tr-sm bg-primary text-primary-foreground" : "rounded-tl-sm bg-muted"
                   }`}
                 >
-                  {m.content ? renderText(m.content) : <Loader2 className="h-4 w-4 animate-spin" />}
+                  {m.content ? renderText(m.content, () => setOpen(false)) : <Loader2 className="h-4 w-4 animate-spin" />}
                 </div>
               </div>
             ))}
