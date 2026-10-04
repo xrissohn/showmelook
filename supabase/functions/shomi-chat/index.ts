@@ -31,6 +31,17 @@ const SYSTEM = `너는 쇼미룩(ShowMeLook)의 패셔니스타 캐릭터 "쇼�
 === 지식 ===
 ${KNOWLEDGE}`;
 
+// Notes auto-generated from new Google Drive files (shomi-knowledge-sync).
+// Cached for 10 minutes; sorted by id so the prompt stays byte-identical between calls.
+let extraCache: { at: number; text: string } | null = null;
+const loadExtra = async (): Promise<string> => {
+  if (extraCache && Date.now() - extraCache.at < 600_000) return extraCache.text;
+  const { data } = await db().from("shomi_knowledge_files").select("name, summary").eq("status", "active").order("drive_file_id");
+  const text = (data ?? []).filter((r) => r.summary).map((r) => `### ${r.name}\n${r.summary}`).join("\n\n");
+  extraCache = { at: Date.now(), text };
+  return text;
+};
+
 const LANG = (lang: string) =>
   lang === "en" ? "Reply in English (casual, friendly)." : "사용자가 쓰는 언어로 답해(기본 한국어).";
 
@@ -86,6 +97,7 @@ Deno.serve(async (req) => {
     const key = Deno.env.get("LOVABLE_API_KEY");
     if (!key) return json({ error: "AI 설정이 없어요." }, 500);
 
+    const extra = await loadExtra().catch(() => "");
     const upstream = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       signal: req.signal,
@@ -99,7 +111,7 @@ Deno.serve(async (req) => {
         reasoning_effort: "low",
         stream: true,
         messages: [
-          { role: "system", content: SYSTEM },
+          { role: "system", content: extra ? `${SYSTEM}\n\n## 추가 자료 (구글 드라이브)\n${extra}` : SYSTEM },
           ...parsed.data.messages,
           { role: "system", content: LANG(language) },
         ],

@@ -1587,6 +1587,39 @@ export type Database = {
         }
         Relationships: []
       }
+      shomi_knowledge_files: {
+        Row: {
+          drive_file_id: string
+          error: string | null
+          mime_type: string
+          modified_time: string | null
+          name: string
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          drive_file_id: string
+          error?: string | null
+          mime_type: string
+          modified_time?: string | null
+          name: string
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          drive_file_id?: string
+          error?: string | null
+          mime_type?: string
+          modified_time?: string | null
+          name?: string
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       style_cache: {
         Row: {
           cache_key: string
