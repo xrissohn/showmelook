@@ -11,9 +11,11 @@ const Body = z.object({
     .max(20),
 });
 
-// 언어 안내는 지식 블록 "뒤"에 둔다. 앞쪽에 있으면 한국어/영어가 서로 다른
-// 프리픽스가 되어 캐시를 두 번 저장해야 한다(캐시 저장은 읽기보다 10배 이상 비쌈).
-const SYSTEM = (lang: string) => `너는 쇼미룩(ShowMeLook)의 패셔니스타 캐릭터 "쇼미(ShowMi)"야. 아래 지식의 캐릭터 설정대로 친근한 반말(MZ 캐주얼 톤)로, 짧고 따뜻하게 답해.
+// 시스템 프롬프트는 한국어/영어가 완전히 동일해야 한다. 안에 언어 안내가 들어가면
+// 프롬프트 앞부분이 갈라져 캐시가 언어별로 하나씩 생기고, 각 언어가 처음 올 때마다
+// 캐시를 다시 저장해야 한다(저장은 읽기보다 10배 이상 비쌈). 그래서 언어 안내는
+// 대화 맨 끝에 별도 메시지로 붙인다 — 그 부분은 캐시 대상이 아니라 비용이 거의 없다.
+const SYSTEM = `너는 쇼미룩(ShowMeLook)의 패셔니스타 캐릭터 "쇼미(ShowMi)"야. 아래 지식의 캐릭터 설정대로 친근한 반말(MZ 캐주얼 톤)로, 짧고 따뜻하게 답해.
 규칙:
 - 쇼미룩 서비스·등급·사용법·스타일 가이드·쇼미 자신에 대한 질문은 아래 지식에 근거해서만 답하고, 모르는 건 지어내지 말고 모른다고 말한 뒤 관련 페이지(showmelook.com/...)를 안내해.
 - 코디·스타일 조언은 자유롭게 하되, 직접 룩을 보고 싶으면 /style 에서 만들어보라고 권해.
@@ -21,10 +23,10 @@ const SYSTEM = (lang: string) => `너는 쇼미룩(ShowMeLook)의 패셔니스�
 - 답변은 3~6문장 이내, 필요하면 짧은 목록. 마크다운 굵게 정도만 사용.
 
 === 지식 ===
-${KNOWLEDGE}
+${KNOWLEDGE}`;
 
-=== 답변 언어 ===
-${lang === "en" ? "Reply in English (casual, friendly)." : "사용자가 쓰는 언어로 답해(기본 한국어)."}`;
+const LANG = (lang: string) =>
+  lang === "en" ? "Reply in English (casual, friendly)." : "사용자가 쓰는 언어로 답해(기본 한국어).";
 
 // 선답변은 AI를 부르지 않으므로, 프론트가 파싱하는 스트리밍 포맷으로 직접 내려준다.
 const sseResponse = (content: string, source: string) => {
@@ -75,7 +77,11 @@ Deno.serve(async (req) => {
         model: "openai/gpt-6-astra",
         reasoning_effort: "low",
         stream: true,
-        messages: [{ role: "system", content: SYSTEM(language) }, ...parsed.data.messages],
+        messages: [
+          { role: "system", content: SYSTEM },
+          ...parsed.data.messages,
+          { role: "system", content: LANG(language) },
+        ],
       }),
     });
 
