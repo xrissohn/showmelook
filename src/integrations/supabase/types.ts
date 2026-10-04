@@ -1591,31 +1591,46 @@ export type Database = {
         Row: {
           drive_file_id: string
           error: string | null
+          input_tokens: number | null
           mime_type: string
           modified_time: string | null
           name: string
+          output_tokens: number | null
+          source_chars: number | null
           status: string
           summary: string | null
+          summary_chars: number | null
+          sync_cost_credits: number | null
           updated_at: string
         }
         Insert: {
           drive_file_id: string
           error?: string | null
+          input_tokens?: number | null
           mime_type: string
           modified_time?: string | null
           name: string
+          output_tokens?: number | null
+          source_chars?: number | null
           status?: string
           summary?: string | null
+          summary_chars?: number | null
+          sync_cost_credits?: number | null
           updated_at?: string
         }
         Update: {
           drive_file_id?: string
           error?: string | null
+          input_tokens?: number | null
           mime_type?: string
           modified_time?: string | null
           name?: string
+          output_tokens?: number | null
+          source_chars?: number | null
           status?: string
           summary?: string | null
+          summary_chars?: number | null
+          sync_cost_credits?: number | null
           updated_at?: string
         }
         Relationships: []
