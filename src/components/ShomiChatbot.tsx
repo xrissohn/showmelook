@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Send, X, Loader2 } from "lucide-react";
 import shomiAvatar from "@/assets/shomi-face-profile.png.asset.json";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -9,10 +9,55 @@ type Msg = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/shomi-chat`;
 const HIDDEN_PATHS = ["/cafe24-fitting", "/admin"];
 
-function renderText(text: string) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : <span key={i}>{part}</span>,
-  );
+// Bold (**text**), absolute URLs, showmelook.com/... links and bare internal
+// paths (/style) become clickable. Slash requires a following ASCII letter so
+// fractions like "1/3" or Korean "및/또는" never match.
+const TOKEN_RE = /(\*\*[^*]+\*\*|https?:\/\/[^\s)\]]+|showmelook\.com[^\s)\]]*|\/[a-z][a-z0-9\-/]*)/g;
+const TRAILING_PUNCT = /[.,!?~;:。、]+$/;
+
+function toHref(token: string): { href: string; internal: boolean } | null {
+  if (token.startsWith("http")) {
+    if (token.startsWith("https://showmelook.com") || token.startsWith("http://showmelook.com")) {
+      const path = token.replace(/^https?:\/\/showmelook\.com/, "");
+      return { href: path || "/", internal: true };
+    }
+    return { href: token, internal: false };
+  }
+  if (token.startsWith("showmelook.com")) {
+    const path = token.slice("showmelook.com".length);
+    return { href: path || "/", internal: true };
+  }
+  if (token.startsWith("/")) return { href: token, internal: true };
+  return null;
+}
+
+const linkCls = "underline underline-offset-2 hover:opacity-80";
+
+function renderText(text: string, onNavigate: () => void) {
+  return text.split(TOKEN_RE).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (!part) return null;
+    const candidate = part.replace(TRAILING_PUNCT, "");
+    const link = candidate ? toHref(candidate) : null;
+    if (link) {
+      const rest = part.slice(candidate.length);
+      return (
+        <span key={i}>
+          {link.internal ? (
+            <Link to={link.href} onClick={onNavigate} className={linkCls}>
+              {candidate}
+            </Link>
+          ) : (
+            <a href={link.href} target="_blank" rel="noopener noreferrer" className={linkCls}>
+              {candidate}
+            </a>
+          )}
+          {rest}
+        </span>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
 }
 
 export default function ShomiChatbot() {
