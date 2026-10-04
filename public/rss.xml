@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/1999/xhtml">
   <channel>
-    <title>쇼미룩 - AI 패션 스타일링 서비스</title>
+    <title>쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook</title>
     <link>https://showmelook.com</link>
-    <description>AI가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요.</description>
+    <description>스타일리스트 쇼미가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!</description>
     <language>ko</language>
     <lastBuildDate>Tue, 04 Feb 2025 00:00:00 +0900</lastBuildDate>
     <atom:link href="https://showmelook.com/rss.xml" rel="self" type="application/rss+xml"/>
