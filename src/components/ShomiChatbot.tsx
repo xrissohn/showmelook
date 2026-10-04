@@ -61,7 +61,7 @@ export default function ShomiChatbot() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ language, messages: history.slice(-12) }),
+        body: JSON.stringify({ language, messages: history.slice(-6) }),
       });
       if (!res.ok || !res.body) {
         const err = await res.json().catch(() => ({}));
