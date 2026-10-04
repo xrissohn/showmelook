@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
     }
 
     const userTurns = parsed.data.messages.filter((m) => m.role === "user").length;
+    const SYSTEM = await getSystem(); // also clears stale saved answers after a facts change
     const cacheable = !!last && userTurns === 1 && last.content.length <= 120 && !PERSONAL.test(last.content);
     const qNorm = last ? norm(last.content) : "";
     if (cacheable && qNorm.length >= 4) {

@@ -3,7 +3,10 @@
  * Free → Bronze → Silver → Gold → Platinum
  */
 
-export type TierType = 'free' | 'bronze' | 'silver' | 'gold' | 'platinum';
+import { TIER_FACTS, tierFeaturesKo, type TierId } from '../../supabase/functions/_shared/serviceFacts';
+
+// 수치는 supabase/functions/_shared/serviceFacts.ts 한 곳에서 관리한다(쇼미 챗과 공유).
+export type TierType = TierId;
 
 export interface TierConfig {
   name: string;
@@ -24,120 +27,82 @@ export interface TierConfig {
 
 export const TIER_CONFIG: Record<TierType, TierConfig> = {
   free: {
-    name: 'Free',
-    nameKo: '무료',
-    minAmount: 0,
-    dailyLimit: 5,
-    monthlyLimit: 25,
-    galleryLimit: 10,
-    hasWatermark: true,
-    hdDownload: false,
-    historyDays: 7,
+    name: TIER_FACTS.free.nameEn,
+    nameKo: TIER_FACTS.free.nameKo,
+    minAmount: TIER_FACTS.free.minAmount,
+    dailyLimit: TIER_FACTS.free.dailyLimit,
+    monthlyLimit: TIER_FACTS.free.monthlyLimit,
+    galleryLimit: TIER_FACTS.free.galleryLimit,
+    hasWatermark: TIER_FACTS.free.hasWatermark,
+    hdDownload: TIER_FACTS.free.hdDownload,
+    historyDays: TIER_FACTS.free.historyDays,
     modelProfiles: 0,
-    canPreviewRecommendations: false,
+    canPreviewRecommendations: TIER_FACTS.free.canPreviewRecommendations,
     badgeColor: 'bg-gray-500',
-    features: [
-      '일일 스타일 생성 5회',
-      '월간 스타일 생성 25회',
-      '갤러리 저장 10장',
-      '스타일 히스토리 7일 보관',
-    ],
+    features: tierFeaturesKo('free'),
   },
   bronze: {
-    name: 'Bronze',
-    nameKo: '브론즈',
-    minAmount: 1,
-    dailyLimit: 5,
-    monthlyLimit: -1, // 무제한
-    galleryLimit: 30,
-    hasWatermark: false,
-    hdDownload: true,
-    historyDays: 30,
+    name: TIER_FACTS.bronze.nameEn,
+    nameKo: TIER_FACTS.bronze.nameKo,
+    minAmount: TIER_FACTS.bronze.minAmount,
+    dailyLimit: TIER_FACTS.bronze.dailyLimit,
+    monthlyLimit: TIER_FACTS.bronze.monthlyLimit,
+    galleryLimit: TIER_FACTS.bronze.galleryLimit,
+    hasWatermark: TIER_FACTS.bronze.hasWatermark,
+    hdDownload: TIER_FACTS.bronze.hdDownload,
+    historyDays: TIER_FACTS.bronze.historyDays,
     modelProfiles: 0,
-    canPreviewRecommendations: false,
+    canPreviewRecommendations: TIER_FACTS.bronze.canPreviewRecommendations,
     badgeColor: 'bg-amber-700',
-    features: [
-      '일일 스타일 생성 5회',
-      '월간 스타일 생성 무제한',
-      '워터마크 없는 이미지',
-      '고화질 다운로드',
-      '갤러리 저장 30장',
-      '스타일 히스토리 30일 보관',
-    ],
+    features: tierFeaturesKo('bronze'),
     highlightFeatures: ['월간 무제한', '워터마크 제거'],
   },
   silver: {
-    name: 'Silver',
-    nameKo: '실버',
-    minAmount: 100000, // 10만원
-    dailyLimit: 10,
-    monthlyLimit: -1,
-    galleryLimit: 50,
-    hasWatermark: false,
-    hdDownload: true,
-    historyDays: 90,
+    name: TIER_FACTS.silver.nameEn,
+    nameKo: TIER_FACTS.silver.nameKo,
+    minAmount: TIER_FACTS.silver.minAmount,
+    dailyLimit: TIER_FACTS.silver.dailyLimit,
+    monthlyLimit: TIER_FACTS.silver.monthlyLimit,
+    galleryLimit: TIER_FACTS.silver.galleryLimit,
+    hasWatermark: TIER_FACTS.silver.hasWatermark,
+    hdDownload: TIER_FACTS.silver.hdDownload,
+    historyDays: TIER_FACTS.silver.historyDays,
     modelProfiles: 0,
-    canPreviewRecommendations: true,
+    canPreviewRecommendations: TIER_FACTS.silver.canPreviewRecommendations,
     badgeColor: 'bg-gray-400',
-    features: [
-      '일일 스타일 생성 10회',
-      '월간 스타일 생성 무제한',
-      '상품 추천만 먼저보기 ✨',
-      '워터마크 없는 이미지',
-      '고화질 다운로드',
-      '갤러리 저장 50장',
-      '스타일 히스토리 90일 보관',
-    ],
+    features: tierFeaturesKo('silver'),
     highlightFeatures: ['일일 10회', '상품 추천만 먼저보기 ✨'],
   },
   gold: {
-    name: 'Gold',
-    nameKo: '골드',
-    minAmount: 300000, // 30만원
-    dailyLimit: 20,
-    monthlyLimit: -1,
-    galleryLimit: 100,
-    hasWatermark: false,
-    hdDownload: true,
-    historyDays: -1, // 영구 보관
+    name: TIER_FACTS.gold.nameEn,
+    nameKo: TIER_FACTS.gold.nameKo,
+    minAmount: TIER_FACTS.gold.minAmount,
+    dailyLimit: TIER_FACTS.gold.dailyLimit,
+    monthlyLimit: TIER_FACTS.gold.monthlyLimit,
+    galleryLimit: TIER_FACTS.gold.galleryLimit,
+    hasWatermark: TIER_FACTS.gold.hasWatermark,
+    hdDownload: TIER_FACTS.gold.hdDownload,
+    historyDays: TIER_FACTS.gold.historyDays,
     modelProfiles: 0,
-    canPreviewRecommendations: true,
+    canPreviewRecommendations: TIER_FACTS.gold.canPreviewRecommendations,
     badgeColor: 'bg-yellow-500',
-    features: [
-      '일일 스타일 생성 20회',
-      '월간 스타일 생성 무제한',
-      '상품 추천만 먼저보기 ✨',
-      '워터마크 없는 이미지',
-      '고화질 다운로드',
-      '갤러리 저장 100장',
-      '스타일 히스토리 영구 보관',
-    ],
+    features: tierFeaturesKo('gold'),
     highlightFeatures: ['일일 20회', '히스토리 영구 보관'],
   },
   platinum: {
-    name: 'Platinum',
-    nameKo: '플래티넘',
-    minAmount: 1000000, // 100만원
-    dailyLimit: -1, // 무제한
-    monthlyLimit: -1,
-    galleryLimit: -1,
-    hasWatermark: false,
-    hdDownload: true,
-    historyDays: -1,
+    name: TIER_FACTS.platinum.nameEn,
+    nameKo: TIER_FACTS.platinum.nameKo,
+    minAmount: TIER_FACTS.platinum.minAmount,
+    dailyLimit: TIER_FACTS.platinum.dailyLimit,
+    monthlyLimit: TIER_FACTS.platinum.monthlyLimit,
+    galleryLimit: TIER_FACTS.platinum.galleryLimit,
+    hasWatermark: TIER_FACTS.platinum.hasWatermark,
+    hdDownload: TIER_FACTS.platinum.hdDownload,
+    historyDays: TIER_FACTS.platinum.historyDays,
     modelProfiles: -1, // 동적 계산: 100만원당 1명
-    canPreviewRecommendations: true,
+    canPreviewRecommendations: TIER_FACTS.platinum.canPreviewRecommendations,
     badgeColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
-    features: [
-      '무제한 스타일 생성',
-      '모든 기능 무제한',
-      '상품 추천만 먼저보기 ✨',
-      '워터마크 없는 이미지',
-      '고화질 다운로드',
-      '갤러리 무제한 저장',
-      '스타일 히스토리 영구 보관',
-      '모델 프로필 추가 (100만원당 +1명)',
-      '우선 생성 대기열',
-    ],
+    features: tierFeaturesKo('platinum'),
     highlightFeatures: ['모든 기능 무제한', '모델 프로필 추가'],
   },
 };
@@ -147,10 +112,9 @@ export const TIER_ORDER: TierType[] = ['free', 'bronze', 'silver', 'gold', 'plat
 
 // 누적 금액으로 등급 계산
 export const calculateTierFromAmount = (totalAmount: number): TierType => {
-  if (totalAmount >= 1000000) return 'platinum';
-  if (totalAmount >= 300000) return 'gold';
-  if (totalAmount >= 100000) return 'silver';
-  if (totalAmount >= 1) return 'bronze';
+  for (const tier of [...TIER_ORDER].reverse()) {
+    if (tier !== 'free' && totalAmount >= TIER_CONFIG[tier].minAmount) return tier;
+  }
   return 'free';
 };
 
@@ -165,10 +129,7 @@ export const calculateModelProfileSlots = (totalAmount: number): number => {
 // 다음 등급까지 필요 금액
 export const getAmountToNextTier = (currentAmount: number): { nextTier: TierType | null; amountNeeded: number } => {
   const thresholds = [
-    { tier: 'bronze' as TierType, amount: 1 },
-    { tier: 'silver' as TierType, amount: 100000 },
-    { tier: 'gold' as TierType, amount: 300000 },
-    { tier: 'platinum' as TierType, amount: 1000000 },
+    ...TIER_ORDER.filter((t) => t !== 'free').map((tier) => ({ tier, amount: TIER_CONFIG[tier].minAmount })),
   ];
 
   for (const { tier, amount } of thresholds) {
