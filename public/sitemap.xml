@@ -66,6 +66,11 @@
 
   <!-- 스타일 가이드 허브 -->
   <url>
+    <loc>https://showmelook.com/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://showmelook.com/guide</loc>
     <lastmod>2026-08-10</lastmod>
     <changefreq>weekly</changefreq>

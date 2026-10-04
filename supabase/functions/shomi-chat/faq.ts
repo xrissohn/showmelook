@@ -2,6 +2,9 @@
 // 자주 오는 질문은 AI를 부르지 않고 아래 답변으로 바로 답한다(크레딧 0).
 // 답변 사실은 knowledge.ts의 홈페이지 정보/등급/FAQ/가이드 절에서 가져왔다.
 // 투자·재무 수치는 여기에 넣지 않는다.
+// 등급·횟수·보너스 수치는 _shared/serviceFacts.ts에서 가져온다(요금제 변경 시 자동 반영).
+import { BONUS, TIER_FACTS, tierFaqAnswer } from "../_shared/serviceFacts.ts";
+const F = TIER_FACTS.free;
 
 export type FaqEntry = {
   id: string;
@@ -29,8 +32,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["등급"], ["브론즈"], ["실버"], ["골드"], ["플래티넘"]],
     en: [["tier"], ["bronze"], ["silver"], ["gold"], ["platinum"]],
     answer: {
-      ko: "등급은 월 구독이 아니라 누적 구매액으로 올라가.\n- 무료: 하루 5회·월 25회 생성, 갤러리 10장, 히스토리 7일, 워터마크 있음\n- 브론즈(첫 구매): 하루 5회·월 무제한, 워터마크 없음, 고화질 다운로드, 갤러리 30장, 히스토리 30일\n- 실버(누적 10만원~): 하루 10회, 상품 추천 먼저보기, 갤러리 50장, 히스토리 90일\n- 골드(누적 30만원~): 하루 20회, 갤러리 100장, 히스토리 영구\n- 플래티넘(누적 100만원~): 무제한 생성, 갤러리 무제한, 모델 프로필 100만원당 +1명, 우선 대기열\n표는 /pricing 에 있어.",
-      en: "Tiers grow with your total purchases, not a monthly subscription.\n- Free: 5 styles a day, 25 a month, 10 gallery saves, 7-day history, watermark\n- Bronze (first purchase): 5 a day, unlimited monthly, no watermark, HD downloads, 30 gallery saves, 30-day history\n- Silver (from 100,000 KRW): 10 a day, early access to product picks, 50 gallery saves, 90-day history\n- Gold (from 300,000 KRW): 20 a day, 100 gallery saves, permanent history\n- Platinum (from 1,000,000 KRW): unlimited styles and gallery, +1 model profile per 1,000,000 KRW, priority queue\nFull table: /pricing.",
+      ko: tierFaqAnswer("ko"),
+      en: tierFaqAnswer("en"),
     },
   },
   {
@@ -38,8 +41,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["무료"], ["얼마"], ["가격"], ["요금"], ["구독"], ["돈"], ["비용"]],
     en: [["free"], ["price"], ["pricing"], ["cost"], ["much"], ["subscription"], ["money"]],
     answer: {
-      ko: "쇼미룩은 무료로 시작할 수 있어. 가입하면 하루 5회(월 25회) 생성이 기본이고, 월 구독 없이 구매가 쌓이면 등급이 올라가면서 횟수가 늘어. 무료 사용자는 이미지에 워터마크가 붙는 점만 알아줘. 상세는 /pricing, 바로 만들어보려면 /style.",
-      en: "You can start for free. Signing up gives you 5 styles a day (25 a month), and there's no monthly subscription — your tiers rise as your purchases add up. Only thing to know: free images carry a watermark. Details on /pricing, or jump straight into /style.",
+      ko: `쇼미룩은 무료로 시작할 수 있어. 가입하면 하루 ${F.dailyLimit}회(월 ${F.monthlyLimit}회) 생성이 기본이고, 월 구독 없이 구매가 쌓이면 등급이 올라가면서 횟수가 늘어. 무료 사용자는 이미지에 워터마크가 붙는 점만 알아줘. 상세는 /pricing, 바로 만들어보려면 /style.`,
+      en: `You can start for free. Signing up gives you ${F.dailyLimit} styles a day (${F.monthlyLimit} a month), and there's no monthly subscription — your tiers rise as your purchases add up. Only thing to know: free images carry a watermark. Details on /pricing, or jump straight into /style.`,
     },
   },
   {
@@ -47,8 +50,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["공개"], ["비공개"], ["사진", "어떻게"], ["개인정보"], ["삭제"], ["보안"]],
     en: [["public"], ["private"], ["privacy"], ["delete"], ["photo", "safe"], ["data"]],
     answer: {
-      ko: "기본은 비공개야. 네가 직접 공개로 바꾼 룩만 스타일 갤러리에 보이고, 언제든 다시 비공개로 되돌릴 수 있어. 공개 룩을 등록하면 크레딧 1회 보너스도 받아(최대 10회). 사진과 데이터 취급은 /privacy 에 정리돼 있어.",
-      en: "Everything is private by default. Only looks you switch to public show up in the style gallery, and you can hide them again any time. Publishing a look also earns a bonus credit (up to 10). How photos and data are handled is written up in /privacy.",
+      ko: `기본은 비공개야. 네가 직접 공개로 바꾼 룩만 스타일 갤러리에 보이고, 언제든 다시 비공개로 되돌릴 수 있어. 공개 룩을 등록하면 크레딧 1회 보너스도 받아(최대 ${BONUS.galleryCreditMax}회). 사진과 데이터 취급은 /privacy 에 정리돼 있어.`,
+      en: `Everything is private by default. Only looks you switch to public show up in the style gallery, and you can hide them again any time. Publishing a look also earns a bonus credit (up to ${BONUS.galleryCreditMax}). How photos and data are handled is written up in /privacy.`,
     },
   },
   {
@@ -128,8 +131,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["추천인"], ["친구"], ["초대"], ["보너스"], ["크레딧", "받"], ["크레딧", "충전"], ["크레딧", "추가"]],
     en: [["referral"], ["refer"], ["invite"], ["bonus"], ["credit", "get"], ["extra", "credit"]],
     answer: {
-      ko: "크레딧은 두 가지로 늘어나. 친구 추천 코드로 가입하면 보너스가 들어오고, 룩을 공개로 등록하면 1회씩 쌓여(최대 10회). 내 크레딧 내역은 /mypage 에서 볼 수 있어.",
-      en: "There are two ways to earn credits: a friend's referral code adds a bonus when they join, and publishing a look adds one each time (up to 10). Your balance and history are on /mypage.",
+      ko: `크레딧은 두 가지로 늘어나. 친구 추천 코드로 가입하면 보너스가 들어오고, 룩을 공개로 등록하면 1회씩 쌓여(최대 ${BONUS.galleryCreditMax}회). 내 크레딧 내역은 /mypage 에서 볼 수 있어.`,
+      en: `There are two ways to earn credits: a friend's referral code adds a bonus when they join, and publishing a look adds one each time (up to ${BONUS.galleryCreditMax}). Your balance and history are on /mypage.`,
     },
   },
   {
@@ -200,8 +203,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["횟수", "다"], ["횟수", "초과"], ["더", "만들"], ["생성", "안"], ["한도"], ["다 썼"]],
     en: [["limit"], ["out", "of", "credits"], ["no", "more"], ["ran", "out"], ["used", "up"]],
     answer: {
-      ko: "하루 생성 횟수를 다 쓰면 다음 날 다시 채워져. 바로 더 만들고 싶으면 룩을 공개로 등록해서 보너스 크레딧(최대 10회)을 받거나, 친구 추천 코드로 보너스를 받을 수 있어. 첫 구매로 브론즈가 되면 월 제한도 없어져(/pricing).",
-      en: "When you use up today's styles, they refill the next day. Want more now? Publish a look for a bonus credit (up to 10) or share your referral code. A first purchase gets you Bronze with no monthly cap (/pricing).",
+      ko: `하루 생성 횟수를 다 쓰면 다음 날 다시 채워져. 바로 더 만들고 싶으면 룩을 공개로 등록해서 보너스 크레딧(최대 ${BONUS.galleryCreditMax}회)을 받거나, 친구 추천 코드로 보너스를 받을 수 있어. 첫 구매로 브론즈가 되면 월 제한도 없어져(/pricing).`,
+      en: `When you use up today's styles, they refill the next day. Want more now? Publish a look for a bonus credit (up to ${BONUS.galleryCreditMax}) or share your referral code. A first purchase gets you Bronze with no monthly cap (/pricing).`,
     },
   },
   {

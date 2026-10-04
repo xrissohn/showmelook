@@ -1,6 +1,7 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
 import { KNOWLEDGE } from "./knowledge.ts";
+import { serviceKnowledgeKo } from "../_shared/serviceFacts.ts";
 import { faqAnswer, matchFaq } from "./faq.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
@@ -21,7 +22,7 @@ const Body = z.object({
 // 프롬프트 앞부분이 갈라져 캐시가 언어별로 하나씩 생기고, 각 언어가 처음 올 때마다
 // 캐시를 다시 저장해야 한다(저장은 읽기보다 10배 이상 비쌈). 그래서 언어 안내는
 // 대화 맨 끝에 별도 메시지로 붙인다 — 그 부분은 캐시 대상이 아니라 비용이 거의 없다.
-const SYSTEM = `너는 쇼미룩(ShowMeLook)의 패셔니스타 캐릭터 "쇼미(ShowMi)"야. 아래 지식의 캐릭터 설정대로 친근한 반말(MZ 캐주얼 톤)로, 짧고 따뜻하게 답해.
+const buildSystem = (now: Date) => `너는 쇼미룩(ShowMeLook)의 패셔니스타 캐릭터 "쇼미(ShowMi)"야. 아래 지식의 캐릭터 설정대로 친근한 반말(MZ 캐주얼 톤)로, 짧고 따뜻하게 답해.
 규칙:
 - 쇼미룩 서비스·등급·사용법·스타일 가이드·쇼미 자신에 대한 질문은 아래 지식에 근거해서만 답하고, 모르는 건 지어내지 말고 모른다고 말한 뒤 관련 페이지(showmelook.com/...)를 안내해.
 - 코디·스타일 조언은 자유롭게 하되, 직접 룩을 보고 싶으면 /style 에서 만들어보라고 권해.
@@ -29,7 +30,32 @@ const SYSTEM = `너는 쇼미룩(ShowMeLook)의 패셔니스타 캐릭터 "쇼�
 - 답변은 3~6문장 이내, 필요하면 짧은 목록. 마크다운 굵게 정도만 사용.
 
 === 지식 ===
-${KNOWLEDGE}`;
+${KNOWLEDGE}
+${serviceKnowledgeKo(now)}`;
+
+// Tier numbers / promotions come from _shared/serviceFacts.ts. The prompt only changes
+// when those facts or the set of active promotions change, so caching stays intact.
+// When the prompt changes, saved answers may hold old facts: clear them once.
+let systemCache: { text: string; checkedHash: string | null } = { text: "", checkedHash: null };
+const getSystem = async (): Promise<string> => {
+  const text = buildSystem(new Date());
+  if (text !== systemCache.text) systemCache = { text, checkedHash: null };
+  if (!systemCache.checkedHash) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    const hash = Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    try {
+      const { data } = await db().from("shomi_meta").select("value").eq("key", "knowledge_hash").maybeSingle();
+      if (data?.value !== hash) {
+        await db().from("shomi_answer_cache").delete().gte("created_at", "1970-01-01");
+        await db().from("shomi_meta").upsert({ key: "knowledge_hash", value: hash, updated_at: new Date().toISOString() });
+      }
+      systemCache.checkedHash = hash;
+    } catch (e) {
+      console.error("shomi knowledge hash check failed", e);
+    }
+  }
+  return text;
+};
 
 // Notes auto-generated from new Google Drive files (shomi-knowledge-sync).
 // Cached for 10 minutes; sorted by id so the prompt stays byte-identical between calls.
@@ -80,6 +106,7 @@ Deno.serve(async (req) => {
     }
 
     const userTurns = parsed.data.messages.filter((m) => m.role === "user").length;
+    const SYSTEM = await getSystem(); // also clears stale saved answers after a facts change
     const cacheable = !!last && userTurns === 1 && last.content.length <= 120 && !PERSONAL.test(last.content);
     const qNorm = last ? norm(last.content) : "";
     if (cacheable && qNorm.length >= 4) {

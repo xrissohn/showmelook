@@ -66,7 +66,7 @@ const FAQ_ITEMS_EN = [
   { q: "What if I do not know what to wear?", a: "Start with Shomi’s Style Guide. It covers body-shape styling, personal color, layering, and practical sizing tips." },
 ];
 
-const GUIDE_TITLES_EN: Record<string, string> = {
+export const GUIDE_TITLES_EN: Record<string, string> = {
   "date-office-casual-look": "How to Style Date, Office, and Casual Looks",
   "body-type-coordination": "Outfit Formulas for Every Body Type",
   "ai-virtual-fitting-tips": "How to Get the Most from AI Virtual Fitting",
