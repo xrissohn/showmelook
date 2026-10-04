@@ -8,3 +8,8 @@
 - New or changed files in the Google Drive knowledge folder are summarized by `shomi-knowledge-sync` (hourly cron) into `shomi_knowledge_files`; `shomi-chat` appends active notes after the static knowledge and the answer cache is cleared on change. Rationale: knowledge stays current without redeploys, and files already folded into `knowledge.ts` are marked baseline so they are not duplicated.
 - Send only the most recent few turns of history from the client. Rationale: the knowledge block already dominates the input, so extra turns are pure cost.
 - Keep investment/financial figures, internal operations detail, and personal contact info out of `knowledge.ts` and `faq.ts`. Rationale: the chat is public and the model will repeat what it is given.
+
+## Service facts (`supabase/functions/_shared/serviceFacts.ts`)
+
+- Tier numbers, ongoing bonuses, time-limited promotions and official service copy live only in this file; `src/lib/tierConfig.ts`, the About page and `shomi-chat` (knowledge + FAQ) all derive from it. Rationale: a price or promo change edited once reaches the pricing page and Shomi together.
+- `shomi-chat` hashes its full system prompt and clears `shomi_answer_cache` when the hash in `shomi_meta` changes. Rationale: saved answers must never repeat outdated prices.
