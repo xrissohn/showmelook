@@ -8,6 +8,13 @@
       "when": 1791119256290,
       "tag": "0000_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791119880482,
+      "tag": "0001_shomi_knowledge_files",
+      "breakpoints": true
     }
   ]
 }
