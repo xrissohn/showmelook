@@ -78,6 +78,16 @@ export default function ShomiChatbot() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
 
+  // Share links (showmelook.com/shomi or any page with ?shomi=open) open the
+  // chat straight away, then the param is removed so a refresh stays clean.
+  useEffect(() => {
+    if (searchParams.get("shomi") !== "open") return;
+    setOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("shomi");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   if (HIDDEN_PATHS.some((p) => location.pathname.startsWith(p))) return null;
 
   const greeting = en
