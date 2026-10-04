@@ -61,8 +61,26 @@ export const activePromotions = (now = new Date()): Promotion[] => {
 export const SERVICE_COPY = {
   title: "쇼미룩 - AI 패션 스타일링 서비스 | ShowMeLook",
   description: "스타일리스트 쇼미가 당신에게 딱 맞는 패션 스타일을 제안합니다. 사진 한 장으로 트렌디한 스타일을 경험하고, 나만의 룩북을 완성하세요. 무료로 시작하기!",
+  descriptionEn: "Stylist Shomi suggests the fashion style that fits you best. Try trendy looks with a single photo and build your own lookbook. Start for free!",
   slogan: "유행보다 취향.",
+  sloganEn: "Taste over trends.",
 };
+
+// Official service policy. Shomi must never contradict these, whatever other notes say.
+export const SERVICE_POLICY: { ko: string; en: string }[] = [
+  { ko: "가입·시작은 무료이고 월 구독은 없다. 등급은 누적 구매액으로만 오른다.", en: "Signing up is free and there is no monthly subscription. Tiers rise only with total purchases." },
+  { ko: "상품 결제·배송·교환·환불은 각 제휴 쇼핑몰에서 이뤄지고 그 쇼핑몰 정책을 따른다. 쇼미룩이 직접 환불해주지 않는다.", en: "Payment, shipping, exchanges and refunds happen at each partner store under its own policy; ShowMeLook does not refund directly." },
+  { ko: "가상 피팅 이미지는 실루엣·색감 참고용이며 실제 착용감이나 정확한 사이즈를 보장하지 않는다.", en: "Virtual try-on images are a guide to silhouette and color, not a guarantee of fit or exact size." },
+  { ko: "의류·신발은 사이즈·옵션·재고가 확인된 상품만 추천한다. 액세서리는 구매 가능하면 추천할 수 있다.", en: "Clothing and shoes are recommended only when size, options and stock are confirmed; accessories may be recommended when purchasable." },
+  { ko: "업로드한 사진과 생성한 룩은 기본 비공개이며, 사용자가 직접 공개를 선택해야 커뮤니티에 보인다.", en: "Uploaded photos and generated looks are private by default and appear in the community only if the user chooses to publish them." },
+  { ko: "무료 등급 이미지에는 워터마크가 표시된다.", en: "Free-tier images show a watermark." },
+  { ko: "가격·혜택·횟수는 이 문구와 /pricing 기준으로만 안내하고, 없는 할인·보상·일정을 약속하지 않는다.", en: "Prices, perks and limits are stated only from this copy and /pricing; never promise discounts, compensation or dates that are not listed." },
+];
+
+export const serviceIntro = (lang: "ko" | "en"): string =>
+  lang === "ko"
+    ? `${SERVICE_COPY.description} 슬로건은 '${SERVICE_COPY.slogan}' 더 자세한 소개는 /about, 바로 시작은 /style 에서!`
+    : `${SERVICE_COPY.descriptionEn} Our motto: '${SERVICE_COPY.sloganEn}' More at /about, or jump in at /style.`;
 
 const won = (n: number) => (n >= 10000 ? `${n / 10000}만원` : `${n.toLocaleString()}원`);
 const krw = (n: number) => `${n.toLocaleString("en-US")} KRW`;
@@ -127,6 +145,9 @@ export const serviceKnowledgeKo = (now = new Date()): string => {
     `- 소개: ${SERVICE_COPY.description}`,
     `- 슬로건: ${SERVICE_COPY.slogan}`,
     "- 소개 페이지 /about, 쇼미 채팅 공유 링크 showmelook.com/shomi",
+    "",
+    "## 서비스 정책 (최우선 — 다른 자료와 충돌하면 이것을 따름)",
+    ...SERVICE_POLICY.map((p) => `- ${p.ko}`),
     "",
     "## 등급 (누적 구매액 기준, /pricing)",
     ...TIER_IDS.map((id) => tierLine(id, "ko")),

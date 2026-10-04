@@ -3,7 +3,7 @@
 // 답변 사실은 knowledge.ts의 홈페이지 정보/등급/FAQ/가이드 절에서 가져왔다.
 // 투자·재무 수치는 여기에 넣지 않는다.
 // 등급·횟수·보너스 수치는 _shared/serviceFacts.ts에서 가져온다(요금제 변경 시 자동 반영).
-import { BONUS, TIER_FACTS, tierFaqAnswer } from "../_shared/serviceFacts.ts";
+import { BONUS, TIER_FACTS, serviceIntro, tierFaqAnswer } from "../_shared/serviceFacts.ts";
 const F = TIER_FACTS.free;
 
 export type FaqEntry = {
@@ -18,6 +18,12 @@ const norm = (s: string) =>
   s.normalize("NFKC").toLowerCase().replace(/[\s.,!?~·\-—_/()[\]{}'"“”’]+/g, "");
 
 export const FAQ_ENTRIES: FaqEntry[] = [
+  {
+    id: "intro",
+    ko: [["쇼미룩", "뭐"], ["쇼미룩", "어떤"], ["쇼미룩", "소개"], ["무슨", "서비스"], ["어떤", "서비스"]],
+    en: [["what", "showmelook"], ["about", "showmelook"], ["what", "service"]],
+    answer: { ko: serviceIntro("ko"), en: serviceIntro("en") },
+  },
   {
     id: "who",
     ko: [["쇼미", "누구"], ["너", "누구"], ["누구야"], ["너", "뭐"], ["프로필"]],
