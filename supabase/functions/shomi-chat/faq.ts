@@ -18,7 +18,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     id: "who",
     ko: [["쇼미", "누구"], ["너", "누구"], ["누구야"], ["너", "뭐"], ["프로필"]],
-    en: [["who", "you"], ["who"], ["about", "you"], ["your", "profile"]],
+    en: [["who", "you"], ["who"], ["tell", "about", "you"], ["your", "profile"]],
     answer: {
       ko: "난 쇼미야. 성수동에서 옷보다 '그 옷을 고른 이유'가 더 궁금한 패셔니스타이고, 지금은 쇼미룩에서 네 룩을 찾아주는 스타일 큐레이터로 일해. 슬로건은 '유행보다 취향'. 내 말이 궁금하면 /style 에서 룩 하나 뽑아보자!",
       en: "I'm Shomi — a fashionista from Seongsu who's more curious about why you picked an outfit than the outfit itself. Here at ShowMeLook I work as your style curator, and my motto is 'taste over trends'. Want to see it in action? Try /style.",
@@ -54,7 +54,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     id: "howto",
     ko: [["어떻게", "만들"], ["사용법"], ["어디서"], ["시작"], ["하는법"], ["하는 법"], ["방법"]],
-    en: [["how", "work"], ["how", "start"], ["how", "use"], ["how", "make"], ["get", "started"], ["tutorial"]],
+    en: [["how", "does", "it", "work"], ["how", "start"], ["how", "use"], ["how", "make"], ["get", "started"], ["tutorial"]],
     answer: {
       ko: "흐름은 이렇게 돌아가: 가입해서 사진과 체형 정보를 올리고 → AI가 네 전신 착장 룩을 만들고 → 그 룩에 쓰인 상품을 확인하고 → 파트너몰로 구매. 사진이 없어도 체형 정보만으로 시작할 수 있고, /style 에서 바로 해볼 수 있어.",
       en: "Here's the flow: sign up and add your photo and body info → AI builds a full-body look on you → check the products in that look → buy them from the partner store. You can also start with body info alone, no photo. It all happens on /style.",
