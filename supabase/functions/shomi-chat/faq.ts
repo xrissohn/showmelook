@@ -135,7 +135,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   {
     id: "persona",
     ko: [["생일"], ["취향"], ["좋아하는"], ["어디", "사"], ["성수동"]],
-    en: [["birthday"], ["favorite"], ["prefer"], ["where", "live"], ["about", "your"]],
+    en: [["birthday"], ["favorite"], ["prefer"], ["where", "live"], ["about", "your"], ["tell", "about", "your"]],
     answer: {
       ko: "내 생일은 9월 21일이고, 서울 성수동을 제일 자주 걸어. 아이스 라떼는 거의 기본값, 바질 파스타랑 피스타치오 젤라또도 좋아. 스타일은 네이비 테일러링에 핑크 새틴, 반반 와이드 브림햇이 시그니처야.",
       en: "My birthday is September 21 and I walk around Seongsu the most. Iced latte is basically a default, and I love basil pasta and pistachio gelato. My signature is navy tailoring with pink satin and a half-and-half wide-brim hat.",
