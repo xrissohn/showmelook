@@ -15,6 +15,13 @@
       "when": 1791119880482,
       "tag": "0001_shomi_knowledge_files",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791120436224,
+      "tag": "0002_shomi_knowledge_sync_cost",
+      "breakpoints": true
     }
   ]
 }
