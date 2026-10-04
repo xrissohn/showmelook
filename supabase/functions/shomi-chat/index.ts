@@ -2,6 +2,12 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 import { z } from "npm:zod@3.25.76";
 import { KNOWLEDGE } from "./knowledge.ts";
 import { faqAnswer, matchFaq } from "./faq.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+// 이전 AI 답변 재사용: 첫 질문이고 개인 정보(키/몸무게/나이 등)가 없을 때만 저장·재사용한다.
+const PERSONAL = /(\d\s*(kg|cm|세|살|개월)|키\s*\d|몸무게|체중|height|weight|\bage\b|내\s*사진|my photo)/i;
+const norm = (t: string) => t.normalize("NFKC").toLowerCase().replace(/[\s.,!?~·\-—_/()[\]{}'"“”’^ㅋㅎㅠㅜ]+/g, " ").trim();
+const db = () => createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
 const Body = z.object({
   language: z.enum(["ko", "en"]).optional(),
@@ -62,6 +68,21 @@ Deno.serve(async (req) => {
       return sseResponse(faqAnswer(entry, last.content, language), "faq");
     }
 
+    const userTurns = parsed.data.messages.filter((m) => m.role === "user").length;
+    const cacheable = !!last && userTurns === 1 && last.content.length <= 120 && !PERSONAL.test(last.content);
+    const qNorm = last ? norm(last.content) : "";
+    if (cacheable && qNorm.length >= 4) {
+      const { data } = await db().rpc("match_shomi_answer", { p_language: language, p_norm: qNorm, p_threshold: 0.6 });
+      const hit = Array.isArray(data) ? data[0] : null;
+      if (hit) {
+        console.log("shomi-chat cache-hit", hit.score);
+        db().from("shomi_answer_cache").select("hit_count").eq("id", hit.id).single().then(({ data: r }) =>
+          db().from("shomi_answer_cache").update({ hit_count: (r?.hit_count ?? 0) + 1, last_hit_at: new Date().toISOString() }).eq("id", hit.id)
+        );
+        return sseResponse(hit.answer, "cache");
+      }
+    }
+
     const key = Deno.env.get("LOVABLE_API_KEY");
     if (!key) return json({ error: "AI 설정이 없어요." }, 500);
 
@@ -101,7 +122,37 @@ Deno.serve(async (req) => {
     upstream.headers.forEach((v, k) => {
       if (k.toLowerCase().startsWith("x-lovable-aig-")) out.set(k, v);
     });
-    return new Response(upstream.body, { headers: out });
+    if (!cacheable || qNorm.length < 4) return new Response(upstream.body, { headers: out });
+
+    // 스트림을 그대로 전달하면서 답변을 모아, 끝까지 받은 경우에만 저장한다.
+    const [toClient, toCache] = upstream.body.tee();
+    const save = (async () => {
+      const reader = toCache.pipeThrough(new TextDecoderStream()).getReader();
+      let buf = "", answer = "", done = false;
+      while (true) {
+        const r = await reader.read();
+        if (r.done) break;
+        buf += r.value;
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const l of lines) {
+          const d = l.replace(/^data:\s*/, "").trim();
+          if (!l.startsWith("data:") || !d) continue;
+          if (d === "[DONE]") { done = true; continue; }
+          try { answer += JSON.parse(d).choices?.[0]?.delta?.content ?? ""; } catch { /* partial */ }
+        }
+      }
+      if (done && answer.trim().length > 10) {
+        const { error } = await db().from("shomi_answer_cache").upsert(
+          { language, question: last!.content, question_norm: qNorm, answer: answer.trim() },
+          { onConflict: "language,question_norm", ignoreDuplicates: true },
+        );
+        if (error) console.error("shomi-chat cache save", error.message);
+      }
+    })().catch((e) => console.error("shomi-chat cache", e));
+    // @ts-ignore EdgeRuntime is provided by the runtime
+    globalThis.EdgeRuntime?.waitUntil?.(save);
+    return new Response(toClient, { headers: out });
   } catch (e) {
     if (req.signal.aborted) return new Response(null, { status: 499, headers: corsHeaders });
     console.error("shomi-chat error", e);
