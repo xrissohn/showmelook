@@ -1635,6 +1635,24 @@ export type Database = {
         }
         Relationships: []
       }
+      shomi_meta: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       style_cache: {
         Row: {
           cache_key: string
