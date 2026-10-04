@@ -26,7 +26,11 @@ export default function ShomiChatbot() {
   const abortRef = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [messages, open]);
+  // Block body on purpose: a bare `() => el.scrollIntoView(...)` would hand
+  // whatever the browser method returns to React as the cleanup function.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, open]);
 
   if (HIDDEN_PATHS.some((p) => location.pathname.startsWith(p))) return null;
 
