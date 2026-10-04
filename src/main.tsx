@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./index.css";
 
 // Kakao JavaScript App Key (Publishable)
@@ -26,7 +27,11 @@ if (document.readyState === 'complete') {
   window.addEventListener('load', initKakao);
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>,
+);
 
 // Auto-recover from stale chunk references (after redeploys).
 // A missing chunk can surface either as a window error or as an unhandled
