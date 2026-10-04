@@ -144,7 +144,7 @@ export const serviceKnowledgeKo = (now = new Date()): string => {
     `- 사이트 제목: ${SERVICE_COPY.title}`,
     `- 소개: ${SERVICE_COPY.description}`,
     `- 슬로건: ${SERVICE_COPY.slogan}`,
-    "- 소개 페이지 /about, 쇼미 채팅 공유 링크 showmelook.com/shomi",
+    "- 소개 페이지 /about, 서비스 규정 /policy, 쇼미 채팅 공유 링크 showmelook.com/shomi",
     "",
     "## 서비스 정책 (최우선 — 다른 자료와 충돌하면 이것을 따름)",
     ...SERVICE_POLICY.map((p) => `- ${p.ko}`),
