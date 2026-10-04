@@ -17,10 +17,10 @@ const norm = (s: string) =>
 export const FAQ_ENTRIES: FaqEntry[] = [
   {
     id: "who",
-    ko: [["쇼미", "누구"], ["너", "누구"], ["누구야"], ["自我介绍"], ["너", "뭐"], ["프로필"]],
+    ko: [["쇼미", "누구"], ["너", "누구"], ["누구야"], ["너", "뭐"], ["프로필"]],
     en: [["who", "you"], ["who"], ["about", "you"], ["your", "profile"]],
     answer: {
-      ko: "난 쇼미야. 성수동에서 옷보다 '그 옷을 고른 이유'가 더 궁금한 패셔니스타이고, 지금은 쇼미룩에서 네 룩을 찾아주는 스타일 큐레이터로 일해. 슬로건은 '유행보다 취향'. 내 말투가 궁금하면 /style 에서 룩 하나 뽑아보자!",
+      ko: "난 쇼미야. 성수동에서 옷보다 '그 옷을 고른 이유'가 더 궁금한 패셔니스타이고, 지금은 쇼미룩에서 네 룩을 찾아주는 스타일 큐레이터로 일해. 슬로건은 '유행보다 취향'. 내 말이 궁금하면 /style 에서 룩 하나 뽑아보자!",
       en: "I'm Shomi — a fashionista from Seongsu who's more curious about why you picked an outfit than the outfit itself. Here at ShowMeLook I work as your style curator, and my motto is 'taste over trends'. Want to see it in action? Try /style.",
     },
   },
@@ -92,8 +92,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["수수료"], ["제휴"], ["어디서", "사"], ["구매", "연결"], ["링크"]],
     en: [["commission"], ["affiliate"], ["where", "buy"], ["buy", "link"], ["partner"]],
     answer: {
-      ko: "화면의 구매 링크는 파트너몰로 이어지는 제휴 링크야. 그 링크로 구매가 일어나면 쇼미룩이 수수료를 받을 수 있지만, 네가 내는 가격에_extra가 붙진 않아. 담아둔商品は /cart 에서 정리할 수 있어.",
-      en: "The buy buttons are affiliate links into partner stores. If a purchase happens through them ShowMeLook may earn a commission, but nothing extra is added to your price. Things you saved are on /cart.",
+      ko: "화면의 구매 링크는 파트너몰로 이어지는 제휴 링크야. 그 링크로 구매가 일어나면 쇼미룩이 수수료를 받을 수 있어. 다만 상품 가격은 파트너몰 표기가 그대로야. 담아둔 상품은 /cart 에서 정리할 수 있어.",
+      en: "The buy buttons are affiliate links into partner stores. If a purchase happens through them ShowMeLook may earn a commission, but the product prices stay as the partner store lists them. Things you saved are on /cart.",
     },
   },
   {
@@ -101,7 +101,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["인스타"], ["유튜브"], ["틱톡"], ["스레드"], ["sns"], ["연락처"], ["contact"]],
     en: [["instagram"], ["youtube"], ["tiktok"], ["threads"], ["sns"], ["contact"], ["email"]],
     answer: {
-      ko: "쇼미 SNS는 인스타 @showmi.look, 유튜브 @showmi_tv, 틱톡 @showmi.look, 스레드 @showmi.look 이야. 개인 연락처는 여기서 공유하기 어려워, 서비스 문제는 /privacy 나 /terms 쪽 안내를 봐줘.",
+      ko: "쇼미 SNS는 인스타 @showmi.look, 유튜브 @showmi_tv, 틱톡 @showmi.look, 스레드 @showmi.look 이야. 개인 연락처는 여기서 공유하기 어려워, 계정 관련 문제는 /privacy 나 /terms 쪽 안내를 봐줘.",
       en: "You can find Shomi on Instagram @showmi.look, YouTube @showmi_tv, TikTok @showmi.look and Threads @showmi.look. I can't share personal contact details here — for account issues, /privacy and /terms have the right pointers.",
     },
   },
@@ -125,16 +125,16 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     id: "bonus",
-    ko: [["추천인"], ["친구"], ["초대"], ["보너스"], ["크레딧", "받"], ["크레딧", "충전"], ["추가"]],
+    ko: [["추천인"], ["친구"], ["초대"], ["보너스"], ["크레딧", "받"], ["크레딧", "충전"], ["크레딧", "추가"]],
     en: [["referral"], ["refer"], ["invite"], ["bonus"], ["credit", "get"], ["extra", "credit"]],
     answer: {
-      ko: "크레딧은 두 가지로 늘어나. 친구 추천 코드로 가입하면 보너스가 들어오고, 룩을 공개로 등록하면 1회씩 쌓여(최대 10회). 내 크레딧History는 /mypage 에서 볼 수 있어.",
+      ko: "크레딧은 두 가지로 늘어나. 친구 추천 코드로 가입하면 보너스가 들어오고, 룩을 공개로 등록하면 1회씩 쌓여(최대 10회). 내 크레딧 내역은 /mypage 에서 볼 수 있어.",
       en: "There are two ways to earn credits: a friend's referral code adds a bonus when they join, and publishing a look adds one each time (up to 10). Your balance and history are on /mypage.",
     },
   },
   {
     id: "persona",
-    ko: [["생일"], ["취향"], ["좋아하는"], ["어디", "사"], ["나와"], ["성수동"]],
+    ko: [["생일"], ["취향"], ["좋아하는"], ["어디", "사"], ["성수동"]],
     en: [["birthday"], ["favorite"], ["prefer"], ["where", "live"], ["about", "your"]],
     answer: {
       ko: "내 생일은 9월 21일이고, 서울 성수동을 제일 자주 걸어. 아이스 라떼는 거의 기본값, 바질 파스타랑 피스타치오 젤라또도 좋아. 스타일은 네이비 테일러링에 핑크 새틴, 반반 와이드 브림햇이 시그니처야.",
@@ -143,10 +143,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
 ];
 
-// 개인사(키/몸무게/나이)가 들어간 질문은 선답변으로 처리하지 않고 AI에게 넘긴다.
-const PERSONAL = /(키|몸무게|체중|나잇?\d|\d\s*(kg|kg|cm|세|살|개월)|height|weight|age)\s*\d*/i;
-
-const compact = norm("x");
+// 개인 체형 정보가 들어간 질문은 선답변으로 처리하지 않고 AI에게 넘긴다.
+const PERSONAL = /(\d\s*(kg|cm|세|살|개월)|키\s*\d|몸무게|체중|height|weight|\bage\b)/i;
 
 export function matchFaq(text: string, language: string): FaqEntry | null {
   const q = norm(text);
@@ -180,5 +178,3 @@ export function faqAnswer(entry: FaqEntry, text: string, language: string): stri
   const korean = /[\u3131-\uD79D]/.test(text);
   return korean || language !== "en" ? entry.answer.ko : entry.answer.en;
 }
-
-void compact;
