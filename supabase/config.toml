@@ -168,3 +168,6 @@ verify_jwt = false
 
 [functions.survey-unsubscribe]
 verify_jwt = false
+
+[functions.complete-signup]
+verify_jwt = false

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkPassword } from "../_shared/passwordPolicy.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,15 +23,15 @@ serve(async (req) => {
 
     if (!email || !newPassword || !verificationId) {
       return new Response(
-        JSON.stringify({ error: "이메일, 새 비밀번호, 인증 ID가 필요합니다." }),
+        JSON.stringify({ error: "이메일, 새 비밀번호, 인증 ID가 필요합니다.", error_code: "missing_fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
     // Validate password length
-    if (newPassword.length < 6) {
+    if (checkPassword(newPassword)) {
       return new Response(
-        JSON.stringify({ error: "비밀번호는 최소 6자 이상이어야 합니다." }),
+        JSON.stringify({ error: "비밀번호는 최소 6자 이상이어야 합니다.", error_code: "weak_password" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -52,7 +53,7 @@ serve(async (req) => {
 
     if (verifyError || !verification) {
       return new Response(
-        JSON.stringify({ error: "유효하지 않은 인증 정보입니다. 다시 시도해주세요." }),
+        JSON.stringify({ error: "유효하지 않은 인증 정보입니다. 다시 시도해주세요.", error_code: "verification_required" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -62,30 +63,29 @@ serve(async (req) => {
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
     if (verifiedAt < tenMinutesAgo) {
       return new Response(
-        JSON.stringify({ error: "인증이 만료되었습니다. 다시 시도해주세요." }),
+        JSON.stringify({ error: "인증이 만료되었습니다. 다시 시도해주세요.", error_code: "verification_required" }),
         { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Find user by email
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.listUsers();
+    // Find user by email (exact lookup, independent of user count)
+    const { data: userId, error: userError } = await supabaseAdmin.rpc("get_auth_user_id_by_email", { _email: email.toLowerCase() });
     
     if (userError) {
       console.error("User lookup error:", userError);
       return new Response(
-        JSON.stringify({ error: "사용자를 찾을 수 없습니다." }),
-        { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        JSON.stringify({ error: "사용자를 찾을 수 없습니다.", error_code: "server_error" }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const user = userData.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
-    
-    if (!user) {
+    if (!userId) {
       return new Response(
-        JSON.stringify({ error: "해당 이메일로 가입된 계정이 없습니다." }),
+        JSON.stringify({ error: "해당 이메일로 가입된 계정이 없습니다.", error_code: "user_not_found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+    const user = { id: userId as string };
 
     // Update password using Admin API
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
@@ -95,8 +95,15 @@ serve(async (req) => {
 
     if (updateError) {
       console.error("Password update error:", updateError);
+      // deno-lint-ignore no-explicit-any
+      if ((updateError as any).code === "weak_password" || (updateError as any).code === "same_password") {
+        return new Response(
+          JSON.stringify({ error: "더 안전한 비밀번호를 사용해주세요.", error_code: "weak_password" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
       return new Response(
-        JSON.stringify({ error: "비밀번호 변경에 실패했습니다." }),
+        JSON.stringify({ error: "비밀번호 변경에 실패했습니다.", error_code: "server_error" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -108,7 +115,7 @@ serve(async (req) => {
       .eq("email", email.toLowerCase())
       .eq("purpose", "password_reset");
 
-    console.log(`Password reset successful for ${email}`);
+    console.log("Password reset successful");
 
     return new Response(
       JSON.stringify({ 
@@ -121,7 +128,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in reset-password:", error);
     return new Response(
-      JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+      JSON.stringify({ error: "서버 오류가 발생했습니다.", error_code: "server_error" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
