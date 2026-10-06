@@ -2112,6 +2112,12 @@ export type Database = {
           text_body: string | null
           to_email: string
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "admin_email_outbox"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       cleanup_duplicate_pending_products: { Args: never; Returns: number }
       cleanup_old_error_logs: { Args: never; Returns: undefined }
@@ -2119,10 +2125,6 @@ export type Database = {
       cleanup_old_verifications: { Args: never; Returns: undefined }
       get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_look_like_count: { Args: { _look_id: string }; Returns: number }
-      increment_daily_generation_usage: {
-        Args: { _usage_date: string; _user_id: string }
-        Returns: number
-      }
       get_products_without_sub_style: {
         Args: { batch_limit?: number }
         Returns: {
@@ -2146,6 +2148,10 @@ export type Database = {
         Returns: boolean
       }
       has_user_liked_look: { Args: { _look_id: string }; Returns: boolean }
+      increment_daily_generation_usage: {
+        Args: { _usage_date: string; _user_id: string }
+        Returns: number
+      }
       match_shomi_answer: {
         Args: { p_language: string; p_norm: string; p_threshold?: number }
         Returns: {
