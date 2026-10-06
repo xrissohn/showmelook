@@ -2,6 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { parseBudgetFromRequest, BUDGET_MIN, BUDGET_SHARE } from "../_shared/budget.ts";
 
 // ============= 인터페이스 정의 =============
 
@@ -1597,6 +1598,7 @@ async function runStage2WithModel(
   LOVABLE_API_KEY: string,
   merchantPref?: MerchantPreference,
   photoForceContext?: { required: string; items: PhotoAnalysisItem[]; slotMatchLines?: string; requiredSlots?: string[] } | null,
+  budgetCap?: number | null,
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
@@ -1728,7 +1730,8 @@ ${requiresDressInPrompt
 - 정확히 4개 상품을 선택하세요 (서로 다른 item_slot에서: top/bottom/dress/outer/shoes/bag)
 - 🚨 **원피스(dress)를 선택하면 하의(bottom)는 절대 선택하지 마세요!** 원피스 위에 바지를 입는 코디는 존재하지 않습니다.
 ${requiresDressInPrompt ? '- 🚨🚨🚨 **이번 요청에서는 반드시 dress(원피스)를 선택해야 합니다! top+bottom 조합은 금지!**' : ''}
-- selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!
+- selectedProductIds의 ID는 반드시 위 상품 목록에 있는 ID만 사용!${budgetCap ? `
+- 💰 **예산: 4개 상품 가격 합계가 ₩${budgetCap.toLocaleString()} 이하가 되도록 고르세요!** (목록의 ₩Nk = N천 원) 비싼 상품 하나에 예산을 몰지 마세요.` : ''}
 - styleReasoning은 150~250자로 간결하게! (오프닝 → 코디 포인트 → 팁 → 마무리)
 - "~이(가)" 같은 어색한 조사 쓰지 마세요. 자연스러운 한국어로!
 
@@ -1885,6 +1888,26 @@ async function convertCoupangToMobileUrl(productUrl: string, subId?: string): Pr
   return null;
 }
 
+// 예산 때문에 상품을 바꾼 뒤의 설명. AI 설명에는 빠진 상품의 브랜드가 남기 때문에 실제 구성으로 다시 쓴다.
+// 상품명 뒤에 조사를 붙이지 않는 문장 구조라 받침에 따른 조사 오류가 생기지 않는다.
+function buildTemplateReasoning(products: CachedProduct[], occasion: string, budgetCap: number | null): string {
+  const parts = products.map(p => {
+    const slot = getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta) || '아이템';
+    return `${slot} **${`${p.brand || ''} ${p.name || ''}`.replace(/\s+/g, ' ').trim()}**`;
+  });
+  const total = products.reduce((sum, p) => sum + (p.price || 0), 0);
+  let text = getRandomWittyOpener() + ' ';
+  text += `${occasion || '데일리'} 상황에 맞춰 ${parts.join(' · ')} 조합으로 골랐어요. `;
+  if (budgetCap) {
+    text += total <= budgetCap
+      ? `합계 ₩${total.toLocaleString()}, 예산 ₩${budgetCap.toLocaleString()} 안에 맞췄어요. `
+      : `예산 ₩${budgetCap.toLocaleString()}에 최대한 가깝게 골랐고 합계는 ₩${total.toLocaleString()}예요. `;
+  }
+  text += getRandomWittyCloser();
+  return text;
+}
+
+
 async function generateAffiliateUrl(
   product: CachedProduct, 
   merchants: any[], 
@@ -2014,7 +2037,11 @@ serve(async (req) => {
     }
 
     requestPayload = await req.json();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems } = requestPayload;
+    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems, budgetIsExplicit } = requestPayload;
+    // 예산은 사용자가 문장에 쓴 금액(또는 화면에서 직접 고른 값)만 쓴다.
+    // 예전 화면은 항상 200000을 보내므로, budgetIsExplicit 없이 온 budget 값은 상한으로 쓰지 않는다.
+    const budgetCap: number | null = parseBudgetFromRequest(userRequest)
+      ?? (budgetIsExplicit === true && typeof budget === 'number' && budget >= BUDGET_MIN ? budget : null);
     // For end-user calls, always derive userId from the verified JWT; never trust the body.
     userId = isServiceRole ? (requestPayload.userId || null) : authedUserId;
 
@@ -2695,7 +2722,11 @@ serve(async (req) => {
       }
       
       for (const cat of CATEGORY_PRIORITY) {
-        const catProducts = productsByPriority[cat] || [];
+        const allCatProducts = productsByPriority[cat] || [];
+        // 💰 예산이 있으면 카테고리 상한 이하 상품을 우선 (5개 미만이면 거르지 않음)
+        const catCap = budgetCap && BUDGET_SHARE[cat] ? budgetCap * BUDGET_SHARE[cat] : null;
+        const underCap = catCap ? allCatProducts.filter(p => (p.price || 0) >= 1000 && (p.price || 0) <= catCap) : allCatProducts;
+        const catProducts = catCap && underCap.length >= 5 ? underCap : allCatProducts;
         let selectedFromCat = 0;
         const maxPerCategory = hasPhotoAnalysis ? 15 : 12;
         
@@ -2833,6 +2864,7 @@ serve(async (req) => {
         LOVABLE_API_KEY,
         merchantPref,
         photoForceContext,
+        budgetCap,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -2850,6 +2882,7 @@ serve(async (req) => {
           LOVABLE_API_KEY,
           merchantPref,
           photoForceContext,
+          budgetCap,
         );
         
         if (ragResponse) {
@@ -3181,12 +3214,10 @@ serve(async (req) => {
         
         usedCategories.add(priorityCat);
         
-        const affiliateUrl = await generateAffiliateUrl(product, merchants || [], LINKPRICE_AFFILIATE_ID);
-        
         lookItems.push({
           category: displayCat,
           product: product,
-          affiliateUrl,
+          affiliateUrl: null, // 최종 구성 확정 후 한꺼번에 생성
           source: 'cache',
           isAutoSelected: true
         });
@@ -3233,13 +3264,12 @@ serve(async (req) => {
           usedCategories.add(cat);
           wasAutoFilled = true;
           
-          const affiliateUrl = await generateAffiliateUrl(selectedProduct, merchants || [], LINKPRICE_AFFILIATE_ID);
           const displayCat = getDisplaySubCategory(selectedProduct.category, selectedProduct.sub_category, selectedProduct.name, selectedProduct.dna_meta);
           
           lookItems.push({
             category: displayCat,
             product: selectedProduct,
-            affiliateUrl,
+            affiliateUrl: null, // 최종 구성 확정 후 한꺼번에 생성
             source: 'cache',
             isAutoSelected: true
           });
@@ -3255,6 +3285,69 @@ serve(async (req) => {
         break;
       }
     }
+
+    // ============= 💰 예산 맞추기 =============
+    // 합계가 예산을 넘으면 가장 비싼 아이템부터 같은 자리(item_slot)의 더 싼 후보로 바꾼다 (최대 6회).
+    // 후보는 점수 순서이므로, 남은 예산 안에 드는 상품 중 가장 잘 맞는 것을 고른다.
+    let budgetAdjusted = false;
+    if (budgetCap && lookItems.length > 0) {
+      const priceOf = (p: CachedProduct | null | undefined) => (typeof p?.price === 'number' ? p.price : 0);
+      // item_slot이 없으면 화면 분류로 대신한다 (하의 카테고리 안의 원피스가 바지로 바뀌지 않도록)
+      const slotOf = (p: CachedProduct) => {
+        if (p.dna_meta?.item_slot) return p.dna_meta.item_slot;
+        const display = getDisplaySubCategory(p.category, p.sub_category, p.name, p.dna_meta);
+        return display === '원피스' ? 'dress' : display;
+      };
+      const allowedByMerchant = (p: CachedProduct) => !merchantPref.isExclusive ||
+        merchantPref.merchantIds.includes(p.merchant_id || '') ||
+        merchantPref.brandKeywords.some(bk => (p.brand || '').toLowerCase().includes(bk.toLowerCase()));
+      const catOf = (p: CachedProduct) => p.dna_meta?.item_slot
+        ? itemSlotToPriorityCategory(p.dna_meta.item_slot, p.name)
+        : mapToPriorityCategory(p.category, p.sub_category, p.name);
+      let total = lookItems.reduce((sum, item) => sum + priceOf(item.product), 0);
+      for (let round = 0; round < 6 && total > budgetCap; round++) {
+        const usedIds = new Set(lookItems.map(item => item.product?.id));
+        const byPrice = [...lookItems].sort((a, b) => priceOf(b.product) - priceOf(a.product));
+        let swapped = false;
+        for (const item of byPrice) {
+          const current = item.product;
+          if (!current) continue;
+          const slot = slotOf(current);
+          const pool = (productsByPriority[catOf(current)] || []).filter(p =>
+            !usedIds.has(p.id) &&
+            priceOf(p) >= 1000 &&
+            priceOf(p) < priceOf(current) &&
+            slotOf(p) === slot && // 같은 자리만 (원피스는 원피스로, 신발은 신발로)
+            allowedByMerchant(p)
+          );
+          if (pool.length === 0) continue;
+          const maxForThisSlot = priceOf(current) - (total - budgetCap);
+          const pick = pool.find(p => priceOf(p) <= maxForThisSlot)
+            || pool.reduce((min, p) => (priceOf(p) < priceOf(min) ? p : min), pool[0]);
+          console.log(`[style-recommend] 💰 예산 맞춤 교체: ${current.brand} ${current.name} (₩${priceOf(current)}) → ${pick.brand} ${pick.name} (₩${priceOf(pick)})`);
+          item.product = pick;
+          item.category = getDisplaySubCategory(pick.category, pick.sub_category, pick.name, pick.dna_meta);
+          item.isAutoSelected = true;
+          swapped = true;
+          budgetAdjusted = true;
+          break;
+        }
+        if (!swapped) break;
+        total = lookItems.reduce((sum, item) => sum + priceOf(item.product), 0);
+      }
+      if (budgetAdjusted) {
+        const finalProducts = lookItems.map(item => item.product).filter(Boolean) as CachedProduct[];
+        ragResponse.styleReasoning = buildTemplateReasoning(finalProducts, occasion, budgetCap);
+        ragResponse.selectedProductIds = finalProducts.map(p => p.id);
+      }
+    }
+
+    // 제휴 링크는 최종 상품이 정해진 뒤 한꺼번에(병렬로) 만든다
+    await Promise.all(lookItems.map(async (item) => {
+      if (item.product) {
+        item.affiliateUrl = await generateAffiliateUrl(item.product, merchants || [], LINKPRICE_AFFILIATE_ID);
+      }
+    }));
 
     const totalPrice = lookItems.reduce((sum, item) => sum + (item.product?.price || 0), 0);
     const styleTags = [...new Set(lookItems.flatMap(item => item.product?.style_tags || []))].slice(0, 5);
@@ -3297,6 +3390,9 @@ serve(async (req) => {
         styleReasoning: ragResponse.styleReasoning,
         items: lookItems,
         totalPrice,
+        budget: budgetCap,
+        overBudget: budgetCap ? totalPrice > budgetCap : false,
+        budgetAdjusted,
         stylingTips: ragResponse.stylingTips || stage1Result.dressCodeHint,
         styleTags,
       },

@@ -21,3 +21,17 @@
 - Email accounts are created only on the server by `complete-signup` (admin createUser with email confirmed) after a one-time, recent `email_verifications` row is consumed; the browser never calls `auth.signUp`. Rationale: "Confirm email" stays on to block sign-ups that skip the code, while verified users still get a session.
 - Account lookups by email use the service-role-only SQL function `get_auth_user_id_by_email`, never `auth.admin.listUsers()`. Rationale: listUsers is paginated and silently misses users beyond the first page.
 - Auth functions always return `error_code` (plus the legacy `error` string); the client shows text from `src/lib/authErrors.ts`, never raw server text. Password rules live in `src/lib/passwordPolicy.ts` and `_shared/passwordPolicy.ts` and must match the auth server's policy. Rationale: one translated message set, and old clients keep working.
+
+## Look generation (`supabase/functions/generate-style`)
+
+- When the client sends `saveLook: true` (with `lookMeta`), the function inserts the `generated_looks` row itself right after the image upload and usage count, and returns `lookId`; the client only inserts when `lookId` is missing. Rationale: a refresh, closed tab or back press during the ~70-second generation used to keep the credit but lose the look.
+- Daily usage is incremented with the service-role-only SQL function `increment_daily_generation_usage` (one atomic upsert). Rationale: read-then-write lost counts when two tabs generated at once.
+- For signed-in users an image-upload failure returns an error (`UPLOAD_ERROR`, no credit counted) instead of an unsaved inline image; the Cafe24 widget keeps the inline fallback.
+- The style page keeps a `sml_pending_generation` marker in sessionStorage while generating; on reload it restores the prompt and opens the look the server saved meanwhile.
+
+## Budget (`supabase/functions/style-recommend`)
+
+- The budget is read from the request text (`parseBudgetFromRequest`: "20만원", "예산 20만", "10~20만원", "200,000원", "200k won"…). A `budget` field from the client is used only with `budgetIsExplicit: true`. Rationale: the page always sent 200000, so every row looked like a 200,000-won budget that was never applied.
+- With a budget: per-category price caps on stage-2 candidates, a "total ≤ N원" rule in the stage-2 prompt, then a swap loop (most expensive item → cheaper item of the same `item_slot`, up to 6 rounds); after a swap the reasoning is rebuilt from the final products. The response carries `budget`, `overBudget`, `budgetAdjusted`; `recommendation_history.budget` stores the stated budget or NULL.
+- Affiliate links are created once, in parallel, after the final products are fixed.
+

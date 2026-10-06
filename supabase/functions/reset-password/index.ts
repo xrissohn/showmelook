@@ -88,9 +88,12 @@ serve(async (req) => {
     const user = { id: userId as string };
 
     // Update password using Admin API
+    // The 6-digit code just proved the user owns this email, so also mark it confirmed.
+    // Without this, an account stuck at "email not confirmed" could reset its password
+    // and still be unable to sign in.
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
       user.id,
-      { password: newPassword }
+      { password: newPassword, email_confirm: true }
     );
 
     if (updateError) {

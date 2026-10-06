@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { notifyCartChanged } from '@/hooks/useCartCount';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -163,6 +164,7 @@ export function useAddToCart() {
       });
 
       if (error) throw error;
+      notifyCartChanged();
       return product;
     },
   });

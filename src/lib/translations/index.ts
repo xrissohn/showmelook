@@ -178,8 +178,14 @@ export interface TranslationKeys {
     shipping: string;
     freeShipping: string;
     totalPayment: string;
+    checkoutNotice: string;
+    optionNotice: string;
     purchase: string;
     bulkPurchase: string;
+    nextItem: string;
+    firstOpenedTitle: string;
+    firstOpenedDesc: string;
+    openingDesc: string;
     processing: string;
     newTabNotice: string;
     deleteError: string;
@@ -279,6 +285,7 @@ export interface TranslationKeys {
     totalPurchases: string;
     toNextTier: string;
     remaining: string;
+    firstPurchase: string;
     toNextSlot: string;
     currentSlots: string;
     nextTierBenefits: string;

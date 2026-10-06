@@ -36,6 +36,13 @@
       "when": 1791305089127,
       "tag": "0004_signup_completion_support",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791324745112,
+      "tag": "0005_generation_reliability_budget",
+      "breakpoints": true
     }
   ]
 }

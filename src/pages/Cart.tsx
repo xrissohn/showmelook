@@ -10,6 +10,7 @@ import { useGuestCart, GuestCartItem } from '@/hooks/useGuestCart';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { SEOHead } from '@/components/SEOHead';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { notifyCartChanged } from '@/hooks/useCartCount';
 
 interface CartItem {
   id: string;
@@ -29,12 +30,13 @@ const Cart = () => {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const guestCart = useGuestCart();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [purchasingItems, setPurchasingItems] = useState<Set<string>>(new Set());
-  const [bulkPurchasing, setBulkPurchasing] = useState(false);
+  // "전체 상품 구매하기": 팝업 차단 때문에 한 번 누를 때 한 탭씩 연다. 다음에 열 상품 순서를 기억한다.
+  const [bulkQueue, setBulkQueue] = useState<{ ids: string[]; next: number } | null>(null);
 
   // Merge guest cart to user cart on login
   useEffect(() => {
@@ -56,6 +58,7 @@ const Cart = () => {
 
           await Promise.all(insertPromises);
           guestCart.clearCart();
+          notifyCartChanged();
           toast({
             title: '장바구니 동기화',
             description: '게스트 장바구니가 계정에 저장되었습니다.',
@@ -135,81 +138,62 @@ const Cart = () => {
     }
 
     setCartItems(prev => prev.filter(item => item.id !== itemId));
+    setBulkQueue(null);
+    if (user) notifyCartChanged();
     toast({
       title: '삭제됨',
       description: '장바구니에서 아이템이 삭제되었습니다.',
     });
   };
 
-  const updateQuantity = async (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) return;
-
-    if (user) {
-      const { error } = await supabase
-        .from('cart_items')
-        .update({ quantity: newQuantity })
-        .eq('id', itemId);
-
-      if (error) return;
-    } else {
-      const item = cartItems.find(i => i.id === itemId);
-      if (item) {
-        guestCart.updateQuantity(item.product_id, newQuantity);
-      }
-    }
-
-    setCartItems(prev =>
-      prev.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    );
+  // 모바일 브라우저는 탭 직후가 아닌(await 뒤의) window.open을 막는다.
+  // 그래서 누르는 순간 빈 탭을 먼저 열고, 제휴 링크를 받은 뒤 그 탭을 이동시킨다.
+  const openInNewTab = (url: string) => {
+    const tab = window.open(url, '_blank');
+    if (tab) tab.opener = null;
+    else window.location.href = url; // 팝업이 막히면 현재 탭에서 이동
   };
 
-  const handlePurchase = async (item: CartItem) => {
-    const productUrl = item.affiliate_url || item.product_url;
-    
-    if (!productUrl) {
-      toast({
-        title: '오류',
-        description: '상품 URL이 없습니다.',
-        variant: 'destructive',
-      });
+  const handlePurchase = async (item: CartItem, quiet = false) => {
+    if (!item.affiliate_url && !item.product_url) {
+      toast({ title: t('cart.error'), description: t('cart.noUrl'), variant: 'destructive' });
       return;
     }
+
+    // 이미 제휴 링크가 있으면 바로 연다 (동기 실행이라 팝업 차단 없음)
+    if (item.affiliate_url) {
+      openInNewTab(item.affiliate_url);
+      if (!quiet) toast({ title: t('cart.openPurchase'), description: t('cart.openingDesc').replace('{name}', item.product_name || '') });
+      return;
+    }
+
+    const pendingTab = window.open('about:blank', '_blank');
+    if (pendingTab) pendingTab.opener = null;
+    const sendTo = (url: string) => {
+      if (pendingTab && !pendingTab.closed) pendingTab.location.href = url;
+      else openInNewTab(url);
+    };
 
     setPurchasingItems(prev => new Set(prev).add(item.id));
 
     try {
-      // If already have affiliate URL, use it directly
-      if (item.affiliate_url) {
-        window.open(item.affiliate_url, '_blank');
-        toast({
-          title: '구매 페이지 열기',
-          description: `${item.product_name} 구매 페이지로 이동합니다.`,
-        });
-        return;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke('deeplink', {
-        body: { product_url: item.product_url, product_name: item.product_name, product_price: item.product_price },
+        body: {
+          product_url: item.product_url,
+          product_name: item.product_name,
+          product_price: item.product_price,
+        },
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
       });
 
       if (error) throw error;
 
-      if (data?.success && data?.affiliate_url) {
-        window.open(data.affiliate_url, '_blank');
-        toast({
-          title: '구매 페이지 열기',
-          description: `${item.product_name} 구매 페이지로 이동합니다.`,
-        });
-      } else {
-        window.open(item.product_url, '_blank');
-      }
+      sendTo(data?.success && data?.affiliate_url ? data.affiliate_url : (item.product_url as string));
+      if (!quiet) toast({ title: t('cart.openPurchase'), description: t('cart.openingDesc').replace('{name}', item.product_name || '') });
     } catch (error) {
       console.error('Deeplink error:', error);
-      window.open(item.product_url, '_blank');
+      sendTo(item.product_url as string);
     } finally {
       setPurchasingItems(prev => {
         const newSet = new Set(prev);
@@ -219,71 +203,34 @@ const Cart = () => {
     }
   };
 
+  // 수량 선택은 쇼핑몰에서 하므로 상품당 1개 기준 예상 합계
   const totalPrice = cartItems.reduce(
-    (sum, item) => sum + (item.product_price || 0) * item.quantity,
+    (sum, item) => sum + (item.product_price || 0),
     0
   );
 
-  const handleBulkPurchase = async () => {
-    const itemsWithUrl = cartItems.filter(item => item.product_url || item.affiliate_url);
-    
-    if (itemsWithUrl.length === 0) {
-      toast({
-        title: '오류',
-        description: '구매 가능한 상품이 없습니다.',
-        variant: 'destructive',
-      });
+  const handleBulkPurchase = () => {
+    const purchasable = cartItems.filter(item => item.product_url || item.affiliate_url);
+    if (purchasable.length === 0) {
+      toast({ title: t('cart.error'), description: t('cart.noPurchasable'), variant: 'destructive' });
       return;
     }
 
-    setBulkPurchasing(true);
+    const queue = bulkQueue && bulkQueue.next < bulkQueue.ids.length
+      ? bulkQueue
+      : { ids: purchasable.map(item => item.id), next: 0 };
+    const item = purchasable.find(i => i.id === queue.ids[queue.next]);
+    const next = queue.next + 1;
+    setBulkQueue(next < queue.ids.length ? { ids: queue.ids, next } : null);
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const deeplinkPromises = itemsWithUrl.map(async item => {
-        // Use existing affiliate URL if available
-        if (item.affiliate_url) {
-          return { item, affiliateUrl: item.affiliate_url, error: null };
-        }
+    // handlePurchase opens the tab before its first await, so it still counts as this tap.
+    if (item) void handlePurchase(item, true);
 
-        const { data, error } = await supabase.functions.invoke('deeplink', {
-          body: { product_url: item.product_url, product_name: item.product_name, product_price: item.product_price },
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined
-        });
-
-        return {
-          item,
-          affiliateUrl: data?.success ? data.affiliate_url : item.product_url,
-          error
-        };
-      });
-
-      const results = await Promise.all(deeplinkPromises);
-      
-      let openedCount = 0;
-      for (let i = 0; i < results.length; i++) {
-        const { affiliateUrl } = results[i];
-        if (affiliateUrl) {
-          setTimeout(() => {
-            window.open(affiliateUrl, '_blank');
-          }, i * 500);
-          openedCount++;
-        }
-      }
-
+    if (queue.next === 0 && queue.ids.length > 1) {
       toast({
-        title: '일괄 구매 시작',
-        description: `${openedCount}개 상품의 구매 페이지가 열립니다. 팝업 차단을 해제해주세요.`,
+        title: t('cart.firstOpenedTitle'),
+        description: t('cart.firstOpenedDesc').replace('{n}', String(queue.ids.length - 1)),
       });
-    } catch (error) {
-      console.error('Bulk purchase error:', error);
-      toast({
-        title: '오류',
-        description: '일괄 구매 처리 중 문제가 발생했습니다.',
-        variant: 'destructive',
-      });
-    } finally {
-      setBulkPurchasing(false);
     }
   };
 
@@ -298,7 +245,7 @@ const Cart = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <SEOHead pageKey="cart" />
       <MainNavigation showBackButton title={t('cart.title')} />
 
@@ -359,11 +306,11 @@ const Cart = () => {
 
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <p className="text-xs text-accent font-medium">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs text-accent font-medium truncate">
                           {item.product_brand || 'SHOWMELOOK'}
                         </p>
-                        <h3 className="font-medium text-foreground truncate font-korean">
+                        <h3 className="font-medium text-foreground line-clamp-2 break-words font-korean">
                           {item.product_name || '상품명 없음'}
                         </h3>
                         <p className="text-lg font-semibold text-foreground mt-1">
@@ -376,29 +323,17 @@ const Cart = () => {
                       </div>
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                        className="p-2 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
+                        aria-label={language === 'en' ? 'Remove from cart' : '장바구니에서 삭제'}
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
                     </div>
 
                     <div className="flex items-center gap-3 mt-3 flex-wrap">
-                      <div className="flex items-center border border-border rounded-lg">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="px-3 py-1 text-foreground hover:bg-secondary transition-colors"
-                          disabled={item.quantity <= 1}
-                        >
-                          -
-                        </button>
-                        <span className="px-3 py-1 text-foreground">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="px-3 py-1 text-foreground hover:bg-secondary transition-colors"
-                        >
-                          +
-                        </button>
-                      </div>
+                      <span className="text-xs text-muted-foreground font-korean">
+                        {t('cart.optionNotice')}
+                      </span>
 
                       {(item.product_url || item.affiliate_url) && (
                         <Button
@@ -432,31 +367,19 @@ const Cart = () => {
                 <span className="text-muted-foreground font-korean">{t('cart.shipping')}</span>
                 <span className="text-foreground font-korean">{t('cart.freeShipping')}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-foreground font-korean">{t('cart.totalPayment')}</span>
-                <span className="text-xl font-bold text-foreground">
-                  ₩{totalPrice.toLocaleString()}
-                </span>
-              </div>
+              <p className="text-xs text-muted-foreground font-korean">{t('cart.checkoutNotice')}</p>
 
               <Button
                 variant="gold"
                 size="xl"
                 className="w-full mt-4 font-korean"
                 onClick={handleBulkPurchase}
-                disabled={bulkPurchasing || purchasableItemsCount === 0}
+                disabled={purchasableItemsCount === 0}
               >
-                {bulkPurchasing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    {t('cart.processing')}
-                  </>
-                ) : (
-                  <>
-                    <ExternalLink className="w-5 h-5 mr-2" />
-                    {t('cart.bulkPurchase')} ({purchasableItemsCount})
-                  </>
-                )}
+                <ExternalLink className="w-5 h-5 mr-2" />
+                {bulkQueue
+                  ? `${t('cart.nextItem')} (${bulkQueue.next + 1}/${bulkQueue.ids.length})`
+                  : `${t('cart.bulkPurchase')} (${purchasableItemsCount})`}
               </Button>
               <p className="text-xs text-muted-foreground text-center mt-2 font-korean">
                 {t('cart.newTabNotice')}

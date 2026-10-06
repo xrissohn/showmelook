@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { useCartCount } from "@/hooks/useCartCount";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useReferral } from "@/hooks/useReferral";
@@ -47,6 +48,7 @@ const MyPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
+  const cartCount = useCartCount(user?.id);
   const subscription = useSubscription(user?.id);
   const { profile: userProfile, isLoading: profileLoading } = useUserProfile();
   const referral = useReferral(user?.id);
@@ -197,7 +199,7 @@ const MyPage = () => {
           </Button>
           <Button variant="outline" className="h-auto py-4 flex flex-col items-center gap-2" onClick={() => navigate('/cart')}>
             <ShoppingBag className="w-6 h-6 text-primary" />
-            <span>{t('mypage.cart')}</span>
+            <span>{t('mypage.cart')}{cartCount > 0 ? ` (${cartCount})` : ''}</span>
           </Button>
         </div>
 
@@ -210,7 +212,7 @@ const MyPage = () => {
             </TabsTrigger>
             <TabsTrigger value="likes" className="flex items-center gap-1 text-xs sm:text-sm">
               <Heart className="w-4 h-4" />
-              <span className="hidden sm:inline">{t('mypage.likes')}</span> ({likedProducts.length})
+              <span>{t('mypage.likes')}</span> ({likedProducts.length})
             </TabsTrigger>
             <TabsTrigger value="history" className="flex items-center gap-1 text-xs sm:text-sm">
               <History className="w-4 h-4" />

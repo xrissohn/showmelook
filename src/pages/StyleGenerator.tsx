@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useCartCount, notifyCartChanged } from '@/hooks/useCartCount';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreloadedData } from '@/contexts/DataPreloaderContext';
@@ -83,6 +84,45 @@ interface CachedProduct {
   isAutoSelected?: boolean;
   merchant_id?: string | null;
 }
+
+// A generation in progress is remembered for this tab, so a refresh or an accidental
+// back/close can restore the prompt and open the look the server saved meanwhile.
+const PENDING_GENERATION_KEY = 'sml_pending_generation';
+const PENDING_GENERATION_MAX_AGE_MS = 5 * 60 * 1000;
+interface PendingGeneration {
+  userId: string;
+  prompt: string;
+  gender?: string;
+  startedAt: number;
+  afterCreatedAt?: string | null; // newest look's server created_at when this run started
+  usedBonus?: boolean;           // this run spends a bonus credit (consumed by the client on success)
+}
+const savePendingGeneration = (pending: PendingGeneration) => {
+  try { sessionStorage.setItem(PENDING_GENERATION_KEY, JSON.stringify(pending)); } catch { /* storage unavailable */ }
+};
+const clearPendingGeneration = () => {
+  try { sessionStorage.removeItem(PENDING_GENERATION_KEY); } catch { /* storage unavailable */ }
+};
+const readPendingGeneration = (): PendingGeneration | null => {
+  try {
+    const raw = sessionStorage.getItem(PENDING_GENERATION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed.userId === 'string' && typeof parsed.startedAt === 'number' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+// supabase.functions.invoke hides the function's JSON error body behind a generic message.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const readFunctionErrorBody = async (error: any): Promise<{ errorCode?: string; error?: string } | null> => {
+  try {
+    const res = error?.context;
+    if (res && typeof res.clone === 'function') return await res.clone().json();
+  } catch { /* not JSON */ }
+  return null;
+};
 
 interface GeneratedLook {
   id: string;
@@ -1344,9 +1384,11 @@ interface MyLooksGalleryProps {
   toast: ReturnType<typeof useToast>['toast'];
   hasWatermark: boolean; // Pro 이상이면 false
   isLoading?: boolean;
+  openLookId?: string | null; // open this look's detail view once it is in the list
+  onOpenLookHandled?: () => void;
 }
 
-const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark, isLoading }: MyLooksGalleryProps) => {
+const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark, isLoading, openLookId, onOpenLookHandled }: MyLooksGalleryProps) => {
   const { language, t } = useLanguage();
 
   // 필터 상태
@@ -1355,6 +1397,16 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
   // 상세 보기 모달 상태
   const [selectedLook, setSelectedLook] = useState<GeneratedLook | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // 새로고침 후 복구된 룩 등, 바깥에서 지정한 룩의 상세 보기를 연다
+  useEffect(() => {
+    if (!openLookId) return;
+    const index = myLooks.findIndex(l => l.id === openLookId);
+    if (index === -1) return;
+    setSelectedLook(myLooks[index]);
+    setCurrentIndex(index);
+    onOpenLookHandled?.();
+  }, [openLookId, myLooks, onOpenLookHandled]);
   
   // 삭제 확인 모달 상태
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -2873,6 +2925,7 @@ const StyleGenerator = () => {
     consumeBonusCredit,
     refetch: refetchLimit 
   } = useGenerationLimit(user?.id);
+  const cartCount = useCartCount(user?.id);
 
   // 비동기 큐 시스템 훅
   const {
@@ -2903,6 +2956,8 @@ const StyleGenerator = () => {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [generatedLookId, setGeneratedLookId] = useState<string | null>(null);
+  const [pendingOpenLookId, setPendingOpenLookId] = useState<string | null>(null);
+  const handleOpenLookHandled = useCallback(() => setPendingOpenLookId(null), []);
   const [generatedLookIsPublic, setGeneratedLookIsPublic] = useState(false);
   const [generatedTagPositions, setGeneratedTagPositions] = useState<any[] | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -2992,7 +3047,8 @@ const StyleGenerator = () => {
     totalPrice: number;
     autoSelectedTotal?: number;
     autoSelectedCount?: number;
-    budget?: number;
+    budget?: number; // 사용자가 요청에 쓴 예산 (없으면 undefined)
+    overBudget?: boolean;
     mode?: 'evaluation' | 'recommendation';
   } | null>(null);
 
@@ -3258,10 +3314,11 @@ const StyleGenerator = () => {
       });
 
       if (error) throw error;
+      notifyCartChanged();
 
       toast({
         title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
-        description: language === 'en' ? `${product.name} was added to your cart.` : `${product.name}이(가) 장바구니에 추가되었습니다.`,
+        description: language === 'en' ? `${product.name} was added to your cart.` : `장바구니에 담았어요 · ${product.name}`,
       });
     } catch (error: any) {
       console.error('Error adding to cart:', error);
@@ -3301,6 +3358,7 @@ const StyleGenerator = () => {
       );
 
       await Promise.all(insertPromises);
+      notifyCartChanged();
 
       toast({
         title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
@@ -3853,7 +3911,7 @@ const StyleGenerator = () => {
           totalPrice: look.totalPrice || 0,
           autoSelectedTotal: look.autoSelectedTotal || 0,
           autoSelectedCount: look.autoSelectedCount || 0,
-          budget: look.budget || customBudget[0],
+          budget: look.budget ?? undefined,
           mode: (look as any).mode || 'recommendation',
         });
         setSelectedTrendProducts(transformedItems);
@@ -4426,7 +4484,8 @@ const StyleGenerator = () => {
           totalPrice: data.look.totalPrice || 0,
           autoSelectedTotal: data.look.autoSelectedTotal || 0,
           autoSelectedCount: data.look.autoSelectedCount || 0,
-          budget: data.look.budget || customBudget[0],
+          budget: data.look.budget ?? undefined,
+          overBudget: !!data.look.overBudget,
           mode: data.mode || 'recommendation',
         });
 
@@ -4448,7 +4507,7 @@ const StyleGenerator = () => {
               user_id: user.id,
               prompt: customStylePrompt,
               gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
-              budget: customBudget[0],
+              budget: data.look.budget ?? null, // 요청 문장에서 읽은 예산 (없으면 null)
               style_concept: data.look.name || '',
               style_reasoning: data.look.stylingTips || '',
               items: transformedItems as any,
@@ -4488,6 +4547,102 @@ const StyleGenerator = () => {
     }
   };
 
+  // 생성 중에 페이지를 떠나려 하면 브라우저 확인 창을 띄운다 (룩은 서버가 저장하지만 화면 결과는 사라짐)
+  useEffect(() => {
+    if (!isGenerating) return;
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isGenerating]);
+
+  // 생성 중 새로고침·이탈 후 다시 들어오면: 프롬프트를 되살리고, 그사이 서버가 저장한 룩을 연다
+  const recoveryStartedRef = useRef(false);
+  const cancelRecoveryRef = useRef<(() => void) | null>(null);
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId || recoveryStartedRef.current) return;
+    const pending = readPendingGeneration();
+    if (!pending) return;
+    recoveryStartedRef.current = true;
+    if (pending.userId !== userId || Date.now() - pending.startedAt > PENDING_GENERATION_MAX_AGE_MS) {
+      clearPendingGeneration();
+      return;
+    }
+
+    if (pending.prompt) setCustomStylePrompt(prev => prev || pending.prompt.slice(0, 300));
+    if (pending.gender === 'female' || pending.gender === 'male' || pending.gender === 'unisex' || pending.gender === 'kids') {
+      setCustomGender(pending.gender);
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const pollUntil = Date.now() + 90 * 1000;
+    let notifiedWaiting = false;
+
+    const openRecoveredLook = (look: GeneratedLook) => {
+      setMyLooks(prev => (prev.some(l => l.id === look.id) ? prev : [look, ...prev]));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      addPreloadedLook(look as any);
+      setPendingOpenLookId(look.id);
+      setActiveTab('mylooks');
+      if (pending.usedBonus) consumeBonusCredit();
+      refetchLimit();
+      toast({
+        title: language === 'en' ? 'Your look was saved' : '방금 만든 룩이 저장돼 있어요',
+        description: language === 'en' ? 'It finished while you were away. Opening it in My Gallery.' : '생성 중에 화면을 벗어났지만 룩은 완성됐어요. 내 갤러리에서 열어 드릴게요.',
+      });
+    };
+
+    const check = async () => {
+      if (cancelled) return;
+      let query = supabase
+        .from('generated_looks')
+        .select('id, image_url, prompt_used, is_favorite, created_at, style_trend_id, product_ids, memo, tags, is_public, like_count, caption, style_reasoning, tag_positions')
+        .eq('user_id', userId);
+      // 이번 생성 이전의 최신 룩 시각(서버 기준) 이후만 본다. 모르면 시작 30초 전부터.
+      query = pending.afterCreatedAt
+        ? query.gt('created_at', pending.afterCreatedAt)
+        : query.gte('created_at', new Date(pending.startedAt - 30 * 1000).toISOString());
+      const { data } = await query.order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        clearPendingGeneration();
+        openRecoveredLook(data as GeneratedLook);
+        return;
+      }
+      if (Date.now() < pollUntil) {
+        if (!notifiedWaiting) {
+          notifiedWaiting = true;
+          toast({
+            title: language === 'en' ? 'Finishing your look…' : '룩을 마무리하는 중이에요',
+            description: language === 'en' ? "We'll open it here as soon as it's saved." : '저장되는 대로 여기에서 열어 드릴게요.',
+          });
+        }
+        timer = setTimeout(check, 5000);
+      } else {
+        clearPendingGeneration();
+        refetchLimit();
+        toast({
+          title: language === 'en' ? "We couldn't find that look" : '생성된 룩을 찾지 못했어요',
+          description: language === 'en' ? 'Please try generating it again.' : '입력하신 요청을 되살려 두었어요. 다시 만들어 주세요.',
+        });
+      }
+    };
+    void check();
+
+    const cancel = () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+    cancelRecoveryRef.current = cancel;
+    // Runs only when the signed-in user changes or the page unmounts (token refreshes keep the same id).
+    return cancel;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
   // 새로운 통합 함수: 프롬프트만으로 추천 + 생성을 동시에 실행
   const generateStyleWithRecommendation = async () => {
     if (!user) return;
@@ -4522,6 +4677,15 @@ const StyleGenerator = () => {
     }
 
     // 생성 시작 - 두 작업 동시 시작
+    cancelRecoveryRef.current?.();
+    savePendingGeneration({
+      userId: user.id,
+      prompt: customStylePrompt,
+      gender: customGender,
+      startedAt: Date.now(),
+      afterCreatedAt: myLooks[0]?.created_at ?? null,
+      usedBonus: willUseBonus,
+    });
     setIsGenerating(true);
     setIsCustomSearching(true);
     // 새 추천 시작 시 이전 생성 결과 즉시 초기화
@@ -4624,7 +4788,8 @@ const StyleGenerator = () => {
             totalPrice: recData.look.totalPrice || 0,
             autoSelectedTotal: recData.look.autoSelectedTotal || 0,
             autoSelectedCount: recData.look.autoSelectedCount || 0,
-            budget: recData.look.budget || customBudget[0],
+            budget: recData.look.budget ?? undefined,
+            overBudget: !!recData.look.overBudget,
             mode: recData.mode || 'recommendation',
           });
           
@@ -4644,7 +4809,7 @@ const StyleGenerator = () => {
                 user_id: user.id,
                 prompt: customStylePrompt,
                 gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
-                budget: customBudget[0],
+                budget: recData.look.budget ?? null, // 요청 문장에서 읽은 예산 (없으면 null)
                 style_concept: recData.look.name || '',
                 style_reasoning: recData.look.stylingTips || '',
                 items: transformedItems as any,
@@ -4708,6 +4873,12 @@ const StyleGenerator = () => {
             userAvatarUrl: avatarToUse,
             styleTrendId: selectedTrend?.id || null,
             productIds: productsWithDetails.map(p => p.id),
+            // 서버가 룩까지 저장 (새로고침·이탈해도 룩이 남도록)
+            saveLook: true,
+            lookMeta: {
+              promptUsed: recData?.look?.styleConcept || recData?.look?.name || styleDesc,
+              styleReasoning: capturedStyleReasoning || null,
+            },
           },
         });
         
@@ -4777,22 +4948,27 @@ const StyleGenerator = () => {
           console.log('[StyleGenerator] Tag positions from generation:', generationTagPositions?.length || 0);
           setGeneratedTagPositions(generationTagPositions);
           
-          const { data: insertedLook, error: insertError } = await supabase.from('generated_looks').insert({
-            user_id: user.id,
-            image_url: genData.imagePath || genData.imageUrl,
-            prompt_used: styleConcept,
-            style_trend_id: selectedTrend?.id || null,
-            product_ids: productsWithDetails.map((p: any) => p.id),
-            style_reasoning: styleReasoning || null,
-            tag_positions: generationTagPositions,
-          }).select('id').single();
-          if (insertError) console.error('[StyleGenerator] DB insert error:', insertError);
-          if (insertedLook?.id) {
-            setGeneratedLookId(insertedLook.id);
+          // 서버가 이미 저장했으면 그 ID를 쓰고, 아니면(예전 서버 등) 여기서 저장
+          let savedLookId: string | null = genData.lookId || null;
+          if (!savedLookId) {
+            const { data: insertedLook, error: insertError } = await supabase.from('generated_looks').insert({
+              user_id: user.id,
+              image_url: genData.imagePath || genData.imageUrl,
+              prompt_used: styleConcept,
+              style_trend_id: selectedTrend?.id || null,
+              product_ids: productsWithDetails.map((p: any) => p.id),
+              style_reasoning: styleReasoning || null,
+              tag_positions: generationTagPositions,
+            }).select('id').single();
+            if (insertError) console.error('[StyleGenerator] DB insert error:', insertError);
+            savedLookId = insertedLook?.id || null;
+          }
+          if (savedLookId) {
+            setGeneratedLookId(savedLookId);
             
             // 글로벌 캐시에 새 룩 즉시 추가 (갤러리 동기화)
             addPreloadedLook({
-              id: insertedLook.id,
+              id: savedLookId,
               image_url: genData.imagePath || genData.imageUrl,
               prompt_used: styleConcept,
               is_favorite: false,
@@ -4808,13 +4984,21 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Error generating style:', error);
       
-      // 에러 코드에 따른 사용자 친화적 메시지
-      const errorCode = error?.errorCode || error?.code || '';
-      const statusCode = error?.status || error?.statusCode || '';
+      // 에러 코드에 따른 사용자 친화적 메시지 (함수의 JSON 본문을 먼저 읽는다)
+      const serverError = await readFunctionErrorBody(error);
+      const errorCode = serverError?.errorCode || error?.errorCode || error?.code || '';
+      const statusCode = error?.status || error?.statusCode || error?.context?.status || '';
       
       let errorTitle = language === 'en' ? 'Generation failed' : '생성 실패';
-      let errorMessage = error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
+      let errorMessage = serverError?.error || error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
       let showRetryButton = false;
+      
+      // 이미지 저장 실패: 횟수는 차감되지 않음
+      if (errorCode === 'UPLOAD_ERROR') {
+        errorTitle = language === 'en' ? '🖼️ Could not save the image' : '🖼️ 이미지를 저장하지 못했어요';
+        errorMessage = language === 'en' ? 'No generation was used. Please try again.' : '횟수는 차감되지 않았어요. 다시 시도해 주세요.';
+        showRetryButton = true;
+      }
       
       // Rate Limit (429) 에러
       if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
@@ -4858,6 +5042,7 @@ const StyleGenerator = () => {
         }, 30000);
       }
     } finally {
+      clearPendingGeneration();
       setIsGenerating(false);
       setIsCustomSearching(false);
     }
@@ -4899,6 +5084,15 @@ const StyleGenerator = () => {
       return;
     }
 
+    cancelRecoveryRef.current?.();
+    savePendingGeneration({
+      userId: user.id,
+      prompt: customStylePrompt,
+      gender: customGender,
+      startedAt: Date.now(),
+      afterCreatedAt: myLooks[0]?.created_at ?? null,
+      usedBonus: willUseBonus,
+    });
     setIsGenerating(true);
     // 새 스타일 생성 시작 시 이전 결과 즉시 초기화
     setGeneratedImage(null);
@@ -4978,6 +5172,12 @@ const StyleGenerator = () => {
           userAvatarUrl: avatarToUse,
           styleTrendId: selectedTrend?.id || null,
           productIds: productsWithDetails.map(p => p.id),
+          // 서버가 룩까지 저장 (새로고침·이탈해도 룩이 남도록)
+          saveLook: true,
+          lookMeta: {
+            promptUsed: `${styleDescription} 스타일, ${productsDescription}`,
+            styleReasoning: customResult?.styleReasoning || null,
+          },
         },
       });
 
@@ -5037,21 +5237,26 @@ const StyleGenerator = () => {
           console.log('[generateStyle] Tag positions from generation:', generationTagPositions2?.length || 0);
           setGeneratedTagPositions(generationTagPositions2);
           
-          const { data: insertedLook } = await supabase.from('generated_looks').insert({
-            user_id: user.id,
-            image_url: data.imagePath || data.imageUrl,
-            prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
-            style_trend_id: selectedTrend?.id || null,
-            product_ids: productsWithDetails.map(p => p.id),
-            style_reasoning: styleReasoningToSave,
-            tag_positions: generationTagPositions2,
-          }).select('id').single();
-          if (insertedLook?.id) {
-            setGeneratedLookId(insertedLook.id);
+          // 서버가 이미 저장했으면 그 ID를 쓰고, 아니면(예전 서버 등) 여기서 저장
+          let savedLookId2: string | null = data.lookId || null;
+          if (!savedLookId2) {
+            const { data: insertedLook } = await supabase.from('generated_looks').insert({
+              user_id: user.id,
+              image_url: data.imagePath || data.imageUrl,
+              prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
+              style_trend_id: selectedTrend?.id || null,
+              product_ids: productsWithDetails.map(p => p.id),
+              style_reasoning: styleReasoningToSave,
+              tag_positions: generationTagPositions2,
+            }).select('id').single();
+            savedLookId2 = insertedLook?.id || null;
+          }
+          if (savedLookId2) {
+            setGeneratedLookId(savedLookId2);
             
             // 글로벌 캐시에 새 룩 즉시 추가 (갤러리 동기화)
             addPreloadedLook({
-              id: insertedLook.id,
+              id: savedLookId2,
               image_url: data.imagePath || data.imageUrl,
               prompt_used: `${styleDescription} 스타일, ${productsDescription}`,
               is_favorite: false,
@@ -5067,13 +5272,21 @@ const StyleGenerator = () => {
     } catch (error: any) {
       console.error('Error generating style:', error);
       
-      // 에러 코드에 따른 사용자 친화적 메시지
-      const errorCode = error?.errorCode || error?.code || '';
-      const statusCode = error?.status || error?.statusCode || '';
+      // 에러 코드에 따른 사용자 친화적 메시지 (함수의 JSON 본문을 먼저 읽는다)
+      const serverError = await readFunctionErrorBody(error);
+      const errorCode = serverError?.errorCode || error?.errorCode || error?.code || '';
+      const statusCode = error?.status || error?.statusCode || error?.context?.status || '';
       
       let errorTitle = language === 'en' ? 'Generation failed' : '생성 실패';
-      let errorMessage = error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
+      let errorMessage = serverError?.error || error?.message || (language === 'en' ? 'A problem occurred while generating your style.' : '스타일 생성 중 문제가 발생했습니다.');
       let showRetryButton = false;
+      
+      // 이미지 저장 실패: 횟수는 차감되지 않음
+      if (errorCode === 'UPLOAD_ERROR') {
+        errorTitle = language === 'en' ? '🖼️ Could not save the image' : '🖼️ 이미지를 저장하지 못했어요';
+        errorMessage = language === 'en' ? 'No generation was used. Please try again.' : '횟수는 차감되지 않았어요. 다시 시도해 주세요.';
+        showRetryButton = true;
+      }
       
       // Rate Limit (429) 에러
       if (statusCode === 429 || errorCode === '429' || errorMessage?.includes('Rate limit') || errorMessage?.includes('429')) {
@@ -5117,6 +5330,7 @@ const StyleGenerator = () => {
         }, 30000);
       }
     } finally {
+      clearPendingGeneration();
       setIsGenerating(false);
     }
   };
@@ -5137,10 +5351,11 @@ const StyleGenerator = () => {
       });
 
       if (error) throw error;
+      notifyCartChanged();
 
       toast({
         title: language === 'en' ? 'Added to cart' : '장바구니에 추가됨',
-        description: language === 'en' ? `${product.name_ko} was added to your cart.` : `${product.name_ko}이(가) 장바구니에 추가되었습니다.`,
+        description: language === 'en' ? `${product.name_ko} was added to your cart.` : `장바구니에 담았어요 · ${product.name_ko}`,
       });
     } catch (error) {
       console.error('Error adding to cart:', error);
@@ -5220,8 +5435,13 @@ const StyleGenerator = () => {
               <User className="w-5 h-5" />
             </Button>
             {/* 장바구니 */}
-            <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2" aria-label="장바구니 열기">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/cart')} className="p-2 relative" aria-label={language === 'en' ? `Open cart (${cartCount})` : `장바구니 열기 (${cartCount}개)`}>
               <ShoppingBag className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {cartCount > 99 ? '99+' : cartCount}
+                </span>
+              )}
             </Button>
             {/* 로그아웃 */}
             <Button variant="ghost" size="sm" onClick={handleSignOut} className="p-2" aria-label="로그아웃">
@@ -5910,6 +6130,22 @@ const StyleGenerator = () => {
                         <p className="font-display font-bold text-2xl sm:text-3xl bg-gradient-to-r from-accent to-primary bg-clip-text text-transparent">
                           ₩{selectedTrendProducts.reduce((sum, p) => sum + p.price, 0).toLocaleString()}
                         </p>
+                        {/* 사용자가 말한 예산 대비 */}
+                        {customResult.budget ? (() => {
+                          const selectedTotal = selectedTrendProducts.reduce((sum, p) => sum + p.price, 0);
+                          const over = selectedTotal - (customResult.budget || 0);
+                          return (
+                            <p className={`text-[10px] sm:text-xs mt-0.5 font-korean ${over > 0 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+                              {over > 0
+                                ? (language === 'en'
+                                  ? `₩${over.toLocaleString()} over your ₩${customResult.budget.toLocaleString()} budget`
+                                  : `예산 ₩${customResult.budget.toLocaleString()}보다 ₩${over.toLocaleString()} 높아요`)
+                                : (language === 'en'
+                                  ? `Within your ₩${customResult.budget.toLocaleString()} budget`
+                                  : `예산 ₩${customResult.budget.toLocaleString()} 이내`)}
+                            </p>
+                          );
+                        })() : null}
                         {/* 할인/절약 금액 표시 */}
                         {(() => {
                           const totalPrice = selectedTrendProducts.reduce((sum, p) => sum + p.price, 0);
@@ -6219,6 +6455,11 @@ const StyleGenerator = () => {
                         </div>
                         <p className="text-sm sm:text-base text-muted-foreground mt-3 font-korean">
                           {isCustomSearching ? '딱 맞는 상품을 찾고 있어요 🔍' : '완벽한 룩을 찾는 중이에요 ✨'}
+                        </p>
+                        <p className="text-xs text-muted-foreground/80 mt-2 font-korean">
+                          {language === 'en'
+                            ? 'Takes about a minute. Your finished look is saved to My Gallery even if you leave.'
+                            : '1분 정도 걸려요. 화면을 벗어나도 완성된 룩은 내 갤러리에 저장돼요.'}
                         </p>
                       </div>
                       
@@ -6537,6 +6778,8 @@ const StyleGenerator = () => {
             toast={toast}
             hasWatermark={subscription.hasWatermark}
             isLoading={isPreloadingLooks && myLooks.length === 0}
+            openLookId={pendingOpenLookId}
+            onOpenLookHandled={handleOpenLookHandled}
           />
 
         ) : (
@@ -6864,6 +7107,8 @@ const StyleGenerator = () => {
             <p className="text-center text-xs text-muted-foreground mt-2 font-korean">
               {!isProfileDataReady 
                 ? t('styleGen.profileLoadingShort')
+                : limitLoading
+                  ? (language === 'en' ? 'Checking remaining generations…' : '남은 횟수 확인 중…')
                 : bonusCredits > 0 
                   ? t('styleGen.baseBonus').replace('{base}', String(remainingCount)).replace('{bonus}', String(bonusCredits))
                   : t('styleGen.todayRemaining').replace('{count}', String(remainingCount))}

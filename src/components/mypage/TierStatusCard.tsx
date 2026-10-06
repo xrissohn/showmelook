@@ -114,7 +114,9 @@ export const TierStatusCard = ({
                 {t('tierStatus.toNextTier')}
               </span>
               <span className="font-medium">
-                {formatAmount(nextTierInfo.amountNeeded, language)} {t('tierStatus.remaining')}
+                {nextTierInfo.nextTier === 'bronze'
+                  ? t('tierStatus.firstPurchase')
+                  : `${formatAmount(nextTierInfo.amountNeeded, language)} ${t('tierStatus.remaining')}`}
               </span>
             </div>
             <Progress value={progressToNextTier} className="h-2" />

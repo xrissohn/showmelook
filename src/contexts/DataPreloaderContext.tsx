@@ -225,6 +225,7 @@ export function DataPreloaderProvider({ children }: { children: ReactNode }) {
   // 룩 추가
   const addLook = useCallback((newLook: GeneratedLook) => {
     setLooks(prev => {
+      if (prev.some(l => l.id === newLook.id)) return prev;
       const updated = [newLook, ...prev];
       if (globalCache.looks) {
         globalCache.looks.data = updated;

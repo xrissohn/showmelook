@@ -275,7 +275,11 @@ serve(async (req) => {
       userAvatarUrl,
       styleTrendId,
       productIds,
-      cafe24SessionToken
+      cafe24SessionToken,
+      // New clients ask the server to save the look itself, so a refresh or closed tab
+      // during generation can't lose a look whose credit was already counted.
+      saveLook,
+      lookMeta
     } = requestPayload;
 
     // Cafe24 storefront widget: anonymous shoppers are authorized via a valid fitting session
@@ -1091,6 +1095,18 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         Date.now() - startTime
       );
       
+      // Signed-in users: fail instead of returning an unsaved image (no credit is counted,
+      // so they can simply retry). The Cafe24 storefront widget keeps the inline fallback.
+      if (userId) {
+        return new Response(
+          JSON.stringify({
+            error: 'Failed to save the generated image. Please try again.',
+            errorCode: 'UPLOAD_ERROR',
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       const fallbackTagPositions = buildTagPositions(productDetails || []);
       return new Response(
         JSON.stringify({
@@ -1116,68 +1132,93 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
 
     // ===== 생성 횟수 증가 (한국시간 기준) =====
     if (userId) {
-      try {
-        // KST (UTC+9) 기준 오늘 날짜 계산
-        const now = new Date();
-        const kstOffset = 9 * 60 * 60 * 1000; // 9시간을 밀리초로
-        const kstTime = new Date(now.getTime() + kstOffset);
-        const todayKST = kstTime.toISOString().split('T')[0];
-        
-        console.log(`[generate-style] Incrementing usage for user ${userId} on date ${todayKST} (KST)`);
-        
-        // Upsert: 오늘 데이터가 있으면 증가, 없으면 새로 생성
-        const { data: existingUsage, error: fetchError } = await supabase
-          .from('daily_generation_usage')
-          .select('id, generation_count')
-          .eq('user_id', userId)
-          .eq('usage_date', todayKST)
-          .single();
-        
-        if (fetchError && fetchError.code !== 'PGRST116') {
-          // PGRST116 = no rows found (정상적인 상황)
-          console.error('[generate-style] Error fetching usage:', fetchError);
-        }
-        
-        if (existingUsage) {
-          // 기존 레코드 업데이트
-          const { error: updateError } = await supabase
+      // KST (UTC+9) 기준 오늘 날짜 계산
+      const kstTime = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const todayKST = kstTime.toISOString().split('T')[0];
+
+      // One atomic statement (insert or +1), so two tabs generating at once can't lose a count.
+      const { error: rpcError } = await supabase.rpc('increment_daily_generation_usage', {
+        _user_id: userId,
+        _usage_date: todayKST,
+      });
+
+      if (rpcError) {
+        console.error('[generate-style] Atomic usage increment failed, using fallback:', rpcError);
+        try {
+          const { data: existingUsage, error: fetchError } = await supabase
             .from('daily_generation_usage')
-            .update({ 
-              generation_count: (existingUsage.generation_count || 0) + 1,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingUsage.id);
-          
-          if (updateError) {
-            console.error('[generate-style] Error updating usage:', updateError);
-          } else {
-            console.log(`[generate-style] Usage incremented to ${(existingUsage.generation_count || 0) + 1}`);
+            .select('id, generation_count')
+            .eq('user_id', userId)
+            .eq('usage_date', todayKST)
+            .maybeSingle();
+
+          if (fetchError) {
+            console.error('[generate-style] Error fetching usage:', fetchError);
           }
-        } else {
-          // 새 레코드 생성
-          const { error: insertError } = await supabase
-            .from('daily_generation_usage')
-            .insert({
-              user_id: userId,
-              usage_date: todayKST,
-              generation_count: 1,
-            });
-          
-          if (insertError) {
-            console.error('[generate-style] Error inserting usage:', insertError);
+
+          if (existingUsage) {
+            const { error: updateError } = await supabase
+              .from('daily_generation_usage')
+              .update({
+                generation_count: (existingUsage.generation_count || 0) + 1,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingUsage.id);
+            if (updateError) console.error('[generate-style] Error updating usage:', updateError);
           } else {
-            console.log('[generate-style] New usage record created with count 1');
+            const { error: insertError } = await supabase
+              .from('daily_generation_usage')
+              .insert({ user_id: userId, usage_date: todayKST, generation_count: 1 });
+            if (insertError) console.error('[generate-style] Error inserting usage:', insertError);
           }
+        } catch (usageError) {
+          console.error('[generate-style] Failed to update usage count:', usageError);
+          // 생성 횟수 업데이트 실패해도 이미지 생성은 성공했으므로 계속 진행
         }
-      } catch (usageError) {
-        console.error('[generate-style] Failed to update usage count:', usageError);
-        // 생성 횟수 업데이트 실패해도 이미지 생성은 성공했으므로 계속 진행
       }
     }
 
     // ===== 생성 시점 태그 위치 anchor 계산 =====
     const tagPositions = buildTagPositions(productDetails || []);
     console.log(`[generate-style] Tag positions generated: ${tagPositions.length} items`);
+
+    // ===== 룩 저장 (새 클라이언트가 saveLook을 보낸 경우) =====
+    // Saved here, right after the image and the credit, so the look survives a refresh,
+    // a closed tab or a dropped connection. Old clients (no saveLook) still insert it themselves.
+    let lookId: string | null = null;
+    if (userId && saveLook === true) {
+      const meta = (lookMeta && typeof lookMeta === 'object') ? lookMeta : {};
+      const promptUsed = typeof meta.promptUsed === 'string' && meta.promptUsed.trim()
+        ? meta.promptUsed.trim().slice(0, 500)
+        : (typeof style === 'string' ? style.slice(0, 500) : null);
+      const styleReasoning = typeof meta.styleReasoning === 'string' && meta.styleReasoning.trim()
+        ? meta.styleReasoning.slice(0, 5000)
+        : null;
+      const safeProductIds = Array.isArray(productIds)
+        ? productIds.filter((id: unknown) => typeof id === 'string').slice(0, 20)
+        : [];
+      const trendId = typeof styleTrendId === 'string' && /^[0-9a-f-]{36}$/i.test(styleTrendId) ? styleTrendId : null;
+
+      const { data: insertedLook, error: lookError } = await supabase
+        .from('generated_looks')
+        .insert({
+          user_id: userId,
+          image_url: finalImageUrl,
+          prompt_used: promptUsed,
+          style_trend_id: trendId,
+          product_ids: safeProductIds,
+          style_reasoning: styleReasoning,
+          tag_positions: tagPositions,
+        })
+        .select('id')
+        .single();
+
+      if (lookError) {
+        console.error('[generate-style] Failed to save look on server:', lookError);
+      } else {
+        lookId = insertedLook?.id ?? null;
+      }
+    }
 
     return new Response(
       JSON.stringify({
@@ -1188,6 +1229,7 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
         productIds: productIds,
         executionTime: totalTime,
         tagPositions: tagPositions,
+        lookId,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

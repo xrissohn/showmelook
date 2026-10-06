@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useCartCount } from '@/hooks/useCartCount';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -24,6 +25,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const cartCount = useCartCount(user?.id);
   const { stats, isLoading: isTierLoading } = usePurchaseStats(user?.id);
   const { language, toggleLanguage, t } = useLanguage();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -180,10 +182,15 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                       variant="ghost" 
                       size="icon" 
                       onClick={() => navigate('/cart')} 
-                      className="w-9 h-9 rounded-full"
-                      aria-label={language === 'en' ? 'Open cart' : '장바구니 열기'}
+                      className="w-9 h-9 rounded-full relative"
+                      aria-label={language === 'en' ? `Open cart (${cartCount})` : `장바구니 열기 (${cartCount}개)`}
                     >
                       <ShoppingBag className="w-5 h-5" />
+                      {cartCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                          {cartCount > 99 ? '99+' : cartCount}
+                        </span>
+                      )}
                     </Button>
                     
                     {/* 스타일 만들기 버튼 */}
@@ -303,7 +310,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                               className={getMenuItemClass('/cart')}
                             >
                               <ShoppingBag className={`w-5 h-5 ${isActive('/cart') ? 'text-primary' : 'text-muted-foreground'}`} />
-                              {t('nav.cart')}
+                              {t('nav.cart')}{cartCount > 0 ? ` (${cartCount})` : ''}
                             </button>
                             <button
                               onClick={() => handleNavigate('/mypage')}
