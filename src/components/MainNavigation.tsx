@@ -213,7 +213,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                     <Button 
                       variant="hero" 
                       size="sm"
-                      onClick={() => navigate('/auth')}
+                      onClick={() => navigate('/auth?mode=signup')}
                       className="font-korean text-sm px-4 h-9 rounded-full shadow-md"
                     >
                       <Sparkles className="w-4 h-4 mr-1" />
@@ -332,7 +332,7 @@ const MainNavigation = ({ showBackButton = false, rightContent, title }: MainNav
                         ) : (
                           <>
                             <button
-                              onClick={() => handleNavigate('/auth')}
+                              onClick={() => handleNavigate('/auth?mode=signup')}
                               className={getMenuItemClass('/auth')}
                             >
                               <Sparkles className={`w-5 h-5 ${isActive('/auth') ? 'text-primary' : 'text-primary'}`} />

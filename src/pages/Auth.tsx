@@ -1,18 +1,51 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, EyeOff, ArrowLeft, Mail, KeyRound, User, Loader2, Gift } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Mail, KeyRound, User, Loader2, Gift, Home, Check } from 'lucide-react';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { detectInAppBrowser, getExternalBrowserUrl, copyToClipboard } from '@/lib/inAppBrowserDetector';
 import { SEOHead } from '@/components/SEOHead';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { authErrorMessage, authText, browserLanguage, normalizeAuthErrorCode, pickAuthLocale, type AuthLocale } from '@/lib/authErrors';
+import { isPasswordAcceptable, passwordStrength, PASSWORD_MIN_LENGTH } from '@/lib/passwordPolicy';
+
+const STRENGTH_BAR = ['bg-muted', 'bg-destructive', 'bg-destructive/70', 'bg-accent', 'bg-primary'];
+
+const PasswordRules = ({ password, locale }: { password: string; locale: AuthLocale }) => {
+  const level = passwordStrength(password);
+  const lengthOk = password.length >= PASSWORD_MIN_LENGTH;
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3 text-xs" aria-live="polite">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">{authText(locale, 'strength')}</span>
+        <div className="flex flex-1 gap-1" aria-hidden="true">
+          {[1, 2, 3, 4].map((i) => (
+            <span key={i} className={`h-1.5 flex-1 rounded-full ${level >= i ? STRENGTH_BAR[level] : 'bg-muted'}`} />
+          ))}
+        </div>
+        <span className="min-w-[4.5rem] text-right text-muted-foreground">
+          {level > 0 ? authText(locale, `strength${level}` as 'strength1') : ''}
+        </span>
+      </div>
+      <p className="font-medium text-foreground">{authText(locale, 'ruleTitle')}</p>
+      <ul className="space-y-1">
+        <li className={`flex items-center gap-1.5 ${lengthOk ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <Check className={`h-3.5 w-3.5 ${lengthOk ? 'text-primary' : 'opacity-30'}`} /> {authText(locale, 'ruleLength')}
+        </li>
+        <li className="flex items-center gap-1.5 text-muted-foreground">
+          <Check className="h-3.5 w-3.5 opacity-30" /> {authText(locale, 'ruleLeaked')}
+        </li>
+      </ul>
+    </div>
+  );
+};
 
 // Google icon component
 const GoogleIcon = () => (
@@ -43,8 +76,12 @@ type ForgotStep = 'email' | 'verify' | 'newPassword';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 const Auth = () => {
-  const { t } = useLanguage();
-  const [mode, setMode] = useState<AuthMode>('login');
+  const { t, language } = useLanguage();
+  const authLocale = useMemo(() => pickAuthLocale(language, browserLanguage()), [language]);
+  const [mode, setMode] = useState<AuthMode>(() =>
+    new URLSearchParams(window.location.search).get('mode') === 'signup' ? 'signup' : 'login'
+  );
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [signupStep, setSignupStep] = useState<SignupStep>('email');
   const [forgotStep, setForgotStep] = useState<ForgotStep>('email');
   
@@ -64,11 +101,17 @@ const Auth = () => {
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   
   
-  const { signIn, signUp, user, sendVerificationEmail, verifyEmailCode, resetPassword } = useAuth();
+  const { signIn, completeSignup, user, sendVerificationEmail, verifyEmailCode, resetPassword } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const browserInfo = useMemo(() => detectInAppBrowser(), []);
+
+  const showAuthError = (code?: string | null, message?: string | null, opts: { remainingAttempts?: number; reasons?: string[] } = {}) => {
+    const normalized = normalizeAuthErrorCode(code, message);
+    toast({ title: t('common.error'), description: authErrorMessage(authLocale, normalized, opts), variant: 'destructive' });
+    return normalized;
+  };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -78,7 +121,9 @@ const Auth = () => {
       const expiry = Date.now() + (7 * 24 * 60 * 60 * 1000);
       localStorage.setItem('referral_code', refCode.toUpperCase());
       localStorage.setItem('referral_code_expiry', expiry.toString());
-      window.history.replaceState({}, '', '/auth');
+      urlParams.delete('ref');
+      const rest = urlParams.toString();
+      window.history.replaceState({}, '', rest ? `/auth?${rest}` : '/auth');
       
       toast({
         title: t('auth.referralToast'),
@@ -124,10 +169,10 @@ const Auth = () => {
 
   const handleSendCode = async (purpose: 'signup' | 'password_reset') => {
     if (!email) {
-      toast({ title: t('auth.email'), variant: 'destructive' });
+      showAuthError('invalid_email');
       return;
     }
-    
+    setAlreadyRegistered(false);
     setIsLoading(true);
     const result = await sendVerificationEmail(email, purpose);
     setIsLoading(false);
@@ -141,7 +186,8 @@ const Auth = () => {
       
       toast({ title: t('auth.codeSent'), description: t('auth.checkEmail') });
     } else {
-      toast({ title: t('common.error'), description: result.error, variant: 'destructive' });
+      const code = showAuthError(result.errorCode, result.error);
+      if (code === 'email_already_registered' && purpose === 'signup') setAlreadyRegistered(true);
     }
   };
 
@@ -163,79 +209,70 @@ const Auth = () => {
       
       toast({ title: t('auth.emailVerified') });
     } else {
-      toast({ title: t('common.error'), description: result.error, variant: 'destructive' });
+      showAuthError(result.errorCode, result.error, { remainingAttempts: result.remainingAttempts });
     }
   };
 
   const handleSignup = async () => {
-    if (password.length < 6) {
-      toast({ title: t('auth.minPassword'), variant: 'destructive' });
+    if (!isPasswordAcceptable(password)) {
+      showAuthError('weak_password', null, { reasons: ['length'] });
       return;
     }
-    
-    setIsLoading(true);
-    const { error } = await signUp(email, password, fullName);
-    
-    if (!error) {
-      const { data: { user: newUser } } = await supabase.auth.getUser();
-      
-      let finalReferralCode = referralCode;
-      if (!finalReferralCode) {
-        const storedCode = localStorage.getItem('referral_code');
-        const expiry = localStorage.getItem('referral_code_expiry');
-        if (storedCode && expiry && Date.now() < parseInt(expiry)) {
-          finalReferralCode = storedCode;
-        }
-      }
-      
-      if (finalReferralCode && newUser) {
-        try {
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          const response = await fetch(`${SUPABASE_URL}/functions/v1/apply-referral-code`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(newSession?.access_token ? { Authorization: `Bearer ${newSession.access_token}` } : {}),
-            },
-            body: JSON.stringify({
-              referral_code: finalReferralCode,
-              new_user_name: fullName,
-            }),
-          });
-          const result = await response.json();
-          if (result.success) {
-            toast({ title: '🎉', description: result.message });
-          }
-          localStorage.removeItem('referral_code');
-          localStorage.removeItem('referral_code_expiry');
-        } catch (e) {
-          console.log('Referral code application failed:', e);
-        }
-      }
-      
-      try {
-        await fetch(`${SUPABASE_URL}/functions/v1/send-welcome-email`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, fullName }),
-        });
-      } catch (e) {
-        console.log('Welcome email failed:', e);
-      }
-      toast({ title: t('auth.signupDone'), description: t('auth.setupProfile') });
-    } else {
-      toast({ title: t('common.error'), description: error.message, variant: 'destructive' });
+
+    let finalReferralCode = referralCode;
+    if (!finalReferralCode) {
+      const storedCode = localStorage.getItem('referral_code');
+      const expiry = localStorage.getItem('referral_code_expiry');
+      if (storedCode && expiry && Date.now() < parseInt(expiry)) finalReferralCode = storedCode;
     }
+
+    setIsLoading(true);
+    const result = await completeSignup({
+      email: email.trim(),
+      password,
+      fullName,
+      verificationId,
+      referralCode: finalReferralCode || undefined,
+      language,
+    });
+
+    if (!result.success) {
+      setIsLoading(false);
+      const code = showAuthError(result.errorCode, result.error, { reasons: result.reasons });
+      if (code === 'verification_required') {
+        setVerificationId('');
+        setOtpCode('');
+        setSignupStep('email');
+      } else if (code === 'user_already_exists') {
+        setSignupStep('email');
+        setAlreadyRegistered(true);
+      }
+      return;
+    }
+
+    if (finalReferralCode) {
+      localStorage.removeItem('referral_code');
+      localStorage.removeItem('referral_code_expiry');
+    }
+
+    // Account is created and confirmed on the server; sign in so the redirect effect runs.
+    const { error } = await signIn(email.trim(), password);
     setIsLoading(false);
+    if (error) {
+      showAuthError(error.code, error.message);
+      setMode('login');
+      return;
+    }
+    toast({ title: t('auth.signupDone'), description: t('auth.setupProfile') });
   };
 
   const handleResetPassword = async () => {
-    if (password.length < 6) {
-      toast({ title: t('auth.minPassword'), variant: 'destructive' });
+    if (!isPasswordAcceptable(password)) {
+      showAuthError('weak_password', null, { reasons: ['length'] });
       return;
     }
     if (password !== confirmPassword) {
-      toast({ title: t('auth.confirmPassword'), variant: 'destructive' });
+      showAuthError('password_mismatch');
       return;
     }
     
@@ -248,7 +285,7 @@ const Auth = () => {
       resetForm();
       setMode('login');
     } else {
-      toast({ title: t('common.error'), description: result.error, variant: 'destructive' });
+      showAuthError(result.errorCode, result.error);
     }
   };
 
@@ -259,11 +296,8 @@ const Auth = () => {
     setIsLoading(false);
     
     if (error) {
-      toast({ 
-        title: t('auth.loginFail'), 
-        description: error.message === 'Invalid login credentials' ? t('auth.invalidCredentials') : error.message,
-        variant: 'destructive' 
-      });
+      const code = normalizeAuthErrorCode(error.code, error.message);
+      toast({ title: t('auth.loginFail'), description: authErrorMessage(authLocale, code), variant: 'destructive' });
     } else {
       toast({ title: t('auth.loginSuccess'), description: t('auth.welcome') });
     }
@@ -281,6 +315,7 @@ const Auth = () => {
     setForgotStep('email');
     setResendCooldown(0);
     setExpiresAt(null);
+    setAlreadyRegistered(false);
   };
 
   const handleModeChange = (newMode: AuthMode) => {
@@ -329,7 +364,8 @@ const Auth = () => {
       },
     });
     if (error) {
-      toast({ title: t('auth.loginFail'), description: error.message, variant: 'destructive' });
+      const code = normalizeAuthErrorCode((error as { code?: string }).code, error.message);
+      toast({ title: t('auth.loginFail'), description: authErrorMessage(authLocale, code), variant: 'destructive' });
       setIsGoogleLoading(false);
     }
   };
@@ -363,10 +399,10 @@ const Auth = () => {
         <div className="absolute top-20 right-10 w-72 h-72 bg-gradient-brand rounded-full blur-3xl opacity-20 animate-gradient-flow" />
         <div className="absolute bottom-10 left-10 w-96 h-96 bg-gradient-sky rounded-full blur-3xl opacity-15 animate-gradient-flow" style={{ animationDelay: '1s' }} />
         <div className="relative z-10 text-center">
-          <div className="flex items-center justify-center gap-0 mb-6">
-            <img src={showmelookLogo} alt="ShowMeLook" width={40} height={40} className="w-10 h-10 object-contain" />
-            <img src={showmelookKoreanLogo} alt="ShowMeLook" width={90} height={90} className="h-[90px] object-contain -ml-3" />
-          </div>
+          <Link to="/" aria-label={language === 'ko' ? '쇼미룩 홈으로' : 'ShowMeLook home'} className="flex items-center justify-center gap-0 mb-6">
+            <img src={showmelookLogo} alt="" width={40} height={40} className="w-10 h-10 object-contain" />
+            <img src={showmelookKoreanLogo} alt="" width={90} height={90} className="h-[90px] object-contain -ml-3" />
+          </Link>
           <p className="text-primary-foreground/80 text-xl font-korean font-light max-w-md">{t('auth.aiStyle')}</p>
           <p className="text-primary-foreground/60 mt-4 text-lg font-korean">{t('auth.experienceFashion')}</p>
         </div>
@@ -375,12 +411,19 @@ const Auth = () => {
       {/* Right side - Form */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md animate-fade-in-up">
+          {/* Browse (back to home) — also the way out when installed as an app */}
+          <div className="flex justify-end mb-2">
+            <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-korean">
+              <Home className="w-4 h-4" /> {language === 'ko' ? '둘러보기' : 'Browse'}
+            </Link>
+          </div>
+
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <div className="flex items-center justify-center gap-0 mb-2">
-              <img src={showmelookLogo} alt="ShowMeLook" width={32} height={32} className="w-8 h-8 object-contain" />
-              <img src={showmelookKoreanLogo} alt="ShowMeLook" width={70} height={70} className="h-[70px] object-contain -ml-2" />
-            </div>
+            <Link to="/" aria-label={language === 'ko' ? '쇼미룩 홈으로' : 'ShowMeLook home'} className="flex items-center justify-center gap-0 mb-2">
+              <img src={showmelookLogo} alt="" width={32} height={32} className="w-8 h-8 object-contain" />
+              <img src={showmelookKoreanLogo} alt="" width={70} height={70} className="h-[70px] object-contain -ml-2" />
+            </Link>
             <p className="text-muted-foreground font-korean text-sm">{t('auth.aiStyle')}</p>
           </div>
 
@@ -453,8 +496,21 @@ const Auth = () => {
             <div className="space-y-5">
               <div className="space-y-2">
                 <Label className="font-korean flex items-center gap-2"><Mail className="w-4 h-4" /> {t('auth.email')}</Label>
-                <Input type="email" placeholder="hello@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input type="email" placeholder="hello@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setAlreadyRegistered(false); }} />
               </div>
+              {alreadyRegistered && (
+                <div role="alert" className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+                  <p className="text-sm text-foreground font-korean">{authText(authLocale, 'email_already_registered')}</p>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => { const e = email; handleModeChange('login'); setEmail(e); }}>
+                      {authText(authLocale, 'goLogin')}
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" className="flex-1" onClick={() => { const e = email; handleModeChange('forgot'); setEmail(e); }}>
+                      {authText(authLocale, 'goForgot')}
+                    </Button>
+                  </div>
+                </div>
+              )}
               <Button variant="hero" size="xl" className="w-full font-korean" disabled={isLoading} onClick={() => handleSendCode('signup')}>
                 {isLoading ? t('auth.sending') : t('auth.getCode')}
               </Button>
@@ -513,11 +569,12 @@ const Auth = () => {
               <div className="space-y-2">
                 <Label className="font-korean flex items-center gap-2"><KeyRound className="w-4 h-4" /> {t('auth.password')}</Label>
                 <div className="relative">
-                  <Input type={showPassword ? 'text' : 'password'} placeholder={t('auth.minPassword')} value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+                  <Input type={showPassword ? 'text' : 'password'} placeholder={authText(authLocale, 'ruleLength')} value={password} onChange={(e) => setPassword(e.target.value)} minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                <PasswordRules password={password} locale={authLocale} />
               </div>
               <div className="space-y-2">
                 <Label className="font-korean flex items-center gap-2"><Gift className="w-4 h-4" /> {t('auth.referralCode')} <span className="text-xs text-muted-foreground">({t('auth.optional')})</span></Label>
@@ -575,7 +632,8 @@ const Auth = () => {
             <div className="space-y-5">
               <div className="space-y-2">
                 <Label className="font-korean">{t('auth.newPassword')}</Label>
-                <Input type="password" placeholder={t('auth.minPassword')} value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} />
+                <Input type="password" placeholder={authText(authLocale, 'ruleLength')} value={password} onChange={(e) => setPassword(e.target.value)} minLength={PASSWORD_MIN_LENGTH} autoComplete="new-password" />
+                <PasswordRules password={password} locale={authLocale} />
               </div>
               <div className="space-y-2">
                 <Label className="font-korean">{t('auth.confirmPassword')}</Label>
