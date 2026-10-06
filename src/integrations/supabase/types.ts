@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_email_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          html: string
+          id: string
+          note: string | null
+          provider_id: string | null
+          reply_to: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          text_body: string | null
+          to_email: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          html: string
+          id?: string
+          note?: string | null
+          provider_id?: string | null
+          reply_to?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          text_body?: string | null
+          to_email: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          html?: string
+          id?: string
+          note?: string | null
+          provider_id?: string | null
+          reply_to?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          text_body?: string | null
+          to_email?: string
+        }
+        Relationships: []
+      }
       cafe24_fitting_sessions: {
         Row: {
           cafe24_product_no: number
@@ -2047,6 +2095,24 @@ export type Database = {
         Returns: number
       }
       calculate_user_tier: { Args: { p_total_amount: number }; Returns: string }
+      claim_admin_email_outbox: {
+        Args: { _limit?: number }
+        Returns: {
+          attempts: number
+          created_at: string
+          error: string | null
+          html: string
+          id: string
+          note: string | null
+          provider_id: string | null
+          reply_to: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          text_body: string | null
+          to_email: string
+        }[]
+      }
       cleanup_duplicate_pending_products: { Args: never; Returns: number }
       cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_inference_metrics: { Args: never; Returns: undefined }

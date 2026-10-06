@@ -171,3 +171,6 @@ verify_jwt = false
 
 [functions.complete-signup]
 verify_jwt = false
+
+[functions.send-outbox-email]
+verify_jwt = false
