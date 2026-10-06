@@ -7,11 +7,33 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: (Error & { code?: string }) | null }>;
+  completeSignup: (input: { email: string; password: string; fullName: string; verificationId: string; referralCode?: string; language: 'ko' | 'en' }) => Promise<AuthCallResult & { referral?: { applied: boolean; reward_type?: string } | null }>;
   signOut: () => Promise<void>;
-  sendVerificationEmail: (email: string, purpose: 'signup' | 'password_reset') => Promise<{ success: boolean; error?: string; expiresAt?: string }>;
-  verifyEmailCode: (email: string, code: string, purpose: 'signup' | 'password_reset') => Promise<{ verified: boolean; verificationId?: string; error?: string }>;
-  resetPassword: (email: string, newPassword: string, verificationId: string) => Promise<{ success: boolean; error?: string }>;
+  sendVerificationEmail: (email: string, purpose: 'signup' | 'password_reset') => Promise<AuthCallResult & { expiresAt?: string }>;
+  verifyEmailCode: (email: string, code: string, purpose: 'signup' | 'password_reset') => Promise<{ verified: boolean; verificationId?: string; error?: string; errorCode?: string; remainingAttempts?: number }>;
+  resetPassword: (email: string, newPassword: string, verificationId: string) => Promise<AuthCallResult>;
+}
+
+export interface AuthCallResult {
+  success: boolean;
+  error?: string;
+  errorCode?: string;
+  reasons?: string[];
+}
+
+async function postFunction(name: string, body: unknown): Promise<{ ok: boolean; data: any; networkError?: boolean }> {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = await response.json().catch(() => ({}));
+    return { ok: response.ok, data };
+  } catch {
+    return { ok: false, data: {}, networkError: true };
+  }
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error as Error | null };
+    return { error: error as (Error & { code?: string }) | null };
   };
 
   const signOut = async () => {
@@ -66,54 +88,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const sendVerificationEmail = async (email: string, purpose: 'signup' | 'password_reset') => {
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/send-verification-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, purpose }),
-      });
-      const data = await response.json();
-      if (!response.ok) return { success: false, error: data.error };
-      return { success: true, expiresAt: data.expiresAt };
-    } catch (error) {
-      return { success: false, error: '서버 오류가 발생했습니다.' };
-    }
+    const r = await postFunction('send-verification-email', { email, purpose });
+    if (r.networkError) return { success: false, errorCode: 'network_error' };
+    if (!r.ok) return { success: false, error: r.data.error, errorCode: r.data.error_code };
+    return { success: true, expiresAt: r.data.expiresAt };
   };
 
   const verifyEmailCode = async (email: string, code: string, purpose: 'signup' | 'password_reset') => {
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/verify-email-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code, purpose }),
-      });
-      const data = await response.json();
-      if (!response.ok) return { verified: false, error: data.error };
-      return { verified: true, verificationId: data.verificationId };
-    } catch (error) {
-      return { verified: false, error: '서버 오류가 발생했습니다.' };
-    }
+    const r = await postFunction('verify-email-code', { email, code, purpose });
+    if (r.networkError) return { verified: false, errorCode: 'network_error' };
+    if (!r.ok) return { verified: false, error: r.data.error, errorCode: r.data.error_code, remainingAttempts: r.data.remainingAttempts };
+    return { verified: true, verificationId: r.data.verificationId };
   };
 
   const resetPassword = async (email: string, newPassword: string, verificationId: string) => {
-    try {
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, newPassword, verificationId }),
-      });
-      const data = await response.json();
-      if (!response.ok) return { success: false, error: data.error };
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: '서버 오류가 발생했습니다.' };
+    const r = await postFunction('reset-password', { email, newPassword, verificationId });
+    if (r.networkError) return { success: false, errorCode: 'network_error' };
+    if (!r.ok) return { success: false, error: r.data.error, errorCode: r.data.error_code };
+    return { success: true };
+  };
+
+  const completeSignup: AuthContextType['completeSignup'] = async (input) => {
+    const r = await postFunction('complete-signup', input);
+    if (r.networkError) return { success: false, errorCode: 'network_error' };
+    if (!r.ok || !r.data.success) {
+      return { success: false, error: r.data.message ?? r.data.error, errorCode: r.data.error_code ?? 'server_error', reasons: r.data.reasons };
     }
+    return { success: true, referral: r.data.referral ?? null };
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, session, loading, 
-      signUp, signIn, signOut,
+      signUp, signIn, signOut, completeSignup,
       sendVerificationEmail, verifyEmailCode, resetPassword
     }}>
       {children}
