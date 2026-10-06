@@ -22,7 +22,7 @@ serve(async (req) => {
 
     if (!email || !code || !purpose) {
       return new Response(
-        JSON.stringify({ error: "이메일, 인증코드, 용도가 필요합니다." }),
+        JSON.stringify({ error: "이메일, 인증코드, 용도가 필요합니다.", error_code: "missing_fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -30,7 +30,7 @@ serve(async (req) => {
     // Validate code format (6 digits)
     if (!/^\d{6}$/.test(code)) {
       return new Response(
-        JSON.stringify({ error: "유효하지 않은 인증코드 형식입니다." }),
+        JSON.stringify({ error: "유효하지 않은 인증코드 형식입니다.", error_code: "code_invalid_format" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -49,11 +49,11 @@ serve(async (req) => {
       .is("verified_at", null)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !verification) {
       return new Response(
-        JSON.stringify({ error: "인증코드를 찾을 수 없습니다. 새로운 코드를 요청해주세요." }),
+        JSON.stringify({ error: "인증코드를 찾을 수 없습니다. 새로운 코드를 요청해주세요.", error_code: "code_not_found" }),
         { status: 404, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -61,7 +61,7 @@ serve(async (req) => {
     // Check if expired
     if (new Date(verification.expires_at) < new Date()) {
       return new Response(
-        JSON.stringify({ error: "인증코드가 만료되었습니다. 새로운 코드를 요청해주세요." }),
+        JSON.stringify({ error: "인증코드가 만료되었습니다. 새로운 코드를 요청해주세요.", error_code: "code_expired" }),
         { status: 410, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -69,7 +69,7 @@ serve(async (req) => {
     // Check attempt count
     if (verification.attempts >= 5) {
       return new Response(
-        JSON.stringify({ error: "시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요." }),
+        JSON.stringify({ error: "시도 횟수를 초과했습니다. 새로운 코드를 요청해주세요.", error_code: "too_many_attempts" }),
         { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -86,6 +86,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: `인증코드가 일치하지 않습니다. (남은 시도: ${remainingAttempts}회)`,
+          error_code: "code_mismatch",
           remainingAttempts 
         }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -101,7 +102,7 @@ serve(async (req) => {
     if (updateError) {
       console.error("Update error:", updateError);
       return new Response(
-        JSON.stringify({ error: "인증 처리에 실패했습니다." }),
+        JSON.stringify({ error: "인증 처리에 실패했습니다.", error_code: "server_error" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -120,7 +121,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in verify-email-code:", error);
     return new Response(
-      JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+      JSON.stringify({ error: "서버 오류가 발생했습니다.", error_code: "server_error" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

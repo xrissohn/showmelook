@@ -416,6 +416,7 @@ export type Database = {
       email_verifications: {
         Row: {
           attempts: number | null
+          consumed_at: string | null
           created_at: string | null
           email: string
           expires_at: string
@@ -426,6 +427,7 @@ export type Database = {
         }
         Insert: {
           attempts?: number | null
+          consumed_at?: string | null
           created_at?: string | null
           email: string
           expires_at?: string
@@ -436,6 +438,7 @@ export type Database = {
         }
         Update: {
           attempts?: number | null
+          consumed_at?: string | null
           created_at?: string | null
           email?: string
           expires_at?: string
@@ -2048,6 +2051,7 @@ export type Database = {
       cleanup_old_error_logs: { Args: never; Returns: undefined }
       cleanup_old_inference_metrics: { Args: never; Returns: undefined }
       cleanup_old_verifications: { Args: never; Returns: undefined }
+      get_auth_user_id_by_email: { Args: { _email: string }; Returns: string }
       get_look_like_count: { Args: { _look_id: string }; Returns: number }
       get_products_without_sub_style: {
         Args: { batch_limit?: number }

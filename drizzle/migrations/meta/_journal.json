@@ -29,6 +29,13 @@
       "when": 1791120682582,
       "tag": "0003_shomi_meta",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791305089127,
+      "tag": "0004_signup_completion_support",
+      "breakpoints": true
     }
   ]
 }

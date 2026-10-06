@@ -71,7 +71,7 @@ function getEmailTemplate(code: string, purpose: "signup" | "password_reset"): s
             <td style="padding: 32px 24px;">
               <p style="margin: 0; font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.6;">
                 본인이 요청하지 않았다면 이 이메일을 무시해주세요.<br>
-                © 2025 쇼미룩. All rights reserved.
+                © ${new Date().getFullYear()} 쇼미룩. All rights reserved.
               </p>
             </td>
           </tr>
@@ -137,7 +137,7 @@ serve(async (req) => {
 
     if (!email || !purpose) {
       return new Response(
-        JSON.stringify({ error: "이메일과 용도가 필요합니다." }),
+        JSON.stringify({ error: "이메일과 용도가 필요합니다.", error_code: "missing_fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -145,7 +145,7 @@ serve(async (req) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return new Response(
-        JSON.stringify({ error: "유효하지 않은 이메일 형식입니다." }),
+        JSON.stringify({ error: "유효하지 않은 이메일 형식입니다.", error_code: "invalid_email" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -154,6 +154,24 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // Signup: never send a code to an email that already has an account (exact lookup, any user count)
+    if (purpose === "signup") {
+      const { data: existingId, error: lookupErr } = await supabaseAdmin.rpc("get_auth_user_id_by_email", { _email: email.toLowerCase() });
+      if (lookupErr) {
+        console.error("Existing user lookup error:", lookupErr);
+        return new Response(
+          JSON.stringify({ error: "서버 오류가 발생했습니다.", error_code: "server_error" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+      if (existingId) {
+        return new Response(
+          JSON.stringify({ error: "이미 가입된 이메일이에요. 로그인하거나 비밀번호를 찾아주세요.", error_code: "email_already_registered" }),
+          { status: 409, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
 
     // Rate limiting
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -167,14 +185,14 @@ serve(async (req) => {
     if (countError) {
       console.error("Rate limit check error:", countError);
       return new Response(
-        JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+        JSON.stringify({ error: "서버 오류가 발생했습니다.", error_code: "server_error" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
     if (recentRequests && recentRequests.length >= 3) {
       return new Response(
-        JSON.stringify({ error: "너무 많은 요청입니다. 5분 후 다시 시도해주세요." }),
+        JSON.stringify({ error: "너무 많은 요청입니다. 5분 후 다시 시도해주세요.", error_code: "rate_limited" }),
         { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -194,7 +212,7 @@ serve(async (req) => {
     if (insertError) {
       console.error("Insert error:", insertError);
       return new Response(
-        JSON.stringify({ error: "인증코드 저장에 실패했습니다." }),
+        JSON.stringify({ error: "인증코드 저장에 실패했습니다.", error_code: "server_error" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -208,7 +226,7 @@ serve(async (req) => {
     if (!result.success) {
       console.error("Email send failed:", result.error);
       return new Response(
-        JSON.stringify({ error: result.error || "이메일 발송에 실패했습니다." }),
+        JSON.stringify({ error: result.error || "이메일 발송에 실패했습니다.", error_code: "email_send_failed" }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -227,7 +245,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in send-verification-email:", error);
     return new Response(
-      JSON.stringify({ error: "서버 오류가 발생했습니다." }),
+      JSON.stringify({ error: "서버 오류가 발생했습니다.", error_code: "server_error" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

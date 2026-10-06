@@ -485,7 +485,7 @@ const Landing = () => {
     if (user) {
       navigate('/style');
     } else {
-      navigate('/auth');
+      navigate('/auth?mode=signup');
     }
   };
   return <div className="min-h-screen bg-background">
@@ -680,7 +680,7 @@ const Landing = () => {
         <div className="container mx-auto max-w-4xl relative z-10">
           <div 
             className="relative rounded-3xl overflow-hidden cursor-pointer group"
-            onClick={() => user ? navigate('/mypage') : navigate('/auth')}
+            onClick={() => user ? navigate('/mypage') : navigate('/auth?mode=signup')}
           >
             {/* Gradient background */}
             <div className="absolute inset-0 bg-gradient-to-r from-coral via-magenta to-purple opacity-90" />
