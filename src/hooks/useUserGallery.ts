@@ -74,7 +74,7 @@ export function useUserGallery(userId: string | undefined) {
       .from('profiles_public' as any)
       .select('full_name, avatar_url')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     // Fetch looks - RLS handles visibility (public OR own)
     const { data: looks, error } = await supabase

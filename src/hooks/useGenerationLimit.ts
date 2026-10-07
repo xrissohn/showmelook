@@ -77,7 +77,7 @@ export const useGenerationLimit = (userId: string | undefined) => {
         .from('user_purchase_stats')
         .select('current_tier')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       const currentTier = (purchaseStats?.current_tier || 'free') as TierType;
       const tierConfig = TIER_CONFIG[currentTier];
@@ -92,7 +92,7 @@ export const useGenerationLimit = (userId: string | undefined) => {
         .select('*')
         .eq('user_id', userId)
         .eq('usage_date', today)
-        .single();
+        .maybeSingle();
 
       const currentCount = usage?.generation_count || 0;
       const baseRemaining = isPremium ? -1 : Math.max(0, dailyLimit - currentCount);

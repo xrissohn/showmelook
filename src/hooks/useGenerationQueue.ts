@@ -77,7 +77,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
       .in('status', ['queued', 'processing', 'generating_style', 'generating_image'])
       .order('created_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (data) {
       setCurrentJob(data as GenerationJob);
@@ -166,7 +166,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
         .select('id')
         .eq('user_id', userId)
         .in('status', ['queued', 'processing', 'generating_style', 'generating_image'])
-        .single();
+        .limit(1).maybeSingle();
 
       if (existingJob) {
         toast({
@@ -182,7 +182,7 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
         .from('user_subscriptions')
         .select('plan')
         .eq('user_id', userId)
-        .single();
+        .maybeSingle();
 
       // Dynamic priority based on subscription plan
       // Lower number = higher priority

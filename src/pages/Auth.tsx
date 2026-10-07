@@ -156,7 +156,7 @@ const Auth = () => {
         .from('profiles')
         .select('height, weight, style_preferences')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (!profile?.height || !profile?.style_preferences?.length) {
         navigate('/profile-setup');

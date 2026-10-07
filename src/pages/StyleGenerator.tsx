@@ -3983,7 +3983,7 @@ const StyleGenerator = () => {
               .from('profiles')
               .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender')
               .eq('user_id', user.id)
-              .single()
+              .maybeSingle()
           )
         );
       }
@@ -6543,7 +6543,7 @@ const StyleGenerator = () => {
                               .from('generated_looks')
                               .select('tag_positions')
                               .eq('id', generatedLookId)
-                              .single();
+                              .maybeSingle();
                             if (existing?.tag_positions && Array.isArray(existing.tag_positions) && existing.tag_positions.length > 0) return;
                             await supabase
                               .from('generated_looks')

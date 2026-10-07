@@ -172,7 +172,7 @@ const SharedLook = () => {
           .from("generated_looks_public" as any)
           .select("*")
           .eq("id", lookId)
-          .single();
+          .maybeSingle();
 
         if (lookError || !rawLookData) {
           setError(t('sharedLook.notFoundDesc'));

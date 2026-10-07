@@ -80,7 +80,7 @@ const ProfileSetup = () => {
           .from('profiles')
           .select('height, weight, body_type, style_preferences, avatar_url, gender, age_group')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
         if (error) {
           console.error('Error loading profile:', error);

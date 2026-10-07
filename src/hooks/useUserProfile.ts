@@ -47,7 +47,7 @@ export function useUserProfile() {
         .from('profiles')
         .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender, age_group')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (profileError) throw profileError;
       if (!profileData) {
