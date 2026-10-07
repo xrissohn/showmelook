@@ -19,6 +19,7 @@ import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
 import { MIN_PRODUCT_PRICE, allowedProductGenders, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
+import { priceBand, rankAlternatives, type AltCandidate } from '@/lib/alternatives';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -3553,17 +3554,6 @@ const StyleGenerator = () => {
     return '액세서리';
   };
 
-  // 현재 선택된 상품과의 유사도 계산 (style_tags 기반)
-  const calculateSimilarity = (product: CachedProduct, currentProduct: CachedProduct): number => {
-    const currentTags = currentProduct.style_tags || [];
-    const productTags = product.style_tags || [];
-    
-    if (currentTags.length === 0 || productTags.length === 0) return 0;
-    
-    const commonTags = currentTags.filter(tag => productTags.includes(tag));
-    return commonTags.length / Math.max(currentTags.length, productTags.length);
-  };
-
   // 대체 상품 조회 함수 (개선됨)
   const handleShowAlternatives = async (category: string, currentProductId: string) => {
     setAlternativeCategory(category);
@@ -3576,11 +3566,7 @@ const StyleGenerator = () => {
       const currentProduct = customResult?.items.find(item => item.id === currentProductId);
       const priorityCategory = mapToPriorityCategory(category);
       
-      // 성별 매핑 (유니섹스 지원)
-      const genderKo = customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender === 'unisex' ? '유니섹스' : null;
-      const genderEn = customGender === 'male' ? 'male' : customGender === 'female' ? 'female' : customGender === 'unisex' ? 'unisex' : null;
-      
-      console.log(`[Alternatives] Category: ${category} -> Priority: ${priorityCategory}, Gender: ${genderKo}/${genderEn}`);
+      console.log(`[Alternatives] Category: ${category} -> Priority: ${priorityCategory}, Gender: ${customGender}`);
       
       // priority category에 해당하는 모든 카테고리 키워드
       const categoryKeywords: Record<string, string[]> = {
@@ -3597,37 +3583,68 @@ const StyleGenerator = () => {
       // OR 조건으로 모든 키워드에 해당하는 상품 조회
       const orFilters = keywords.map(kw => `category.ilike.%${kw}%`).join(',');
       
-      let query = supabase
+      // 현재 상품의 자리(item_slot) — 같은 자리 후보만 남기기 위해 조회 (실패해도 카테고리 기준으로 진행)
+      let currentSlot: string | null = null;
+      try {
+        const SLOT_SELECT: string = 'item_slot:dna_meta->>item_slot'; // string 타입: JSON 경로 select의 타입 추론 방지
+        const { data: slotRow } = await supabase
+          .from('products_cache')
+          .select(SLOT_SELECT)
+          .eq('id', currentProductId)
+          .maybeSingle();
+        currentSlot = (slotRow as { item_slot?: string | null } | null)?.item_slot ?? null;
+      } catch (slotErr) {
+        console.warn('[Alternatives] item_slot lookup failed:', slotErr);
+      }
+
+      const ALT_SELECT: string = 'id, name, brand, price, image_url, product_url, category, sub_category, style_tags, gender, item_slot:dna_meta->>item_slot, target_age:dna_meta->target->>age';
+      const buildAltQuery = () => supabase
         .from('products_cache')
-        .select('id, name, brand, price, image_url, product_url, category, style_tags, gender')
+        .select(ALT_SELECT)
         .eq('is_active', true)
         .eq('is_in_stock', true)
         .not('image_url', 'is', null)
         .neq('id', currentProductId)
         .gte('price', MIN_PRODUCT_PRICE) // ₩1,000 미만 제외
         .or(orFilters);
-      
-      const { data, error } = await query.order('price', { ascending: true }).limit(50);
+
+      const current = currentProduct
+        ? { price: currentProduct.price, style_tags: currentProduct.style_tags, item_slot: currentSlot }
+        : undefined;
+      const rankOpts = {
+        current,
+        selectedGender: customGender,
+        profileGender: userProfile?.gender,
+        kidsRequest: customGender === 'kids',
+        limit: 30,
+      };
+
+      // 최저가순이 아니라: 현재 상품 가격대(±50%) 안의 최신 상품을 넉넉히 가져와 규칙대로 점수순 정렬
+      const band = current && current.price > 0 ? priceBand(current.price) : null;
+      let bandQuery = buildAltQuery();
+      if (band) bandQuery = bandQuery.gte('price', band.lo).lte('price', band.hi);
+      const { data, error } = await bandQuery.order('collected_at', { ascending: false }).limit(300);
 
       if (error) throw error;
 
-      // 성별 필터링 (클라이언트 측) - 반대 성별 명시적 제외 + 카테고리와 이름이 다른 부위(오분류) 제외
-      let filteredData = (data || []).filter(isUsableCandidate).filter(item => {
-        if (!genderKo && !genderEn) return true;
-        if (genderKo === '유니섹스' || genderEn === 'unisex') return true; // 유니섹스는 모든 상품 포함
-        if (!item.gender) return true; // 성별 정보 없으면 포함
-        
-        // 반대 성별 명시적 제외
-        const oppositeGenderEn = genderEn === 'male' ? 'female' : 'male';
-        const oppositeGenderKo = genderKo === '남성' ? '여성' : '남성';
-        if (item.gender === oppositeGenderEn || item.gender === oppositeGenderKo) {
-          return false; // 반대 성별 제외
-        }
-        
-        return true;
-      });
+      let pool = (data || []) as unknown as AltCandidate[];
+      let ranked = rankAlternatives(pool, rankOpts);
 
-      let products: CachedProduct[] = filteredData.map(item => ({
+      // 가격대 안에 후보가 부족하면 가격대 밖에서 현재 가격에 가장 가까운 상품으로 보충
+      if (band && ranked.length < 12) {
+        const [below, above] = await Promise.all([
+          buildAltQuery().lt('price', band.lo).order('price', { ascending: false }).limit(80),
+          buildAltQuery().gt('price', band.hi).order('price', { ascending: true }).limit(80),
+        ]);
+        pool = [
+          ...pool,
+          ...((below.data || []) as unknown as AltCandidate[]),
+          ...((above.data || []) as unknown as AltCandidate[]),
+        ];
+        ranked = rankAlternatives(pool, rankOpts);
+      }
+
+      const products: CachedProduct[] = ranked.map(item => ({
         id: item.id,
         name: item.name,
         brand: item.brand,
@@ -3635,17 +3652,9 @@ const StyleGenerator = () => {
         image_url: item.image_url,
         product_url: item.product_url,
         category: item.category,
+        sub_category: item.sub_category,
         style_tags: item.style_tags,
       }));
-
-      // 현재 상품과의 유사도순 정렬 (style_tags 기반)
-      if (currentProduct) {
-        products = products.sort((a, b) => {
-          const simA = calculateSimilarity(a, currentProduct);
-          const simB = calculateSimilarity(b, currentProduct);
-          return simB - simA; // 유사도 높은 순
-        });
-      }
 
       console.log(`[Alternatives] Found ${products.length} products for ${priorityCategory}`);
       setAlternativeProducts(products);
