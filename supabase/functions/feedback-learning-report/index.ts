@@ -9,8 +9,8 @@
 //  4) 리포트를 저장하고 관리자(역할 admin 사용자 + FEEDBACK_REPORT_EMAILS)에게 이메일로 보낸다.
 //     이메일에는 보류된 의견의 원문을 싣지 않는다.
 //
-// 호출: 공개 엔드포인트지만 요청에서 받는 값이 없고(관리자 force 제외), 6시간에 한 번만 실행되며 새 피드백이 없으면
-// 아무 일도 하지 않는다. pg_cron 이 하루 한 번 호출한다.
+// 호출: pg_cron 이 하루 한 번 x-cron-token 헤더(internal_cron_tokens 테이블의 토큰)로 호출한다.
+// 서비스 롤과 관리자도 호출할 수 있고, 그 밖의 호출은 401 이다. 6시간에 한 번만 실행되며 새 피드백이 없으면 아무 일도 하지 않는다.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import {
   aggregateFeedback,
@@ -23,11 +23,12 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-cron-token",
 };
 const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+const CRON_TOKEN_NAME = "feedback-learning-report";
 const MIN_INTERVAL_MS = 6 * 3600_000;
 const FIRST_WINDOW_MS = 7 * 24 * 3600_000;
 const MAX_ROWS = 2000;
@@ -81,16 +82,27 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const db = createClient(url, serviceKey);
 
-    // 관리자는 force 로 던질 수 있다 (관리자 화면의 '지금 리포트 만들기')
+    // 호출할 수 있는 쪽: 크론(x-cron-token = DB에 저장된 토큰) · 서비스 롤 · 관리자.
+    // 관리자는 force 로 던질 수 있다 (관리자 화면의 '지금 리포트 만들기'). 그 밖의 호출은 거절한다
+    // (로그인한 일반 사용자가 호출해 리포트와 메일을 앞당겨 만들 수 없게).
     let isAdmin = false;
+    let allowed = false;
     const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-    if (token && token !== serviceKey) {
+    if (token && token === serviceKey) allowed = true;
+    const cronToken = req.headers.get("x-cron-token");
+    if (!allowed && cronToken) {
+      const { data: row } = await db.from("internal_cron_tokens").select("token").eq("name", CRON_TOKEN_NAME).maybeSingle();
+      if (row?.token && row.token === cronToken) allowed = true;
+    }
+    if (!allowed && token) {
       const { data: auth } = await db.auth.getUser(token);
       if (auth?.user) {
         const { data: role } = await db.from("user_roles").select("role").eq("user_id", auth.user.id).eq("role", "admin").maybeSingle();
         isAdmin = !!role;
+        allowed = isAdmin;
       }
     }
+    if (!allowed) return json({ error: "unauthorized" }, 401);
     const body = await req.json().catch(() => ({})) as { force?: unknown };
     const force = isAdmin && body?.force === true;
 

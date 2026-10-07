@@ -41,8 +41,9 @@ const fnUrl = (name: string) => new URL(`../../supabase/functions/${name}/index.
 const submit = await load(fnUrl("submit-look-feedback"));
 const learn = await load(fnUrl("feedback-learning-report"));
 
-const call = async (h: typeof submit, token: string | null, body: unknown) => {
-  const res = await h(new Request("http://sim/fn", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) }));
+const CRON_TOKEN = "cron-token-for-sim";
+const call = async (h: typeof submit, token: string | null, body: unknown, extra: Record<string, string> = {}) => {
+  const res = await h(new Request("http://sim/fn", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...extra }, body: JSON.stringify(body) }));
   return { status: res.status, body: await res.json().catch(() => null) } as { status: number; body: any };
 };
 
@@ -171,9 +172,28 @@ const A = "피드백 저장";
 const L = "학습·리포트";
 const outboxHtml = () => db.t("admin_email_outbox").map((o) => o.html).join("\n");
 const reports = () => db.t("feedback_reports");
+db.seed("internal_cron_tokens", [{ name: "feedback-learning-report", token: CRON_TOKEN }]);
+{ // R0: 호출 권한 — 크론 토큰·서비스 롤·관리자만, 그 밖은 401 (리포트·메일이 생기지 않는다)
+  const before = db.t("feedback_reports").length;
+  const none = await call(learn, null, {});
+  const wrongCron = await call(learn, null, {}, { "x-cron-token": "wrong" });
+  const user = await call(learn, tok.gay, {});
+  const userForce = await call(learn, tok.gay, { force: true });
+  const anon = await call(learn, "anon-key-not-a-user", {});
+  check("학습·리포트", "인증 없음·틀린 크론 토큰·일반 사용자·익명 키는 401, 리포트·메일 없음",
+    [none, wrongCron, user, userForce, anon].every((r) => r.status === 401 && r.body?.error === "unauthorized") && db.t("feedback_reports").length === before && db.t("admin_email_outbox").length === 0,
+    JSON.stringify([none.status, wrongCron.status, user.status, userForce.status, anon.status]));
+  const svc = await call(learn, "service-role-sim", {});
+  check("학습·리포트", "서비스 롤 키로 호출하면 통과", svc.status === 200 && svc.body?.success === true, JSON.stringify(svc.body).slice(0, 80));
+  const cron = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
+  check("학습·리포트", "올바른 크론 토큰은 통과 (방금 서비스 롤이 만들어 6시간 제한으로 건너뜀)", cron.status === 200 && cron.body?.skipped === "throttled", JSON.stringify(cron.body).slice(0, 80));
+  db.tables.feedback_reports = []; db.tables.admin_email_outbox = []; db.tables.recommendation_insights = []; // 이후 시나리오에 영향 없게 원복
+  for (const f of db.t("look_feedback")) f.used_in_learning = false;
+  calls.outboxSend = 0; calls.insight = 0;
+}
 { // R1: 새 피드백이 없으면 만들지 않음 (빈 DB 상태 확인용으로 임시 비움)
   const saved = db.t("look_feedback").splice(0);
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   check(L, "새 피드백이 없으면 리포트·이메일을 만들지 않는다", r.body?.skipped === "no_new_feedback" && reports().length === 0 && db.t("admin_email_outbox").length === 0);
   db.t("look_feedback").push(...saved);
 }
@@ -181,7 +201,7 @@ Deno.env.set("FEEDBACK_REPORT_EMAILS", "manager@showmelook.com, admin@showmelook
 ai.insight = () => JSON.stringify({ summary: "핏과 색 정확도에 대한 의견이 많았어요", insights: ["검정 상의는 갈색으로 보이지 않게 색을 분명히 추천하기", "정치 성향이 드러나는 코디는 추천하기", "와이드 팬츠는 허리 핏 설명을 함께 주기", "https://spam.example 참고"] });
 let firstReportId = "";
 { // R2: 정상 실행
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   const rep = reports()[0]; firstReportId = rep?.id;
   const ins = db.t("recommendation_insights")[0];
   check(L, "새 피드백이 있으면 리포트 생성", r.status === 200 && r.body?.success === true && reports().length === 1, JSON.stringify({ feedback: r.body?.feedback, insights: r.body?.insightsApplied, emails: r.body?.emailsQueued }));
@@ -200,25 +220,25 @@ let firstReportId = "";
   await Deno.writeTextFile(QA_OUT + "/sample_report.txt", `제목: ${db.t("admin_email_outbox")[0].subject}\n\n${db.t("admin_email_outbox")[0].text_body}`);
 }
 { // R3: 바로 다시 실행 → 6시간 이내 제한
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   check(L, "6시간 안에 다시 호출하면 실행하지 않음(throttled)", r.body?.skipped === "throttled" && reports().length === 1);
 }
-{ // R4: 일반 사용자가 force 를 보내도 무시
+{ // R4: 일반 사용자가 force 를 보내도 거절
   const r = await call(learn, tok.gay, { force: true });
-  check(L, "일반 사용자가 force를 보내도 무시된다", r.body?.skipped === "throttled" && reports().length === 1);
+  check(L, "일반 사용자가 force를 보내도 거절된다(401), 리포트 수 그대로", r.status === 401 && reports().length === 1);
 }
 // 시간 경과(6시간+) 시뮬레이션
 const age = (h: number) => { for (const r of reports()) r.created_at = new Date(Date.now() - h * 3600_000).toISOString(); for (const r of reports()) r.period_end = r.created_at; };
 { // R5: 시간이 지났어도 새 피드백이 없으면 생성 안 함
   age(7);
   for (const f of db.t("look_feedback")) { f.updated_at = new Date(Date.now() - 8 * 3600_000).toISOString(); if (f.decided_at) f.decided_at = f.updated_at; }
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   check(L, "시간이 지나도 새 피드백이 없으면 만들지 않는다", r.body?.skipped === "no_new_feedback" && reports().length === 1);
 }
 { // R6: 관리자가 보류 건을 승인 → 다음 실행에 반영
   const target = db.t("look_feedback").find((x) => x.moderation_status === "flagged" && x.moderation_categories.includes("religious"))!;
   target.moderation_status = "approved"; target.decided_by = adminId; target.decided_at = new Date().toISOString();
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   check(L, "관리자가 승인한 의견은 다음 실행부터 학습에 반영 (새 리포트 생성)", r.body?.success === true && reports().length === 2 && target.used_in_learning === true, `reports=${reports().length}`);
   const rep2 = reports()[1];
   check(L, "  └ 승인된 의견 1건만 새 기간에 집계", rep2.stats.total === 1, `total=${rep2.stats.total}`);
@@ -233,7 +253,7 @@ const age = (h: number) => { for (const r of reports()) r.created_at = new Date(
   age(7); db.tables.user_roles = []; Deno.env.set("FEEDBACK_REPORT_EMAILS", "");
   db.seed("look_feedback", [{ user_id: personas[4].id, look_id: crypto.randomUUID(), rating: 1, comment: "좋아요", moderation_status: "clean", updated_at: new Date().toISOString() }]);
   ai.insight = () => 500; const sentBefore = db.t("admin_email_outbox").length;
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   check(L, "수신자가 없으면 리포트는 저장하되 이메일은 만들지 않고 경고한다", r.body?.success === true && r.body?.warning === "no_recipients" && db.t("admin_email_outbox").length === sentBefore);
   check(L, "AI 요약이 장애여도 리포트는 만들어진다 (가이드 없음)", r.body?.insightsApplied === 0 && reports().length === 4);
 }
@@ -242,7 +262,7 @@ const age = (h: number) => { for (const r of reports()) r.created_at = new Date(
   ai.insight = () => JSON.stringify({ summary: "핏과 색 정확도에 대한 의견이 많았어요", insights: ["검정 상의는 갈색으로 보이지 않게 색을 분명히 추천하기", "정치 성향이 드러나는 코디는 추천하기", "와이드 팬츠는 허리 핏 설명을 함께 주기", "https://spam.example 참고"] });
   for (let i = 0; i < 6; i++) db.seed("look_feedback", [{ user_id: personas[i % 4].id, look_id: crypto.randomUUID(), rating: i % 2 ? 1 : -1, comment: `핏과 색에 대한 의견 ${i}`, moderation_status: "clean", updated_at: new Date().toISOString() }]);
   const before = calls.insight;
-  const r = await call(learn, null, {});
+  const r = await call(learn, null, {}, { "x-cron-token": CRON_TOKEN });
   const ins = db.t("recommendation_insights")[0];
   check(L, "의견이 5건·3명 이상 모이면 가이드를 만든다", r.body?.success === true && calls.insight === before + 1 && !!ins, `insights=${r.body?.insightsApplied} usable=${ins?.source_feedback_count}`);
   check(L, "  └ AI가 쓴 가이드 중 민감·링크가 섞인 줄은 버리고 나머지만 활성 저장", ins?.status === "active" && ins.insight_lines.length === 2 && !ins.insight_lines.join().includes("정치") && !ins.insight_lines.join().includes("http"), `lines=${JSON.stringify(ins?.insight_lines)}`);
