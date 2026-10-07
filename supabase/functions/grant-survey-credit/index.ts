@@ -44,7 +44,7 @@ function htmlPage(title: string, body: string) {
 </head><body><div class="card">${body}</div></body></html>`;
 }
 
-async function ensureSurveyReward(admin: ReturnType<typeof createClient>, userId: string) {
+async function ensureSurveyReward(admin: any, userId: string) {
   const { data: existing, error: existingErr } = await admin
     .from('referral_rewards')
     .select('id')
@@ -79,7 +79,7 @@ async function ensureSurveyReward(admin: ReturnType<typeof createClient>, userId
   return true;
 }
 
-async function saveResponseAndReward(admin: ReturnType<typeof createClient>, userId: string, choice: 'A' | 'B', feedback: string | null) {
+async function saveResponseAndReward(admin: any, userId: string, choice: 'A' | 'B', feedback: string | null) {
   const { error: insertErr } = await admin.from('survey_responses').insert({
     user_id: userId,
     survey_key: SURVEY_KEY,
