@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { claimGalleryPublicCredit } from '@/lib/galleryReward';
+import { migrateInlineLooks } from '@/lib/inlineLookMigration';
 
 
 export interface GalleryLook {
@@ -104,6 +105,14 @@ export function useUserGallery(userId: string | undefined) {
       isOwner,
     });
     setIsLoading(false);
+
+    // 옛날에 base64 로 저장된 내 룩은 스토리지로 옮긴다 (한 번에 최대 3장, 실패해도 그대로 둔다)
+    if (userId && allLooks.some((l) => l.image_url?.startsWith('data:'))) {
+      void migrateInlineLooks(supabase, userId, allLooks).then((moved) => {
+        if (Object.keys(moved).length === 0) return;
+        setData((prev) => (prev ? { ...prev, looks: prev.looks.map((l) => (moved[l.id] ? { ...l, image_url: moved[l.id] } : l)) } : prev));
+      });
+    }
   }, [userId, isOwner]);
 
   useEffect(() => {
