@@ -2,7 +2,11 @@
 // summarized into short Korean notes by AI, and stored in shomi_knowledge_files.
 // shomi-chat appends those notes to its knowledge. Runs hourly via pg_cron.
 // First run only records existing files as "baseline" (already in knowledge.ts).
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const FOLDER_ID = "1JhwcmAp3Jf2WAXqao2DGIwCJzigDyd30";
