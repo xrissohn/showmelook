@@ -15,6 +15,8 @@
 
 - Tier numbers, ongoing bonuses, time-limited promotions, official service copy and the service policy list (which Shomi treats as overriding any other knowledge) live only in this file; `src/lib/tierConfig.ts`, the About and /policy pages and `shomi-chat` (knowledge + FAQ) all derive from it. Rationale: a price or promo change edited once reaches the pricing page and Shomi together.
 - `shomi-chat` hashes its full system prompt and clears `shomi_answer_cache` when the hash in `shomi_meta` changes. Rationale: saved answers must never repeat outdated prices.
+- Pricing is a purchase-tier system (tier rises with cumulative purchase amount), never a subscription: no plans, billing cycles or `user_subscriptions` logic. Benefits are computed from the purchase tier only (`src/lib/tierBenefits.ts`, `useTierBenefits`); do not reintroduce a plan table. Rationale: a second, subscription-based source left paying tiers on free behavior (watermark, recommend-first, queue priority).
+- Only advertise perks that are actually enforced: daily generations, watermark removal (Bronze+), recommend-first (Silver+), extra model profiles and priority queue (Platinum). `monthlyLimit`, `galleryLimit`, `hdDownload` and `historyDays` in `TIER_FACTS` are NOT enforced, so no page, tier card or Shomi answer may mention them until enforcement exists (`src/lib/serviceFacts.test.ts` guards this). Rationale: the chat and pricing page must never promise what the service does not do.
 
 ## Email sign-up (`supabase/functions/complete-signup`)
 
