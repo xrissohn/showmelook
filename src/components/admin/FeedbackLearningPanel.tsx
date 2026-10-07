@@ -45,7 +45,8 @@ export const FeedbackLearningPanel = () => {
     const since = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
     const [recent, pending, ins, rep] = await Promise.all([
       supabase.from("look_feedback").select("rating").gte("created_at", since).limit(5000),
-      supabase.from("look_feedback").select("id, rating, comment, moderation_categories, prompt_used, look_id, created_at").eq("moderation_status", "flagged").order("created_at", { ascending: false }).limit(50),
+      // 검열 상태·분류 컬럼은 일반 사용자가 읽지 못하게 막아 두어서, 관리자 전용 함수로 읽는다
+      supabase.rpc("admin_flagged_look_feedback", { p_limit: 50 }),
       supabase.from("recommendation_insights").select("id, summary, insight_lines, status, source_feedback_count, created_at").order("created_at", { ascending: false }).limit(10),
       supabase.from("feedback_reports").select("id, created_at, stats, flagged_count, email_recipients, emailed_at, summary").order("created_at", { ascending: false }).limit(10),
     ]);

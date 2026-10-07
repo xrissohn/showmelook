@@ -2,7 +2,7 @@
 //
 // 한 번 실행하면:
 //  1) 지난 리포트 이후 새로 들어온(또는 관리자가 승인한) 피드백을 모은다. 새 피드백이 없으면 아무것도 하지 않는다.
-//  2) 학습에 쓸 수 있는 의견(검열 통과 + 관리자 승인)만 AI로 요약해 '추천 가이드'를 만들고
+//  2) 학습에 쓸 수 있는 의견(검열 통과 + 관리자 승인)이 5건 이상이고 3명 이상이 남겼을 때만 AI로 요약해 '추천 가이드'를 만들고
 //     recommendation_insights 에 활성 상태로 저장한다 → style-recommend 가 다음 추천부터 반영한다.
 //     (관리자는 관리자 화면에서 언제든 끌 수 있다.)
 //  3) 민감해서 보류된 의견은 학습에 쓰지 않고, 분류별 건수만 세어 관리자에게 알린다.
@@ -32,8 +32,12 @@ const MIN_INTERVAL_MS = 6 * 3600_000;
 const FIRST_WINDOW_MS = 7 * 24 * 3600_000;
 const MAX_ROWS = 2000;
 const MAX_COMMENTS_FOR_AI = 40;
+// 추천 가이드는 의견이 충분히 모였을 때만 만든다 (한두 명의 의견이 모든 사용자의 추천을 바꾸지 않게)
+const MIN_INSIGHT_COMMENTS = 5;
+const MIN_INSIGHT_USERS = 3;
+const INSIGHT_WINDOW_MS = 14 * 24 * 3600_000;
 
-type DbRow = FeedbackRow & { id: string; used_in_learning: boolean; updated_at: string };
+type DbRow = FeedbackRow & { id: string; user_id: string; used_in_learning: boolean; updated_at: string };
 
 const INSIGHT_PROMPT = `너는 AI 패션 코디 추천 서비스의 품질 분석가야. 사용자들이 생성된 룩 이미지에 남긴 평가(좋아요/보통/별로예요)와 의견을 읽고,
 추천 AI가 다음 추천에서 지키면 좋은 '추천 가이드'를 정리해.
@@ -101,7 +105,7 @@ Deno.serve(async (req) => {
     // 지난 리포트 이후 새로 들어왔거나 수정됐거나 관리자가 결정한 피드백
     const { data: rowsRaw, error: rowsError } = await db
       .from("look_feedback")
-      .select("id, rating, comment, style_concept, moderation_status, moderation_categories, used_in_learning, updated_at")
+      .select("id, user_id, rating, comment, style_concept, moderation_status, moderation_categories, used_in_learning, updated_at")
       .or(`updated_at.gt.${periodStart},decided_at.gt.${periodStart}`)
       .lte("updated_at", periodEnd)
       .order("updated_at", { ascending: true })
@@ -119,9 +123,23 @@ Deno.serve(async (req) => {
     let summary = "";
     let insightLines: string[] = [];
     let insightId: string | null = null;
+    // 가이드는 최근 14일 동안 모인 쓸 수 있는 의견으로 만든다 (하루치만 보면 표본이 모이지 않는다).
+    // 이번 기간에 새로 쓸 수 있는 의견이 들어왔을 때만 새로 만든다.
+    let usable: DbRow[] = [];
+    if (rows.some(isUsableComment)) {
+      const { data: poolRaw } = await db
+        .from("look_feedback")
+        .select("id, user_id, rating, comment, style_concept, moderation_status, moderation_categories, used_in_learning, updated_at")
+        .in("moderation_status", ["clean", "approved"])
+        .not("comment", "is", null)
+        .gte("updated_at", new Date(now - INSIGHT_WINDOW_MS).toISOString())
+        .order("updated_at", { ascending: false })
+        .limit(MAX_COMMENTS_FOR_AI * 3);
+      usable = ((poolRaw ?? []) as DbRow[]).filter(isUsableComment).slice(0, MAX_COMMENTS_FOR_AI);
+    }
+    const enoughSamples = usable.length >= MIN_INSIGHT_COMMENTS && new Set(usable.map((r) => r.user_id)).size >= MIN_INSIGHT_USERS;
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
-    const usable = rows.filter(isUsableComment).slice(-MAX_COMMENTS_FOR_AI);
-    if (apiKey && (usable.length > 0 || stats.total >= 5)) {
+    if (apiKey && enoughSamples) {
       const statsLine = `기간 내 피드백 ${stats.total}건: 좋아요 ${stats.up}, 보통 ${stats.neutral}, 별로예요 ${stats.down}. ` +
         `반응 좋은 스타일: ${stats.topLiked.map((c) => c.concept).join(", ") || "없음"}. 아쉬운 스타일: ${stats.topDisliked.map((c) => c.concept).join(", ") || "없음"}.`;
       const out = await summarize(apiKey, statsLine, usable.map((r) => redactPersonalInfo(String(r.comment)).slice(0, 200)));
@@ -139,7 +157,7 @@ Deno.serve(async (req) => {
           summary,
           insight_lines: insightLines,
           stats: { total: stats.total, up: stats.up, neutral: stats.neutral, down: stats.down, usableComments: stats.usableComments },
-          source_feedback_count: rows.length,
+          source_feedback_count: usable.length,
           status: "active",
         })
         .select("id")
@@ -224,6 +242,7 @@ Deno.serve(async (req) => {
       reportId: report.id,
       feedback: stats.total,
       insightsApplied: insightLines.length,
+      insightsSkipped: enoughSamples ? undefined : "not_enough_samples",
       flaggedPending: pendingTotal ?? 0,
       emailsQueued: queued,
       warning: recipients.size === 0 ? "no_recipients" : undefined,

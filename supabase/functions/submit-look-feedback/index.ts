@@ -103,12 +103,14 @@ Deno.serve(async (req) => {
       .eq("look_id", lookId)
       .maybeSingle();
 
+    // 개인정보가 가려져 저장된 의견도 같은 의견으로 본다 (관리자 결정이 날아가지 않게)
+    const sameComment = (stored: string | null | undefined) => stored === comment || (comment !== null && stored === redactPersonalInfo(comment));
     let moderationStatus = "none";
     let categories: string[] = [];
     let decidedBy: string | null = null;
     let decidedAt: string | null = null;
     if (comment) {
-      if (existing && existing.comment === comment && existing.moderation_status !== "none") {
+      if (existing && sameComment(existing.comment) && existing.moderation_status !== "none") {
         moderationStatus = existing.moderation_status;
         categories = existing.moderation_categories ?? [];
         decidedBy = existing.decided_by;
@@ -132,13 +134,15 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date().toISOString();
-    const changed = !existing || existing.rating !== rating || existing.comment !== comment;
+    // 개인정보가 섞인 의견은 가려서 저장한다 (관리자는 맥락만 보면 된다)
+    const storedComment = comment !== null && categories.includes("personal_info") ? redactPersonalInfo(comment) : comment;
+    const changed = !existing || existing.rating !== rating || !sameComment(existing.comment);
     const { error: upsertError } = await db.from("look_feedback").upsert(
       {
         user_id: user.id,
         look_id: lookId,
         rating,
-        comment,
+        comment: storedComment,
         prompt_used: typeof look.prompt_used === "string" ? look.prompt_used.slice(0, 300) : null,
         style_concept: typeof look.prompt_used === "string" ? look.prompt_used.slice(0, 120) : null,
         product_ids: productIds,

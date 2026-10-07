@@ -105,6 +105,13 @@ const A = "피드백 저장";
   await call(submit, tok.lesbian, { lookId: lookOf.lesbian, rating: 1, comment: "마음에 들어요! 010-1234-5678 로 연락 주세요" });
   const row = fb("lesbian");
   check(A, "레즈비언 여성 · 전화번호 포함 → 보류(personal_info)", row?.moderation_status === "flagged" && row.moderation_categories.includes("personal_info"));
+  check(A, "  └ 개인정보가 섞인 의견은 가려서 저장 (전화번호 원문이 DB에 남지 않음)", !!row?.comment && !row.comment.includes("010-1234-5678"), `stored="${row?.comment}"`);
+  // 관리자가 승인한 뒤 같은 의견을 다시 보내도 결정이 유지된다
+  row.moderation_status = "approved"; row.decided_by = adminId; row.decided_at = new Date().toISOString();
+  await call(submit, tok.lesbian, { lookId: lookOf.lesbian, rating: 1, comment: "마음에 들어요! 010-1234-5678 로 연락 주세요" });
+  const again = fb("lesbian");
+  check(A, "  └ 가려 저장된 의견을 같은 내용으로 다시 보내도 관리자 승인이 유지", again?.moderation_status === "approved", `status=${again?.moderation_status}`);
+  again.moderation_status = "flagged"; again.decided_by = null; again.decided_at = null; // 이후 학습 시나리오(보류 건 승인)를 위해 원복
 }
 { // 6. 스팸
   await call(submit, tok.spam, { lookId: lookOf.spam, rating: -1, comment: "할인 코드 받으려면 www.example.com 방문" });
@@ -179,7 +186,7 @@ let firstReportId = "";
   const ins = db.t("recommendation_insights")[0];
   check(L, "새 피드백이 있으면 리포트 생성", r.status === 200 && r.body?.success === true && reports().length === 1, JSON.stringify({ feedback: r.body?.feedback, insights: r.body?.insightsApplied, emails: r.body?.emailsQueued }));
   check(L, "  └ 통계: 좋아요/보통/별로예요 집계", rep?.stats.up === 5 && rep.stats.neutral === 1 && rep.stats.down === 3, `up=${rep?.stats.up} neutral=${rep?.stats.neutral} down=${rep?.stats.down}`);
-  check(L, "  └ AI가 쓴 가이드 중 민감·링크가 섞인 줄은 버리고 나머지만 활성 저장", ins?.status === "active" && ins.insight_lines.length === 2 && !ins.insight_lines.join().includes("정치") && !ins.insight_lines.join().includes("http"), `lines=${JSON.stringify(ins?.insight_lines)}`);
+  check(L, "  └ 쓸 수 있는 의견이 5건·3명 미만이면 가이드를 만들지 않는다 (리포트는 생성)", !ins && r.body?.insightsApplied === 0 && r.body?.insightsSkipped === "not_enough_samples" && calls.insight === 0, `usable=${rep?.stats.usableComments} insight calls=${calls.insight}`);
   const learned = db.t("look_feedback").filter((x) => x.used_in_learning).map((x) => x.moderation_status);
   check(L, "  └ 학습 반영 표시: 통과·평점만 있는 건만, 보류(flagged)는 제외", learned.length > 0 && learned.every((s) => ["none", "clean", "approved"].includes(s)) && db.t("look_feedback").filter((x) => x.moderation_status === "flagged").every((x) => !x.used_in_learning), `learned=${learned.length}`);
   check(L, "  └ 보류 건수·분류별 집계가 리포트에 저장", rep?.flagged_count === db.t("look_feedback").filter((x) => x.moderation_status === "flagged").length && rep.flagged_by_category.religious === 1 && rep.flagged_by_category.personal_info === 1, JSON.stringify(rep?.flagged_by_category));
@@ -229,6 +236,16 @@ const age = (h: number) => { for (const r of reports()) r.created_at = new Date(
   const r = await call(learn, null, {});
   check(L, "수신자가 없으면 리포트는 저장하되 이메일은 만들지 않고 경고한다", r.body?.success === true && r.body?.warning === "no_recipients" && db.t("admin_email_outbox").length === sentBefore);
   check(L, "AI 요약이 장애여도 리포트는 만들어진다 (가이드 없음)", r.body?.insightsApplied === 0 && reports().length === 4);
+}
+{ // R9: 의견이 충분히 모이면(5건·3명 이상) 가이드 생성 — AI가 쓴 민감·링크 줄은 버리고 나머지만 활성 저장
+  age(7); db.tables.user_roles = [{ user_id: adminId, role: "admin" }]; Deno.env.set("FEEDBACK_REPORT_EMAILS", "");
+  ai.insight = () => JSON.stringify({ summary: "핏과 색 정확도에 대한 의견이 많았어요", insights: ["검정 상의는 갈색으로 보이지 않게 색을 분명히 추천하기", "정치 성향이 드러나는 코디는 추천하기", "와이드 팬츠는 허리 핏 설명을 함께 주기", "https://spam.example 참고"] });
+  for (let i = 0; i < 6; i++) db.seed("look_feedback", [{ user_id: personas[i % 4].id, look_id: crypto.randomUUID(), rating: i % 2 ? 1 : -1, comment: `핏과 색에 대한 의견 ${i}`, moderation_status: "clean", updated_at: new Date().toISOString() }]);
+  const before = calls.insight;
+  const r = await call(learn, null, {});
+  const ins = db.t("recommendation_insights")[0];
+  check(L, "의견이 5건·3명 이상 모이면 가이드를 만든다", r.body?.success === true && calls.insight === before + 1 && !!ins, `insights=${r.body?.insightsApplied} usable=${ins?.source_feedback_count}`);
+  check(L, "  └ AI가 쓴 가이드 중 민감·링크가 섞인 줄은 버리고 나머지만 활성 저장", ins?.status === "active" && ins.insight_lines.length === 2 && !ins.insight_lines.join().includes("정치") && !ins.insight_lines.join().includes("http"), `lines=${JSON.stringify(ins?.insight_lines)}`);
 }
 const failed = results.filter((r) => !r.ok);
 await Deno.writeTextFile(QA_OUT + "/results.json", JSON.stringify({ results, calls, counts: { feedback: db.t("look_feedback").length, productFeedback: db.t("product_feedback").length, reports: reports().length } }, null, 2));

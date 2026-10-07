@@ -51,6 +51,7 @@ class Q implements PromiseLike<any> {
   gt(c: string, v: any) { return this.f('gt', c, v); } gte(c: string, v: any) { return this.f('gte', c, v); }
   lt(c: string, v: any) { return this.f('lt', c, v); } lte(c: string, v: any) { return this.f('lte', c, v); }
   in(c: string, arr: any[]) { this.filters.push((r) => arr.map(String).includes(String(val(r, c)))); return this; }
+  not(c: string, op: string, v: any) { this.filters.push((r) => (op === 'is' && v === null ? val(r, c) != null : !cmp(op, val(r, c), v))); return this; }
   filter(c: string, op: string, v: any) { return this.f(op, c, v); }
   or(expr: string) { const parts = expr.split(',').map((p) => { const i = p.indexOf('.'); const j = p.indexOf('.', i + 1); return { c: p.slice(0, i), op: p.slice(i + 1, j), v: p.slice(j + 1) }; }); this.filters.push((r) => parts.some((p) => cmp(p.op, val(r, p.c), p.v))); return this; }
   order(col: string, o?: { ascending?: boolean }) { this.orderBy = { col, asc: o?.ascending !== false }; return this; }
