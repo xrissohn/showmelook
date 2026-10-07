@@ -1,0 +1,2 @@
+REVOKE SELECT ON TABLE public.look_feedback FROM authenticated;
+GRANT SELECT (id, user_id, look_id, rating, comment, prompt_used, style_concept, product_ids, applied_gender, created_at, updated_at) ON TABLE public.look_feedback TO authenticated;
