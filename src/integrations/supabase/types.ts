@@ -2247,6 +2247,18 @@ export type Database = {
       }
     }
     Functions: {
+      admin_flagged_look_feedback: {
+        Args: { p_limit?: number }
+        Returns: {
+          comment: string
+          created_at: string
+          id: string
+          look_id: string
+          moderation_categories: string[]
+          prompt_used: string
+          rating: number
+        }[]
+      }
       calculate_model_profile_slots: {
         Args: { p_total_amount: number }
         Returns: number
