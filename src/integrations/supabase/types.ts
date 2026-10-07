@@ -2250,12 +2250,12 @@ export type Database = {
       admin_flagged_look_feedback: {
         Args: { p_limit?: number }
         Returns: {
-          comment: string | null
+          comment: string
           created_at: string
           id: string
           look_id: string
           moderation_categories: string[]
-          prompt_used: string | null
+          prompt_used: string
           rating: number
         }[]
       }
