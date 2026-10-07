@@ -1,6 +1,7 @@
 // generate-style v3.0 - with generation-time tag anchors
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildColorLock, colorConstraint, resolveItemColors } from "../_shared/productColors.ts";
 
 // ===== Rule-based Tag Position Anchor System =====
 // 생성 시점에 카테고리 + 레이어 순서를 활용한 정밀 body-zone 매핑
@@ -315,98 +316,24 @@ serve(async (req) => {
     console.log('[generate-style] Avatar URL:', userAvatarUrl ? userAvatarUrl.substring(0, 80) + '...' : 'none');
 
     // Build products description with color constraints and size hints from productDetails
+    // 색 정보는 클라이언트가 보낸 값에 기대지 않고 상품 id로 DB에서 채운다
+    // (맞춤 추천 경로에서는 클라이언트가 color/dna_meta 를 보내지 못해, 이름에 색이 없으면 이미지 참조만 남아 색이 틀어졌다).
     const buildProductsWithColors = (productDetails: any[], fallbackProducts: string): string => {
       if (!productDetails || productDetails.length === 0) {
         return fallbackProducts;
       }
-      
-      // 확장된 색상 키워드 매핑 (영문/한국어)
-      const COLOR_KEYWORDS: Record<string, string> = {
-        'white': 'white', '화이트': 'white', '흰': 'white', '백': 'white', 'wht': 'white',
-        'black': 'black', '블랙': 'black', '검정': 'black', '흑': 'black', 'blk': 'black',
-        'navy': 'navy', '네이비': 'navy',
-        'blue': 'blue', '블루': 'blue', '파랑': 'blue', '파란': 'blue',
-        'gray': 'gray', 'grey': 'gray', '그레이': 'gray', '회색': 'gray', '차콜': 'charcoal', 'charcoal': 'charcoal',
-        'beige': 'beige', '베이지': 'beige',
-        'brown': 'brown', '브라운': 'brown', '갈색': 'brown',
-        'cream': 'cream', '크림': 'cream', 'ivory': 'ivory', '아이보리': 'ivory',
-        'red': 'red', '레드': 'red', '빨강': 'red',
-        'pink': 'pink', '핑크': 'pink',
-        'green': 'green', '그린': 'green', '초록': 'green', 'olive': 'olive', '올리브': 'olive',
-        'yellow': 'yellow', '옐로우': 'yellow', '노랑': 'yellow',
-        'orange': 'orange', '오렌지': 'orange',
-        'purple': 'purple', '퍼플': 'purple', '보라': 'purple',
-        'khaki': 'khaki', '카키': 'khaki',
-        'camel': 'camel', '카멜': 'camel', '캐멀': 'camel',
-        'wine': 'wine', '와인': 'wine', 'burgundy': 'burgundy', '버건디': 'burgundy',
-        'wheat': 'wheat/tan', 'tan': 'tan', '탄': 'tan',
-        'sand': 'sand', '샌드': 'sand',
-        'mint': 'mint', '민트': 'mint',
-        'lavender': 'lavender', '라벤더': 'lavender',
-        'coral': 'coral', '코랄': 'coral',
-        'denim': 'denim blue', '데님': 'denim blue',
-        'mocha': 'mocha brown', '모카': 'mocha brown',
-        'oatmeal': 'oatmeal', '오트밀': 'oatmeal',
-        'silver': 'silver', '실버': 'silver',
-        'gold': 'gold', '골드': 'gold',
-      };
 
-      const parseColorsFromString = (str: string): string[] => {
-        if (!str) return [];
-        const lower = str.toLowerCase();
-        const found: string[] = [];
-        for (const [keyword, colorName] of Object.entries(COLOR_KEYWORDS)) {
-          if (lower.includes(keyword)) {
-            if (!found.includes(colorName)) found.push(colorName);
-          }
-        }
-        return found;
-      };
-
-      return productDetails.map((p: any, idx: number) => {
+      const itemsForLock: Array<{ name: string; colors: string[] }> = [];
+      const lines = productDetails.map((p: any, idx: number) => {
         const brandPart = p.brand ? `${p.brand} ` : '';
         const name = p.name || 'Item';
-        
-        // Extract color_family from dna_meta or direct color field
-        let colors: string[] = [];
-        if (p.dna_meta?.color_family) {
-          const rawColors = Array.isArray(p.dna_meta.color_family) 
-            ? p.dna_meta.color_family 
-            : [p.dna_meta.color_family];
-          colors = rawColors.filter((c: string) => c && c !== 'unknown');
-        }
-        
-        if (colors.length === 0 && p.color_family) {
-          const rawColors = Array.isArray(p.color_family) ? p.color_family : [p.color_family];
-          colors = rawColors.filter((c: string) => c && c !== 'unknown');
-        }
-        
-        // color 필드에서 확장 파서로 추출
-        if (colors.length === 0 && p.color) {
-          colors = parseColorsFromString(String(p.color));
-        }
-        
-        // 상품명에서도 색상 추출 시도
-        if (colors.length === 0) {
-          colors = parseColorsFromString(name);
-        }
-        
-        // 다중 색상이 너무 많으면 (4개 이상) 상품 이미지 참조로 전환
-        if (colors.length > 3) {
-          colors = []; // 이미지 참조로 대체
-        }
-        
-        // Build constraints array
-        const constraints: string[] = [];
-        
-        // Add color constraint
-        if (colors.length > 0) {
-          constraints.push(`MUST be ${colors.join(' or ')} color ONLY`);
-        } else {
-          // 색상 정보 없으면 이미지 참조 지시
-          constraints.push(`match the EXACT color from product image #${idx + 1}`);
-        }
-        
+
+        // dna_meta.color_family → color_family → color 필드 → 상품명 순으로 색을 정한다
+        const colors = resolveItemColors(p);
+        itemsForLock.push({ name, colors });
+
+        const constraints: string[] = [colorConstraint(colors, idx + 1)];
+
         // Check for small_accessory (wallet, card holder, etc.)
         const productName = p.name?.toLowerCase() || '';
         const isCardWallet = productName.includes('카드지갑') || productName.includes('카드홀더') || productName.includes('카드케이스');
@@ -427,10 +354,41 @@ serve(async (req) => {
         }
         
         return `${brandPart}${name} (${constraints.join('; ')})`;
-      }).join('\n');
+      });
+      return `${lines.join('\n')}\n\n${buildColorLock(itemsForLock)}`;
     };
 
-    const productsWithColors = buildProductsWithColors(productDetails, products);
+    // 색 정보가 비어 있는 상품은 DB(products_cache)에서 color / dna_meta 를 가져와 채운다 (실패해도 계속 진행)
+    type DetailLike = { id?: string; color?: string | null; dna_meta?: Record<string, unknown> | null };
+    type ColorRow = { id: string; color: string | null; dna_meta: Record<string, unknown> | null };
+    let detailsWithColor: unknown[] = productDetails;
+    try {
+      if (Array.isArray(productDetails) && productDetails.length > 0) {
+        const ids = (productDetails as DetailLike[])
+          .map((p) => p?.id)
+          .filter((id): id is string => typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id));
+        if (ids.length > 0) {
+          const { data: colorRows } = await supabase
+            .from('products_cache')
+            .select('id, color, dna_meta')
+            .in('id', ids);
+          const byId = new Map<string, ColorRow>(((colorRows || []) as ColorRow[]).map((r) => [r.id, r]));
+          detailsWithColor = (productDetails as DetailLike[]).map((p) => {
+            const row = p?.id ? byId.get(p.id) : undefined;
+            if (!row) return p;
+            return {
+              ...p,
+              color: p.color || row.color,
+              dna_meta: p.dna_meta?.color_family ? p.dna_meta : { ...(row.dna_meta || {}), ...(p.dna_meta || {}) },
+            };
+          });
+        }
+      }
+    } catch (colorErr) {
+      console.warn('[generate-style] color enrichment failed, using client details:', colorErr);
+    }
+
+    const productsWithColors = buildProductsWithColors(detailsWithColor, products);
     console.log('[generate-style] Products with colors:', productsWithColors);
 
     // Build the image generation prompt
