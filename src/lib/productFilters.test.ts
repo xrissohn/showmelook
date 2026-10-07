@@ -98,3 +98,60 @@ describe('스타일 태그 표시', () => {
     expect(visibleStyleTags(null)).toEqual([]);
   });
 });
+
+import { detectRequestedClothingGender, resolveClothingGender } from './productFilters';
+
+describe('요청 문장이 말하는 옷의 성별이 항상 우선', () => {
+  const cases: Array<[string, 'male' | 'female' | 'unisex' | null]> = [
+    // 명시적 표현
+    ['남성복 데이트룩 추천해줘', 'male'],
+    ['여성복으로 출근룩 알려줘', 'female'],
+    ['남자 옷 코디해줘', 'male'],
+    ['여자 코트 추천', 'female'],
+    ['남성용 스니커즈', 'male'],
+    ['여장 코디 추천해줘', 'female'],
+    ['남장 룩 하고 싶어', 'male'],
+    ["men's winter coat", 'male'],
+    ["women's blazer for work", 'female'],
+    // 품목이 말해주는 경우
+    ['남자인데 원피스 입고 싶어', 'female'],
+    ['치마 코디 알려줘', 'female'],
+    ['드레스 셔츠에 어울리는 바지', null],
+    // 젠더리스/둘 다
+    ['젠더리스 룩 추천해줘', 'unisex'],
+    ['유니섹스로 입을 만한 후드', 'unisex'],
+    ['남성복이랑 여성복 둘 다 보여줘', 'unisex'],
+    // 선물 받는 사람
+    ['남자친구한테 줄 생일 선물 옷 추천', 'male'],
+    ['엄마 선물로 줄 니트', 'female'],
+    // 말이 없거나 애매하면 화면 선택을 따른다
+    ['데이트룩 추천해줘', null],
+    ['여자친구랑 커플룩 입고 싶어', null],
+    ['남자친구랑 첫 데이트룩', null],
+    ['겨울 코트 추천', null],
+    ['', null],
+  ];
+  for (const [text, want] of cases) {
+    it(`"${text}" → ${want}`, () => expect(detectRequestedClothingGender(text)).toBe(want));
+  }
+
+  it('명시적 표현이 선물 받는 사람보다 우선', () => {
+    expect(detectRequestedClothingGender('여자친구 선물로 줄 남성복')).toBe('male');
+  });
+
+  it('요청 문장이 있으면 프로필·선택 성별보다 우선하고, 없으면 선택을 따른다', () => {
+    expect(resolveClothingGender('남성복 추천해줘', 'female')).toEqual({ gender: 'male', fromRequest: true });
+    expect(resolveClothingGender('여성복 추천해줘', 'male')).toEqual({ gender: 'female', fromRequest: true });
+    expect(resolveClothingGender('데이트룩', 'female')).toEqual({ gender: 'female', fromRequest: false });
+  });
+
+  it('아동 모드는 요청 문장으로 바꾸지 않는다', () => {
+    expect(resolveClothingGender('남성복 추천', 'kids')).toEqual({ gender: 'kids', fromRequest: false });
+    expect(resolveClothingGender('남성복 추천', '키즈')).toEqual({ gender: '키즈', fromRequest: false });
+  });
+
+  it('요청 문장의 성별로 후보를 고르면 프로필 성별과 무관하게 그 성별 상품이 나온다', () => {
+    const { gender } = resolveClothingGender('여성복 추천해줘', 'male'); // 남성 프로필 + 여성복 요청
+    expect(allowedProductGenders(gender)).toEqual(['female', 'unisex']);
+  });
+});

@@ -63,3 +63,60 @@ export function isCategoryPathTag(tag: string | null | undefined): boolean {
 export function visibleStyleTags(tags: Array<string | null | undefined> | null | undefined): string[] {
   return (tags || []).filter((t): t is string => !isCategoryPathTag(t) && t!.trim().length > 0);
 }
+
+// ---- 요청 문장이 말하는 '찾는 옷의 성별' ----
+// 사용자가 원하는 룩이 항상 우선이다. 프로필 성별이나 화면에서 고른 성별과 달라도
+// 요청 문장이 남성복/여성복/젠더리스를 말하면 그쪽으로 추천한다 (그게 그 사람의 취향).
+export type RequestedGender = 'male' | 'female' | 'unisex';
+
+const F = '(?:여성|여자|우먼|숙녀)';
+const M = '(?:남성|남자)';
+const CLOTH = '(?:복|옷|의류|용|패션|스타일|코디|룩|셔츠|티셔츠|상의|하의|바지|팬츠|자켓|재킷|코트|니트|신발|슈즈|가방|정장|수트|슈트|트렌치|점퍼|패딩|속옷|잠옷|수영복)';
+const wearing = (g: string) => new RegExp(`${g}\\s*(?:이|가|들이|들)?\\s*입(?:는|을|어|고|힐)`);
+
+// 1순위: 명시적 표현 ("남성복", "여자 옷", "여성용", "남자가 입을", "여장", "men's")
+const EXPLICIT_FEMALE: RegExp[] = [
+  new RegExp(`${F}\\s*${CLOTH}`), wearing(F), /여장/,
+  /\b(?:women'?s|womens|womenswear|ladies|for women|female)\b/i,
+];
+const EXPLICIT_MALE: RegExp[] = [
+  new RegExp(`${M}\\s*${CLOTH}`), wearing(M), /남장/, /맨즈/,
+  /\b(?:men'?s|mens|menswear|for men|male)\b/i,
+];
+// 2순위: 여성 전용으로 쓰이는 품목 ("남자인데 원피스 입고 싶어" → 여성복)
+const ITEM_FEMALE: RegExp[] = [/원피스/, /치마/, /스커트/, /블라우스/, /드레스(?!\s*셔츠)/, /하이힐/, /펌프스/, /\b(?:skirts?|blouses?|high heels|gown)\b/i];
+// 3순위: 선물 받는 사람 ("남자친구한테 줄 선물" → 남성복). '여자친구랑 커플룩'처럼 함께 입는 경우는 보지 않는다.
+const TO = '(?:선물|한테|에게|께|줄\\s|줄$|입힐|드릴)';
+const RECIPIENT_MALE = new RegExp(`(?:남자친구|남친|남편|아빠|아버지|아들|남동생|오빠|할아버지|삼촌)\\s*${TO}`);
+const RECIPIENT_FEMALE = new RegExp(`(?:여자친구|여친|아내|와이프|엄마|어머니|딸|여동생|언니|누나|할머니|이모|고모)\\s*${TO}`);
+
+const UNISEX_RE = /(?:젠더\s*리스|젠더\s*뉴트럴|유니섹스|남녀\s*공용|남녀\s*모두|성\s*중립|중성적|앤드로지너스|androgynous|genderless|gender-neutral|unisex)/i;
+
+const hit = (res: RegExp[], text: string) => res.some((re) => re.test(text));
+
+/**
+ * 요청 문장에서 찾는 옷의 성별을 읽는다. 아무 말도 없으면 null (화면에서 고른 성별을 쓴다).
+ * 둘 다 말하면(남성복·여성복 모두) 'unisex'.
+ */
+export function detectRequestedClothingGender(text: string | null | undefined): RequestedGender | null {
+  if (!text) return null;
+  const t = String(text).normalize('NFKC');
+  const pick = (female: boolean, male: boolean): RequestedGender | null => (female && male ? 'unisex' : female ? 'female' : male ? 'male' : null);
+
+  const explicit = pick(hit(EXPLICIT_FEMALE, t), hit(EXPLICIT_MALE, t));
+  if (explicit) return explicit;
+  if (UNISEX_RE.test(t)) return 'unisex';
+  const item = pick(hit(ITEM_FEMALE, t), false);
+  if (item) return item;
+  return pick(RECIPIENT_FEMALE.test(t), RECIPIENT_MALE.test(t));
+}
+
+/** 요청 문장 > 화면에서 고른 성별. 아동 모드는 요청 문장으로 바꾸지 않는다. */
+export function resolveClothingGender(
+  requestText: string | null | undefined,
+  selected: string | null | undefined,
+): { gender: string | null | undefined; fromRequest: boolean } {
+  if ((selected ?? '').toLowerCase() === 'kids' || selected === '키즈') return { gender: selected, fromRequest: false };
+  const requested = detectRequestedClothingGender(requestText);
+  return requested ? { gender: requested, fromRequest: true } : { gender: selected, fromRequest: false };
+}

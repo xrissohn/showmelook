@@ -36,6 +36,7 @@
 - The budget is read from the request text (`parseBudgetFromRequest`: "20만원", "예산 20만", "10~20만원", "200,000원", "200k won"…). A `budget` field from the client is used only with `budgetIsExplicit: true`. Rationale: the page always sent 200000, so every row looked like a 200,000-won budget that was never applied.
 - With a budget: per-category price caps on stage-2 candidates, a "total ≤ N원" rule in the stage-2 prompt, then a swap loop (most expensive item → cheaper item of the same `item_slot`, up to 6 rounds); after a swap the reasoning is rebuilt from the final products. The response carries `budget`, `overBudget`, `budgetAdjusted`; `recommendation_history.budget` stores the stated budget or NULL.
 - Affiliate links are created once, in parallel, after the final products are fixed.
+- The user's requested look always wins over the profile gender and the on-screen selection: the clothing gender in the request text (`detectRequestedClothingGender` in `_shared/productFilters.ts`: 남성복·여성복, 원피스 and other gendered items, 젠더리스/유니섹스, 여장/남장, gift recipients; `resolveClothingGender`) is applied in `style-recommend` (filters, prompts, cache key; response `appliedGender`) and on the style page (`requestGender` → ads, alternatives, history). Kids mode is never overridden; the profile gender only describes the model's body in `generate-style`. Rationale: what someone wants to wear is their taste, not their profile.
 
 
 ## One-off service emails (`supabase/functions/send-outbox-email`)

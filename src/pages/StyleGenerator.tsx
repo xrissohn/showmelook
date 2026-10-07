@@ -18,7 +18,7 @@ import { useTierBenefits } from '@/hooks/useTierBenefits';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
-import { MIN_PRODUCT_PRICE, allowedProductGenders, customGenderFromProfile, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
+import { MIN_PRODUCT_PRICE, allowedProductGenders, customGenderFromProfile, detectRequestedClothingGender, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
 import { priceBand, rankAlternatives, type AltCandidate } from '@/lib/alternatives';
 import { replaceProductMention, swapIdInList } from '@/lib/lookSwap';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
@@ -3040,6 +3040,9 @@ const StyleGenerator = () => {
     tpo: string;
   } | null>(null);
   const [customGender, setCustomGender] = useState<'female' | 'male' | 'unisex' | 'kids'>('female');
+  // 마지막 요청 문장이 말한 옷의 성별(남성복·여성복·젠더리스 등). 있으면 프로필·선택 성별보다 우선한다 — 사용자가 원하는 룩이 먼저.
+  const [requestGender, setRequestGender] = useState<'female' | 'male' | 'unisex' | null>(null);
+  const activeGender: 'female' | 'male' | 'unisex' | 'kids' = requestGender ?? customGender;
   const [customAge, setCustomAge] = useState<number | undefined>(undefined);
   const [customBudget, setCustomBudget] = useState([200000]);
   const [isCustomSearching, setIsCustomSearching] = useState(false);
@@ -3086,6 +3089,7 @@ const StyleGenerator = () => {
   
   // 로딩 화면 추천 상품 (모든 회원에게 표시)
   const [loadingAdsProducts, setLoadingAdsProducts] = useState<CachedProduct[]>([]);
+  const adsLoadedForRef = useRef<string | null>(null); // 로딩 광고를 불러온 성별 기준
   
   // 티커 애니메이션 상태 (부드러운 스크롤)
   const tickerRef = useRef<HTMLDivElement>(null);
@@ -3194,7 +3198,7 @@ const StyleGenerator = () => {
           styleConcept: customResult.styleConcept,
           occasion: customStylePrompt,
           additionalContext: {
-            gender: customGender,
+            gender: activeGender,
             budget: customResult.budget ?? null,
             mode: customResult.mode ?? 'recommendation',
           },
@@ -3270,7 +3274,7 @@ const StyleGenerator = () => {
         // 좋아요 - DB에 저장
         // 좋아요 피드백 수집
         const feedbackContext = {
-          gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+          gender: activeGender === 'male' ? '남성' : activeGender === 'female' ? '여성' : activeGender,
           occasion: customStylePrompt,
           budget: customBudget[0],
         };
@@ -3325,7 +3329,7 @@ const StyleGenerator = () => {
     try {
       // 장바구니 피드백 수집
       const feedbackContext = {
-        gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+        gender: activeGender === 'male' ? '남성' : activeGender === 'female' ? '여성' : activeGender,
         occasion: customStylePrompt,
         budget: customBudget[0],
       };
@@ -3434,12 +3438,14 @@ const StyleGenerator = () => {
     const loadAdsProducts = async () => {
       // 생성 중이거나 추천 검색 중일 때만 상품 로드
       if (!isGenerating && !isCustomSearching) return;
-      if (loadingAdsProducts.length > 0) return; // 이미 로드됨
+      // 이미 로드됐고 같은 성별 기준이면 다시 부르지 않는다 (성별이 바뀌면 새로 불러온다)
+      const adsKey = `${activeGender}|${userProfile?.gender ?? ''}`;
+      if (loadingAdsProducts.length > 0 && adsLoadedForRef.current === adsKey) return;
 
       try {
         // 다양한 상품을 위해 더 많이 가져와서 랜덤 셔플
         // 선택한 성별(없으면 프로필 성별)과 유니섹스 상품만 보여준다
-        const adGenders = allowedProductGenders(customGender, userProfile?.gender);
+        const adGenders = allowedProductGenders(activeGender, userProfile?.gender);
         let adsQuery = supabase
           .from('products_cache')
           .select('id, name, brand, price, image_url, product_url, category, style_tags, merchant_id')
@@ -3459,6 +3465,7 @@ const StyleGenerator = () => {
         if (data.length > 0) {
           // 완전 랜덤 셔플 후 10개 선택 (다양한 머천트/카테고리 혼합)
           const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, 10);
+          adsLoadedForRef.current = adsKey;
           setLoadingAdsProducts(shuffled as CachedProduct[]);
         }
       } catch (error) {
@@ -3467,7 +3474,7 @@ const StyleGenerator = () => {
     };
 
     loadAdsProducts();
-  }, [isGenerating, isCustomSearching, loadingAdsProducts.length, customGender, userProfile?.gender]);
+  }, [isGenerating, isCustomSearching, loadingAdsProducts.length, activeGender, userProfile?.gender]);
 
   // 광고 상품 클릭 핸들러
   const handleAdsProductClick = async (product: CachedProduct) => {
@@ -3569,7 +3576,7 @@ const StyleGenerator = () => {
       const currentProduct = customResult?.items.find(item => item.id === currentProductId);
       const priorityCategory = mapToPriorityCategory(category);
       
-      console.log(`[Alternatives] Category: ${category} -> Priority: ${priorityCategory}, Gender: ${customGender}`);
+      console.log(`[Alternatives] Category: ${category} -> Priority: ${priorityCategory}, Gender: ${activeGender}`);
       
       // priority category에 해당하는 모든 카테고리 키워드
       const categoryKeywords: Record<string, string[]> = {
@@ -3616,9 +3623,9 @@ const StyleGenerator = () => {
         : undefined;
       const rankOpts = {
         current,
-        selectedGender: customGender,
+        selectedGender: activeGender,
         profileGender: userProfile?.gender,
-        kidsRequest: customGender === 'kids',
+        kidsRequest: activeGender === 'kids',
         limit: 30,
       };
 
@@ -3789,7 +3796,7 @@ const StyleGenerator = () => {
   const handlePurchase = async (product: CachedProduct) => {
     // 클릭 피드백 수집
     const feedbackContext = {
-      gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+      gender: activeGender === 'male' ? '남성' : activeGender === 'female' ? '여성' : activeGender,
       occasion: customStylePrompt,
       budget: customBudget[0],
     };
@@ -4506,7 +4513,10 @@ const StyleGenerator = () => {
         'unisex': '유니섹스',
         'kids': '키즈' // 키즈는 키즈로 전달하여 백엔드에서 필터링
       };
-      const genderKo = genderMapping[customGender] || '여성';
+      // 요청 문장이 남성복/여성복/젠더리스를 말하면 프로필·선택 성별과 달라도 그쪽이 우선 (아동 모드는 그대로)
+      const requestedForSearch = customGender === 'kids' ? null : detectRequestedClothingGender(customStylePrompt);
+      setRequestGender(requestedForSearch);
+      const genderKo = genderMapping[requestedForSearch ?? customGender] || '여성';
       
       // 🔥 선택된 프로필의 정보를 우선 사용 (가족 프로필 선택 시 기본 사용자로 폴백 방지)
       const isFamilyProfile = selectedGenerationProfile?.type === 'family';
@@ -4588,7 +4598,7 @@ const StyleGenerator = () => {
             const { data: historyData } = await supabase.from('recommendation_history').insert({
               user_id: user.id,
               prompt: customStylePrompt,
-              gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
+              gender: genderKo,
               budget: data.look.budget ?? null, // 요청 문장에서 읽은 예산 (없으면 null)
               style_concept: data.look.name || '',
               style_reasoning: data.look.stylingTips || '',
@@ -4605,7 +4615,7 @@ const StyleGenerator = () => {
             // 상품 조회 피드백 수집
             const productIds = transformedItems.map((item: CachedProduct) => item.id);
             const feedbackContext = {
-              gender: customGender === 'male' ? '남성' : customGender === 'female' ? '여성' : customGender,
+              gender: activeGender === 'male' ? '남성' : activeGender === 'female' ? '여성' : activeGender,
               occasion: customStylePrompt,
               budget: customBudget[0],
             };
@@ -4788,7 +4798,10 @@ const StyleGenerator = () => {
       'unisex': '유니섹스',
       'kids': '키즈'
     };
-    const genderKo = genderMapping[customGender] || '여성';
+    // 요청 문장이 남성복/여성복/젠더리스를 말하면 프로필·선택 성별과 달라도 그쪽이 우선 (아동 모드는 그대로)
+    const requestedForSearch = customGender === 'kids' ? null : detectRequestedClothingGender(customStylePrompt);
+    setRequestGender(requestedForSearch);
+    const genderKo = genderMapping[requestedForSearch ?? customGender] || '여성';
     
     // 🔥 선택된 프로필의 정보를 우선 사용 (가족 프로필 선택 시 기본 사용자로 폴백 방지)
     const isFamilyProfile = selectedGenerationProfile?.type === 'family';
@@ -4890,7 +4903,7 @@ const StyleGenerator = () => {
               const { data: historyData } = await supabase.from('recommendation_history').insert({
                 user_id: user.id,
                 prompt: customStylePrompt,
-                gender: customGender === 'kids' ? '키즈' : customGender === 'unisex' ? '유니섹스' : (customGender === 'female' ? '여성' : '남성'),
+                gender: genderKo,
                 budget: recData.look.budget ?? null, // 요청 문장에서 읽은 예산 (없으면 null)
                 style_concept: recData.look.name || '',
                 style_reasoning: recData.look.stylingTips || '',
@@ -5726,6 +5739,7 @@ const StyleGenerator = () => {
                           value={customGender}
                           onValueChange={(value) => {
                             setCustomGender(value as 'female' | 'male' | 'unisex' | 'kids');
+                            setRequestGender(null); // 직접 고르면 그 선택을 따른다 (다음 요청 문장이 다시 말하면 문장이 우선)
                             if (value === 'kids' && !customAge) {
                               setCustomAge(10);
                             }

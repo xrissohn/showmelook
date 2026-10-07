@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { parseBudgetFromRequest, BUDGET_MIN, BUDGET_SHARE } from "../_shared/budget.ts";
-import { isUsableCandidate } from "../_shared/productFilters.ts";
+import { isUsableCandidate, resolveClothingGender } from "../_shared/productFilters.ts";
 
 // ============= 인터페이스 정의 =============
 
@@ -2038,7 +2038,14 @@ serve(async (req) => {
     }
 
     requestPayload = await req.json();
-    const { userRequest, gender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems, budgetIsExplicit } = requestPayload;
+    const { userRequest, gender: selectedGender = '여성', budget = 200000, forceRefresh = false, age, ageGroup, stylePreferences, photoAnalysisItems, budgetIsExplicit } = requestPayload;
+    // 사용자가 원하는 룩이 항상 우선: 요청 문장이 남성복/여성복/젠더리스(또는 원피스 같은 품목)를 말하면
+    // 프로필·화면에서 고른 성별과 달라도 그쪽으로 추천한다. 아동 모드는 바꾸지 않는다.
+    const resolvedGender = resolveClothingGender(userRequest, selectedGender);
+    const gender: string = resolvedGender.fromRequest
+      ? ({ male: '남성', female: '여성', unisex: '유니섹스' } as Record<string, string>)[String(resolvedGender.gender)] ?? selectedGender
+      : selectedGender;
+    if (gender !== selectedGender) console.log(`[style-recommend] Requested clothing gender overrides selection: ${selectedGender} -> ${gender}`);
     // 예산은 사용자가 문장에 쓴 금액(또는 화면에서 직접 고른 값)만 쓴다.
     // 예전 화면은 항상 200000을 보내므로, budgetIsExplicit 없이 온 budget 값은 상한으로 쓰지 않는다.
     const budgetCap: number | null = parseBudgetFromRequest(userRequest)
@@ -2178,6 +2185,7 @@ serve(async (req) => {
               items: lookItems,
               totalPrice: cachedProducts.reduce((sum, p) => sum + (p.price || 0), 0),
               stylingTips: '캐시된 추천입니다.',
+              appliedGender: gender,
               styleTags: cachedProducts.flatMap(p => p.style_tags || []).slice(0, 5),
             },
             apiCalls: { gpt5: 0, gemini: 0 },
@@ -3402,6 +3410,7 @@ serve(async (req) => {
         items: lookItems,
         totalPrice,
         budget: budgetCap,
+        appliedGender: gender, // 실제로 적용한 옷의 성별(요청 문장이 우선)
         overBudget: budgetCap ? totalPrice > budgetCap : false,
         budgetAdjusted,
         stylingTips: ragResponse.stylingTips || stage1Result.dressCodeHint,
