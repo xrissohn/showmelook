@@ -122,6 +122,22 @@ export interface FeedbackStats {
   topDisliked: Array<{ concept: string; up: number; down: number }>;
 }
 
+// 성적 지향·성별 정체성을 밝히는 말. 이런 표현이 섞인 문장은 리포트·AI 요약에 싣지 않는다.
+const IDENTITY_RE = /게이|레즈|양성애|동성애|이성애|무성애|범성애|트랜스|성소수자|퀴어|논바이너리|\bgay\b|lesbian|bisexual|queer|\btrans(gender)?\b|non-?binary/i;
+const MAX_CONCEPT = 30;
+
+/**
+ * 리포트·AI 요약에 쓰는 '스타일 이름'을 안전하게 만든다. 스타일 이름은 AI가 지은 짧은 이름이지만
+ * 폴백 경로에서는 사용자가 쓴 요청 문장이 들어올 수 있다. 길거나(원문 요청일 가능성), 개인정보·민감·정체성 표현이
+ * 섞였으면 빈 문자열로 만들어 집계에서 뺀다.
+ */
+export function safeConcept(raw: string | null | undefined): string {
+  const t = String(raw ?? '').replace(/\s+/g, ' ').trim();
+  if (!t || t.length > MAX_CONCEPT) return '';
+  if (redactPersonalInfo(t) !== t || classifyCommentLocal(t).length > 0 || IDENTITY_RE.test(t)) return '';
+  return t;
+}
+
 export const isUsableComment = (r: FeedbackRow): boolean =>
   !!r.comment && r.comment.trim().length > 0 && (r.moderation_status === 'clean' || r.moderation_status === 'approved');
 
@@ -138,7 +154,7 @@ export function aggregateFeedback(rows: FeedbackRow[]): FeedbackStats {
       for (const c of r.moderation_categories ?? []) byCategory[c] = (byCategory[c] ?? 0) + 1;
     }
     if (r.moderation_status === 'rejected') rejected++;
-    const concept = (r.style_concept ?? '').trim();
+    const concept = safeConcept(r.style_concept);
     if (concept && r.rating !== 0) {
       const e = concepts.get(concept) ?? { up: 0, down: 0 };
       if (r.rating > 0) e.up++; else e.down++;

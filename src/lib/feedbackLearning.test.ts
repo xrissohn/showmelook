@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  safeConcept,
   aggregateFeedback,
   buildInsightPromptBlock,
   buildReportEmail,
@@ -166,5 +167,26 @@ describe('관리자 리포트 이메일', () => {
     const none = buildReportEmail({ periodStart: '2026-10-06T00:00:00Z', periodEnd: '2026-10-07T00:00:00Z', stats: aggregateFeedback([]), summary: '', insightLines: [], pendingFlaggedTotal: 0, adminUrl: 'u' });
     expect(none.text).toContain('결정이 필요한 의견은 없습니다');
     expect(none.subject).not.toContain('결정 필요');
+  });
+});
+
+describe('safeConcept (리포트·AI 요약에 싣는 스타일 이름)', () => {
+  it('짧은 스타일 이름은 그대로', () => {
+    expect(safeConcept('  로맨틱   캐주얼 ')).toBe('로맨틱 캐주얼');
+  });
+  it('긴 문장(사용자 요청 원문일 가능성)·개인정보·민감·정체성 표현은 뺀다', () => {
+    expect(safeConcept('남자친구랑 한강에서 입을 편한 데이트룩 추천해줘 제발요 부탁드립니다 감사합니다')).toBe('');
+    expect(safeConcept('010-1234-5678 룩')).toBe('');
+    expect(safeConcept('교회 룩')).toBe('');
+    expect(safeConcept('게이 데이트룩')).toBe('');
+    expect(safeConcept('lesbian style')).toBe('');
+    expect(safeConcept(null)).toBe('');
+  });
+  it('집계에서도 걸러진 이름은 스타일 순위에 나오지 않는다', () => {
+    const s = aggregateFeedback([
+      { rating: 1, style_concept: '게이 데이트룩', moderation_status: 'none' },
+      { rating: 1, style_concept: '미니멀', moderation_status: 'none' },
+    ]);
+    expect(s.topLiked.map((c) => c.concept)).toEqual(['미니멀']);
   });
 });
