@@ -13,7 +13,7 @@ interface Props {
 
 export function FlowingGallery({ looks, likedIds, onSelect, paused = false, english = false }: Props) {
   const root = useRef<HTMLDivElement>(null);
-  const [columns, setColumns] = useState(4);
+  const [columns, setColumns] = useState(6);
   const [nearby, setNearby] = useState(false);
   const [visible, setVisible] = useState(false);
   const [pageVisible, setPageVisible] = useState(!document.hidden);
@@ -21,7 +21,7 @@ export function FlowingGallery({ looks, likedIds, onSelect, paused = false, engl
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     const media = window.matchMedia('(min-width: 640px)');
-    const update = () => setColumns(media.matches ? 4 : 2);
+    const update = () => setColumns(media.matches ? 6 : 3);
     update();
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const updateMotion = () => setReducedMotion(motion.matches);
@@ -53,7 +53,7 @@ export function FlowingGallery({ looks, likedIds, onSelect, paused = false, engl
           if (!items.length) return null;
           return (
             <div className="flowing-gallery-column" key={column}>
-              <div className="flowing-gallery-track" style={{ animationDirection: column % 2 ? 'reverse' : 'normal', animationDelay: `${-column * 47}s`, animationDuration: `${320 + column * 24}s` }}>
+              <div className="flowing-gallery-track" style={{ animationDirection: column % 2 ? 'reverse' : 'normal', animationDelay: `${-column * 15}s`, animationDuration: `${100 + column * 8}s` }}>
                 {[0, 1].map(copy => (
                   <div className="flowing-gallery-group" key={copy} aria-hidden={copy === 1 ? true : undefined}>
                     {items.map(({ look, index }) => (
