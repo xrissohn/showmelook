@@ -1,3 +1,4 @@
+import { MasonryGallery } from '@/components/community/MasonryGallery';
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useUserGallery, type VisibilityFilter } from '@/hooks/useUserGallery';
@@ -144,11 +145,11 @@ const UserGallery = () => {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            <MasonryGallery>
               {filteredLooks.map((look, index) => (
-                <GalleryLookCard key={look.id} look={look} isOwner={isOwner} isLiked={likedLookIds.has(look.id)} onToggleLike={handleToggleLike} onTogglePublic={togglePublic} onClick={() => handleLookClick(look, index)} priority={index < 4} />
+                <GalleryLookCard key={look.id} look={look} isOwner={isOwner} isLiked={likedLookIds.has(look.id)} onToggleLike={handleToggleLike} onTogglePublic={togglePublic} onClick={() => handleLookClick(look, index)} priority={index < 6} />
               ))}
-            </div>
+            </MasonryGallery>
           )}
         </div>
       </main>

@@ -895,3 +895,9 @@ img {
 .flowing-gallery[data-static="true"] .flowing-gallery-group[aria-hidden="true"] { display: none; }
 
 @media (max-width: 639px) { .flowing-gallery[data-static="true"] { max-height: 480px; } }
+
+/* Static masonry with stable columns when more looks arrive. */
+.pinterest-grid { display: grid; gap: 10px; align-items: start; }
+.pinterest-column { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pinterest-column > * { width: 100%; }
+@media (min-width: 640px) { .pinterest-grid, .pinterest-column { gap: 12px; } }
