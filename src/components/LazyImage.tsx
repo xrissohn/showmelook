@@ -40,6 +40,7 @@ export function LazyImage({
   const [attempt, setAttempt] = useState(0);
   const [ratio, setRatio] = useState(3 / 5);
   const imgRef = useRef<HTMLDivElement>(null);
+  const imageElement = useRef<HTMLImageElement>(null);
   const thumb = width ? thumbUrl(src, width) : src;
   const hasThumb = !!thumb && thumb !== src;
 
@@ -48,7 +49,14 @@ export function LazyImage({
     setIsLoaded(false);
     setHasError(false);
     setAttempt(0);
-    setRatio(3 / 5);
+    const image = imageElement.current;
+    // Cached images may finish before this effect runs; do not hide them again.
+    if (image?.complete && image.naturalWidth && image.naturalHeight) {
+      setIsLoaded(true);
+      setRatio(image.naturalWidth / image.naturalHeight);
+    } else {
+      setRatio(3 / 5);
+    }
   }, [src, width]);
 
   useEffect(() => {
@@ -118,6 +126,7 @@ export function LazyImage({
       {isInView && (
         <img
           key={attempt}
+          ref={imageElement}
           src={current}
           alt={alt}
           className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}

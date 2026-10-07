@@ -14,8 +14,8 @@ import StyleCarousel from '@/components/StyleCarousel';
 import MainNavigation from '@/components/MainNavigation';
 import { StaticGlow } from '@/components/StaticGlow';
 import { supabase } from '@/integrations/supabase/client';
-import { uniqueGalleryLooks } from '@/lib/galleryDedup';
-import { LazyImage } from '@/components/LazyImage';
+import { mixGalleryPreview } from '@/lib/galleryPreview';
+import { FlowingGallery } from '@/components/landing/FlowingGallery';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { useLookLikes } from '@/hooks/useLookLikes';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -336,7 +336,7 @@ const CTASection = ({ handleGetStarted }: { handleGetStarted: () => void }) => {
 // Gallery preview section for landing page
 const GalleryPreviewSection = () => {
   const navigate = useNavigate();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [previewLooks, setPreviewLooks] = useState<{ id: string; image_url: string; like_count: number; tags: string[] | null; user_id: string; prompt_used: string | null; style_reasoning: string | null; product_ids: string[] | null; created_at: string; memo: string | null; caption: string | null; user_name?: string | null; user_avatar?: string | null }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLook, setSelectedLook] = useState<LookDetailData | null>(null);
@@ -346,14 +346,13 @@ const GalleryPreviewSection = () => {
 
   useEffect(() => {
     const fetchPreview = async () => {
-      const { data } = await supabase
-        .from('generated_looks_public' as any)
-        .select('id, image_url, like_count, tags, gallery_user_key, user_name, user_avatar, prompt_used, style_reasoning, product_ids, created_at, memo, caption, tag_positions')
-        .order('like_count', { ascending: false })
-        .order('created_at', { ascending: false })
-        .order('id', { ascending: false })
-        .limit(16);
-      if (data) setPreviewLooks(uniqueGalleryLooks((data as any[]).map((look) => ({ ...look, user_id: look.gallery_user_key }))).slice(0, 8));
+      const fields = 'id, image_url, like_count, tags, gallery_user_key, user_name, user_avatar, prompt_used, style_reasoning, product_ids, created_at, memo, caption, tag_positions';
+      const [recent, popular] = await Promise.all([
+        supabase.from('generated_looks_public' as any).select(fields).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(16),
+        supabase.from('generated_looks_public' as any).select(fields).order('like_count', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(16),
+      ]);
+      const map = (rows: any[] | null) => (rows ?? []).map(look => ({ ...look, user_id: look.gallery_user_key }));
+      setPreviewLooks(mixGalleryPreview(map(recent.data), map(popular.data)));
       setIsLoading(false);
     };
     fetchPreview();
@@ -397,47 +396,7 @@ const GalleryPreviewSection = () => {
             </p>
           </div>
 
-          {/* Gallery Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mb-8 sm:mb-10">
-            {previewLooks.map((look, index) => (
-              <div
-                key={look.id}
-                className="group relative self-start rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
-                onClick={() => handleLookClick(look, index)}
-              >
-                <div>
-                  <LazyImage
-                    src={look.image_url}
-                    alt="스타일 룩"
-                    className="w-full object-contain object-center"
-                    fallbackClassName="w-full h-full"
-                    naturalAspect
-                    width={480}
-                    priority={index < 4}
-                  />
-                </div>
-                {/* Bottom gradient */}
-                <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/60 to-transparent" />
-                
-                {/* Like count */}
-                <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
-                  <Heart className={`w-3.5 h-3.5 ${likedLookIds.has(look.id) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
-                  <span className="text-white text-xs">{look.like_count}</span>
-                </div>
-
-                {/* Tags */}
-                {look.tags && look.tags.length > 0 && (
-                  <div className="absolute bottom-3 left-3 flex flex-nowrap gap-1 max-w-[60%] overflow-hidden">
-                    {look.tags.slice(0, 2).map((tag, i) => (
-                      <span key={i} title={tag} className="min-w-0 truncate text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <FlowingGallery looks={previewLooks} likedIds={likedLookIds} onSelect={index => handleLookClick(previewLooks[index], index)} paused={!!selectedLook} english={language === 'en'} />
 
           {/* CTA to gallery */}
           <div className="text-center">
@@ -476,6 +435,7 @@ const GalleryPreviewSection = () => {
             const result = await toggleLike(lookId, currentCount);
             if (result) {
               setSelectedLook(prev => prev ? { ...prev, like_count: result.newCount } : null);
+              setPreviewLooks(prev => prev.map(look => look.id === lookId ? { ...look, like_count: result.newCount } : look));
             }
             return result;
           }}

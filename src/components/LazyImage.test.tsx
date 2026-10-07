@@ -85,3 +85,14 @@ describe('natural full-body aspect', () => {
     expect(element.getAttribute('src')).toBe(THUMB);
   });
 });
+
+it('shows an already cached priority image even when load finishes before the reset effect', () => {
+  const complete = vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true);
+  const width = vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(320);
+  const height = vi.spyOn(HTMLImageElement.prototype, 'naturalHeight', 'get').mockReturnValue(800);
+  try {
+    const { getByAltText } = render(<LazyImage src="cached.png" alt="cached" naturalAspect priority />);
+    expect(getByAltText('cached').className).toContain('opacity-100');
+    expect(getByAltText('cached').parentElement?.style.aspectRatio).toBe('0.4');
+  } finally { complete.mockRestore(); width.mockRestore(); height.mockRestore(); }
+});
