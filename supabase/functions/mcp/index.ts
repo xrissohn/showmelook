@@ -25,7 +25,7 @@ var search_products_default = defineTool({
   handler: async ({ query, category, gender, min_price, max_price, limit }) => {
     const supabase = createClient(
       process.env.SUPABASE_URL ?? "",
-      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
+      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
       { auth: { persistSession: false } }
     );
     let q = supabase.from("products_cache").select("id,name,brand,category,sub_category,gender,price,original_price,color,image_url,product_url,style_tags").eq("is_active", true).eq("is_in_stock", true).limit(limit ?? 10);
@@ -61,7 +61,7 @@ var get_product_default = defineTool2({
   handler: async ({ product_id }) => {
     const supabase = createClient2(
       process.env.SUPABASE_URL ?? "",
-      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
+      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
       { auth: { persistSession: false } }
     );
     const { data, error } = await supabase.from("products_cache").select(
@@ -92,7 +92,7 @@ var list_public_looks_default = defineTool3({
   handler: async ({ limit, sort }) => {
     const supabase = createClient3(
       process.env.SUPABASE_URL ?? "",
-      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
+      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
       { auth: { persistSession: false } }
     );
     let q = supabase.from("generated_looks_public").select("id,image_url,caption,tags,like_count,view_count,created_at,product_ids").limit(limit ?? 10);
