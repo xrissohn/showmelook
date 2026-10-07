@@ -3,6 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { parseBudgetFromRequest, BUDGET_MIN, BUDGET_SHARE } from "../_shared/budget.ts";
+import { isUsableCandidate } from "../_shared/productFilters.ts";
 
 // ============= 인터페이스 정의 =============
 
@@ -2127,11 +2128,15 @@ serve(async (req) => {
       if (cachedLook && cachedLook.product_ids && cachedLook.product_ids.length >= 3) {
         console.log(`[style-recommend] Cache HIT! Key: ${cacheKey}`);
         
-        const { data: cachedProducts } = await supabase
+        const { data: cachedProductsRaw } = await supabase
           .from('products_cache')
           .select('*')
           .in('id', cachedLook.product_ids)
           .eq('is_active', true);
+        // 저장된 조합에 저가·오분류 상품이 있으면 캐시를 쓰지 않고 새로 만든다
+        const cachedProducts = cachedProductsRaw && cachedProductsRaw.every(isUsableCandidate)
+          ? cachedProductsRaw
+          : null;
 
         if (cachedProducts && cachedProducts.length >= 3) {
           await supabase
@@ -2328,6 +2333,12 @@ serve(async (req) => {
     // 스타일 무관 상품 필터링
     allProducts = allProducts.filter(p => isStyleRelevantProduct(p));
     console.log(`[style-recommend] After style filter: ${allProducts.length}`);
+
+    // 가격 ₩1,000 미만·카테고리와 이름이 다른 부위(예: '신발'에 들어간 가방) 상품은 후보에서 제외
+    // (이후 단계의 모든 후보·예산 맞춤 교체 풀이 allProducts에서 만들어진다)
+    const beforeGuard = allProducts.length;
+    allProducts = allProducts.filter(p => isUsableCandidate(p));
+    console.log(`[style-recommend] After price/category guard: ${allProducts.length} (-${beforeGuard - allProducts.length})`);
     
     // 🔥 키즈/주니어 상품 필터링 (성인에게 키즈 상품 추천 방지)
     allProducts = filterKidsProductsForAdults(allProducts, isKids);

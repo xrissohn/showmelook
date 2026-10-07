@@ -18,7 +18,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
-import { allowedProductGenders } from '@/lib/productFilters';
+import { MIN_PRODUCT_PRICE, allowedProductGenders, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -3443,13 +3443,17 @@ const StyleGenerator = () => {
           .eq('is_active', true)
           .eq('is_in_stock', true)
           .not('image_url', 'is', null)
-          .not('image_url', 'like', '%ads-partners%');
+          .not('image_url', 'like', '%ads-partners%')
+          .gte('price', MIN_PRODUCT_PRICE); // ₩1,000 미만 상품 제외
         if (adGenders) adsQuery = adsQuery.in('gender', adGenders);
-        const { data, error } = await adsQuery.limit(100); // 더 많이 가져와서 다양성 확보
+        const { data: adsRaw, error } = await adsQuery.limit(100); // 더 많이 가져와서 다양성 확보
 
         if (error) throw error;
 
-        if (data && data.length > 0) {
+        // 카테고리와 이름이 다른 부위인 상품(오분류) 제외
+        const data = (adsRaw || []).filter(isUsableCandidate);
+
+        if (data.length > 0) {
           // 완전 랜덤 셔플 후 10개 선택 (다양한 머천트/카테고리 혼합)
           const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, 10);
           setLoadingAdsProducts(shuffled as CachedProduct[]);
@@ -3600,14 +3604,15 @@ const StyleGenerator = () => {
         .eq('is_in_stock', true)
         .not('image_url', 'is', null)
         .neq('id', currentProductId)
+        .gte('price', MIN_PRODUCT_PRICE) // ₩1,000 미만 제외
         .or(orFilters);
       
       const { data, error } = await query.order('price', { ascending: true }).limit(50);
 
       if (error) throw error;
 
-      // 성별 필터링 (클라이언트 측) - 반대 성별 명시적 제외
-      let filteredData = (data || []).filter(item => {
+      // 성별 필터링 (클라이언트 측) - 반대 성별 명시적 제외 + 카테고리와 이름이 다른 부위(오분류) 제외
+      let filteredData = (data || []).filter(isUsableCandidate).filter(item => {
         if (!genderKo && !genderEn) return true;
         if (genderKo === '유니섹스' || genderEn === 'unisex') return true; // 유니섹스는 모든 상품 포함
         if (!item.gender) return true; // 성별 정보 없으면 포함
@@ -6060,9 +6065,10 @@ const StyleGenerator = () => {
                               {/* 스타일 태그 & 액션 영역 */}
                               <div className="p-3 sm:p-4 bg-card/95 backdrop-blur-sm space-y-3 sm:space-y-4">
                                 {/* 스타일 태그 배지들 */}
-                                {product.style_tags && product.style_tags.length > 0 && (
+                                {/* '여성>상의>니트' 같은 카테고리 경로형 태그는 표시하지 않는다 */}
+                                {visibleStyleTags(product.style_tags).length > 0 && (
                                   <div className="flex flex-wrap gap-1 sm:gap-1.5">
-                                    {product.style_tags.slice(0, 3).map((tag, tagIdx) => (
+                                    {visibleStyleTags(product.style_tags).slice(0, 3).map((tag, tagIdx) => (
                                       <span
                                         key={tagIdx}
                                         className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold ${getTagColor(tag)}`}
@@ -6071,9 +6077,9 @@ const StyleGenerator = () => {
                                         {tag}
                                       </span>
                                     ))}
-                                    {product.style_tags.length > 3 && (
+                                    {visibleStyleTags(product.style_tags).length > 3 && (
                                       <span className="px-2 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] font-semibold bg-muted text-muted-foreground">
-                                        +{product.style_tags.length - 3}
+                                        +{visibleStyleTags(product.style_tags).length - 3}
                                       </span>
                                     )}
                                   </div>

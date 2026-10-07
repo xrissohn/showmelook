@@ -1,4 +1,7 @@
 // 상품 후보 필터 공통 규칙 (로딩 광고·추천·대체 후보에서 같이 쓴다)
+// 가격 하한·오분류·태그 규칙은 서버와 공유하는 supabase/functions/_shared/productFilters.ts 에 있다.
+export * from '../../supabase/functions/_shared/productFilters';
+
 
 /** products_cache.gender 값은 female / male / unisex (kids 는 아동 상품) 로 정규화돼 있다. */
 const GENDER_ALIASES: Record<string, 'female' | 'male' | 'unisex' | 'kids'> = {
