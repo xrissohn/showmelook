@@ -50,6 +50,13 @@
       "when": 1791327712633,
       "tag": "0006_admin_email_outbox",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791334985120,
+      "tag": "0007_allow_gallery_public_reward_type",
+      "breakpoints": true
     }
   ]
 }

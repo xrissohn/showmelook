@@ -10,9 +10,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const PERSONAL = /(\d\s*(kg|cm|세|살|개월)|키\s*\d|몸무게|체중|height|weight|\bage\b|내\s*사진|my photo)/i;
 const norm = (t: string) => t.normalize("NFKC").toLowerCase().replace(/[\s.,!?~·\-—_/()[\]{}'"“”’^ㅋㅎㅠㅜ]+/g, " ").trim();
 // 입력 차단: 민감한 개인정보 / 쇼미룩·패션과 무관한 질문은 AI를 부르지 않고 정중히 거절한다.
-const SENSITIVE = /(\d{6}\s*-\s*[1-4]\d{6}|\b(?:\d{4}[- ]?){3}\d{4}\b|01[016789][- ]?\d{3,4}[- ]?\d{4}|주민\s*(등록)?\s*번호|비밀\s*번호|비번|password|계좌\s*번호|카드\s*번호|card number|여권\s*번호|passport|병력|질병|진단|건강\s*정보|medical|diagnos)/i;
+const SENSITIVE = /(\d{6}\s*-\s*[1-4]\d{6}|\b(?:\d{4}[- ]?){3}\d{4}\b|01[016789][- ]?\d{3,4}[- ]?\d{4}|주민\s*(등록)?\s*번호|비밀\s*번호|비번|password|계좌\s*번호|카드\s*번호|card number|여권\s*번호|passport|병력|질병|건강\s*정보|medical)/i;
 const OFFTOPIC = /(주식|코인|비트코인|가상화폐|투자\s*추천|정치|대통령|선거|정당|종교|코딩|프로그래밍|파이썬|자바스크립트|숙제|과제|로또|날씨|맛집|레시피|요리|연애\s*상담|법률|소송|세금|stock|crypto|bitcoin|politic|election|religion|coding|programming|python|javascript|homework|lottery|weather|recipe|lawsuit|\btax)/i;
-const FASHION = /(옷|코디|패션|스타일|룩|착장|상의|하의|아우터|바지|치마|원피스|신발|가방|액세서리|컬러|색|체형|사이즈|쇼미|showmelook|outfit|fashion|style|look|wear|cloth|shoe|bag|color|size)/i;
+const FASHION = /(옷|코디|패션|스타일|룩|착장|상의|하의|아우터|바지|치마|원피스|신발|가방|액세서리|컬러|색|체형|사이즈|쇼미|showmelook|입을|입어|입고|입는|입지|입었|outfit|fashion|style|look|wear|cloth|shoe|bag|color|size)/i;
 const REFUSE = {
   sensitive: {
     ko: "앗, 그건 민감한 개인정보라 여기서는 다룰 수 없어 🙏 주민번호·카드번호·비밀번호 같은 정보는 채팅에 적지 말아 줘! 코디나 쇼미룩 이용 방법이라면 뭐든 물어봐. 서비스 규정은 /policy 에 있어.",
