@@ -990,13 +990,6 @@ export type Database = {
             referencedRelation: "generated_looks"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "look_feedback_look_id_fkey"
-            columns: ["look_id"]
-            isOneToOne: false
-            referencedRelation: "generated_looks_public"
-            referencedColumns: ["id"]
-          },
         ]
       }
       look_likes: {
