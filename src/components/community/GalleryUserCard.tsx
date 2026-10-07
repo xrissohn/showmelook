@@ -6,9 +6,11 @@ import type { GalleryUser } from '@/hooks/useGalleryUsers';
 
 interface GalleryUserCardProps {
   user: GalleryUser;
+  /** 첫 화면에 보이는 카드: 미리보기 이미지를 바로 불러온다 */
+  priority?: boolean;
 }
 
-const GalleryUserCard = ({ user }: GalleryUserCardProps) => {
+const GalleryUserCard = ({ user, priority = false }: GalleryUserCardProps) => {
   const navigate = useNavigate();
   const displayName = user.full_name || 'Stylist';
 
@@ -20,7 +22,7 @@ const GalleryUserCard = ({ user }: GalleryUserCardProps) => {
       <div className="grid grid-cols-2 gap-0.5 aspect-[4/3]">
         {user.preview_images.slice(0, 4).map((img, i) => (
           <div key={i} className="relative overflow-hidden bg-secondary">
-            <LazyImage src={img} alt={`${displayName}'s look`} className="w-full h-full object-cover" fallbackClassName="w-full h-full" />
+            <LazyImage src={img} alt={`${displayName}'s look`} className="w-full h-full object-cover" fallbackClassName="w-full h-full" width={320} priority={priority} />
           </div>
         ))}
         {Array.from({ length: Math.max(0, 4 - user.preview_images.length) }).map((_, i) => (

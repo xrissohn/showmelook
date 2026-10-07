@@ -1041,6 +1041,9 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
       .from('generated-looks')
       .upload(fileName, imageBytes, {
         contentType: 'image/png',
+        // 파일 이름에 시각·난수가 들어가 한 번 올린 파일은 바뀌지 않는다 → 브라우저·CDN이 오래 캐시하게 한다
+        // (기본값은 no-cache 라 갤러리를 볼 때마다 이미지를 다시 확인했다)
+        cacheControl: '31536000',
         upsert: false
       });
 

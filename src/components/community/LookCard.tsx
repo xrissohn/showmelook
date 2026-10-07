@@ -10,9 +10,11 @@ interface LookCardProps {
   isLiked: boolean;
   onToggleLike: (lookId: string, currentCount: number) => void;
   onClick?: () => void;
+  /** 첫 화면에 보이는 카드: 이미지를 바로 불러온다 */
+  priority?: boolean;
 }
 
-const LookCard = ({ look, isLiked, onToggleLike, onClick }: LookCardProps) => {
+const LookCard = ({ look, isLiked, onToggleLike, onClick, priority = false }: LookCardProps) => {
   const navigate = useNavigate();
   const [animating, setAnimating] = useState(false);
 
@@ -40,6 +42,8 @@ const LookCard = ({ look, isLiked, onToggleLike, onClick }: LookCardProps) => {
         alt="Community look"
         className="w-full h-full object-cover"
         fallbackClassName="w-full h-full"
+        width={480}
+        priority={priority}
       />
 
       {/* User info overlay - top left */}

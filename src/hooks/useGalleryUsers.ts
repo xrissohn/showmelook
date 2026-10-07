@@ -17,12 +17,24 @@ export function useGalleryUsers() {
   const fetchGalleryUsers = useCallback(async () => {
     setIsLoading(true);
 
-    // 1. Fetch all public looks without exposing internal user IDs
-    const { data: looks, error } = await supabase
-      .from('generated_looks_public' as any)
-      .select('gallery_user_key, image_url, like_count, user_name, user_avatar')
-      .order('like_count', { ascending: false });
+    // 1. Fetch public looks without exposing internal user IDs.
+    // Counts/likes come from a light query (no image column); preview images come from a second query that
+    // skips inline base64 images (a single one is >1MB and they used to be downloaded on every visit).
+    const [statsRes, previewRes] = await Promise.all([
+      supabase
+        .from('generated_looks_public' as any)
+        .select('gallery_user_key, like_count, user_name, user_avatar')
+        .order('like_count', { ascending: false }),
+      supabase
+        .from('generated_looks_public' as any)
+        .select('gallery_user_key, image_url, like_count')
+        .not('image_url', 'like', 'data:%')
+        .order('like_count', { ascending: false })
+        .limit(400),
+    ]);
 
+    const looks = statsRes.data as any[] | null;
+    const error = statsRes.error;
     if (error || !looks) {
       console.error('Gallery users fetch error:', error);
       setIsLoading(false);
@@ -31,21 +43,24 @@ export function useGalleryUsers() {
 
     // 2. Aggregate by user
     const userMap = new Map<string, { count: number; likes: number; images: string[]; full_name: string | null; avatar_url: string | null }>();
-    for (const look of looks as any[]) {
+    for (const look of looks) {
       const existing = userMap.get(look.gallery_user_key);
       if (existing) {
         existing.count++;
         existing.likes += look.like_count;
-        if (existing.images.length < 4) existing.images.push(look.image_url);
       } else {
         userMap.set(look.gallery_user_key, {
           count: 1,
           likes: look.like_count,
-          images: [look.image_url],
+          images: [],
           full_name: look.user_name,
           avatar_url: look.user_avatar,
         });
       }
+    }
+    for (const row of (previewRes.data ?? []) as any[]) {
+      const u = userMap.get(row.gallery_user_key);
+      if (u && u.images.length < 4 && row.image_url) u.images.push(row.image_url);
     }
 
     const userIds = Array.from(userMap.keys());

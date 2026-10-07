@@ -11,6 +11,8 @@ interface GalleryLookCardProps {
   onToggleLike?: (lookId: string, currentCount: number) => void;
   onTogglePublic?: (lookId: string, currentPublic: boolean) => void;
   onClick?: () => void;
+  /** 첫 화면에 보이는 카드: 이미지를 바로 불러온다 */
+  priority?: boolean;
 }
 
 const GalleryLookCard = ({
@@ -20,6 +22,7 @@ const GalleryLookCard = ({
   onToggleLike,
   onTogglePublic,
   onClick,
+  priority = false,
 }: GalleryLookCardProps) => {
   const navigate = useNavigate();
   const [animating, setAnimating] = useState(false);
@@ -49,6 +52,8 @@ const GalleryLookCard = ({
         alt="AI로 만든 패션 코디 착장 사진"
         className="w-full h-full object-cover"
         fallbackClassName="w-full h-full"
+        width={480}
+        priority={priority}
       />
 
       {/* Bottom gradient */}

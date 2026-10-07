@@ -146,7 +146,7 @@ const UserGallery = () => {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {filteredLooks.map((look, index) => (
-                <GalleryLookCard key={look.id} look={look} isOwner={isOwner} isLiked={likedLookIds.has(look.id)} onToggleLike={handleToggleLike} onTogglePublic={togglePublic} onClick={() => handleLookClick(look, index)} />
+                <GalleryLookCard key={look.id} look={look} isOwner={isOwner} isLiked={likedLookIds.has(look.id)} onToggleLike={handleToggleLike} onTogglePublic={togglePublic} onClick={() => handleLookClick(look, index)} priority={index < 4} />
               ))}
             </div>
           )}

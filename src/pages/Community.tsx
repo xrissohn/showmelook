@@ -161,6 +161,7 @@ const Community = () => {
                       isLiked={likedLookIds.has(look.id)}
                       onToggleLike={handleToggleLike}
                       onClick={() => handleLookClick(look, index)}
+                      priority={index < 4}
                     />
                   ))}
                 </div>
@@ -199,8 +200,8 @@ const Community = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {users.map((user) => (
-                    <GalleryUserCard key={user.user_id} user={user} />
+                  {users.map((user, i) => (
+                    <GalleryUserCard key={user.user_id} user={user} priority={i < 2} />
                   ))}
                 </div>
               )}
