@@ -4,6 +4,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { parseBudgetFromRequest, BUDGET_MIN, BUDGET_SHARE } from "../_shared/budget.ts";
 import { isUsableCandidate, resolveClothingGender } from "../_shared/productFilters.ts";
+import { buildTasteProfile, emptyTasteProfile, tasteBonus } from "../_shared/tasteProfile.ts";
+import { buildInsightPromptBlock } from "../_shared/feedbackLearning.ts";
 
 // ============= 인터페이스 정의 =============
 
@@ -1600,6 +1602,7 @@ async function runStage2WithModel(
   merchantPref?: MerchantPreference,
   photoForceContext?: { required: string; items: PhotoAnalysisItem[]; slotMatchLines?: string; requiredSlots?: string[] } | null,
   budgetCap?: number | null,
+  feedbackInsightBlock?: string, // 사용자 피드백에서 학습한 추천 가이드 (없으면 빈 문자열)
 ): Promise<RAGStyleResponse | null> {
   console.log(`[style-recommend] Stage 2: ${modelName} 최종 선택 시작...`);
   
@@ -1764,7 +1767,7 @@ JSON만 응답:
         body: JSON.stringify({
           model: modelName,
           messages: [
-            { role: 'system', content: stage2SystemPrompt },
+            { role: 'system', content: stage2SystemPrompt + (feedbackInsightBlock || '') },
             { role: 'user', content: stage2UserPrompt }
           ],
           max_tokens: 700,
@@ -2328,6 +2331,36 @@ serve(async (req) => {
       }
     }
     
+    // 🧠 피드백 학습: (1) 이 사용자의 좋아요/별로예요에서 배운 취향, (2) 전체 사용자 피드백에서 학습한 활성 가이드.
+    // 테이블이 없거나 조회가 실패해도 추천은 그대로 진행한다.
+    let tasteProfile = emptyTasteProfile();
+    let insightBlock = '';
+    try {
+      type FeedbackSignalRow = { rating: number; product_ids: string[] | null; updated_at: string };
+      type InsightRow = { insight_lines: string[] | null };
+      type TasteSource = { id: string; brand?: string | null; style_tags?: string[] | null; price?: number | null };
+      const [fbRes, insRes] = await Promise.all([
+        userId
+          ? supabase.from('look_feedback').select('rating, product_ids, updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(40)
+          : Promise.resolve({ data: [] as FeedbackSignalRow[] }),
+        supabase.from('recommendation_insights').select('insight_lines').eq('status', 'active').order('created_at', { ascending: false }).limit(3),
+      ]);
+      const rawById = new Map<string, TasteSource>(((allProductsRaw || []) as TasteSource[]).map((p) => [p.id, p]));
+      const signals = ((fbRes.data || []) as FeedbackSignalRow[]).map((r) => ({
+        rating: r.rating,
+        at: r.updated_at,
+        products: (r.product_ids || [])
+          .map((id) => rawById.get(id))
+          .filter((p): p is TasteSource => !!p)
+          .map((p) => ({ id: p.id, brand: p.brand, style_tags: p.style_tags, price: p.price })),
+      }));
+      tasteProfile = buildTasteProfile(signals);
+      insightBlock = buildInsightPromptBlock(((insRes.data || []) as InsightRow[]).map((r) => r.insight_lines || []));
+      console.log(`[style-recommend] Feedback learning: taste signals=${tasteProfile.signalCount}, insight block=${insightBlock ? 'yes' : 'no'}`);
+    } catch (learnErr) {
+      console.warn('[style-recommend] feedback learning skipped:', learnErr);
+    }
+
     let allProducts: CachedProduct[] = (allProductsRaw || []).map(p => {
       const feedback = feedbackMap.get(p.id);
       return {
@@ -2581,7 +2614,9 @@ serve(async (req) => {
       const diversityBonus = ((idHash ^ randomSeed) % 1000) / 4000;  // 0 ~ 0.25 범위
       
       // 가중치 조정: merchant/sub_style 매칭이 있으면 가장 높은 가중치
-      const totalScore = merchantBonus + subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus;
+      // 🧠 이 사용자의 좋아요/별로예요 취향 (싫어한 상품·브랜드·스타일은 감점, 좋아한 쪽은 가산)
+      const tasteScore = tasteBonus({ id: p.id, brand: p.brand, style_tags: p.style_tags, price: p.price }, tasteProfile);
+      const totalScore = merchantBonus + subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus + tasteScore;
       
       return { product: p, score: totalScore };
     });
@@ -2884,6 +2919,7 @@ serve(async (req) => {
         merchantPref,
         photoForceContext,
         budgetCap,
+        insightBlock,
       );
       
       // 2차: Primary 실패 시 Backup 모델로 교차 Fallback
@@ -2902,6 +2938,7 @@ serve(async (req) => {
           merchantPref,
           photoForceContext,
           budgetCap,
+          insightBlock,
         );
         
         if (ragResponse) {

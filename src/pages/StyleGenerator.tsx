@@ -20,6 +20,9 @@ import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
 import { MIN_PRODUCT_PRICE, allowedProductGenders, customGenderFromProfile, detectRequestedClothingGender, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
 import { priceBand, rankAlternatives, type AltCandidate } from '@/lib/alternatives';
+import { LookFeedback } from '@/components/style/LookFeedback';
+import { rankAdProducts, type AdCandidate, type AdTasteInput } from '@/lib/adPersonalization';
+import { parseBudgetFromRequest } from '../../supabase/functions/_shared/budget';
 import { replaceProductMention, swapIdInList } from '@/lib/lookSwap';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
@@ -2800,6 +2803,10 @@ const MyLooksGallery = ({ myLooks, setMyLooks, setActiveTab, toast, hasWatermark
                     tags={selectedLook.tags || undefined}
                   />
                 </div>
+                {/* 이 룩에 대한 피드백 (좋아요/보통/별로예요 + 의견) */}
+                <div className="mt-3 flex justify-center px-3 pb-3">
+                  <LookFeedback lookId={selectedLook.id} />
+                </div>
               </>
             )}
           </div>
@@ -3438,8 +3445,8 @@ const StyleGenerator = () => {
     const loadAdsProducts = async () => {
       // 생성 중이거나 추천 검색 중일 때만 상품 로드
       if (!isGenerating && !isCustomSearching) return;
-      // 이미 로드됐고 같은 성별 기준이면 다시 부르지 않는다 (성별이 바뀌면 새로 불러온다)
-      const adsKey = `${activeGender}|${userProfile?.gender ?? ''}`;
+      // 이미 로드됐고 같은 성별·요청 기준이면 다시 부르지 않는다 (성별이나 요청이 바뀌면 새로 불러온다)
+      const adsKey = `${activeGender}|${userProfile?.gender ?? ''}|${customStylePrompt.trim().slice(0, 60)}`;
       if (loadingAdsProducts.length > 0 && adsLoadedForRef.current === adsKey) return;
 
       try {
@@ -3455,18 +3462,51 @@ const StyleGenerator = () => {
           .not('image_url', 'like', '%ads-partners%')
           .gte('price', MIN_PRODUCT_PRICE); // ₩1,000 미만 상품 제외
         if (adGenders) adsQuery = adsQuery.in('gender', adGenders);
-        const { data: adsRaw, error } = await adsQuery.limit(100); // 더 많이 가져와서 다양성 확보
+        // 취향 신호: 룩 피드백(좋아요/별로예요) · 좋아요 표시한 상품 · 프로필 선호 스타일 · 지금 요청 · 예산.
+        // 가져오지 못해도 광고는 평소처럼 나온다.
+        const loadTaste = async (): Promise<AdTasteInput> => {
+          const taste: AdTasteInput = {
+            stylePreferences: userProfile?.style_preferences,
+            requestText: customStylePrompt,
+            budget: parseBudgetFromRequest(customStylePrompt),
+          };
+          if (!user) return taste;
+          try {
+            const { data: fb } = await supabase
+              .from('look_feedback')
+              .select('rating, product_ids, updated_at')
+              .eq('user_id', user.id)
+              .order('updated_at', { ascending: false })
+              .limit(40);
+            const likedIds = Array.from(likedProducts).slice(-30);
+            const ids = Array.from(new Set([...likedIds, ...(fb ?? []).flatMap((r) => r.product_ids ?? [])])).slice(0, 150);
+            if (ids.length === 0) return taste;
+            const { data: tp } = await supabase.from('products_cache').select('id, brand, style_tags, price, category').in('id', ids);
+            const byId = new Map((tp ?? []).map((p) => [p.id, { id: p.id, brand: p.brand, style_tags: p.style_tags, price: p.price, category: p.category }]));
+            taste.likedProducts = likedIds.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
+            taste.feedbackSignals = (fb ?? []).map((r) => ({
+              rating: r.rating,
+              at: r.updated_at,
+              products: (r.product_ids ?? []).map((id: string) => byId.get(id)).filter((p): p is NonNullable<typeof p> => !!p),
+            }));
+          } catch (tasteErr) {
+            console.warn('[Ads] taste signals unavailable:', tasteErr);
+          }
+          return taste;
+        };
+
+        const [{ data: adsRaw, error }, taste] = await Promise.all([adsQuery.limit(200), loadTaste()]); // 넉넉히 가져와 취향순으로 고른다
 
         if (error) throw error;
 
         // 카테고리와 이름이 다른 부위인 상품(오분류) 제외
-        const data = (adsRaw || []).filter(isUsableCandidate);
+        const usable = (adsRaw || []).filter(isUsableCandidate);
 
-        if (data.length > 0) {
-          // 완전 랜덤 셔플 후 10개 선택 (다양한 머천트/카테고리 혼합)
-          const shuffled = [...data].sort(() => Math.random() - 0.5).slice(0, 10);
+        if (usable.length > 0) {
+          // 사용자 취향에 맞춰 10개 선택 (브랜드·카테고리가 몰리지 않게, 일부는 탐색용으로 섞는다)
+          const ranked = rankAdProducts(usable as unknown as AdCandidate[], taste, { limit: 10, exploreSlots: 2 });
           adsLoadedForRef.current = adsKey;
-          setLoadingAdsProducts(shuffled as CachedProduct[]);
+          setLoadingAdsProducts(ranked as unknown as CachedProduct[]);
         }
       } catch (error) {
         console.error('Error loading recommended products:', error);
@@ -3474,7 +3514,7 @@ const StyleGenerator = () => {
     };
 
     loadAdsProducts();
-  }, [isGenerating, isCustomSearching, loadingAdsProducts.length, activeGender, userProfile?.gender]);
+  }, [isGenerating, isCustomSearching, loadingAdsProducts.length, activeGender, userProfile?.gender, userProfile?.style_preferences, customStylePrompt, likedProducts, user]);
 
   // 광고 상품 클릭 핸들러
   const handleAdsProductClick = async (product: CachedProduct) => {
@@ -6663,6 +6703,8 @@ const StyleGenerator = () => {
                           : '이미지는 처음 조합 기준이에요. 교체한 상품은 상품 목록에 반영돼요.'}
                       </p>
                     )}
+                    {/* 생성된 이미지 피드백: 좋아요/보통/별로예요 + 주관식 의견 → 쇼미가 취향을 배운다 */}
+                    {generatedLookId && <LookFeedback lookId={generatedLookId} appliedGender={activeGender} />}
                     {/* 커뮤니티 공개 토글 */}
                     {generatedLookId && (
                       <button

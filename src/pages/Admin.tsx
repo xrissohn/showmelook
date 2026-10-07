@@ -37,6 +37,7 @@ import { ProductHealthPanel } from "@/components/admin/ProductHealthPanel";
 import { TagCorrectionAnalytics } from "@/components/admin/TagCorrectionAnalytics";
 import { SurveyPanel } from "@/components/admin/SurveyPanel";
 import { ShomiChannelBroadcastPanel } from "@/components/admin/ShomiChannelBroadcastPanel";
+import { FeedbackLearningPanel } from "@/components/admin/FeedbackLearningPanel";
 
 import { parseExcelFile, findColumnValue, parsePrice as parseExcelPrice } from '@/lib/excelParser';
 import { fetchAllRows } from '@/lib/paginatedFetch';
@@ -1335,7 +1336,7 @@ const Admin = () => {
         </div>
 
         {/* Test Tabs */}
-        <Tabs defaultValue="register" className="space-y-4">
+        <Tabs defaultValue={new URLSearchParams(window.location.search).get("tab") === "feedback" ? "feedback" : "register"} className="space-y-4">
           <div className="overflow-x-auto pb-2 -mx-2 px-2">
             <TabsList className="inline-flex h-auto min-w-max gap-1 p-1">
               <TabsTrigger value="register" className="flex-shrink-0 whitespace-nowrap">
@@ -1433,6 +1434,10 @@ const Admin = () => {
               <TabsTrigger value="channel-mail" className="flex-shrink-0 whitespace-nowrap">
                 <Sparkles className="w-4 h-4 mr-1" />
                 채널 안내 메일
+              </TabsTrigger>
+              <TabsTrigger value="feedback" className="flex-shrink-0 whitespace-nowrap">
+                <Sparkles className="w-4 h-4 mr-1" />
+                피드백·학습
               </TabsTrigger>
             </TabsList>
           </div>
@@ -2728,6 +2733,10 @@ const Admin = () => {
 
           <TabsContent value="channel-mail" className="space-y-4">
             <ShomiChannelBroadcastPanel />
+          </TabsContent>
+
+          <TabsContent value="feedback" className="space-y-4">
+            <FeedbackLearningPanel />
           </TabsContent>
 
         </Tabs>

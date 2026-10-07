@@ -174,3 +174,9 @@ verify_jwt = false
 
 [functions.send-outbox-email]
 verify_jwt = false
+
+[functions.submit-look-feedback]
+verify_jwt = false
+
+[functions.feedback-learning-report]
+verify_jwt = false

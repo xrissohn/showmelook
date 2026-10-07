@@ -581,6 +581,56 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_reports: {
+        Row: {
+          created_at: string
+          email_recipients: string[]
+          emailed_at: string | null
+          flagged_by_category: Json
+          flagged_count: number
+          id: string
+          insight_id: string | null
+          period_end: string
+          period_start: string
+          stats: Json
+          summary: string
+        }
+        Insert: {
+          created_at?: string
+          email_recipients?: string[]
+          emailed_at?: string | null
+          flagged_by_category?: Json
+          flagged_count?: number
+          id?: string
+          insight_id?: string | null
+          period_end: string
+          period_start: string
+          stats?: Json
+          summary?: string
+        }
+        Update: {
+          created_at?: string
+          email_recipients?: string[]
+          emailed_at?: string | null
+          flagged_by_category?: Json
+          flagged_count?: number
+          id?: string
+          insight_id?: string | null
+          period_end?: string
+          period_start?: string
+          stats?: Json
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_reports_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "recommendation_insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       generated_looks: {
         Row: {
           caption: string | null
@@ -876,6 +926,78 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      look_feedback: {
+        Row: {
+          applied_gender: string | null
+          comment: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          look_id: string
+          moderation_categories: string[]
+          moderation_status: string
+          product_ids: string[]
+          prompt_used: string | null
+          rating: number
+          style_concept: string | null
+          updated_at: string
+          used_in_learning: boolean
+          user_id: string
+        }
+        Insert: {
+          applied_gender?: string | null
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          look_id: string
+          moderation_categories?: string[]
+          moderation_status?: string
+          product_ids?: string[]
+          prompt_used?: string | null
+          rating: number
+          style_concept?: string | null
+          updated_at?: string
+          used_in_learning?: boolean
+          user_id: string
+        }
+        Update: {
+          applied_gender?: string | null
+          comment?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          look_id?: string
+          moderation_categories?: string[]
+          moderation_status?: string
+          product_ids?: string[]
+          prompt_used?: string | null
+          rating?: number
+          style_concept?: string | null
+          updated_at?: string
+          used_in_learning?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "look_feedback_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "generated_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "look_feedback_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "generated_looks_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       look_likes: {
         Row: {
@@ -1488,6 +1610,48 @@ export type Database = {
           style_reasoning?: string | null
           total_price?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      recommendation_insights: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          insight_lines: string[]
+          period_end: string
+          period_start: string
+          source_feedback_count: number
+          stats: Json
+          status: string
+          summary: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          insight_lines?: string[]
+          period_end: string
+          period_start: string
+          source_feedback_count?: number
+          stats?: Json
+          status?: string
+          summary: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          insight_lines?: string[]
+          period_end?: string
+          period_start?: string
+          source_feedback_count?: number
+          stats?: Json
+          status?: string
+          summary?: string
         }
         Relationships: []
       }
