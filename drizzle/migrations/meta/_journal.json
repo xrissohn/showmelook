@@ -92,6 +92,13 @@
       "when": 1791356000494,
       "tag": "0013_cron_token_for_feedback_report",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791356043794,
+      "tag": "0014_hide_moderation_columns_from_users",
+      "breakpoints": true
     }
   ]
 }
