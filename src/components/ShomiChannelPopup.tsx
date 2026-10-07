@@ -1,11 +1,29 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { X } from "lucide-react";
-import shomiHero from "@/assets/shomi-channel-hero.png.asset.json";
 import { SHOMI_CHANNELS } from "@/lib/shomiChannels";
 
 const STORAGE_KEY = "shomi_channel_popup_dismissed_at";
 const HIDE_DAYS = 7;
+// 첫 방문 랜딩을 가리지 않도록: 두 번째 방문부터, 그리고 머문 뒤(스크롤하거나 몇 초 지난 뒤)에만 보여준다.
+const VISIT_COUNT_KEY = "shomi_channel_popup_visits";
+const VISIT_COUNTED_SESSION_KEY = "shomi_channel_popup_visit_counted";
+const MIN_VISITS_TO_SHOW = 2;
+const DWELL_MS = 6000;
+const SCROLL_TRIGGER_RATIO = 0.4;
+
+/** 이 브라우저 세션의 방문을 한 번만 세어 누적 방문 수를 돌려준다. 저장소를 못 쓰면 1(첫 방문)로 본다. */
+function countVisit(): number {
+  try {
+    const prev = parseInt(localStorage.getItem(VISIT_COUNT_KEY) || "0", 10) || 0;
+    if (sessionStorage.getItem(VISIT_COUNTED_SESSION_KEY)) return prev;
+    sessionStorage.setItem(VISIT_COUNTED_SESSION_KEY, "1");
+    localStorage.setItem(VISIT_COUNT_KEY, String(prev + 1));
+    return prev + 1;
+  } catch {
+    return 1;
+  }
+}
 
 const CHANNELS = SHOMI_CHANNELS;
 
@@ -47,19 +65,35 @@ export default function ShomiChannelPopup() {
     // Landing page only (or forced via ?showPopup=1)
     if (location.pathname !== "/" && !isForced) return;
 
-    if (!isForced) {
-      try {
-        const dismissedAt = localStorage.getItem(STORAGE_KEY);
-        if (dismissedAt) {
-          const elapsed = Date.now() - parseInt(dismissedAt, 10);
-          if (elapsed < HIDE_DAYS * 24 * 60 * 60 * 1000) return;
-        }
-      } catch {
-        /* ignore */
-      }
+    if (isForced) {
+      const t = setTimeout(() => setOpen(true), 800);
+      return () => clearTimeout(t);
     }
-    const t = setTimeout(() => setOpen(true), 800);
-    return () => clearTimeout(t);
+
+    // 첫 방문에는 띄우지 않는다
+    if (countVisit() < MIN_VISITS_TO_SHOW) return;
+
+    try {
+      const dismissedAt = localStorage.getItem(STORAGE_KEY);
+      if (dismissedAt) {
+        const elapsed = Date.now() - parseInt(dismissedAt, 10);
+        if (elapsed < HIDE_DAYS * 24 * 60 * 60 * 1000) return;
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // 스크롤하거나 일정 시간 머문 뒤에 보여준다
+    const show = () => setOpen(true);
+    const t = setTimeout(show, DWELL_MS);
+    const onScroll = () => {
+      if (window.scrollY > window.innerHeight * SCROLL_TRIGGER_RATIO) show();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [location.pathname, isForced]);
 
   useEffect(() => {
@@ -68,12 +102,7 @@ export default function ShomiChannelPopup() {
       if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
   const handleClose = () => {
@@ -116,89 +145,51 @@ export default function ShomiChannelPopup() {
     },
   ];
 
+  // 화면을 가리지 않는 작은 하단 카드 (배경 어둡게 하기·스크롤 잠금 없음). 오른쪽 아래 쇼미 챗 버튼은 피한다.
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300"
-      role="dialog"
-      aria-modal="true"
+      className="fixed bottom-5 left-4 right-24 sm:right-auto sm:w-[360px] z-[55] animate-in fade-in slide-in-from-bottom-4 duration-500"
+      role="complementary"
       aria-labelledby="shomi-popup-title"
-      onClick={handleClose}
     >
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#0a0a1f]/70 backdrop-blur-sm" />
-
-      {/* Modal */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="relative w-[90vw] max-w-[480px] max-h-[92vh] overflow-y-auto rounded-3xl bg-gradient-to-b from-[#fff7fb] via-white to-[#fdf2f7] shadow-[0_25px_80px_-20px_rgba(30,27,75,0.45)] ring-1 ring-pink-100 animate-in zoom-in-95 slide-in-from-bottom-4 duration-500"
-      >
-        {/* Close */}
+      <div className="relative rounded-2xl bg-gradient-to-b from-[#fff7fb] to-white shadow-[0_12px_40px_-12px_rgba(30,27,75,0.45)] ring-1 ring-pink-100 p-4 pr-10">
         <button
           onClick={handleClose}
-          className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full bg-white/80 backdrop-blur hover:bg-white shadow-sm flex items-center justify-center text-[#1e1b4b] transition"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full hover:bg-white/80 flex items-center justify-center text-[#1e1b4b] transition"
           aria-label="닫기"
         >
           <X className="w-4 h-4" />
         </button>
 
-        {/* Hero image */}
-        <div className="relative w-full aspect-[4/5] sm:aspect-[5/4] overflow-hidden rounded-t-3xl bg-gradient-to-br from-pink-100 to-indigo-100">
-          <img
-            src={shomiHero.url}
-            alt="쇼미 - 네이비와 핑크 스타일"
-            className="w-full h-full object-cover object-top"
-            loading="eager"
-          />
-          {/* Soft gradient overlay at bottom for text continuity */}
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white via-white/60 to-transparent" />
-          {/* Brand chip */}
-          <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-white/85 backdrop-blur text-[11px] font-semibold tracking-wide text-[#1e1b4b]">
-            SHOWMELOOK · 쇼미
-          </div>
+        <h2 id="shomi-popup-title" className="text-[15px] font-bold leading-snug text-[#1e1b4b]">
+          쇼미의 스타일 채널이 오픈됐어 <span className="text-pink-500">✨</span>
+        </h2>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-slate-600">
+          룩 추천·스타일 팁을 SNS에서 만나봐. 룩 고민되면 쇼미에게 물어봐도 좋아.
+        </p>
+
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {channelButtons.map((c) => (
+            <a
+              key={c.label}
+              href={c.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={c.label}
+              title={c.label}
+              className={`flex items-center justify-center h-10 rounded-xl shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 ${c.style}`}
+            >
+              {c.icon}
+            </a>
+          ))}
         </div>
 
-        {/* Content */}
-        <div className="px-6 pt-5 pb-6 sm:px-7 sm:pt-6 sm:pb-7">
-          <h2
-            id="shomi-popup-title"
-            className="text-[22px] sm:text-2xl font-bold leading-snug text-[#1e1b4b] tracking-tight"
-          >
-            쇼미의 스타일 채널이 오픈됐어 <span className="text-pink-500">✨</span>
-          </h2>
-          <p className="mt-2.5 text-[14.5px] leading-relaxed text-slate-600">
-            성수동 일상, 룩 추천, 스타일 팁을
-            <br />
-            <span className="font-medium text-[#1e1b4b]">Instagram · YouTube · TikTok · Threads</span>
-            에서 만나봐.
-          </p>
-          <p className="mt-3 text-[13px] leading-relaxed text-pink-500/90 font-medium">
-            룩 고민되면 쇼미에게 물어봐. 추천해줄게.
-          </p>
-
-          {/* Channel buttons */}
-          <div className="mt-5 grid grid-cols-2 gap-2.5">
-            {channelButtons.map((c) => (
-              <a
-                key={c.label}
-                href={c.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`group flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5 ${c.style}`}
-              >
-                {c.icon}
-                <span>{c.label}</span>
-              </a>
-            ))}
-          </div>
-
-          {/* Dismiss */}
-          <button
-            onClick={handleClose}
-            className="mt-4 w-full text-center text-[13px] text-slate-400 hover:text-slate-600 transition py-2"
-          >
-            나중에 볼게 · 7일 동안 보지 않기
-          </button>
-        </div>
+        <button
+          onClick={handleClose}
+          className="mt-2 w-full text-center text-[12px] text-slate-400 hover:text-slate-600 transition py-1"
+        >
+          7일 동안 보지 않기
+        </button>
       </div>
     </div>
   );

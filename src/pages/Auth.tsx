@@ -12,6 +12,7 @@ import showmelookLogo from '@/assets/showmelook-logo.png';
 import showmelookKoreanLogo from '@/assets/showmelook-korean-logo.png';
 import { detectInAppBrowser, getExternalBrowserUrl, copyToClipboard } from '@/lib/inAppBrowserDetector';
 import { SEOHead } from '@/components/SEOHead';
+import { AuthBenefitsPreview } from '@/components/auth/AuthBenefitsPreview';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { authErrorMessage, authText, browserLanguage, normalizeAuthErrorCode, pickAuthLocale, type AuthLocale } from '@/lib/authErrors';
 import { isPasswordAcceptable, passwordStrength, PASSWORD_MIN_LENGTH } from '@/lib/passwordPolicy';
@@ -444,6 +445,9 @@ const Auth = () => {
             <h2 className="font-korean text-2xl sm:text-3xl text-foreground mb-2">{getTitle()}</h2>
             <p className="text-muted-foreground font-korean text-sm">{getSubtitle()}</p>
           </div>
+
+          {/* 로그인하면 무엇을 얻는지 (로그인·가입 첫 화면에서만) */}
+          {(mode === 'login' || (mode === 'signup' && signupStep === 'email')) && <AuthBenefitsPreview />}
 
           {/* LOGIN MODE */}
           {mode === 'login' && (
