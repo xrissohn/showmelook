@@ -399,17 +399,21 @@ const GalleryPreviewSection = () => {
             {previewLooks.map((look, index) => (
               <div
                 key={look.id}
-                className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+                className="group relative aspect-[3/5] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
                 onClick={() => handleLookClick(look, index)}
               >
-                <LazyImage
-                  src={look.image_url}
-                  alt="스타일 룩"
-                  className="w-full h-full object-cover"
-                  fallbackClassName="w-full h-full"
-                />
+                <div className="absolute inset-x-0 top-0 bottom-10">
+                  <LazyImage
+                    src={look.image_url}
+                    alt="스타일 룩"
+                    className="w-full h-full object-contain object-center"
+                    fallbackClassName="w-full h-full"
+                    width={480}
+                    priority={index < 4}
+                  />
+                </div>
                 {/* Bottom gradient */}
-                <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/60 to-transparent" />
                 
                 {/* Like count */}
                 <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm rounded-full px-2.5 py-1">
@@ -419,9 +423,9 @@ const GalleryPreviewSection = () => {
 
                 {/* Tags */}
                 {look.tags && look.tags.length > 0 && (
-                  <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 max-w-[60%]">
+                  <div className="absolute bottom-3 left-3 flex flex-nowrap gap-1 max-w-[60%] overflow-hidden">
                     {look.tags.slice(0, 2).map((tag, i) => (
-                      <span key={i} className="text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
+                      <span key={i} title={tag} className="min-w-0 truncate text-[10px] bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm">
                         {tag}
                       </span>
                     ))}
@@ -451,6 +455,8 @@ const GalleryPreviewSection = () => {
       {selectedLook && (
         <LookDetailModal
           look={selectedLook}
+          previousImageUrl={previewLooks[selectedIndex - 1]?.image_url}
+          nextImageUrl={previewLooks[selectedIndex + 1]?.image_url}
           onClose={() => setSelectedLook(null)}
           onPrevious={() => {
             if (selectedIndex > 0) handleLookClick(previewLooks[selectedIndex - 1], selectedIndex - 1);

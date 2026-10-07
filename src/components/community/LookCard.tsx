@@ -34,17 +34,20 @@ const LookCard = ({ look, isLiked, onToggleLike, onClick, priority = false }: Lo
 
   return (
     <div
-      className="group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+      className="group relative aspect-[3/5] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
       onClick={onClick || (() => navigate(`/look/${look.id}`))}
     >
-      <LazyImage
-        src={look.image_url}
-        alt="Community look"
-        className="w-full h-full object-cover"
-        fallbackClassName="w-full h-full"
-        width={480}
-        priority={priority}
-      />
+      {/* Reserve space for badges and actions so they do not cover the face or shoes. */}
+      <div className="absolute inset-x-0 top-9 bottom-10">
+        <LazyImage
+          src={look.image_url}
+          alt="Community look"
+          className="w-full h-full object-contain object-center"
+          fallbackClassName="w-full h-full"
+          width={480}
+          priority={priority}
+        />
+      </div>
 
       {/* User info overlay - top left */}
       <button
@@ -63,7 +66,7 @@ const LookCard = ({ look, isLiked, onToggleLike, onClick, priority = false }: Lo
       </button>
 
       {/* Bottom gradient overlay */}
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent" />
 
       {/* Like button */}
       <button
@@ -84,11 +87,12 @@ const LookCard = ({ look, isLiked, onToggleLike, onClick, priority = false }: Lo
 
       {/* Tags */}
       {look.tags && look.tags.length > 0 && (
-        <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 max-w-[60%]">
+        <div className="absolute bottom-3 left-3 flex flex-nowrap gap-1 max-w-[60%] overflow-hidden">
           {look.tags.slice(0, 3).map((tag, i) => (
             <span
               key={i}
-              className="text-[10px] sm:text-xs bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm"
+              title={tag}
+              className="min-w-0 truncate text-[10px] sm:text-xs bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm"
             >
               {tag}
             </span>

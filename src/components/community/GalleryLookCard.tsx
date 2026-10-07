@@ -42,22 +42,25 @@ const GalleryLookCard = ({
 
   return (
     <div
-      className={`group relative aspect-[3/4] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
+      className={`group relative aspect-[3/5] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-all duration-200 hover:scale-[1.02] ${
         !look.is_public && isOwner ? 'opacity-60' : ''
       }`}
       onClick={() => onClick ? onClick() : navigate(`/look/${look.id}`)}
     >
-      <LazyImage
-        src={look.image_url}
-        alt="AI로 만든 패션 코디 착장 사진"
-        className="w-full h-full object-cover"
-        fallbackClassName="w-full h-full"
-        width={480}
-        priority={priority}
-      />
+      {/* Reserve space for badges and actions so they do not cover the face or shoes. */}
+      <div className="absolute inset-x-0 top-9 bottom-10">
+        <LazyImage
+          src={look.image_url}
+          alt="AI로 만든 패션 코디 착장 사진"
+          className="w-full h-full object-contain object-center"
+          fallbackClassName="w-full h-full"
+          width={480}
+          priority={priority}
+        />
+      </div>
 
       {/* Bottom gradient */}
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/70 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/70 to-transparent" />
 
       {/* Public/Private toggle (owner only) */}
       {isOwner && (
@@ -91,11 +94,12 @@ const GalleryLookCard = ({
 
       {/* Tags */}
       {look.tags && look.tags.length > 0 && (
-        <div className="absolute bottom-3 left-3 flex flex-wrap gap-1 max-w-[60%]">
+        <div className="absolute bottom-3 left-3 flex flex-nowrap gap-1 max-w-[60%] overflow-hidden">
           {look.tags.slice(0, 3).map((tag, i) => (
             <span
               key={i}
-              className="text-[10px] sm:text-xs bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm"
+              title={tag}
+              className="min-w-0 truncate text-[10px] sm:text-xs bg-black/50 text-white px-2 py-0.5 rounded-full backdrop-blur-sm"
             >
               {tag}
             </span>

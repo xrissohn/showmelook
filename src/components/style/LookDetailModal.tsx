@@ -4,7 +4,7 @@
  * Owner can edit memo/tags, delete, toggle favorite/public
  * Non-owners can view, like, and share
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -64,6 +64,8 @@ interface LookDetailModalProps {
   onNext?: () => void;
   hasPrevious?: boolean;
   hasNext?: boolean;
+  previousImageUrl?: string;
+  nextImageUrl?: string;
   currentIndex?: number;
   totalCount?: number;
   onDelete?: (lookId: string) => void;
@@ -85,6 +87,8 @@ export const LookDetailModal = ({
   onNext,
   hasPrevious = false,
   hasNext = false,
+  previousImageUrl,
+  nextImageUrl,
   currentIndex,
   totalCount,
   onDelete,
@@ -120,6 +124,41 @@ export const LookDetailModal = ({
   const [localLiked, setLocalLiked] = useState(isLiked);
   const [localLikeCount, setLocalLikeCount] = useState(look.like_count ?? 0);
   const [likeAnimating, setLikeAnimating] = useState(false);
+
+  const preloadedImages = useRef(new Map<string, HTMLImageElement>());
+
+  // Keep the image becoming current in flight; retain only it and its neighbours.
+  useEffect(() => {
+    const urls = new Set([
+      hasPrevious ? previousImageUrl : undefined,
+      hasNext ? nextImageUrl : undefined,
+    ]);
+    const images = preloadedImages.current;
+    for (const [url, image] of images) {
+      if (url === look.image_url) image.fetchPriority = 'high';
+      else if (urls.has(url)) image.fetchPriority = 'low';
+      else {
+        image.removeAttribute('src');
+        images.delete(url);
+      }
+    }
+    for (const url of urls) {
+      if (!url || url === look.image_url || !/^https?:\/\//i.test(url) || images.has(url)) continue;
+      const image = new Image();
+      image.decoding = 'async';
+      image.fetchPriority = 'low';
+      image.src = url;
+      images.set(url, image);
+    }
+  }, [look.image_url, hasPrevious, hasNext, previousImageUrl, nextImageUrl]);
+
+  useEffect(() => {
+    const images = preloadedImages.current;
+    return () => {
+      for (const image of images.values()) image.removeAttribute('src');
+      images.clear();
+    };
+  }, []);
 
   // Sync external like state
   useEffect(() => { setLocalLiked(isLiked); }, [isLiked]);

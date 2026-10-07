@@ -214,6 +214,8 @@ const Community = () => {
       {selectedLook && (
         <LookDetailModal
           look={selectedLook}
+          previousImageUrl={looks[selectedIndex - 1]?.image_url}
+          nextImageUrl={looks[selectedIndex + 1]?.image_url}
           onClose={() => setSelectedLook(null)}
           onPrevious={() => {
             if (selectedIndex > 0) {

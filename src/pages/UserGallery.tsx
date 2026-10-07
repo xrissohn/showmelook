@@ -156,6 +156,8 @@ const UserGallery = () => {
       {selectedLook && (
         <LookDetailModal
           look={selectedLook}
+          previousImageUrl={filteredLooks[selectedIndex - 1]?.image_url}
+          nextImageUrl={filteredLooks[selectedIndex + 1]?.image_url}
           onClose={() => setSelectedLook(null)}
           onPrevious={() => { if (selectedIndex > 0) handleLookClick(filteredLooks[selectedIndex - 1], selectedIndex - 1); }}
           onNext={() => { if (selectedIndex < filteredLooks.length - 1) handleLookClick(filteredLooks[selectedIndex + 1], selectedIndex + 1); }}
