@@ -20,6 +20,7 @@ import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
 import { MIN_PRODUCT_PRICE, allowedProductGenders, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
 import { priceBand, rankAlternatives, type AltCandidate } from '@/lib/alternatives';
+import { replaceProductMention, swapIdInList } from '@/lib/lookSwap';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -3064,6 +3065,8 @@ const StyleGenerator = () => {
   // 대체 상품 모달 상태
   const [alternativeModalOpen, setAlternativeModalOpen] = useState(false);
   const [alternativeCategory, setAlternativeCategory] = useState<string>('');
+  const [alternativeTargetId, setAlternativeTargetId] = useState<string | null>(null); // 교체 대상 상품 id
+  const [swappedImageKey, setSwappedImageKey] = useState<string | null>(null); // 이미지 생성 후 교체가 일어난 이미지
   const [alternativeProducts, setAlternativeProducts] = useState<CachedProduct[]>([]);
   const [isLoadingAlternatives, setIsLoadingAlternatives] = useState(false);
 
@@ -3557,6 +3560,7 @@ const StyleGenerator = () => {
   // 대체 상품 조회 함수 (개선됨)
   const handleShowAlternatives = async (category: string, currentProductId: string) => {
     setAlternativeCategory(category);
+    setAlternativeTargetId(currentProductId);
     setAlternativeModalOpen(true);
     setIsLoadingAlternatives(true);
     setAlternativeProducts([]);
@@ -3670,24 +3674,74 @@ const StyleGenerator = () => {
     }
   };
 
+  // 저장된 룩(generated_looks)에도 교체를 반영: product_ids 와, 설명이 교체 전 상품명을 그대로 말하면 설명도 고친다.
+  // RLS 등으로 갱신이 안 돼도 화면 동작은 그대로 두고 경고만 남긴다.
+  const persistSwapToSavedLook = async (lookId: string, oldP: CachedProduct, newP: CachedProduct) => {
+    try {
+      const { data: row, error } = await supabase
+        .from('generated_looks')
+        .select('product_ids, style_reasoning')
+        .eq('id', lookId)
+        .maybeSingle();
+      if (error || !row) return;
+      const nextIds = swapIdInList(row.product_ids, oldP.id, newP.id);
+      if (!nextIds) return; // 이 룩에 없던 상품이면 건드리지 않는다
+      const mention = replaceProductMention(row.style_reasoning, oldP, newP);
+      const patch: { product_ids: string[]; style_reasoning?: string | null } = { product_ids: nextIds };
+      if (mention.changed) patch.style_reasoning = mention.text;
+      const { data: updated, error: updateError } = await supabase
+        .from('generated_looks')
+        .update(patch)
+        .eq('id', lookId)
+        .select('id');
+      if (updateError || !updated || updated.length === 0) {
+        console.warn('[StyleGenerator] saved look swap was not applied (RLS or error):', updateError);
+      }
+    } catch (e) {
+      console.warn('[StyleGenerator] saved look swap failed:', e);
+    }
+  };
+
   // 대체 상품 선택하여 교체
   const handleSelectAlternative = (newProduct: CachedProduct) => {
-    // 기존 같은 카테고리 상품 제거 후 새 상품 추가
+    const targetId = alternativeTargetId;
+    const oldItem = targetId
+      ? customResult?.items.find(item => item.id === targetId) ?? selectedTrendProducts.find(p => p.id === targetId)
+      : undefined;
+    // 자리 라벨은 교체 전 상품의 것을 유지한다 (이미지 태그 위치·그룹이 카테고리 라벨 기준)
+    const replacement: CachedProduct = oldItem
+      ? { ...newProduct, category: oldItem.category, isAutoSelected: oldItem.isAutoSelected }
+      : newProduct;
+
+    // 교체 대상 id 기준으로 바꾼다 (대상을 모르면 기존처럼 같은 카테고리 기준)
     setSelectedTrendProducts(prev => {
+      if (targetId && prev.some(p => p.id === targetId)) {
+        return prev.map(p => (p.id === targetId ? replacement : p));
+      }
       const filtered = prev.filter(p => p.category !== newProduct.category);
       return [...filtered, newProduct];
     });
 
-    // customResult의 items도 업데이트
+    // customResult의 items·설명도 업데이트
     if (customResult) {
       setCustomResult(prev => {
         if (!prev) return prev;
-        const updatedItems = prev.items.map(item => 
-          item.category === newProduct.category ? newProduct : item
+        const hasTarget = !!targetId && prev.items.some(item => item.id === targetId);
+        const updatedItems = prev.items.map(item =>
+          (hasTarget ? item.id === targetId : item.category === newProduct.category) ? replacement : item
         );
-        return { ...prev, items: updatedItems };
+        const mention = oldItem ? replaceProductMention(prev.styleReasoning, oldItem, newProduct) : null;
+        return {
+          ...prev,
+          items: updatedItems,
+          ...(mention?.changed ? { styleReasoning: mention.text ?? prev.styleReasoning } : {}),
+        };
       });
     }
+
+    // 이미 이미지가 만들어졌다면: 저장된 룩 갱신 + '이미지는 처음 조합 기준' 안내
+    if (generatedImage) setSwappedImageKey(generatedImage);
+    if (generatedLookId && oldItem) void persistSwapToSavedLook(generatedLookId, oldItem, newProduct);
 
     setAlternativeModalOpen(false);
     toast({
@@ -6616,6 +6670,13 @@ const StyleGenerator = () => {
                 {/* 커뮤니티 공개 토글 + 다른 스타일 시도하기 버튼 */}
                 {generatedImage && !isGenerating && (
                   <div className="mt-4 flex flex-col items-center gap-3">
+                    {swappedImageKey === generatedImage && (
+                      <p className="text-xs text-muted-foreground font-korean text-center">
+                        {language === 'en'
+                          ? 'The image shows your original combination. Swapped items are reflected in the item list.'
+                          : '이미지는 처음 조합 기준이에요. 교체한 상품은 상품 목록에 반영돼요.'}
+                      </p>
+                    )}
                     {/* 커뮤니티 공개 토글 */}
                     {generatedLookId && (
                       <button
