@@ -48,8 +48,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["무료"], ["얼마"], ["가격"], ["요금"], ["구독"], ["돈"], ["비용"]],
     en: [["free"], ["price"], ["pricing"], ["cost"], ["much"], ["subscription"], ["money"]],
     answer: {
-      ko: `쇼미룩은 무료로 시작할 수 있어. 가입하면 하루 ${F.dailyLimit}회(월 ${F.monthlyLimit}회) 생성이 기본이고, 월 구독 없이 구매가 쌓이면 등급이 올라가면서 횟수가 늘어. 무료 사용자는 이미지에 워터마크가 붙는 점만 알아줘. 상세는 /pricing, 바로 만들어보려면 /style.`,
-      en: `You can start for free. Signing up gives you ${F.dailyLimit} styles a day (${F.monthlyLimit} a month), and there's no monthly subscription — your tiers rise as your purchases add up. Only thing to know: free images carry a watermark. Details on /pricing, or jump straight into /style.`,
+      ko: `쇼미룩은 무료로 시작할 수 있어. 가입하면 하루 ${F.dailyLimit}회 생성이 기본이고, 월 구독 없이 구매가 쌓이면 등급이 올라가면서 횟수가 늘어. 무료 사용자는 이미지에 워터마크가 붙는 점만 알아줘. 상세는 /pricing, 바로 만들어보려면 /style.`,
+      en: `You can start for free. Signing up gives you ${F.dailyLimit} styles a day, and there's no monthly subscription — your tiers rise as your purchases add up. Only thing to know: free images carry a watermark. Details on /pricing, or jump straight into /style.`,
     },
   },
   {
@@ -129,8 +129,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["워터마크"]],
     en: [["watermark"]],
     answer: {
-      ko: "무료 사용자는 생성 이미지에 워터마크가 붙어. 첫 구매로 브론즈가 되면 워터마크 없는 이미지와 고화질 다운로드가 열려.",
-      en: "Free accounts get a watermark on generated images. Once your first purchase moves you to Bronze, images come clean and HD downloads unlock.",
+      ko: "무료 사용자는 생성 이미지에 워터마크가 붙어. 첫 구매로 브론즈가 되면 워터마크 없는 이미지가 나와.",
+      en: "Free accounts get a watermark on generated images. Once your first purchase moves you to Bronze, images come out clean.",
     },
   },
   {
@@ -219,8 +219,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
     ko: [["횟수", "다"], ["횟수", "초과"], ["더", "만들"], ["생성", "안"], ["한도"], ["다 썼"]],
     en: [["limit"], ["out", "of", "credits"], ["no", "more"], ["ran", "out"], ["used", "up"]],
     answer: {
-      ko: `하루 생성 횟수를 다 쓰면 다음 날 다시 채워져. 바로 더 만들고 싶으면 룩을 공개로 등록해서 보너스 크레딧(최대 ${BONUS.galleryCreditMax}회)을 받거나, 친구 추천 코드로 보너스를 받을 수 있어. 첫 구매로 브론즈가 되면 월 제한도 없어져(/pricing).`,
-      en: `When you use up today's styles, they refill the next day. Want more now? Publish a look for a bonus credit (up to ${BONUS.galleryCreditMax}) or share your referral code. A first purchase gets you Bronze with no monthly cap (/pricing).`,
+      ko: `하루 생성 횟수를 다 쓰면 다음 날 다시 채워져. 바로 더 만들고 싶으면 룩을 공개로 등록해서 보너스 크레딧(최대 ${BONUS.galleryCreditMax}회)을 받거나, 친구 추천 코드로 보너스를 받을 수 있어. 등급이 오르면 하루 생성 횟수가 늘어나(/pricing).`,
+      en: `When you use up today's styles, they refill the next day. Want more now? Publish a look for a bonus credit (up to ${BONUS.galleryCreditMax}) or share your referral code. Higher tiers also raise your daily count (/pricing).`,
     },
   },
   {

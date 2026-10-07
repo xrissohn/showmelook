@@ -53,8 +53,7 @@ const Policy = () => {
                   </p>
                   {en ? (
                     <ul className="text-sm text-foreground/80 space-y-1">
-                      <li>Daily: {limit(t.dailyLimit, "")} · Monthly: {limit(t.monthlyLimit, "")}</li>
-                      <li>Gallery: {limit(t.galleryLimit, "")} · History: {t.historyDays === -1 ? "Permanent" : `${t.historyDays} days`}</li>
+                      <li>Daily: {limit(t.dailyLimit, "")}</li>
                       <li>{t.hasWatermark ? "Watermark" : "No watermark"}</li>
                     </ul>
                   ) : (

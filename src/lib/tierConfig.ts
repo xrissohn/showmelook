@@ -55,7 +55,7 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     canPreviewRecommendations: TIER_FACTS.bronze.canPreviewRecommendations,
     badgeColor: 'bg-amber-700',
     features: tierFeaturesKo('bronze'),
-    highlightFeatures: ['월간 무제한', '워터마크 제거'],
+    highlightFeatures: ['워터마크 제거'],
   },
   silver: {
     name: TIER_FACTS.silver.nameEn,
@@ -87,7 +87,7 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     canPreviewRecommendations: TIER_FACTS.gold.canPreviewRecommendations,
     badgeColor: 'bg-yellow-500',
     features: tierFeaturesKo('gold'),
-    highlightFeatures: ['일일 20회', '히스토리 영구 보관'],
+    highlightFeatures: ['일일 20회', '상품 추천만 먼저보기 ✨'],
   },
   platinum: {
     name: TIER_FACTS.platinum.nameEn,
@@ -103,7 +103,7 @@ export const TIER_CONFIG: Record<TierType, TierConfig> = {
     canPreviewRecommendations: TIER_FACTS.platinum.canPreviewRecommendations,
     badgeColor: 'bg-gradient-to-r from-purple-500 to-pink-500',
     features: tierFeaturesKo('platinum'),
-    highlightFeatures: ['모든 기능 무제한', '모델 프로필 추가'],
+    highlightFeatures: ['무제한 스타일 생성', '모델 프로필 추가'],
   },
 };
 
@@ -184,13 +184,13 @@ export const getTierName = (tier: TierType, language: 'ko' | 'en'): string => {
 export const getTierBenefitsSummary = (tier: TierType): string[] => {
   switch (tier) {
     case 'bronze':
-      return ['월간 생성 무제한', '워터마크 제거', '고화질 다운로드'];
+      return ['워터마크 제거'];
     case 'silver':
-      return ['일일 생성 10회로 증가', '상품 추천만 먼저보기', '갤러리 50장'];
+      return ['일일 생성 10회로 증가', '상품 추천만 먼저보기'];
     case 'gold':
-      return ['일일 생성 20회로 증가', '갤러리 100장', '히스토리 영구 보관'];
+      return ['일일 생성 20회로 증가'];
     case 'platinum':
-      return ['모든 기능 무제한', '모델 프로필 추가 가능', '우선 대기열'];
+      return ['무제한 스타일 생성', '모델 프로필 추가 가능', '우선 대기열'];
     default:
       return [];
   }

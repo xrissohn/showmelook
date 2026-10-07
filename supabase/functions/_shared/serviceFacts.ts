@@ -10,11 +10,14 @@ export interface TierFacts {
   nameEn: string;
   minAmount: number; // 누적 구매 금액(원)
   dailyLimit: number; // -1 = 무제한
-  monthlyLimit: number; // -1 = 무제한
-  galleryLimit: number; // -1 = 무제한
+  // 요금제는 구독이 아니라 누적 구매 금액 기준 등급제다.
+  // 아래 4개(monthlyLimit·galleryLimit·hdDownload·historyDays)는 아직 실제로 적용되지 않는다.
+  // 지켜지지 않는 혜택을 약속하지 않도록 화면·쇼미 문구에는 쓰지 않는다(적용을 구현하면 그때 다시 노출).
+  monthlyLimit: number; // -1 = 무제한 (미적용)
+  galleryLimit: number; // -1 = 무제한 (미적용)
   hasWatermark: boolean;
-  hdDownload: boolean;
-  historyDays: number; // -1 = 영구
+  hdDownload: boolean; // (미적용)
+  historyDays: number; // -1 = 영구 (미적용)
   canPreviewRecommendations: boolean;
   extraProfiles: boolean; // 100만원당 모델 프로필 +1
   priorityQueue: boolean;
@@ -89,13 +92,9 @@ const krw = (n: number) => `${n.toLocaleString("en-US")} KRW`;
 export const tierFeaturesKo = (id: TierId): string[] => {
   const t = TIER_FACTS[id];
   const f: string[] = [];
-  if (t.dailyLimit === -1) f.push("무제한 스타일 생성", "모든 기능 무제한");
-  else f.push(`일일 스타일 생성 ${t.dailyLimit}회`, t.monthlyLimit === -1 ? "월간 스타일 생성 무제한" : `월간 스타일 생성 ${t.monthlyLimit}회`);
+  f.push(t.dailyLimit === -1 ? "무제한 스타일 생성" : `일일 스타일 생성 ${t.dailyLimit}회`);
   if (t.canPreviewRecommendations) f.push("상품 추천만 먼저보기 ✨");
-  if (!t.hasWatermark) f.push("워터마크 없는 이미지");
-  if (t.hdDownload) f.push("고화질 다운로드");
-  f.push(t.galleryLimit === -1 ? "갤러리 무제한 저장" : `갤러리 저장 ${t.galleryLimit}장`);
-  f.push(t.historyDays === -1 ? "스타일 히스토리 영구 보관" : `스타일 히스토리 ${t.historyDays}일 보관`);
+  f.push(t.hasWatermark ? "이미지에 워터마크 표시" : "워터마크 없는 이미지");
   if (t.extraProfiles) f.push("모델 프로필 추가 (100만원당 +1명)");
   if (t.priorityQueue) f.push("우선 생성 대기열");
   return f;
@@ -106,12 +105,9 @@ const tierLine = (id: TierId, lang: "ko" | "en"): string => {
   if (lang === "ko") {
     const when = id === "free" ? "" : id === "bronze" ? "(첫 구매)" : `(누적 ${won(t.minAmount)}~)`;
     const p = [
-      t.dailyLimit === -1 ? "무제한 생성" : `하루 ${t.dailyLimit}회·월 ${t.monthlyLimit === -1 ? "무제한" : `${t.monthlyLimit}회`}`,
+      t.dailyLimit === -1 ? "무제한 생성" : `하루 ${t.dailyLimit}회`,
       t.canPreviewRecommendations ? "상품 추천 먼저보기" : "",
       t.hasWatermark ? "워터마크 있음" : "워터마크 없음",
-      t.hdDownload ? "고화질 다운로드" : "",
-      t.galleryLimit === -1 ? "갤러리 무제한" : `갤러리 ${t.galleryLimit}장`,
-      t.historyDays === -1 ? "히스토리 영구" : `히스토리 ${t.historyDays}일`,
       t.extraProfiles ? "모델 프로필 100만원당 +1명" : "",
       t.priorityQueue ? "우선 대기열" : "",
     ].filter(Boolean);
@@ -119,12 +115,9 @@ const tierLine = (id: TierId, lang: "ko" | "en"): string => {
   }
   const when = id === "free" ? "" : id === "bronze" ? " (first purchase)" : ` (from ${krw(t.minAmount)})`;
   const p = [
-    t.dailyLimit === -1 ? "unlimited styles" : `${t.dailyLimit} a day, ${t.monthlyLimit === -1 ? "unlimited monthly" : `${t.monthlyLimit} a month`}`,
+    t.dailyLimit === -1 ? "unlimited styles" : `${t.dailyLimit} a day`,
     t.canPreviewRecommendations ? "early access to product picks" : "",
     t.hasWatermark ? "watermark" : "no watermark",
-    t.hdDownload ? "HD downloads" : "",
-    t.galleryLimit === -1 ? "unlimited gallery" : `${t.galleryLimit} gallery saves`,
-    t.historyDays === -1 ? "permanent history" : `${t.historyDays}-day history`,
     t.extraProfiles ? "+1 model profile per 1,000,000 KRW" : "",
     t.priorityQueue ? "priority queue" : "",
   ].filter(Boolean);

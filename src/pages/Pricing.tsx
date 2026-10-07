@@ -217,9 +217,6 @@ const Pricing = () => {
                     {t('pricing.daily')} {config.dailyLimit === -1 ? t('pricing.unlimited') : `${config.dailyLimit}`}
                   </li>
                   <li className="font-korean">
-                    {t('pricing.monthly')} {config.monthlyLimit === -1 ? t('pricing.unlimited') : `${config.monthlyLimit}`}
-                  </li>
-                  <li className="font-korean">
                     {config.hasWatermark ? t('pricing.hasWatermark') : t('pricing.noWatermarkLabel')}
                   </li>
                   {config.canPreviewRecommendations && (
@@ -267,12 +264,8 @@ const Pricing = () => {
               <tbody>
                 {[
                   { feature: t('pricing.dailyGen'), free: '5', bronze: '5', silver: '10', gold: '20', platinum: t('pricing.unlimited') },
-                  { feature: t('pricing.monthlyGen'), free: '25', bronze: t('pricing.unlimited'), silver: t('pricing.unlimited'), gold: t('pricing.unlimited'), platinum: t('pricing.unlimited') },
                   { feature: t('pricing.watermark'), free: t('pricing.yes'), bronze: t('pricing.no'), silver: t('pricing.no'), gold: t('pricing.no'), platinum: t('pricing.no') },
-                  { feature: t('pricing.hdDownload'), free: false, bronze: true, silver: true, gold: true, platinum: true },
                   { feature: t('pricing.previewRecommend'), free: false, bronze: false, silver: true, gold: true, platinum: true },
-                  { feature: t('pricing.gallerySave'), free: '10', bronze: '30', silver: '50', gold: '100', platinum: t('pricing.unlimited') },
-                  { feature: t('pricing.historyKeep'), free: '7d', bronze: '30d', silver: '90d', gold: '∞', platinum: '∞' },
                   { feature: t('pricing.modelProfile'), free: t('pricing.selfOnly'), bronze: t('pricing.selfOnly'), silver: t('pricing.selfOnly'), gold: t('pricing.selfOnly'), platinum: '+1/₩1M' },
                   { feature: t('pricing.priorityQueue'), free: false, bronze: false, silver: false, gold: false, platinum: true },
                 ].map((row, idx) => (
