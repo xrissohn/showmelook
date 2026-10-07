@@ -59,13 +59,6 @@
       "breakpoints": true
     },
     {
-      "idx": 8,
-      "version": "7",
-      "when": 1791337689688,
-      "tag": "0008_look_feedback_learning",
-      "breakpoints": true
-    },
-    {
       "idx": 9,
       "version": "7",
       "when": 1791338851785,
