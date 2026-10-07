@@ -17,6 +17,7 @@ import { useGenerationLimit } from '@/hooks/useGenerationLimit';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
+import { useProductFeedback } from '@/hooks/useProductFeedback';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -3173,6 +3174,33 @@ const StyleGenerator = () => {
   
   // 피드백 훅
   const { trackClick, trackLike, trackCart, trackViews } = useFeedback();
+  const { recordFeedbackAsync } = useProductFeedback();
+
+  // 결과 화면 '좋아요/아쉬워요' 저장: 룩에 포함된 상품마다 style_like/style_dislike로 기록.
+  // 저장이 실패해도 화면 동작(토스트·버튼 상태)에는 영향 없다.
+  const saveLookFeedback = (kind: 'positive' | 'negative') => {
+    if (!user || !customResult || customResult.items.length === 0) return;
+    const actionType = kind === 'positive' ? 'style_like' : 'style_dislike';
+    void Promise.allSettled(
+      customResult.items.map((item) =>
+        recordFeedbackAsync({
+          productId: item.id,
+          actionType,
+          recommendationId: lastRecommendationId || undefined,
+          styleConcept: customResult.styleConcept,
+          occasion: customStylePrompt,
+          additionalContext: {
+            gender: customGender,
+            budget: customResult.budget ?? null,
+            mode: customResult.mode ?? 'recommendation',
+          },
+        })
+      )
+    ).then((results) => {
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      if (failed > 0) console.warn(`[StyleGenerator] look feedback: ${failed}/${results.length} failed`);
+    });
+  };
   // Embla Carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ 
     loop: false, 
@@ -5852,6 +5880,7 @@ const StyleGenerator = () => {
                           <button
                             onClick={() => {
                               setFeedbackGiven('positive');
+                              saveLookFeedback('positive');
                               toast({
                                 title: language === 'en' ? 'Thank you! 💕' : '감사합니다! 💕',
                                 description: language === 'en' ? 'Your feedback will improve future recommendations.' : '피드백이 더 나은 추천에 반영됩니다.',
@@ -5872,6 +5901,7 @@ const StyleGenerator = () => {
                           <button
                             onClick={() => {
                               setFeedbackGiven('negative');
+                              saveLookFeedback('negative');
                               toast({
                                 title: language === 'en' ? 'Thanks for your feedback' : '피드백 감사합니다',
                                 description: language === 'en' ? 'We will improve your next recommendation.' : '다음에는 더 나은 추천을 드릴게요.',
