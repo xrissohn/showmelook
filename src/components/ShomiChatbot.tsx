@@ -3,6 +3,7 @@ import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { Send, X, Loader2 } from "lucide-react";
 import shomiAvatar from "@/assets/shomi-face-profile.png.asset.json";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -110,12 +111,21 @@ export default function ShomiChatbot() {
     const update = (content: string) =>
       setMessages((m) => [...m.slice(0, -1), { role: "assistant", content }]);
     try {
+      // 로그인했다면 사용자 토큰을 보내 프로필·최근 추천을 맥락으로 쓰게 한다 (아니면 공개 키)
+      let bearer: string = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData.session?.access_token) bearer = sessionData.session.access_token;
+      } catch {
+        /* 세션을 못 읽으면 공개 키로 진행 */
+      }
       const res = await fetch(CHAT_URL, {
         method: "POST",
         signal: ctrl.signal,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${bearer}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({ language, messages: history.slice(-6) }),
       });

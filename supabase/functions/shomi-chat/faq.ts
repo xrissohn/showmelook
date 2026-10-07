@@ -4,6 +4,7 @@
 // 투자·재무 수치는 여기에 넣지 않는다.
 // 등급·횟수·보너스 수치는 _shared/serviceFacts.ts에서 가져온다(요금제 변경 시 자동 반영).
 import { BONUS, TIER_FACTS, serviceIntro, tierFaqAnswer } from "../_shared/serviceFacts.ts";
+import { shortQueryCoverageOk } from "../_shared/shomiChat.ts";
 const F = TIER_FACTS.free;
 
 export type FaqEntry = {
@@ -80,7 +81,7 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     id: "outfit",
-    ko: [["데이트룩"], ["오피스룩"], ["캐주얼룩"], ["코디"], ["추천"], ["뭐", "입"], ["패션", "조언"]],
+    ko: [["데이트룩"], ["오피스룩"], ["캐주얼룩"], ["코디"], ["뭐", "입"], ["패션", "조언"]],
     en: [["date", "look"], ["office", "look"], ["casual", "look"], ["outfit"], ["wear"], ["style", "advice"], ["coordi"]],
     answer: {
       ko: "코디는 상황 → 실루엣 → 색 순서로 정하면 쉬워. 데이트룩은 부드러운 소재에 허리선 높은 하의, 오피스룩은 V넥에 스트레이트 팬츠, 캐주얼은 질감 있는 소재 하나를 주력으로 잡는 게 기본이야. 쇼미가 정리한 조합법은 /guide/date-office-casual-look 에 있고, 내 몸에 실제로 맞는지는 /style 에서 확인하는 게 제일 빨라.",
@@ -270,6 +271,8 @@ export function matchFaq(text: string, language: string): FaqEntry | null {
       best = entry;
     }
   }
+  // 아주 짧은 질문은 키워드가 질문 대부분을 차지할 때만 인정한다 (그 외엔 AI/되묻기로 넘어감)
+  if (best && !shortQueryCoverageOk(q.length, bestScore)) return null;
   return best;
 }
 

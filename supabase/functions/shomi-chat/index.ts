@@ -3,6 +3,7 @@ import { z } from "npm:zod@3.25.76";
 import { KNOWLEDGE } from "./knowledge.ts";
 import { activePromotions, serviceKnowledgeKo } from "../_shared/serviceFacts.ts";
 import { faqAnswer, matchFaq } from "./faq.ts";
+import { RECOMMEND_CLARIFY, buildUserContext, cacheThreshold, isVagueRecommend } from "../_shared/shomiChat.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // 이전 AI 답변 재사용: 첫 질문이고 개인 정보(키/몸무게/나이 등)가 없을 때만 저장·재사용한다.
@@ -98,6 +99,26 @@ const loadExtra = async (): Promise<string> => {
   return text;
 };
 
+// 로그인 사용자의 프로필(성별·체형·선호)과 최근 추천 2~3개를 맥락으로 쓴다.
+// 대화 뒤 별도 system 메시지로만 붙인다(시스템 프롬프트·캐시 접두부는 그대로). 맥락이 들어간 답은 캐시에 저장하지 않는다.
+const loadUserContext = async (req: Request): Promise<string> => {
+  const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
+  if (!token) return "";
+  try {
+    const { data: auth } = await db().auth.getUser(token); // anon 키면 사용자 없음
+    const uid = auth?.user?.id;
+    if (!uid) return "";
+    const [profile, recs] = await Promise.all([
+      db().from("profiles").select("gender, body_type, style_preferences").eq("user_id", uid).maybeSingle(),
+      db().from("recommendation_history").select("prompt, style_concept").eq("user_id", uid).order("created_at", { ascending: false }).limit(3),
+    ]);
+    return buildUserContext(profile.data, recs.data);
+  } catch (e) {
+    console.error("shomi-chat user context failed", e);
+    return "";
+  }
+};
+
 const LANG = (lang: string) =>
   lang === "en" ? "Reply in English (casual, friendly)." : "사용자가 쓰는 언어로 답해(기본 한국어).";
 
@@ -131,6 +152,7 @@ Deno.serve(async (req) => {
     const last = [...parsed.data.messages].reverse().find((m) => m.role === "user");
     if (last && SENSITIVE.test(last.content)) return sseResponse(REFUSE.sensitive[language], "blocked-sensitive");
     if (last && OFFTOPIC.test(last.content) && !FASHION.test(last.content)) return sseResponse(REFUSE.offtopic[language], "blocked-offtopic");
+    if (last && isVagueRecommend(last.content)) return sseResponse(RECOMMEND_CLARIFY[language], "recommend-clarify");
     const entry = last ? matchFaq(last.content, language) : null;
     if (entry && last) {
       console.log("shomi-chat faq-hit", entry.id);
@@ -139,10 +161,13 @@ Deno.serve(async (req) => {
 
     const userTurns = parsed.data.messages.filter((m) => m.role === "user").length;
     const SYSTEM = await getSystem(); // also clears stale saved answers after a facts change
+    const userContext = await loadUserContext(req);
+    // 개인 맥락이 들어간 답은 다른 사용자에게 재사용되면 안 되므로 저장하지 않는다(읽기만 허용)
     const cacheable = !!last && userTurns === 1 && last.content.length <= 120 && !PERSONAL.test(last.content);
+    const storable = cacheable && !userContext;
     const qNorm = last ? norm(last.content) : "";
     if (cacheable && qNorm.length >= 4) {
-      const { data } = await db().rpc("match_shomi_answer", { p_language: language, p_norm: qNorm, p_threshold: 0.6 });
+      const { data } = await db().rpc("match_shomi_answer", { p_language: language, p_norm: qNorm, p_threshold: cacheThreshold(qNorm.length) });
       const hit = Array.isArray(data) ? data[0] : null;
       if (hit) {
         console.log("shomi-chat cache-hit", hit.score);
@@ -172,6 +197,7 @@ Deno.serve(async (req) => {
         messages: [
           { role: "system", content: extra ? `${SYSTEM}\n\n## 추가 자료 (구글 드라이브)\n${extra}` : SYSTEM },
           ...parsed.data.messages,
+          ...(userContext ? [{ role: "system", content: userContext }] : []),
           { role: "system", content: LANG(language) },
         ],
       }),
@@ -210,7 +236,7 @@ Deno.serve(async (req) => {
       console.log("shomi-chat blocked-policy", answer.slice(0, 200));
       return sseResponse(REFUSE.policy[language], "blocked-policy");
     }
-    if (done && cacheable && qNorm.length >= 4 && answer.length > 10) {
+    if (done && storable && qNorm.length >= 4 && answer.length > 10) {
       const { error } = await db().from("shomi_answer_cache").upsert(
         { language, question: last!.content, question_norm: qNorm, answer },
         { onConflict: "language,question_norm", ignoreDuplicates: true },
