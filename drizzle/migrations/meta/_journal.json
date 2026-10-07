@@ -64,6 +64,13 @@
       "when": 1791338851785,
       "tag": "0009_look_feedback_learning",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791343846138,
+      "tag": "0010_drop_old_product_feedback_check",
+      "breakpoints": true
     }
   ]
 }
