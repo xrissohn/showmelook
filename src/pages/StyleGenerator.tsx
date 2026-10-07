@@ -18,6 +18,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
+import { allowedProductGenders } from '@/lib/productFilters';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
 import { ShoppingBag, Heart, LogOut, ChevronRight, Loader2, User, Camera, Check, Zap, Crown, Settings, Sparkles, ExternalLink, Plus, ChevronLeft, Tag, RefreshCw, X, ImageOff, Download, Share2, Trash2, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, Images, Lock, RotateCcw, Lightbulb, MessageCircle, Globe, LockKeyhole } from 'lucide-react';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -3434,14 +3435,17 @@ const StyleGenerator = () => {
 
       try {
         // 다양한 상품을 위해 더 많이 가져와서 랜덤 셔플
-        const { data, error } = await supabase
+        // 선택한 성별(없으면 프로필 성별)과 유니섹스 상품만 보여준다
+        const adGenders = allowedProductGenders(customGender, userProfile?.gender);
+        let adsQuery = supabase
           .from('products_cache')
           .select('id, name, brand, price, image_url, product_url, category, style_tags, merchant_id')
           .eq('is_active', true)
           .eq('is_in_stock', true)
           .not('image_url', 'is', null)
-          .not('image_url', 'like', '%ads-partners%')
-          .limit(100); // 더 많이 가져와서 다양성 확보
+          .not('image_url', 'like', '%ads-partners%');
+        if (adGenders) adsQuery = adsQuery.in('gender', adGenders);
+        const { data, error } = await adsQuery.limit(100); // 더 많이 가져와서 다양성 확보
 
         if (error) throw error;
 
@@ -3456,7 +3460,7 @@ const StyleGenerator = () => {
     };
 
     loadAdsProducts();
-  }, [isGenerating, isCustomSearching, loadingAdsProducts.length]);
+  }, [isGenerating, isCustomSearching, loadingAdsProducts.length, customGender, userProfile?.gender]);
 
   // 광고 상품 클릭 핸들러
   const handleAdsProductClick = async (product: CachedProduct) => {
