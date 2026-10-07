@@ -1,0 +1,1 @@
+ALTER TABLE public.product_feedback DROP CONSTRAINT IF EXISTS product_feedback_action_type_check;
