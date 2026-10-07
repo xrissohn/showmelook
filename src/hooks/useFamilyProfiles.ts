@@ -1,6 +1,6 @@
 /**
  * useFamilyProfiles - 가족 프로필 관리 훅
- * Premium 전용 기능: 최대 5명 추가 가능
+ * 플래티넘 등급 전용 기능: 누적 구매 100만원당 모델 프로필 1명 추가
  */
 
 import { useState, useEffect, useCallback } from 'react';

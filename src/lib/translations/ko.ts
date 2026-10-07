@@ -207,7 +207,7 @@ export const ko: TranslationKeys = {
     pageTitle: '마이페이지 - 내 등급·크레딧·스타일 관리',
     myGallery: '마이 갤러리',
     cart: '장바구니',
-    subscription: '구독',
+    subscription: '내 등급',
     likes: '관심',
     history: '히스토리',
     model: '모델',

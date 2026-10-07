@@ -143,8 +143,8 @@ export const ProfileSelector = ({
     setIsOpen(false);
   };
 
-  // 프리미엄이 아니거나 가족 프로필을 사용할 수 없어도 본인 프로필은 표시
-  // 추가 모델만 프리미엄 잠금
+  // 플래티넘이 아니거나 가족 프로필을 사용할 수 없어도 본인 프로필은 표시
+  // 추가 모델만 플래티넘 등급 잠금
   if (!canUseFamilyProfiles) {
     return (
       <div className="space-y-3">

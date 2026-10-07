@@ -207,7 +207,7 @@ export const en: TranslationKeys = {
     pageTitle: 'My Page - Manage Your Tier, Credits & Styles',
     myGallery: 'My Gallery',
     cart: 'Cart',
-    subscription: 'Subscription',
+    subscription: 'My Tier',
     likes: 'Likes',
     history: 'History',
     model: 'Models',

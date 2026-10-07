@@ -177,19 +177,14 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
         return null;
       }
 
-      // Fetch user subscription for priority
-      const { data: subscription } = await supabase
-        .from('user_subscriptions')
-        .select('plan')
+      // 구매 등급 기준 우선순위 (구독제 아님): 플래티넘은 우선 대기열(1), 그 외는 일반(5). 낮을수록 먼저 처리.
+      const { data: purchaseStats } = await supabase
+        .from('user_purchase_stats')
+        .select('current_tier')
         .eq('user_id', userId)
         .maybeSingle();
-
-      // Dynamic priority based on subscription plan
-      // Lower number = higher priority
-      // Premium: 1, Pro: 3, Free: 5
-      const priority = subscription?.plan === 'premium' ? 1 
-                     : subscription?.plan === 'pro' ? 3 
-                     : 5;
+      const isPriorityTier = purchaseStats?.current_tier === 'platinum';
+      const priority = isPriorityTier ? 1 : 5;
 
       // Create new job
       const { data: job, error } = await supabase
@@ -207,8 +202,8 @@ export const useGenerationQueue = (userId: string | undefined): UseGenerationQue
       if (error) throw error;
 
       const planLabel = language === 'en'
-        ? subscription?.plan === 'premium' ? 'Premium priority' : subscription?.plan === 'pro' ? 'Pro priority' : 'Standard processing'
-        : subscription?.plan === 'premium' ? '프리미엄 우선 처리' : subscription?.plan === 'pro' ? '프로 우선 처리' : '일반 처리';
+        ? isPriorityTier ? 'Platinum priority' : 'Standard processing'
+        : isPriorityTier ? '플래티넘 우선 처리' : '일반 처리';
 
       toast({
         title: language === 'en' ? '🎨 Style generation started' : '🎨 스타일 생성 시작',

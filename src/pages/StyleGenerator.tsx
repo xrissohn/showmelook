@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { useGenerationLimit } from '@/hooks/useGenerationLimit';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useTierBenefits } from '@/hooks/useTierBenefits';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
@@ -38,7 +38,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UpgradeModal } from '@/components/subscription/UpgradeModal';
-import { LimitReachedBanner } from '@/components/subscription/LimitReachedBanner';
 import { ProfileSelector, SelectedProfile } from '@/components/style/ProfileSelector';
 import { getProductAffiliateDisclosure } from '@/lib/affiliateDisclosure';
 import { LoadingProductAds } from '@/components/style/LoadingProductAds';
@@ -451,7 +450,7 @@ const downloadImage = async (
   try {
     let urlToDownload = imageUrl;
     
-    // 워터마크 추가 (비프리미엄 사용자)
+    // 워터마크 추가 (무료 등급 사용자)
     if (addWatermark && logoUrl) {
       try {
         urlToDownload = await addWatermarkToImage(imageUrl, logoUrl);
@@ -2910,8 +2909,8 @@ const StyleGenerator = () => {
   const { user, signOut, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const { t, language } = useLanguage();
-  // 구독 상태 (스타일 추천 먼저 받기 제한용)
-  const subscription = useSubscription(user?.id);
+  // 구매 등급 혜택 (스타일 추천 먼저 받기·워터마크·모델 프로필)
+  const tierBenefits = useTierBenefits(user?.id); // 구매 등급 기준 혜택(구독제 아님)
   // 구매 기반 등급 정보
   const { stats: purchaseStats } = usePurchaseStats(user?.id);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -5794,7 +5793,7 @@ const StyleGenerator = () => {
 
                       
                       {/* 추천만 먼저 보기 (항상 표시) */}
-                      {subscription.canUseRecommendFirst && (
+                      {tierBenefits.canUseRecommendFirst && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -5808,7 +5807,7 @@ const StyleGenerator = () => {
                       )}
                       
                       {/* 무료 회원용 새로 시작 버튼 */}
-                      {!subscription.canUseRecommendFirst && customResult && (
+                      {!tierBenefits.canUseRecommendFirst && customResult && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -6282,7 +6281,7 @@ const StyleGenerator = () => {
                 userId={user?.id}
                 userProfile={userProfile}
                 isPremium={isPremium}
-                canUseFamilyProfiles={subscription.canUseFamilyProfiles}
+                canUseFamilyProfiles={tierBenefits.canUseFamilyProfiles}
                 selectedProfile={selectedGenerationProfile}
                 isProfileLoading={isPreloadingProfile}
                 onProfileSelect={(profile) => {
@@ -6607,7 +6606,7 @@ const StyleGenerator = () => {
                       src={generatedImage}
                       alt="Generated style"
                       logoSrc={showmelookWatermarkFull}
-                      hasWatermark={subscription.hasWatermark}
+                      hasWatermark={tierBenefits.hasWatermark}
                       products={selectedTrendProducts.map(p => ({
                         id: p.id,
                         name: p.name,
@@ -6886,7 +6885,7 @@ const StyleGenerator = () => {
             setMyLooks={setMyLooks}
             setActiveTab={setActiveTab}
             toast={toast}
-            hasWatermark={subscription.hasWatermark}
+            hasWatermark={tierBenefits.hasWatermark}
             isLoading={isPreloadingLooks && myLooks.length === 0}
             openLookId={pendingOpenLookId}
             onOpenLookHandled={handleOpenLookHandled}

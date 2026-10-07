@@ -9,14 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { useCartCount } from "@/hooks/useCartCount";
-import { useSubscription } from "@/hooks/useSubscription";
+import { useTierBenefits } from "@/hooks/useTierBenefits";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useReferral } from "@/hooks/useReferral";
 import { supabase } from "@/integrations/supabase/client";
 import { LazyImage } from "@/components/LazyImage";
 import MainNavigation from "@/components/MainNavigation";
 import { FamilyProfileManager } from "@/components/profile/FamilyProfileManager";
-import { PLAN_CONFIG } from "@/lib/planConfig";
 import { usePurchaseStats } from "@/hooks/usePurchaseStats";
 import { TierStatusCard } from "@/components/mypage/TierStatusCard";
 import { TierHistorySection } from "@/components/mypage/TierHistorySection";
@@ -49,13 +48,13 @@ const MyPage = () => {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
   const cartCount = useCartCount(user?.id);
-  const subscription = useSubscription(user?.id);
+  const tierBenefits = useTierBenefits(user?.id);
   const { profile: userProfile, isLoading: profileLoading } = useUserProfile();
   const referral = useReferral(user?.id);
   const purchaseStats = usePurchaseStats(user?.id);
   
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("subscription");
+  const [activeTab, setActiveTab] = useState("tier");
   const [codeCopied, setCodeCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -172,15 +171,13 @@ const MyPage = () => {
     return null;
   }
 
-  if (authLoading || isLoading || subscription.isLoading) {
+  if (authLoading || isLoading || tierBenefits.isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
-
-  const planConfig = PLAN_CONFIG[subscription.plan];
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,7 +203,7 @@ const MyPage = () => {
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="subscription" className="flex items-center gap-1 text-xs sm:text-sm">
+            <TabsTrigger value="tier" className="flex items-center gap-1 text-xs sm:text-sm">
               <Crown className="w-4 h-4" />
               <span className="hidden sm:inline">{t('mypage.subscription')}</span>
             </TabsTrigger>
@@ -221,12 +218,12 @@ const MyPage = () => {
             <TabsTrigger value="family" className="flex items-center gap-1 text-xs sm:text-sm">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">{t('mypage.model')}</span>
-              {!subscription.canUseFamilyProfiles && <Crown className="w-3 h-3 text-amber-500" />}
+              {!tierBenefits.canUseFamilyProfiles && <Crown className="w-3 h-3 text-amber-500" />}
             </TabsTrigger>
           </TabsList>
 
-          {/* Subscription Tab */}
-          <TabsContent value="subscription" className="mt-4 space-y-4">
+          {/* 등급 탭 (구독제 아님: 누적 구매 금액 기준 등급) */}
+          <TabsContent value="tier" className="mt-4 space-y-4">
             <TierStatusCard
               stats={purchaseStats.stats}
               progressToNextTier={purchaseStats.progressToNextTier}
@@ -531,7 +528,7 @@ const MyPage = () => {
               </CardContent>
             </Card>
 
-            {subscription.canUseFamilyProfiles ? (
+            {tierBenefits.canUseFamilyProfiles ? (
               <FamilyProfileManager userId={user?.id || ''} maxProfiles={5} />
             ) : (
               <Card className="border-dashed">

@@ -13,9 +13,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Lock, Sparkles, Crown, Images, Download, Users, ShoppingBag, CheckCircle2, TrendingUp, Gift } from 'lucide-react';
-import { UpgradeReason } from '@/lib/planConfig';
 import { TIER_CONFIG, TierType, formatAmount, getTierName } from '@/lib/tierConfig';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+export type UpgradeReason =
+  | 'recommend-first'
+  | 'daily-limit'
+  | 'gallery-limit'
+  | 'hd-download'
+  | 'family-profile'
+  | 'family-limit';
 
 interface UpgradeModalProps {
   open: boolean;

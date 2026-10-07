@@ -105,18 +105,9 @@ serve(async (req) => {
       );
     }
 
-    // 5. 추천인 플랜 확인
-    const { data: referrerSubscription } = await supabase
-      .from('user_subscriptions')
-      .select('plan')
-      .eq('user_id', codeData.user_id)
-      .single();
-
-    const referrerPlan = referrerSubscription?.plan || 'free';
-    
-    // 리워드 타입 결정: Premium은 프로필 슬롯, 나머지는 보너스 크레딧
-    const rewardType = referrerPlan === 'premium' ? 'profile_slot' : 'bonus_credits';
-    const isPermanent = rewardType === 'profile_slot';
+    // 5. 리워드 타입: 요금제는 구독이 아니라 구매 등급제이므로 추천 보상은 항상 보너스 크레딧(30일)
+    const rewardType = 'bonus_credits';
+    const isPermanent = false;
     const expiresAt = isPermanent ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     // 6. 추천인 리워드 생성
@@ -209,9 +200,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         reward_type: rewardType,
-        message: rewardType === 'profile_slot' 
-          ? '추천 코드가 적용되었습니다! 프로필 슬롯 1개가 추가되었습니다.' 
-          : '추천 코드가 적용되었습니다! 보너스 5회가 추가되었습니다.'
+        message: '추천 코드가 적용되었습니다! 보너스 5회가 추가되었습니다.'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

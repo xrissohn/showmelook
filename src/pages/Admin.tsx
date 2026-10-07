@@ -2474,7 +2474,7 @@ const Admin = () => {
                           {Object.entries(queueMonitor.queueByPriority)
                             .sort(([a], [b]) => parseInt(a) - parseInt(b))
                             .map(([priority, count]) => {
-                              const tierLabel = priority === '1' ? 'Premium' : priority === '2' || priority === '3' ? 'Pro' : 'Free';
+                              const tierLabel = priority === '1' ? '플래티넘' : '일반';
                               const tierColor = priority === '1' ? 'bg-yellow-500' : priority === '2' || priority === '3' ? 'bg-blue-500' : 'bg-muted-foreground';
                               const total = queueMonitor.totalQueued || 1;
                               const percentage = (count / total) * 100;
@@ -2511,23 +2511,15 @@ const Admin = () => {
                         <div className="space-y-3">
                           <div className="flex items-center justify-between p-2 rounded-md bg-yellow-500/10">
                             <span className="flex items-center gap-2">
-                              <Badge className="bg-yellow-500 text-white">Premium</Badge>
+                              <Badge className="bg-yellow-500 text-white">플래티넘 우선</Badge>
                             </span>
                             <span className="font-bold">
                               {queueMonitor.estimatedWaitByTier.premium || 0}분
                             </span>
                           </div>
-                          <div className="flex items-center justify-between p-2 rounded-md bg-blue-500/10">
-                            <span className="flex items-center gap-2">
-                              <Badge className="bg-blue-500 text-white">Pro</Badge>
-                            </span>
-                            <span className="font-bold">
-                              {queueMonitor.estimatedWaitByTier.pro || 0}분
-                            </span>
-                          </div>
                           <div className="flex items-center justify-between p-2 rounded-md bg-muted">
                             <span className="flex items-center gap-2">
-                              <Badge variant="secondary">Free</Badge>
+                              <Badge variant="secondary">일반</Badge>
                             </span>
                             <span className="font-bold">
                               {queueMonitor.estimatedWaitByTier.free || 0}분

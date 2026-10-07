@@ -3,7 +3,7 @@
 type Admin = any;
 
 export type ReferralResult =
-  | { applied: true; reward_type: "profile_slot" | "bonus_credits" }
+  | { applied: true; reward_type: "bonus_credits" }
   | { applied: false; reason: string };
 
 export async function applyReferralForNewUser(
@@ -25,10 +25,8 @@ export async function applyReferralForNewUser(
     .from("referral_rewards").select("id").eq("referee_user_id", newUserId).maybeSingle();
   if (existing) return { applied: false, reason: "already_used" };
 
-  const { data: sub } = await supabase
-    .from("user_subscriptions").select("plan").eq("user_id", codeData.user_id).maybeSingle();
-  const rewardType = (sub?.plan || "free") === "premium" ? "profile_slot" : "bonus_credits";
-  const isPermanent = rewardType === "profile_slot";
+  // 요금제는 구독이 아니라 구매 등급제다. 추천 보상은 항상 보너스 크레딧(30일)으로 준다.
+  const rewardType = "bonus_credits" as const;
   const in30d = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const { error: refErr } = await supabase.from("referral_rewards").insert({
@@ -36,10 +34,10 @@ export async function applyReferralForNewUser(
     referee_user_id: newUserId,
     referral_code: code,
     reward_type: rewardType,
-    amount: rewardType === "bonus_credits" ? 5 : 1,
-    remaining_amount: rewardType === "bonus_credits" ? 5 : 1,
-    expires_at: isPermanent ? null : in30d,
-    is_permanent: isPermanent,
+    amount: 5,
+    remaining_amount: 5,
+    expires_at: in30d,
+    is_permanent: false,
     is_active: true,
   });
   if (refErr) {
