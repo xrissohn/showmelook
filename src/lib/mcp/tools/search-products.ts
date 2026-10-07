@@ -22,7 +22,7 @@ export default defineTool({
   handler: async ({ query, category, gender, min_price, max_price, limit }) => {
     const supabase = createClient(
       process.env.SUPABASE_URL ?? "",
-      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY!,
+      process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY ?? "",
       { auth: { persistSession: false } },
     );
     let q = supabase
