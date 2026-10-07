@@ -33,6 +33,11 @@ export function cacheThreshold(normQuestionLen: number): number {
 }
 
 // ---- 로그인 사용자 맥락 (프로필 + 최근 추천) ----
+// 성적 지향·성별 정체성을 밝히는 말. 이런 질문은 개인 맥락이 담겨 있어 FAQ·답변 캐시로 처리하거나
+// 다른 사용자에게 재사용하지 않고(저장도 하지 않고) 그 자리에서만 AI가 답한다.
+export const IDENTITY_DISCLOSURE =
+  /(게이|레즈|양성애|동성애|이성애|무성애|범성애|트랜스|성소수자|퀴어|논바이너리|젠더\s*(퀴어|플루이드)|여장|남장|드래그|\bgay\b|lesbian|bisexual|\bbi\b|queer|\btrans(gender)?\b|non-?binary|genderqueer|\bdrag\b|crossdress|cross-dress)/i;
+
 export interface ChatProfile {
   gender?: string | null;
   body_type?: string | null;
@@ -57,8 +62,11 @@ export function buildUserContext(
 ): string {
   const parts: string[] = [];
   if (profile) {
+    // '비공개'·'유니섹스'는 성별 정보가 아니므로 쓰지 않는다
+    const g = (profile.gender ?? "").trim().toLowerCase();
+    const knownGender = g && g !== "prefer_not_to_say" && g !== "unisex" && g !== "유니섹스" && g !== "비공개";
     const bits = [
-      profile.gender ? `성별 ${clean(profile.gender, 20)}` : "",
+      knownGender ? `성별 ${clean(profile.gender, 20)}` : "",
       profile.body_type ? `체형 ${clean(profile.body_type, 30)}` : "",
       profile.style_preferences?.length ? `선호 스타일 ${profile.style_preferences.slice(0, 5).map((s) => clean(s, 20)).join(", ")}` : "",
     ].filter(Boolean);
@@ -71,5 +79,5 @@ export function buildUserContext(
     .map((r, i) => `${i + 1}) ${r.prompt ? `요청 "${r.prompt}"` : ""}${r.prompt && r.concept ? " → " : ""}${r.concept ? `컨셉 "${r.concept}"` : ""}`);
   if (recLines.length) parts.push(`최근 추천:\n${recLines.join("\n")}`);
   if (parts.length === 0) return "";
-  return `[이 사용자에 대한 참고 정보 — 로그인한 사용자 본인의 데이터]\n${parts.join("\n")}\n질문과 관련 있을 때만 자연스럽게 활용해. 프로필을 그대로 읊거나 몸에 대한 평가를 하지 말고, 정보에 없는 건 지어내지 마.`;
+  return `[이 사용자에 대한 참고 정보 — 로그인한 사용자 본인의 데이터]\n${parts.join("\n")}\n질문과 관련 있을 때만 자연스럽게 활용해. 프로필을 그대로 읊거나 몸에 대한 평가를 하지 말고, 정보에 없는 건 지어내지 마.\n사용자가 프로필과 다른 성별의 옷이나 중성적인 스타일(남성복·여성복·젠더리스 등)을 물으면 프로필과 상관없이 요청 그대로 도와줘. 프로필 성별을 언급하거나 어울리지 않는다고 판단하지 마.`;
 }

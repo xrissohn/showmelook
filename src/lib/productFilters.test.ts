@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MIN_PRODUCT_PRICE,
   allowedProductGenders,
+  customGenderFromProfile,
   isBelowMinPrice,
   isCategoryNameMismatch,
   isUsableCandidate,
@@ -14,7 +15,20 @@ describe('allowedProductGenders', () => {
     expect(allowedProductGenders('female')).toEqual(['female', 'unisex']);
     expect(allowedProductGenders('male')).toEqual(['male', 'unisex']);
     expect(allowedProductGenders('kids')).toEqual(['kids', 'unisex']);
-    expect(allowedProductGenders('unisex')).toEqual(['unisex']);
+    // 유니섹스를 고르면 남성복·여성복·중성 상품을 모두 보여준다 (필터 없음)
+    expect(allowedProductGenders('unisex')).toBeNull();
+  });
+
+  it('비공개(prefer_not_to_say) 프로필은 성별을 가정하지 않는다', () => {
+    expect(customGenderFromProfile('prefer_not_to_say')).toBe('unisex');
+    expect(allowedProductGenders(null, 'prefer_not_to_say')).toBeNull();
+    expect(customGenderFromProfile('unisex')).toBe('unisex');
+    expect(customGenderFromProfile('???')).toBeNull();
+  });
+
+  it('프로필 성별과 다른 성별을 고르면 선택한 쪽이 우선', () => {
+    expect(allowedProductGenders('female', 'male')).toEqual(['female', 'unisex']); // 여성복을 찾는 남성 프로필
+    expect(allowedProductGenders('male', 'female')).toEqual(['male', 'unisex']); // 남성복을 찾는 여성 프로필
   });
 
   it('한글 값도 인식한다', () => {

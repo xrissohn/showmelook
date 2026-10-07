@@ -4,7 +4,7 @@
 // 투자·재무 수치는 여기에 넣지 않는다.
 // 등급·횟수·보너스 수치는 _shared/serviceFacts.ts에서 가져온다(요금제 변경 시 자동 반영).
 import { BONUS, TIER_FACTS, serviceIntro, tierFaqAnswer } from "../_shared/serviceFacts.ts";
-import { shortQueryCoverageOk } from "../_shared/shomiChat.ts";
+import { IDENTITY_DISCLOSURE, shortQueryCoverageOk } from "../_shared/shomiChat.ts";
 const F = TIER_FACTS.free;
 
 export type FaqEntry = {
@@ -153,7 +153,8 @@ export const FAQ_ENTRIES: FaqEntry[] = [
   },
   {
     id: "persona",
-    ko: [["생일"], ["취향"], ["좋아하는"], ["어디", "사"], ["성수동"]],
+    // 쇼미 본인을 가리키는 말이 있을 때만 (단독 '생일'·'취향'은 "남자친구 생일 선물", "내 취향" 같은 질문에도 걸린다)
+    ko: [["쇼미", "생일"], ["너", "생일"], ["생일", "언제"], ["쇼미", "취향"], ["너", "취향"], ["쇼미", "좋아하는"], ["너", "좋아하는"], ["어디", "사"], ["성수동"]],
     en: [["birthday"], ["favorite"], ["prefer"], ["where", "live"], ["about", "your"], ["tell", "about", "your"]],
     answer: {
       ko: "내 생일은 9월 21일이고, 서울 성수동을 제일 자주 걸어. 아이스 라떼는 거의 기본값, 바질 파스타랑 피스타치오 젤라또도 좋아. 스타일은 네이비 테일러링에 핑크 새틴, 반반 와이드 브림햇이 시그니처야.",
@@ -247,10 +248,13 @@ export const FAQ_ENTRIES: FaqEntry[] = [
 const PERSONAL = /(\d\s*(kg|cm|세|살|개월)|키\s*\d|몸무게|체중|height|weight|\bage\b)/i;
 
 export function matchFaq(text: string, language: string): FaqEntry | null {
-  const q = norm(text);
+  // '남자친구·여자친구·남친·여친'은 연인 호칭이다. 추천인(친구 초대) FAQ의 '친구'에 걸리지 않게 먼저 바꿔 둔다.
+  const q = norm(text).replace(/(남자|여자)친구|남친|여친/g, "연인");
   if (!q) return null;
   if (q.length > 70) return null;
   if (PERSONAL.test(text)) return null;
+  // 성적 지향·성별 정체성을 밝힌 질문은 미리 써 둔 일반 답이 아니라 AI가 그 사람에게 맞게 답한다
+  if (IDENTITY_DISCLOSURE.test(text)) return null;
 
   const korean = /[\u3131-\uD79D]/.test(text);
   const useKo = korean || language !== "en";

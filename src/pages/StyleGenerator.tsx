@@ -18,7 +18,7 @@ import { useTierBenefits } from '@/hooks/useTierBenefits';
 import { usePurchaseStats } from '@/hooks/usePurchaseStats';
 import { useFeedback } from '@/hooks/useFeedback';
 import { useProductFeedback } from '@/hooks/useProductFeedback';
-import { MIN_PRODUCT_PRICE, allowedProductGenders, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
+import { MIN_PRODUCT_PRICE, allowedProductGenders, customGenderFromProfile, isUsableCandidate, visibleStyleTags } from '@/lib/productFilters';
 import { priceBand, rankAlternatives, type AltCandidate } from '@/lib/alternatives';
 import { replaceProductMention, swapIdInList } from '@/lib/lookSwap';
 import { useGenerationQueue } from '@/hooks/useGenerationQueue';
@@ -3944,17 +3944,8 @@ const StyleGenerator = () => {
       
       // 프로필의 성별 정보로 초기 성별 설정
       if (preloadedProfile.gender) {
-        const genderMap: Record<string, 'female' | 'male' | 'unisex' | 'kids'> = {
-          'female': 'female',
-          'male': 'male',
-          '여성': 'female',
-          '남성': 'male',
-          'unisex': 'unisex',
-          '유니섹스': 'unisex',
-          'kids': 'kids',
-          '키즈': 'kids',
-        };
-        const mappedGender = genderMap[preloadedProfile.gender.toLowerCase()] || 'female';
+        // 비공개(prefer_not_to_say)는 특정 성별로 가정하지 않고 유니섹스로 둔다
+        const mappedGender = customGenderFromProfile(preloadedProfile.gender) ?? 'female';
         setCustomGender(mappedGender);
         
         // 키즈 모드가 아니면 기본 나이 설정 해제
@@ -4159,15 +4150,7 @@ const StyleGenerator = () => {
           
           // 프로필의 성별 정보로 초기 성별 설정
           if (profileData.gender) {
-            const genderMap: Record<string, 'female' | 'male' | 'kids'> = {
-              'female': 'female',
-              'male': 'male',
-              '여성': 'female',
-              '남성': 'male',
-              'kids': 'kids',
-              '키즈': 'kids',
-            };
-            const mappedGender = genderMap[profileData.gender.toLowerCase()] || 'female';
+            const mappedGender = customGenderFromProfile(profileData.gender) ?? 'female';
             setCustomGender(mappedGender);
           }
         }
@@ -6288,17 +6271,7 @@ const StyleGenerator = () => {
                   setSelectedGenerationProfile(profile);
                   // 선택된 프로필의 성별을 customGender에 자동 반영
                   if (profile.gender) {
-                    const genderMap: Record<string, 'female' | 'male' | 'unisex' | 'kids'> = {
-                      '여성': 'female',
-                      '남성': 'male',
-                      'female': 'female',
-                      'male': 'male',
-                      'unisex': 'unisex',
-                      '유니섹스': 'unisex',
-                      'kids': 'kids',
-                      '키즈': 'kids',
-                    };
-                    const mappedGender = genderMap[profile.gender.toLowerCase()] || genderMap[profile.gender];
+                    const mappedGender = customGenderFromProfile(profile.gender);
                     if (mappedGender) {
                       setCustomGender(mappedGender);
                     }

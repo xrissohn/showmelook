@@ -394,7 +394,12 @@ serve(async (req) => {
     // Build the image generation prompt
     const genderValue = userProfile?.gender?.toLowerCase() || '';
     const isFemale = genderValue === 'female' || genderValue === '여성' || genderValue === '여';
-    const gender = isFemale ? '여성' : '남성';
+    const isMale = genderValue === 'male' || genderValue === '남성' || genderValue === '남';
+    // 성별이 '유니섹스'·'비공개'이거나 비어 있으면 남성으로 가정하지 않고 중립 표현(person/their)을 쓴다
+    const gender = isFemale ? '여성' : isMale ? '남성' : '중립';
+    const personNoun = (g: string) => (g === '여성' ? 'woman' : g === '남성' ? 'man' : 'person');
+    const possessive = (g: string) => (g === '여성' ? 'her' : g === '남성' ? 'his' : 'their');
+    const childNoun = (g: string) => (g === '여성' ? 'girl' : g === '남성' ? 'boy' : 'child');
     const height = userProfile?.height || 170;
     const bodyType = userProfile?.body_type || 'average';
     const fullName = userProfile?.full_name || '';
@@ -484,27 +489,27 @@ serve(async (req) => {
       
       switch (ageInfo.category) {
         case 'infant':
-          return `adorable Korean baby ${gender === '여성' ? 'girl' : 'boy'} (under 1 year old, ${ageInfo.minAge}-${ageInfo.maxAge} months old baby). The baby should have chubby cheeks, round face, and look like an actual infant`;
+          return `adorable Korean baby ${childNoun(gender)} (under 1 year old, ${ageInfo.minAge}-${ageInfo.maxAge} months old baby). The baby should have chubby cheeks, round face, and look like an actual infant`;
         case 'toddler':
-          return `cute Korean toddler ${gender === '여성' ? 'girl' : 'boy'} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The child should be very small, have round baby face, short limbs, and look like an actual toddler`;
+          return `cute Korean toddler ${childNoun(gender)} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The child should be very small, have round baby face, short limbs, and look like an actual toddler`;
         case 'preschool':
-          return `adorable Korean ${gender === '여성' ? 'girl' : 'boy'} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, preschool age). The child should have childish proportions, small body, and innocent look`;
+          return `adorable Korean ${childNoun(gender)} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, preschool age). The child should have childish proportions, small body, and innocent look`;
         case 'child':
-          return `stylish Korean ${gender === '여성' ? 'girl' : 'boy'} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, elementary school age). The child should look like an actual ${ageInfo.minAge}-${ageInfo.maxAge} year old kid`;
+          return `stylish Korean ${childNoun(gender)} child (${ageInfo.minAge}-${ageInfo.maxAge} years old, elementary school age). The child should look like an actual ${ageInfo.minAge}-${ageInfo.maxAge} year old kid`;
         case 'teen':
-          return `trendy Korean teenage ${gender === '여성' ? 'girl' : 'boy'} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The teenager should have youthful appearance appropriate for their age`;
+          return `trendy Korean teenage ${childNoun(gender)} (${ageInfo.minAge}-${ageInfo.maxAge} years old). The teenager should have youthful appearance appropriate for their age`;
         case 'adult_20s':
-          return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 20s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
+          return `stylish Korean ${personNoun(gender)} in ${possessive(gender)} 20s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
         case 'adult_30s':
-          return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 30s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
+          return `stylish Korean ${personNoun(gender)} in ${possessive(gender)} 30s (ages ${ageInfo.minAge}-${ageInfo.maxAge}), ${bodyDesc}`;
         case 'adult_40s':
-          return `vibrant Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} mid-40s, ${bodyDesc}, with youthful energy and sophisticated style, looking healthy and active`;
+          return `vibrant Korean ${personNoun(gender)} in ${possessive(gender)} mid-40s, ${bodyDesc}, with youthful energy and sophisticated style, looking healthy and active`;
         case 'adult_50s':
-          return `dynamic Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} early 50s, ${bodyDesc}, with vibrant and youthful appearance for their age, looking energetic and stylish like a well-groomed middle-aged professional`;
+          return `dynamic Korean ${personNoun(gender)} in ${possessive(gender)} early 50s, ${bodyDesc}, with vibrant and youthful appearance for their age, looking energetic and stylish like a well-groomed middle-aged professional`;
         case 'adult_60s':
-          return `graceful senior Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 60s or older (ages ${ageInfo.minAge}+), ${bodyDesc}, with natural gray/white hair or age-appropriate hairstyle, gentle wrinkles and lines on face, mature and dignified appearance reflecting their age`;
+          return `graceful senior Korean ${personNoun(gender)} in ${possessive(gender)} 60s or older (ages ${ageInfo.minAge}+), ${bodyDesc}, with natural gray/white hair or age-appropriate hairstyle, gentle wrinkles and lines on face, mature and dignified appearance reflecting their age`;
         default:
-          return `stylish Korean ${gender === '여성' ? 'woman' : 'man'} in ${gender === '여성' ? 'her' : 'his'} 30s, ${bodyDesc}`;
+          return `stylish Korean ${personNoun(gender)} in ${possessive(gender)} 30s, ${bodyDesc}`;
       }
     };
 
@@ -571,7 +576,7 @@ serve(async (req) => {
     
     const ageEmphasis = getAgeEmphasis(ageInfo.category, gender);
     
-    let prompt = `${!isAdultProfile && ageInfo.category !== 'teen' ? `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. DO NOT generate an adult or teenager if the age is under 13.\n\n` : ''}${ageEmphasis}Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}${!isChildProfile && weight ? `, approximately ${weight}kg` : ''}.
+    let prompt = `${!isAdultProfile && ageInfo.category !== 'teen' ? `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${childNoun(gender)}. DO NOT generate an adult or teenager if the age is under 13.\n\n` : ''}${ageEmphasis}Fashion photography of a ${modelDescription}${!isChildProfile && height ? `, approximately ${height}cm tall` : ''}${!isChildProfile && weight ? `, approximately ${weight}kg` : ''}.
 
 ${bodyProportionHint}
 
@@ -587,7 +592,7 @@ IMPORTANT: Generate a VERTICAL/PORTRAIT orientation image (taller than wide, asp
     // 얼굴 합성 프롬프트 추가
     if (useFaceComposite && userAvatarUrl) {
       if (isChildProfile) {
-        prompt = `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${gender === '여성' ? 'girl' : 'boy'}. The model MUST look like a ${ageInfo.category === 'infant' ? 'baby under 1 year old' : ageInfo.category === 'toddler' ? 'toddler aged 2-3 years' : ageInfo.category === 'preschool' ? 'young child aged 4-6 years' : 'child aged 7-12 years'}.
+        prompt = `CRITICAL AGE REQUIREMENT: Generate a ${ageInfo.minAge}-${ageInfo.maxAge} year old ${childNoun(gender)}. The model MUST look like a ${ageInfo.category === 'infant' ? 'baby under 1 year old' : ageInfo.category === 'toddler' ? 'toddler aged 2-3 years' : ageInfo.category === 'preschool' ? 'young child aged 4-6 years' : 'child aged 7-12 years'}.
 
 Fashion photography of a ${modelDescription} with a similar look and feel to the reference photo provided.
 

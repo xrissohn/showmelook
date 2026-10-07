@@ -3,7 +3,7 @@ import { z } from "npm:zod@3.25.76";
 import { KNOWLEDGE } from "./knowledge.ts";
 import { activePromotions, serviceKnowledgeKo } from "../_shared/serviceFacts.ts";
 import { faqAnswer, matchFaq } from "./faq.ts";
-import { RECOMMEND_CLARIFY, buildUserContext, cacheThreshold, isVagueRecommend } from "../_shared/shomiChat.ts";
+import { IDENTITY_DISCLOSURE, RECOMMEND_CLARIFY, buildUserContext, cacheThreshold, isVagueRecommend } from "../_shared/shomiChat.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 // 이전 AI 답변 재사용: 첫 질문이고 개인 정보(키/몸무게/나이 등)가 없을 때만 저장·재사용한다.
@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
     const SYSTEM = await getSystem(); // also clears stale saved answers after a facts change
     const userContext = await loadUserContext(req);
     // 개인 맥락이 들어간 답은 다른 사용자에게 재사용되면 안 되므로 저장하지 않는다(읽기만 허용)
-    const cacheable = !!last && userTurns === 1 && last.content.length <= 120 && !PERSONAL.test(last.content);
+    const cacheable = !!last && userTurns === 1 && last.content.length <= 120 && !PERSONAL.test(last.content) && !IDENTITY_DISCLOSURE.test(last.content);
     const storable = cacheable && !userContext;
     const qNorm = last ? norm(last.content) : "";
     if (cacheable && qNorm.length >= 4) {

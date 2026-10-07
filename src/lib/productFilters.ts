@@ -29,15 +29,26 @@ export function normalizeGender(value: string | null | undefined): ProductGender
 }
 
 /**
+ * 프로필 성별 값 → 스타일 페이지에서 처음 선택해 둘 성별.
+ * 'prefer_not_to_say'(비공개)는 특정 성별로 가정하지 않고 유니섹스로 둔다. 알 수 없는 값은 null.
+ */
+export function customGenderFromProfile(value: string | null | undefined): ProductGender | null {
+  if (!value) return null;
+  if (value.trim().toLowerCase() === 'prefer_not_to_say') return 'unisex';
+  return normalizeGender(value);
+}
+
+/**
  * 선택한 성별(없으면 프로필 성별)에 맞는 products_cache.gender 값 목록.
- * 성별을 알 수 없으면 null — 호출하는 쪽이 필터를 걸지 않는다.
- * 유니섹스는 항상 포함한다.
+ * 성별을 알 수 없거나 '유니섹스'를 고른 경우 null — 호출하는 쪽이 필터를 걸지 않는다
+ * (유니섹스를 고른 사람은 남성복·여성복·중성적 상품을 모두 볼 수 있어야 한다).
+ * 남성/여성을 고르면 그 성별과 유니섹스만.
  */
 export function allowedProductGenders(
   selected: string | null | undefined,
   profileGender?: string | null,
 ): ProductGender[] | null {
-  const g = normalizeGender(selected) ?? normalizeGender(profileGender);
-  if (!g) return null;
-  return g === 'unisex' ? ['unisex'] : [g, 'unisex'];
+  const g = normalizeGender(selected) ?? customGenderFromProfile(profileGender);
+  if (!g || g === 'unisex') return null;
+  return [g, 'unisex'];
 }

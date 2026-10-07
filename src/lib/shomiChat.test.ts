@@ -64,3 +64,35 @@ describe('buildUserContext', () => {
     expect(buildUserContext({}, [{ prompt: '', style_concept: '' }])).toBe('');
   });
 });
+
+import { IDENTITY_DISCLOSURE } from '../../supabase/functions/_shared/shomiChat';
+
+describe('성적 지향·성별 정체성 언급은 캐시/FAQ 대상이 아니다', () => {
+  it('밝히는 표현을 잡는다', () => {
+    for (const q of ['저는 게이인데 데이트룩 추천해줘', '레즈비언 커플룩 알려줘', '양성애자인데 소개팅 옷', '여장 코디 추천', '남장하고 싶은데 옷', 'I am gay, what should I wear on a date', 'bisexual here, want a genderless look', 'non-binary outfit ideas', 'drag show outfit']) {
+      expect(IDENTITY_DISCLOSURE.test(q), q).toBe(true);
+    }
+  });
+  it('일반 패션 질문은 건드리지 않는다', () => {
+    for (const q of ['겨울 코트 추천해줘', '데이트룩 알려줘', '트렌치코트 어울리는 바지', 'what to wear to the office', '비율 좋아 보이는 코디']) {
+      expect(IDENTITY_DISCLOSURE.test(q), q).toBe(false);
+    }
+  });
+});
+
+describe('buildUserContext: 성별을 가정하지 않는다', () => {
+  it('비공개·유니섹스는 성별로 쓰지 않는다', () => {
+    const hidden = buildUserContext({ gender: 'prefer_not_to_say', body_type: '보통' }, []);
+    expect(hidden).toContain('체형 보통');
+    expect(hidden).not.toMatch(/성별 (prefer|unisex|비공개|유니섹스)/);
+    const unisex = buildUserContext({ gender: 'unisex', style_preferences: ['미니멀'] }, []);
+    expect(unisex).not.toMatch(/성별 (prefer|unisex|비공개|유니섹스)/);
+    expect(unisex).toContain('선호 스타일 미니멀');
+  });
+  it('다른 성별 스타일을 물으면 프로필과 무관하게 도우라고 안내한다', () => {
+    const ctx = buildUserContext({ gender: 'male', style_preferences: ['캐주얼'] }, []);
+    expect(ctx).toContain('성별 male');
+    expect(ctx).toMatch(/다른 성별의 옷/);
+    expect(ctx).toMatch(/어울리지 않는다고 판단하지 마/);
+  });
+});
