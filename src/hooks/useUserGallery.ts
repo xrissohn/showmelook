@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { uniqueGalleryLooks } from '@/lib/galleryDedup';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { claimGalleryPublicCredit } from '@/lib/galleryReward';
@@ -55,7 +56,7 @@ export function useUserGallery(userId: string | undefined) {
       }
 
       const rows = (publicLooks || []) as any[];
-      const allLooks = rows.map((look) => ({ ...look, is_public: true })) as GalleryLook[];
+      const allLooks = uniqueGalleryLooks(rows.map((look) => ({ ...look, is_public: true })) as GalleryLook[]);
       setData({
         profile: {
           full_name: rows[0]?.user_name ?? null,

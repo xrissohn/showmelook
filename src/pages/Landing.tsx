@@ -14,6 +14,7 @@ import StyleCarousel from '@/components/StyleCarousel';
 import MainNavigation from '@/components/MainNavigation';
 import { StaticGlow } from '@/components/StaticGlow';
 import { supabase } from '@/integrations/supabase/client';
+import { uniqueGalleryLooks } from '@/lib/galleryDedup';
 import { LazyImage } from '@/components/LazyImage';
 import { LookDetailModal, LookDetailData } from '@/components/style/LookDetailModal';
 import { useLookLikes } from '@/hooks/useLookLikes';
@@ -349,8 +350,10 @@ const GalleryPreviewSection = () => {
         .from('generated_looks_public' as any)
         .select('id, image_url, like_count, tags, gallery_user_key, user_name, user_avatar, prompt_used, style_reasoning, product_ids, created_at, memo, caption, tag_positions')
         .order('like_count', { ascending: false })
-        .limit(8);
-      if (data) setPreviewLooks((data as any[]).map((look) => ({ ...look, user_id: look.gallery_user_key })));
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(16);
+      if (data) setPreviewLooks(uniqueGalleryLooks((data as any[]).map((look) => ({ ...look, user_id: look.gallery_user_key }))).slice(0, 8));
       setIsLoading(false);
     };
     fetchPreview();
@@ -399,15 +402,16 @@ const GalleryPreviewSection = () => {
             {previewLooks.map((look, index) => (
               <div
                 key={look.id}
-                className="group relative aspect-[3/5] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+                className="group relative self-start rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
                 onClick={() => handleLookClick(look, index)}
               >
-                <div className="absolute inset-x-0 top-0 bottom-10">
+                <div>
                   <LazyImage
                     src={look.image_url}
                     alt="스타일 룩"
-                    className="w-full h-full object-contain object-center"
+                    className="w-full object-contain object-center"
                     fallbackClassName="w-full h-full"
+                    naturalAspect
                     width={480}
                     priority={index < 4}
                   />

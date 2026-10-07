@@ -13,6 +13,8 @@ interface LazyImageProps {
   width?: number;
   /** 첫 화면에 보이는 이미지: 스크롤을 기다리지 않고 바로 불러온다. */
   priority?: boolean;
+  /** 원본 비율과 카드 너비로 전신 이미지를 표시한다. */
+  naturalAspect?: boolean;
   onLoad?: () => void;
   onError?: () => void;
 }
@@ -27,6 +29,7 @@ export function LazyImage({
   placeholderClassName = '',
   width,
   priority = false,
+  naturalAspect = false,
   onLoad,
   onError,
 }: LazyImageProps) {
@@ -35,6 +38,7 @@ export function LazyImage({
   const [isInView, setIsInView] = useState(priority);
   // 0: 썸네일(있을 때) → 원본 → 원본 다시 시도(최대 MAX_RETRIES번)
   const [attempt, setAttempt] = useState(0);
+  const [ratio, setRatio] = useState(3 / 5);
   const imgRef = useRef<HTMLDivElement>(null);
   const thumb = width ? thumbUrl(src, width) : src;
   const hasThumb = !!thumb && thumb !== src;
@@ -44,6 +48,7 @@ export function LazyImage({
     setIsLoaded(false);
     setHasError(false);
     setAttempt(0);
+    setRatio(3 / 5);
   }, [src, width]);
 
   useEffect(() => {
@@ -68,7 +73,9 @@ export function LazyImage({
     return () => observer.disconnect();
   }, [isInView, src]);
 
-  const handleLoad = () => {
+  const handleLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const image = event.currentTarget;
+    if (naturalAspect && image.naturalWidth && image.naturalHeight) setRatio(image.naturalWidth / image.naturalHeight);
     setIsLoaded(true);
     onLoad?.();
   };
@@ -91,6 +98,7 @@ export function LazyImage({
       <div
         ref={imgRef}
         className={`flex items-center justify-center bg-muted ${fallbackClassName || className}`}
+        style={naturalAspect ? { aspectRatio: ratio } : undefined}
       >
         <ImageOff className="w-8 h-8 text-muted-foreground/50" />
       </div>
@@ -100,7 +108,7 @@ export function LazyImage({
   const current = hasThumb && attempt === 0 ? (thumb as string) : src;
 
   return (
-    <div ref={imgRef} className={`relative ${className}`}>
+    <div ref={imgRef} className={`relative ${className}`} style={naturalAspect ? { aspectRatio: ratio } : undefined}>
       {/* 스켈레톤 플레이스홀더 */}
       {!isLoaded && (
         <Skeleton className={`absolute inset-0 ${placeholderClassName}`} />
@@ -113,6 +121,7 @@ export function LazyImage({
           src={current}
           alt={alt}
           className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+          style={naturalAspect ? { position: 'absolute', inset: 0, width: '100%', height: '100%' } : undefined}
           onLoad={handleLoad}
           onError={handleError}
           decoding="async"

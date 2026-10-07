@@ -72,3 +72,16 @@ describe('LazyImage', () => {
     expect(img(container)?.getAttribute('src')).toContain('/2.png');
   });
 });
+
+
+describe('natural full-body aspect', () => {
+  it('uses thumbnail dimensions without cropping or requesting the original', () => {
+    const { container } = render(<LazyImage src={ORIGINAL} alt="full body" width={480} priority naturalAspect />);
+    const element = img(container)!;
+    Object.defineProperty(element, 'naturalWidth', {value:480});
+    Object.defineProperty(element, 'naturalHeight', {value:1184});
+    fireEvent.load(element);
+    expect(element.parentElement!.style.aspectRatio).toBe(String(480 / 1184));
+    expect(element.getAttribute('src')).toBe(THUMB);
+  });
+});

@@ -34,16 +34,16 @@ const LookCard = ({ look, isLiked, onToggleLike, onClick, priority = false }: Lo
 
   return (
     <div
-      className="group relative aspect-[3/5] rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+      className="group relative self-start rounded-2xl overflow-hidden bg-secondary cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
       onClick={onClick || (() => navigate(`/look/${look.id}`))}
     >
-      {/* Reserve space for badges and actions so they do not cover the face or shoes. */}
-      <div className="absolute inset-x-0 top-9 bottom-10">
+      <div>
         <LazyImage
           src={look.image_url}
           alt="Community look"
-          className="w-full h-full object-contain object-center"
+          className="w-full object-contain object-center"
           fallbackClassName="w-full h-full"
+          naturalAspect
           width={480}
           priority={priority}
         />
