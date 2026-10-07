@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { TierType, TIER_CONFIG, formatAmount, getTierName, getTierBenefitsSummary } from '@/lib/tierConfig';
+import { TierType, TIER_CONFIG, formatAmount, getTierName } from '@/lib/tierConfig';
 import { PurchaseStats, TierChangeRecord } from '@/hooks/usePurchaseStats';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -19,15 +19,6 @@ interface TierStatusCardProps {
   tierHistory: TierChangeRecord[];
   isLoading?: boolean;
 }
-
-// English summaries for next-tier preview
-const TIER_BENEFITS_EN: Record<TierType, string[]> = {
-  free: [],
-  bronze: ['Unlimited monthly generations', 'No watermark', 'HD download'],
-  silver: ['10 daily generations', 'Preview recommendations', '50 gallery saves'],
-  gold: ['20 daily generations', '100 gallery saves', 'Permanent history'],
-  platinum: ['Everything unlimited', 'Add model profiles', 'Priority queue'],
-};
 
 export const TierStatusCard = ({
   stats,
@@ -56,12 +47,13 @@ export const TierStatusCard = ({
     );
   }
 
-  const getBenefitsSummary = (tier: TierType): string[] => {
-    return language === 'en' ? TIER_BENEFITS_EN[tier] : getTierBenefitsSummary(tier);
-  };
-
-  const fmtTimes = (n: number) =>
-    language === 'en' ? `${n}/${t('tierStatus.dailyGen').toLowerCase().includes('daily') ? 'day' : 'mo'}` : `${n}${t('tierStatus.times')}`;
+  // 실제로 적용되는 혜택만 보여준다: 지금은 일일 생성 횟수(등급 기준)뿐이다.
+  // 월간 한도·히스토리 보관·고화질 다운로드 등은 아직 등급에 따라 적용되지 않는다.
+  const fmtDaily = (n: number) => (n === -1 ? t('tierStatus.unlimited') : `${n}${t('tierStatus.times')}`);
+  const nextDailyBenefit =
+    nextTierInfo.nextTier && TIER_CONFIG[nextTierInfo.nextTier].dailyLimit !== tierConfig.dailyLimit
+      ? `${t('tierStatus.dailyGen')} ${fmtDaily(TIER_CONFIG[nextTierInfo.nextTier].dailyLimit)}`
+      : null;
 
   return (
     <Card className={`overflow-hidden ${
@@ -125,20 +117,20 @@ export const TierStatusCard = ({
               <span>{getTierName(nextTierInfo.nextTier, language)}</span>
             </div>
 
-            <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
-              <p className="text-xs font-medium text-primary mb-2 font-korean">
-                <ArrowUp className="w-3 h-3 inline mr-1" />
-                {t('tierStatus.nextTierBenefits').replace('{tier}', getTierName(nextTierInfo.nextTier, language))}
-              </p>
-              <ul className="text-xs text-muted-foreground space-y-1">
-                {getBenefitsSummary(nextTierInfo.nextTier).slice(0, 3).map((benefit, idx) => (
-                  <li key={idx} className="flex items-center gap-1">
+            {nextDailyBenefit && (
+              <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                <p className="text-xs font-medium text-primary mb-2 font-korean">
+                  <ArrowUp className="w-3 h-3 inline mr-1" />
+                  {t('tierStatus.nextTierBenefits').replace('{tier}', getTierName(nextTierInfo.nextTier!, language))}
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1">
+                  <li className="flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-primary" />
-                    {benefit}
+                    {nextDailyBenefit}
                   </li>
-                ))}
-              </ul>
-            </div>
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-2">
@@ -158,32 +150,10 @@ export const TierStatusCard = ({
           </div>
         )}
 
-        {/* 현재 등급 주요 혜택 */}
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="p-2 rounded bg-background/50 text-center">
-            <p className="text-muted-foreground text-xs font-korean">{t('tierStatus.dailyGen')}</p>
-            <p className="font-bold font-korean">
-              {tierConfig.dailyLimit === -1 ? t('tierStatus.unlimited') : `${tierConfig.dailyLimit}${t('tierStatus.times')}`}
-            </p>
-          </div>
-          <div className="p-2 rounded bg-background/50 text-center">
-            <p className="text-muted-foreground text-xs font-korean">{t('tierStatus.monthlyGen')}</p>
-            <p className="font-bold font-korean">
-              {tierConfig.monthlyLimit === -1 ? t('tierStatus.unlimited') : `${tierConfig.monthlyLimit}${t('tierStatus.times')}`}
-            </p>
-          </div>
-          <div className="p-2 rounded bg-background/50 text-center">
-            <p className="text-muted-foreground text-xs font-korean">{t('tierStatus.watermark')}</p>
-            <p className="font-bold font-korean">
-              {tierConfig.hasWatermark ? t('tierStatus.yes') : t('tierStatus.no')}
-            </p>
-          </div>
-          <div className="p-2 rounded bg-background/50 text-center">
-            <p className="text-muted-foreground text-xs font-korean">{t('tierStatus.history')}</p>
-            <p className="font-bold font-korean">
-              {tierConfig.historyDays === -1 ? t('tierStatus.permanent') : `${tierConfig.historyDays}${t('tierStatus.days')}`}
-            </p>
-          </div>
+        {/* 현재 등급 혜택: 실제로 적용되는 일일 생성 횟수만 표시 */}
+        <div className="p-2 rounded bg-background/50 text-center text-sm">
+          <p className="text-muted-foreground text-xs font-korean">{t('tierStatus.dailyGen')}</p>
+          <p className="font-bold font-korean">{fmtDaily(tierConfig.dailyLimit)}</p>
         </div>
 
         <p className="text-xs text-muted-foreground font-korean">

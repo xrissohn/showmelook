@@ -40,26 +40,13 @@ const iconSizes = {
   md: 'w-3 h-3',
 };
 
-// 등급별 혜택 요약 (툴팁용)
+// 등급별 혜택 요약 (툴팁용): 실제로 적용되는 혜택(일일 생성 횟수)만 보여준다.
+// 월간 한도·워터마크·히스토리·고화질 다운로드는 아직 등급에 따라 적용되지 않는다.
 const getTierBenefits = (tier: TierType, language: 'ko' | 'en'): string[] => {
   const config = TIER_CONFIG[tier];
-  const benefits: string[] = [];
-
-  if (language === 'en') {
-    benefits.push(`Daily: ${config.dailyLimit === -1 ? 'Unlimited' : config.dailyLimit}`);
-    benefits.push(`Monthly: ${config.monthlyLimit === -1 ? 'Unlimited' : config.monthlyLimit}`);
-    benefits.push(config.hasWatermark ? 'Includes watermark' : 'No watermark');
-    if (config.hdDownload) benefits.push('HD download');
-    if (tier === 'platinum') benefits.push('Additional model profiles');
-  } else {
-    benefits.push(`일일 ${config.dailyLimit === -1 ? '무제한' : `${config.dailyLimit}회`}`);
-    benefits.push(`월간 ${config.monthlyLimit === -1 ? '무제한' : `${config.monthlyLimit}회`}`);
-    benefits.push(config.hasWatermark ? '워터마크 있음' : '워터마크 없음');
-    if (config.hdDownload) benefits.push('고화질 다운로드');
-    if (tier === 'platinum') benefits.push('모델 프로필 추가 가능');
-  }
-  
-  return benefits;
+  return language === 'en'
+    ? [`Daily: ${config.dailyLimit === -1 ? 'Unlimited' : config.dailyLimit}`]
+    : [`일일 ${config.dailyLimit === -1 ? '무제한' : `${config.dailyLimit}회`}`];
 };
 
 // 툴팁/팝오버 콘텐츠 컴포넌트
