@@ -24,7 +24,7 @@ var search_products_default = defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ query, category, gender, min_price, max_price, limit }) => {
     const supabase = createClient(
-      process.env.SUPABASE_URL,
+      process.env.SUPABASE_URL ?? "",
       process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
       { auth: { persistSession: false } }
     );
@@ -60,7 +60,7 @@ var get_product_default = defineTool2({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ product_id }) => {
     const supabase = createClient2(
-      process.env.SUPABASE_URL,
+      process.env.SUPABASE_URL ?? "",
       process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
       { auth: { persistSession: false } }
     );
@@ -91,7 +91,7 @@ var list_public_looks_default = defineTool3({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit, sort }) => {
     const supabase = createClient3(
-      process.env.SUPABASE_URL,
+      process.env.SUPABASE_URL ?? "",
       process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY,
       { auth: { persistSession: false } }
     );
