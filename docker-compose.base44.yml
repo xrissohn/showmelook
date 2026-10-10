@@ -1,0 +1,22 @@
+services:
+  web:
+    image: node:22
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    ports:
+      - "3000:8080"
+    environment:
+      - BASE44_PREVIEW_MODE=${BASE44_PREVIEW_MODE:-}
+      - BASE44_PUBLIC_HOST_SUFFIX=${BASE44_PUBLIC_HOST_SUFFIX:-}
+      - BASE44_SANDBOX_HOST_DOMAIN=${BASE44_SANDBOX_HOST_DOMAIN:-}
+      - __VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=${__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS:-}
+    command: ["sh", "-ec", "npm ci --silent && exec npm run dev -- --host 0.0.0.0"]
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+    restart: on-failure

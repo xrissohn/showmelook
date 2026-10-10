@@ -54,3 +54,9 @@
 
 - To send a single service email (support notice, apology, account fix) from `noreply@showmelook.com`, insert a row into `admin_email_outbox` (service role / SQL only: `to_email`, `subject`, `html`, optional `text_body`, `reply_to`, `note`), then POST to `send-outbox-email` (for example with `net.http_post` from SQL). The function sends pending rows via Resend and writes back `status`, `provider_id` or `error`. Rationale: lets support mail go out from the service address without anyone handling the Resend key.
 - The endpoint is public (`verify_jwt = false`) but takes nothing from the request: it only sends rows already queued with database access, at most 5 per call, and answers with counts only. Rows are claimed atomically (`claim_admin_email_outbox`), so overlapping calls never send twice. Use `reply_to: contact@showmelook.com` when the text invites a reply.
+
+## Base44 dev environment
+
+- The app is a Vite + React frontend that connects to a remote Supabase instance. No local database is needed — the backend is hosted Supabase. The browser-safe Supabase credentials (`VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`) are in the repo's `.env` file and loaded automatically by Vite.
+- Vite 5.4.19 includes the `allowedHosts` security check (CVE-2025-31125 backport) and does NOT read the `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` env var (that's Vite 6.1+ only). Without configuration, the preview proxy's Host header gets a 403. The fix in `vite.config.ts` conditionally adds `allowedHosts: ['.${BASE44_SANDBOX_HOST_DOMAIN}']` when `BASE44_PREVIEW_MODE === "1"`. When the flag is unset or any other value, the original behavior is preserved.
+- The dev server runs on port 8080 inside the container, mapped to host port 3000 via `docker-compose.base44.yml`. Dependencies are installed with `npm ci` on container startup (node_modules in an anonymous volume).
