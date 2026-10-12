@@ -369,7 +369,7 @@ const slides = [
           <div className="p-5 bg-card rounded-xl border border-border">
             <h4 className="font-bold mb-3 font-korean">✅ 운영 중인 핵심 기능</h4>
             <div className="grid grid-cols-2 gap-2">
-              {['AI 스타일 추천 v8.0', '얼굴 합성 가상 피팅', `${PITCH_CATALOG.activeProducts.toLocaleString('ko-KR')}개 활성 카탈로그`, '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
+              {['AI 스타일 추천 v9.0', '얼굴 합성 가상 피팅', `${PITCH_CATALOG.activeProducts.toLocaleString('ko-KR')}개 활성 카탈로그`, '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs font-korean">
                   <span className="text-primary">●</span>{f}
                 </div>
@@ -686,7 +686,7 @@ const slides = [
         </div>
         <div className="grid md:grid-cols-3 gap-3">
           <div className="p-4 bg-card rounded-xl border border-border">
-            <h4 className="font-bold mb-2 font-korean text-sm">🧠 AI 추천 엔진 v8.0</h4>
+            <h4 className="font-bold mb-2 font-korean text-sm">🧠 AI 추천 엔진 v9.0</h4>
             <ul className="text-xs text-muted-foreground space-y-1 font-korean">
               <li>• 상품 DNA 기반 RAG 추천</li>
               <li>• 개인 취향 반영 + 일일 피드백 요약 학습</li>
@@ -725,9 +725,9 @@ const slides = [
       <div className="space-y-5">
         <div className="grid md:grid-cols-5 gap-3">
           {[
-            { tier: 'Free', price: '₩0', desc: '5회/일 생성', badge: '무료 체험', color: 'muted-foreground', bg: 'bg-muted/40 border-border' },
+            { tier: 'Free', price: '₩0', desc: `${TIER_FACTS.free.dailyLimit}회/일 생성`, badge: '무료 체험', color: 'muted-foreground', bg: 'bg-muted/40 border-border' },
             { tier: 'Bronze', price: '첫 구매', desc: '워터마크 제거', badge: 'BEST', color: 'amber-600', bg: 'bg-amber-500/10 border-amber-500/30' },
-            { tier: 'Silver', price: '누적 10만원', desc: '10회/일, 추천 우선', badge: '+', color: 'slate-500', bg: 'bg-slate-300/20 border-slate-400/30' },
+            { tier: 'Silver', price: '누적 10만원', desc: `${TIER_FACTS.silver.dailyLimit}회/일, 추천 먼저보기`, badge: '+', color: 'slate-500', bg: 'bg-slate-300/20 border-slate-400/30' },
             { tier: 'Gold', price: '누적 30만원', desc: `${TIER_FACTS.gold.dailyLimit}회/일, 추천 먼저보기`, badge: '+', color: 'yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30' },
             { tier: 'Platinum', price: '누적 100만원', desc: '무제한, 모델 프로필 추가', badge: 'TOP', color: 'purple', bg: 'bg-purple/10 border-purple/30' },
           ].map((t, i) => (
@@ -1537,7 +1537,7 @@ const slides = [
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
           <h4 className="font-bold text-green-700 mb-2 font-korean">✅ 현재 구현된 핵심 기능</h4>
           <div className="flex flex-wrap gap-2">
-            {['AI 추천 엔진 v8.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', `${PITCH_CATALOG.activeDnaProducts.toLocaleString('ko-KR')}개 활성 상품 DNA`, '일일 피드백 요약 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯', '쇼미 FAQ·지식 자동 갱신', '설치형 PWA', 'SEO/RSS'].map((item, i) => (
+            {['AI 추천 엔진 v9.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', `${PITCH_CATALOG.activeDnaProducts.toLocaleString('ko-KR')}개 활성 상품 DNA`, '일일 피드백 요약 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯', '쇼미 FAQ·지식 자동 갱신', '설치형 PWA', 'SEO/RSS'].map((item, i) => (
               <span key={i} className="px-3 py-1 bg-green-500/20 text-green-700 rounded-full text-xs font-korean font-semibold">{item}</span>
             ))}
           </div>
