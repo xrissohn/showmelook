@@ -15,6 +15,8 @@ import {
   Circle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PITCH_CATALOG, PITCH_ROADMAP } from '@/lib/pitchFacts';
+import { TIER_FACTS } from '../../supabase/functions/_shared/serviceFacts';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
 import screenLanding from '@/assets/pitch-screens/landing.png';
 import landingHero from '@/assets/pitch-screens/landing-hero.png';
@@ -197,7 +199,7 @@ const slides = [
         <div className="absolute top-5 left-5 md:top-7 md:left-7 z-10">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[10px] tracking-[0.3em] text-primary uppercase bg-background/85 backdrop-blur border border-primary/25 shadow-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-coral animate-pulse" />
-            Investment Proposal · 2026
+            Investment Proposal · {PITCH_CATALOG.asOf}
           </div>
         </div>
 
@@ -206,10 +208,10 @@ const slides = [
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2">
               <div className="px-3 py-1.5 bg-background/95 backdrop-blur border border-primary/25 rounded-full shadow-sm">
-                <span className="text-primary font-bold text-xs">플랫폼 완성도 80%</span>
+                <span className="text-primary font-bold text-xs">핵심 서비스 운영 중</span>
               </div>
               <div className="px-3 py-1.5 bg-background/95 backdrop-blur border border-coral/25 rounded-full shadow-sm">
-                <span className="text-coral font-bold text-xs">5,579+ 상품 DNA</span>
+                <span className="text-coral font-bold text-xs">{PITCH_CATALOG.activeDnaProducts.toLocaleString('ko-KR')}개 활성 상품 DNA</span>
               </div>
               <div className="px-3 py-1.5 bg-background/95 backdrop-blur border border-sky/25 rounded-full shadow-sm">
                 <span className="text-sky font-bold text-xs">Gemini · Nano Banana</span>
@@ -346,15 +348,15 @@ const slides = [
   {
     id: 5,
     title: 'Current Traction',
-    subtitle: '데이터 기반의 운영 시스템 구축 완료',
+    subtitle: `${PITCH_CATALOG.asOf} 운영 데이터 기준 · 전체/활성 상품 구분`,
     content: (
       <div className="space-y-5">
         <div className="grid md:grid-cols-4 gap-3">
           {[
-            { metric: '플랫폼 완성도', value: '80%', desc: '핵심 기능 안정화 단계', accent: 'primary' },
-            { metric: '등록 상품 수', value: '5,579', desc: '실시간 카탈로그', accent: 'coral' },
-            { metric: 'AI DNA 분석', value: '5,579', desc: '스타일 속성 추출 완료', accent: 'sky' },
-            { metric: '추천 엔진', value: 'v8.0', desc: '피드백 학습 적용', accent: 'purple' },
+            { metric: '등록 상품 수', value: PITCH_CATALOG.totalProducts.toLocaleString('ko-KR'), desc: '전체 등록 · 비활성 포함', accent: 'primary' },
+            { metric: '활성 상품 수', value: PITCH_CATALOG.activeProducts.toLocaleString('ko-KR'), desc: '활성 카탈로그 · 추천 조건 별도', accent: 'coral' },
+            { metric: 'DNA 보유 상품', value: PITCH_CATALOG.dnaProducts.toLocaleString('ko-KR'), desc: '비어 있지 않은 DNA 요약 보유', accent: 'sky' },
+            { metric: '활성 DNA 상품', value: PITCH_CATALOG.activeDnaProducts.toLocaleString('ko-KR'), desc: '활성 상태 + DNA 요약 보유', accent: 'purple' },
           ].map((s, i) => (
             <div key={i} className={cn('p-4 rounded-xl border', `bg-${s.accent}/5 border-${s.accent}/30`)}>
               <div className="text-xs text-muted-foreground font-korean mb-1">{s.metric}</div>
@@ -367,7 +369,7 @@ const slides = [
           <div className="p-5 bg-card rounded-xl border border-border">
             <h4 className="font-bold mb-3 font-korean">✅ 운영 중인 핵심 기능</h4>
             <div className="grid grid-cols-2 gap-2">
-              {['AI 스타일 추천 v8.0', '얼굴 합성 가상 피팅', '5,579+ 상품 카탈로그', '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
+              {['AI 스타일 추천 v8.0', '얼굴 합성 가상 피팅', `${PITCH_CATALOG.activeProducts.toLocaleString('ko-KR')}개 활성 카탈로그`, '딥링크 어필리에이트', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', '실시간 어드민 대시보드'].map((f, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs font-korean">
                   <span className="text-primary">●</span>{f}
                 </div>
@@ -384,7 +386,7 @@ const slides = [
               <li>• 머천트 매핑 · 수수료 정산</li>
             </ul>
             <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
-              admin.showmelook.com/dashboard
+              showmelook.com/admin · 관리자 전용
             </div>
           </div>
         </div>
@@ -604,8 +606,8 @@ const slides = [
               tag: '04 · Admin Dashboard',
               step: 'OPS · 운영',
               title: '실시간 운영 대시보드',
-              desc: '5,579+ 상품의 DNA·머천트 매핑·에러를 한 화면에서 관리.',
-              features: ['상품 5,579+ DNA 자동 분석', '머천트 매핑·등록 큐', '에러/추론 메트릭 실시간'],
+              desc: `전체 ${PITCH_CATALOG.totalProducts.toLocaleString('ko-KR')}개 상품의 DNA·머천트 매핑·에러 관리.`,
+              features: [`활성 DNA 상품 ${PITCH_CATALOG.activeDnaProducts.toLocaleString('ko-KR')}개`, '머천트 매핑·등록 큐', '에러/추론 메트릭 실시간'],
               color: 'primary',
             },
             {
@@ -687,7 +689,7 @@ const slides = [
             <h4 className="font-bold mb-2 font-korean text-sm">🧠 AI 추천 엔진 v8.0</h4>
             <ul className="text-xs text-muted-foreground space-y-1 font-korean">
               <li>• 상품 DNA 기반 RAG 추천</li>
-              <li>• 피드백 자기 학습 (실시간)</li>
+              <li>• 개인 취향 반영 + 일일 피드백 요약 학습</li>
               <li>• 크로스 모델 폴백</li>
               <li>• 다단계 캐싱 (L1~L4)</li>
             </ul>
@@ -726,7 +728,7 @@ const slides = [
             { tier: 'Free', price: '₩0', desc: '5회/일 생성', badge: '무료 체험', color: 'muted-foreground', bg: 'bg-muted/40 border-border' },
             { tier: 'Bronze', price: '첫 구매', desc: '워터마크 제거', badge: 'BEST', color: 'amber-600', bg: 'bg-amber-500/10 border-amber-500/30' },
             { tier: 'Silver', price: '누적 10만원', desc: '10회/일, 추천 우선', badge: '+', color: 'slate-500', bg: 'bg-slate-300/20 border-slate-400/30' },
-            { tier: 'Gold', price: '누적 30만원', desc: '30회/일, HD 다운로드', badge: '+', color: 'yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30' },
+            { tier: 'Gold', price: '누적 30만원', desc: `${TIER_FACTS.gold.dailyLimit}회/일, 추천 먼저보기`, badge: '+', color: 'yellow-600', bg: 'bg-yellow-500/10 border-yellow-500/30' },
             { tier: 'Platinum', price: '누적 100만원', desc: '무제한, 모델 프로필 추가', badge: 'TOP', color: 'purple', bg: 'bg-purple/10 border-purple/30' },
           ].map((t, i) => (
             <div key={i} className={cn('p-4 rounded-xl border relative', t.bg)}>
@@ -1220,7 +1222,7 @@ const slides = [
   {
     id: 11,
     title: '12-Month Cashflow',
-    subtitle: '초기 자본금 & 손익분기 분석',
+    subtitle: '투자 유치 후 M1~M12 가정 시나리오 · 실제 실적 아님',
     content: (
       <div className="space-y-4">
         {/* 4개 카드 */}
@@ -1529,25 +1531,21 @@ const slides = [
   {
     id: 13,
     title: 'Roadmap',
-    subtitle: '현재 80% 완료 — 남은 20%로 시장 진입',
+    subtitle: `${PITCH_CATALOG.asOf} 기준 · 2026 Q4~2027 Q3 제안 일정 (확정 아님)`,
     content: (
       <div className="space-y-5">
         <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-          <h4 className="font-bold text-green-700 mb-2 font-korean">✅ 완료된 기능 (Phase 1-4 · 80%)</h4>
+          <h4 className="font-bold text-green-700 mb-2 font-korean">✅ 현재 구현된 핵심 기능</h4>
           <div className="flex flex-wrap gap-2">
-            {['AI 추천 엔진 v8.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', '5,579+ 상품 DNA', '피드백 자기 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯 SDK', '실시간 어드민', '에러 모니터링', 'SEO/RSS'].map((item, i) => (
+            {['AI 추천 엔진 v8.0', '얼굴 합성 가상 피팅', 'LinkPrice·Coupang 딥링크', `${PITCH_CATALOG.activeDnaProducts.toLocaleString('ko-KR')}개 활성 상품 DNA`, '일일 피드백 요약 학습', '구매 기반 5등급제', '가족/모델 프로필', '커뮤니티 갤러리', 'Cafe24 위젯', '쇼미 FAQ·지식 자동 갱신', '설치형 PWA', 'SEO/RSS'].map((item, i) => (
               <span key={i} className="px-3 py-1 bg-green-500/20 text-green-700 rounded-full text-xs font-korean font-semibold">{item}</span>
             ))}
           </div>
         </div>
         <div className="grid md:grid-cols-3 gap-3">
-          {[
-            { q: 'Q1 2026', items: ['Phase 5: 실시간 재고 확인', '상품 2,000+ 확장', 'A/B 테스트 최적화', '결제 연동 (Toss/Stripe)'], color: 'sky' },
-            { q: 'Q2 2026', items: ['Cafe24 앱스토어 출시', 'B2B 파트너 10곳 확보', '푸시 알림 (FCM)', '인플루언서 캠페인'], color: 'coral' },
-            { q: 'Q3-Q4 2026', items: ['B2B SaaS 정식 출시', '글로벌 (일본/동남아)', 'WebXR 기반 AR 피팅', 'MAU 10만 달성'], color: 'primary' },
-          ].map((q, i) => (
+          {PITCH_ROADMAP.map((q, i) => (
             <div key={i} className={cn('p-4 rounded-xl border', `bg-${q.color}/5 border-${q.color}/30`)}>
-              <h4 className={cn('font-bold mb-2 font-korean', `text-${q.color}`)}>📅 {q.q}</h4>
+              <h4 className={cn('font-bold mb-2 font-korean', `text-${q.color}`)}>📅 {q.period}</h4>
               <ul className="text-xs space-y-1 font-korean text-muted-foreground">
                 {q.items.map((x, j) => (<li key={j}>• {x}</li>))}
               </ul>
@@ -1599,13 +1597,13 @@ const slides = [
             </div>
           </div>
           <div className="p-5 bg-gradient-to-br from-primary/10 to-coral/5 rounded-xl border border-primary/30">
-            <h4 className="font-bold mb-3 font-korean">🎯 12개월 핵심 마일스톤</h4>
+            <h4 className="font-bold mb-3 font-korean">🎯 투자 유치 후 12개월 목표 (가정)</h4>
             <div className="space-y-2">
               {[
                 { kpi: 'MAU 100,000 달성', desc: '핵심 트래픽 확보 · 흑자 전환', current: '현재 → 100,000+' },
-                { kpi: '월 매출 ₩3,150만', desc: '어필리에이트 + B2B 위젯 수익화', current: '0 → ₩3,150만/월' },
-                { kpi: 'B2B 파일럿 10곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '0 → 10곳' },
-                { kpi: '상품 카탈로그 20,000+', desc: 'DNA 자동 분석 파이프라인 확장', current: '5,579 → 20,000+' },
+                { kpi: '월 매출 ₩3,150만', desc: '어필리에이트 + B2B 위젯 수익화', current: '목표 ₩3,150만/월' },
+                { kpi: 'B2B 파일럿 10곳', desc: 'Cafe24·중소형 자사몰 위젯 도입', current: '목표 10곳' },
+                { kpi: '활성 상품 카탈로그 20,000+', desc: 'DNA 품질 관리·분석 파이프라인 확장 목표', current: `${PITCH_CATALOG.activeProducts.toLocaleString('ko-KR')} → 20,000+` },
                 { kpi: 'Series A 준비', desc: 'M10~M12 시점 후속 라운드 IR 시작', current: '준비' },
               ].map((m, i) => (
                 <div key={i} className="p-2 bg-card/70 rounded-lg">

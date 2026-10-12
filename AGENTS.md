@@ -1,5 +1,9 @@
 # AGENTS.md
-
+<!-- LOVABLE:BEGIN -->
+## Pitch
+- Keep dated catalog counts and proposed roadmap stages in `src/lib/pitchFacts.ts`, distinguishing total, active and DNA counts. Why: all slides need a verified baseline, not implied live counts or guaranteed dates.
+- Derive pitch membership benefits from shared service facts. Why: pitch copy must not promise different or unenforced benefits.
+<!-- LOVABLE:END -->
 ## Shomi chat (`supabase/functions/shomi-chat`)
 
 - Answer frequent questions from the prewritten FAQ layer (`faq.ts`) before calling the model. Only questions that match nothing, or that carry personal body info (height/weight/age), may reach the AI. Rationale: a model call costs ~10x more than a local answer.
