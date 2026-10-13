@@ -16,9 +16,14 @@ const dictionaries: Record<Language, TranslationKeys> = { ko, en };
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  const [language, setLanguage] = useState<Language>(
-    () => (localStorage.getItem('lang') as Language) || 'ko'
-  );
+  const [language, setLanguage] = useState<Language>(() => {
+    const stored = localStorage.getItem('lang') as Language | null;
+    if (stored) return stored;
+    // First visit: follow the browser/OS language — Korean stays Korean,
+    // everything else starts in English.
+    const nav = (navigator.language || '').toLowerCase();
+    return nav.startsWith('ko') ? 'ko' : 'en';
+  });
 
   const toggleLanguage = useCallback(() => {
     setLanguage(prev => {
