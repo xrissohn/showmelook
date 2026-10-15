@@ -10,6 +10,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Base44 preview: allow the sandbox proxy host so Vite's allowedHosts check doesn't 403
+    ...(process.env.BASE44_PREVIEW_MODE === "1" && process.env.BASE44_SANDBOX_HOST_DOMAIN
+      ? { allowedHosts: [`.${process.env.BASE44_SANDBOX_HOST_DOMAIN}`] }
+      : {}),
   },
   plugins: [
     react(),
