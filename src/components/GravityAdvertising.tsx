@@ -4,9 +4,13 @@ import { Cookie } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AD_NOTICE, CONSENT_KEY, getVisitRegion, needsConsent, readChoice, saveChoice, trackingAllowed } from '@/lib/gravityConsent';
+import { OUTCOME_EVENT, reportGravityOutcome, type GravityOutcome } from '@/lib/gravityEvents';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function GravityAdvertising() {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const [region, setRegion] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -51,6 +55,29 @@ export default function GravityAdvertising() {
     frame.current = element;
   }, [region, revision, optedOut]);
   useEffect(() => () => { frame.current?.remove(); frame.current = null; }, []);
+
+  useEffect(() => {
+    const send = (event: Event) => {
+      const detail = (event as CustomEvent<{ outcome: GravityOutcome; region: string }>).detail;
+      if (!detail || !trackingAllowed(detail.region, readChoice(), optedOut)) return;
+      frame.current?.contentWindow?.postMessage({ type: 'sml-gravity-outcome', outcome: detail.outcome, region: detail.region }, window.location.origin);
+    };
+    window.addEventListener(OUTCOME_EVENT, send);
+    return () => window.removeEventListener(OUTCOME_EVENT, send);
+  }, [optedOut]);
+
+  useEffect(() => {
+    if (!user) return;
+    // Only new, successfully saved images, never old gallery loads or failed jobs.
+    const channel = supabase.channel(`gravity-completed-looks-${user.id}`).on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'generated_looks', filter: `user_id=eq.${user.id}`,
+    }, ({ new: look }) => {
+      if (typeof look.id === 'string' && typeof look.image_url === 'string' && look.image_url) {
+        void reportGravityOutcome('look_generated', look.id);
+      }
+    }).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   const choose = (accept: boolean) => {
     try { saveChoice(accept, region ?? 'XX', language); setSettings(false); setError(false); }
