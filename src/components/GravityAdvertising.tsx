@@ -28,9 +28,11 @@ export default function GravityAdvertising() {
     getVisitRegion().then(country => { if (active) setRegion(country); });
     const update = () => setRevision(value => value + 1);
     const storage = (event: StorageEvent) => { if (event.key === CONSENT_KEY || event.key === null) update(); };
+    const openSettings = () => setSettings(true);
     window.addEventListener('storage', storage);
     window.addEventListener('sml:advertising-choice', update);
-    return () => { active = false; window.removeEventListener('storage', storage); window.removeEventListener('sml:advertising-choice', update); };
+    window.addEventListener('sml:advertising-settings', openSettings);
+    return () => { active = false; window.removeEventListener('storage', storage); window.removeEventListener('sml:advertising-choice', update); window.removeEventListener('sml:advertising-settings', openSettings); };
   }, []);
 
   useEffect(() => {
@@ -92,20 +94,17 @@ export default function GravityAdvertising() {
     catch { setError(true); }
   };
   return <>
-    <Button variant="outline" size="sm" className="fixed bottom-2 left-2 z-40 shadow-sm" onClick={() => setSettings(true)}>
-      <Cookie aria-hidden="true" />{language === 'ko' ? '광고 설정' : 'Advertising settings'}
-    </Button>
-    {show && <section role="dialog" aria-label={language === 'ko' ? '광고 측정 동의' : 'Advertising consent'} className="fixed inset-x-0 bottom-0 z-[100] border-t border-border bg-background shadow-lg">
-      <div className="mx-auto max-w-4xl space-y-3 px-5 py-5">
-        <h2 className="text-lg font-semibold">{language === 'ko' ? '광고 측정 동의' : 'Advertising consent'}</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">{AD_NOTICE[language]}</p>
-        {optedOut && <p className="text-sm text-muted-foreground">{language === 'ko' ? '브라우저의 추적 거부 설정이 적용되어 측정이 차단됩니다.' : 'Your browser opt-out blocks advertising measurement.'}</p>}
-        {error && <p role="alert" className="text-sm text-destructive">{language === 'ko' ? '선택을 저장할 수 없어 측정이 허용되지 않았습니다.' : 'Your choice could not be saved. Tracking was not enabled.'}</p>}
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" onClick={() => choose(false)}>{language === 'ko' ? '거절' : 'Reject'}</Button>
-          <Button variant="outline" disabled={optedOut} onClick={() => choose(true)}>{language === 'ko' ? '수락' : 'Accept'}</Button>
-          <Link className="text-sm text-primary underline" to="/privacy">{language === 'ko' ? '개인정보 처리방침' : 'Privacy policy'}</Link>
-          {settings && <Button variant="ghost" onClick={() => setSettings(false)}>{language === 'ko' ? '닫기' : 'Close'}</Button>}
+    {show && <section role="dialog" aria-label={language === 'ko' ? '광고 측정 동의' : 'Advertising consent'} className="fixed bottom-3 inset-x-3 sm:inset-x-auto sm:right-3 sm:max-w-sm z-[100] rounded-lg border border-border bg-background shadow-lg">
+      <div className="space-y-2 px-4 py-3">
+        <h2 className="text-sm font-semibold flex items-center gap-1.5"><Cookie className="w-4 h-4" aria-hidden="true" />{language === 'ko' ? '광고 측정 동의' : 'Advertising consent'}</h2>
+        <p className="text-xs leading-relaxed text-muted-foreground">{AD_NOTICE[language]}</p>
+        {optedOut && <p className="text-xs text-muted-foreground">{language === 'ko' ? '브라우저의 추적 거부 설정이 적용되어 측정이 차단됩니다.' : 'Your browser opt-out blocks advertising measurement.'}</p>}
+        {error && <p role="alert" className="text-xs text-destructive">{language === 'ko' ? '선택을 저장할 수 없어 측정이 허용되지 않았습니다.' : 'Your choice could not be saved. Tracking was not enabled.'}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => choose(false)}>{language === 'ko' ? '거절' : 'Reject'}</Button>
+          <Button size="sm" disabled={optedOut} onClick={() => choose(true)}>{language === 'ko' ? '수락' : 'Accept'}</Button>
+          <Link className="text-xs text-primary underline" to="/privacy">{language === 'ko' ? '개인정보 처리방침' : 'Privacy policy'}</Link>
+          {settings && <Button variant="ghost" size="sm" onClick={() => setSettings(false)}>{language === 'ko' ? '닫기' : 'Close'}</Button>}
         </div>
       </div>
     </section>}
