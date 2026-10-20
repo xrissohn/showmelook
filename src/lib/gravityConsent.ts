@@ -1,9 +1,14 @@
 export const CONSENT_KEY = 'sml_advertising_consent';
-export const NOTICE_VERSION = 'gravity-visits-2026-10-20';
-export const AD_NOTICE = {
+export const LEGACY_AD_NOTICE = {
   ko: 'Gravity(trygravity.ai)에 방문 페이지(주소의 검색어·해시 제외), 접속 시각, 광고 클릭 식별자, 쿠키 및 방문·세션 식별자, IP 주소와 기본 브라우저 정보를 전송하여 ChatGPT 광고의 사이트 방문 성과를 측정합니다. 이메일·전화번호·신체정보는 전달하지 않습니다. 거절해도 서비스를 이용할 수 있고 광고 설정에서 언제든 철회할 수 있습니다.',
   en: 'Gravity (trygravity.ai) receives visited pages (without URL queries or fragments), visit times, ad click identifiers, cookies and visitor/session identifiers, IP address and basic browser information to measure site visits from ChatGPT ads. We do not share email, phone or body information. Rejecting does not affect the service. You can withdraw at any time in Advertising settings.',
 };
+export const NOTICE_VERSION = 'gravity-outcomes-2026-10-20';
+export const AD_NOTICE = {
+  ko: 'Gravity(trygravity.ai)에 방문 페이지(주소의 검색어·해시 제외), 접속 시각, 광고 클릭 식별자, 쿠키 및 방문·세션 식별자, IP 주소와 기본 브라우저 정보, 가입 완료·룩 생성 완료 행동을 전송하여 ChatGPT 광고 성과를 측정합니다. 이메일·전화번호·신체정보는 전달하지 않습니다. 실제 구매 측정은 아직 연결되지 않았으며 구매 버튼 클릭을 구매로 집계하지 않습니다. 거절해도 서비스를 이용할 수 있고 광고 설정에서 언제든 철회할 수 있습니다.',
+  en: 'Gravity (trygravity.ai) receives visited pages (without URL queries or fragments), visit times, ad click identifiers, cookies and visitor/session identifiers, IP address and basic browser information, and completed signup/look-generation actions to measure ChatGPT advertising outcomes. We do not share email, phone or body information. Confirmed purchase measurement is not connected; purchase clicks are not counted as orders. Rejecting does not affect the service. Withdraw at any time in Advertising settings.',
+};
+export const NOTICE_ARCHIVE = { 'gravity-visits-2026-10-20': LEGACY_AD_NOTICE, [NOTICE_VERSION]: AD_NOTICE };
 const CONSENT_COUNTRIES = new Set('AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO GB CH BR KR ZA TR'.split(' '));
 export interface AdvertisingChoice {
   visitor: string;
@@ -26,6 +31,7 @@ export function trackingAllowed(region: string, choice: AdvertisingChoice | null
   if (optedOut) return false;
   const latest = choice?.history.at(-1);
   if (latest?.advertising === false) return false;
+  if (latest?.advertising === true && latest.noticeVersion !== NOTICE_VERSION) return false;
   return latest?.advertising === true || !needsConsent(region);
 }
 export function saveChoice(advertising: boolean, region: string, language: string) {

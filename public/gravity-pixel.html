@@ -22,5 +22,18 @@ window.addEventListener('message', function start(event) {
   m=d.getElementsByTagName(t)[0];a.async=1;a.src=u;m.parentNode.insertBefore(a,m)
   }(window,document,'script','https://code.trygravity.ai/gr-pix.js','gravity');
   gravity('init', '9bc163fa-ceb2-4455-bf86-ec2871cf3f48');
+  window.addEventListener('message', function conversion(event) {
+    if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'sml-gravity-outcome') return;
+    if (!['complete_registration', 'look_generated'].includes(event.data.outcome)) return;
+    try {
+      var choice = JSON.parse(localStorage.getItem('sml_advertising_consent') || 'null');
+      var latest = choice?.history?.at(-1);
+      var regions = 'AT BE BG HR CY CZ DK EE FI FR DE GR HU IE IT LV LT LU MT NL PL PT RO SK SI ES SE IS LI NO GB CH BR KR ZA TR'.split(' ');
+      var region = event.data.region;
+      var required = !/^[A-Z]{2}$/.test(region) || ['XX', 'T1'].includes(region) || regions.includes(region);
+      if (navigator.globalPrivacyControl === true || navigator.doNotTrack === '1' || latest?.advertising === false || (latest?.advertising === true && latest.noticeVersion !== 'gravity-outcomes-2026-10-20') || (required && latest?.advertising !== true)) return;
+      gravity('track', event.data.outcome, {});
+    } catch (_) { /* Unreadable consent blocks sending. */ }
+  });
 });
 </script></body></html>

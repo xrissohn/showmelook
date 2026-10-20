@@ -3,10 +3,14 @@ import { Link } from 'react-router-dom';
 import { Cookie } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { AD_NOTICE, CONSENT_KEY, getVisitRegion, needsConsent, readChoice, saveChoice, trackingAllowed } from '@/lib/gravityConsent';
+import { AD_NOTICE, CONSENT_KEY, NOTICE_VERSION, getVisitRegion, needsConsent, readChoice, saveChoice, trackingAllowed } from '@/lib/gravityConsent';
+import { OUTCOME_EVENT, reportGravityOutcome, type GravityOutcome } from '@/lib/gravityEvents';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function GravityAdvertising() {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const [region, setRegion] = useState<string | null>(null);
   const [settings, setSettings] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -14,7 +18,10 @@ export default function GravityAdvertising() {
   const frame = useRef<HTMLIFrameElement | null>(null);
   const optedOut = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true || navigator.doNotTrack === '1';
   const choice = readChoice();
-  const show = settings || (region !== null && needsConsent(region) && !choice && !optedOut);
+  const latest = choice?.history.at(-1);
+  const show = settings || (!optedOut && region !== null && (
+    (needsConsent(region) && !choice) || (latest?.advertising === true && latest.noticeVersion !== NOTICE_VERSION)
+  ));
 
   useEffect(() => {
     let active = true;
@@ -51,6 +58,34 @@ export default function GravityAdvertising() {
     frame.current = element;
   }, [region, revision, optedOut]);
   useEffect(() => () => { frame.current?.remove(); frame.current = null; }, []);
+
+  useEffect(() => {
+    const send = (event: Event) => {
+      const detail = (event as CustomEvent<{ outcome: GravityOutcome; region: string }>).detail;
+      if (!detail || !trackingAllowed(detail.region, readChoice(), optedOut)) return;
+      frame.current?.contentWindow?.postMessage({ type: 'sml-gravity-outcome', outcome: detail.outcome, region: detail.region }, window.location.origin);
+    };
+    window.addEventListener(OUTCOME_EVENT, send);
+    return () => window.removeEventListener(OUTCOME_EVENT, send);
+  }, [optedOut]);
+
+  useEffect(() => {
+    if (!user) return;
+    // The table is not in the realtime publication. Observe newly saved images;
+    // the timestamp excludes old gallery rows and failed/unsaved jobs.
+    const since = new Date().toISOString();
+    let active = true;
+    const poll = async () => {
+      const { data, error } = await supabase.from('generated_looks').select('id,image_url,created_at')
+        .eq('user_id', user.id).gt('created_at', since).limit(100);
+      if (!active || error) return;
+      for (const look of data ?? []) {
+        if (look.image_url) void reportGravityOutcome('look_generated', look.id, look.created_at);
+      }
+    };
+    const interval = window.setInterval(() => { void poll(); }, 15000);
+    return () => { active = false; clearInterval(interval); };
+  }, [user?.id]);
 
   const choose = (accept: boolean) => {
     try { saveChoice(accept, region ?? 'XX', language); setSettings(false); setError(false); }

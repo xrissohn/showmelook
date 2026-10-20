@@ -26,4 +26,12 @@ describe('regional advertising permission', () => {
     saveChoice(true, 'US', 'en');
     expect(trackingAllowed('US', readChoice(), true)).toBe(false);
   });
+  it('requires new acceptance when expanding from visits to all outcomes', () => {
+    localStorage.setItem('sml_advertising_consent', JSON.stringify({ visitor: 'visitor', history: [{ advertising: true, at: '2026-10-20T00:00:00Z', region: 'DE', noticeVersion: 'gravity-visits-2026-10-20', language: 'en' }] }));
+    expect(trackingAllowed('DE', readChoice(), false)).toBe(false);
+    expect(trackingAllowed('US', readChoice(), false)).toBe(false);
+    saveChoice(true, 'DE', 'en');
+    expect(trackingAllowed('DE', readChoice(), false)).toBe(true);
+    expect(readChoice()?.history).toHaveLength(2);
+  });
 });
