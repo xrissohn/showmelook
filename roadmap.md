@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Gravity 사이트 방문 픽셀·지역별 광고 동의·개인정보 안내 추가 및 검증
+
 - [x] 피치 페이지 상품·DNA 수 실측 및 2026-10-12 기준 로드맵·목표 기간 갱신
 - [x] showmelook.com 설치형 PWA manifest와 모바일 메타 연결
 - [x] 메타 태그, sitemap.xml, robots.txt 최종 정합성 점검 및 보완
