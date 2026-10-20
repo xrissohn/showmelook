@@ -38,7 +38,13 @@ export default function GravityAdvertising() {
     element.src = '/gravity-pixel.html';
     element.onload = () => {
       if (trackingAllowed(region, readChoice(), optedOut)) {
-        element.contentWindow?.postMessage({ type: 'sml-gravity-start', url: window.location.origin + window.location.pathname }, window.location.origin);
+        const landing = new URL(window.location.origin + window.location.pathname);
+        const search = new URLSearchParams(window.location.search);
+        for (const key of ['grclid', 'grcpid', 'grpuid', 'gradid', 'grsig', 'graid', 'oppref']) {
+          const value = search.get(key);
+          if (value && /^[A-Za-z0-9_.~-]{1,512}$/.test(value)) landing.searchParams.set(key, value);
+        }
+        element.contentWindow?.postMessage({ type: 'sml-gravity-start', url: landing.href }, window.location.origin);
       }
     };
     document.body.appendChild(element);

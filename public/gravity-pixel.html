@@ -8,7 +8,9 @@ window.addEventListener('message', function start(event) {
   window.removeEventListener('message', start);
   var url = new URL(event.data.url, location.origin);
   if (url.origin !== location.origin) return;
-  url.search = ''; url.hash = '';
+  var allowed = ['grclid', 'grcpid', 'grpuid', 'gradid', 'grsig', 'graid', 'oppref'];
+  Array.from(url.searchParams.keys()).forEach(function(key) { if (!allowed.includes(key)) url.searchParams.delete(key); });
+  url.hash = '';
   history.replaceState(null, '', url.href);
   window.GRAVITY_PIXEL_CONFIG = {
     sanitizeUrls: true, captureAdvertiserUserId: false, enableFingerprinting: false,
