@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Cookie } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { AD_NOTICE, CONSENT_KEY, getVisitRegion, needsConsent, readChoice, saveChoice, trackingAllowed } from '@/lib/gravityConsent';
+import { AD_NOTICE, CONSENT_KEY, NOTICE_VERSION, getVisitRegion, needsConsent, readChoice, saveChoice, trackingAllowed } from '@/lib/gravityConsent';
 import { OUTCOME_EVENT, reportGravityOutcome, type GravityOutcome } from '@/lib/gravityEvents';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +18,10 @@ export default function GravityAdvertising() {
   const frame = useRef<HTMLIFrameElement | null>(null);
   const optedOut = (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true || navigator.doNotTrack === '1';
   const choice = readChoice();
-  const show = settings || (region !== null && needsConsent(region) && !choice && !optedOut);
+  const latest = choice?.history.at(-1);
+  const show = settings || (!optedOut && region !== null && (
+    (needsConsent(region) && !choice) || (latest?.advertising === true && latest.noticeVersion !== NOTICE_VERSION)
+  ));
 
   useEffect(() => {
     let active = true;
@@ -68,15 +71,21 @@ export default function GravityAdvertising() {
 
   useEffect(() => {
     if (!user) return;
-    // Only new, successfully saved images, never old gallery loads or failed jobs.
-    const channel = supabase.channel(`gravity-completed-looks-${user.id}`).on('postgres_changes', {
-      event: 'INSERT', schema: 'public', table: 'generated_looks', filter: `user_id=eq.${user.id}`,
-    }, ({ new: look }) => {
-      if (typeof look.id === 'string' && typeof look.image_url === 'string' && look.image_url) {
-        void reportGravityOutcome('look_generated', look.id);
+    // The table is not in the realtime publication. Poll only during generation;
+    // the timestamp excludes old gallery rows and failed/unsaved jobs.
+    const since = new Date().toISOString();
+    let active = true;
+    const poll = async () => {
+      if (!sessionStorage.getItem('sml_pending_generation')) return;
+      const { data, error } = await supabase.from('generated_looks').select('id,image_url')
+        .eq('user_id', user.id).gt('created_at', since).limit(100);
+      if (!active || error) return;
+      for (const look of data ?? []) {
+        if (look.image_url) void reportGravityOutcome('look_generated', look.id);
       }
-    }).subscribe();
-    return () => { void supabase.removeChannel(channel); };
+    };
+    const interval = window.setInterval(() => { void poll(); }, 3000);
+    return () => { active = false; clearInterval(interval); };
   }, [user?.id]);
 
   const choose = (accept: boolean) => {
