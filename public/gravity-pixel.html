@@ -1,0 +1,24 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ShowMeLook</title><meta name="referrer" content="no-referrer"></head><body>
+<script>
+// Isolated document: no access to app forms, profiles, or SPA event listeners.
+// Removing this frame stops the pixel on withdrawal, including other tabs.
+window.addEventListener('message', function start(event) {
+  if (event.origin !== location.origin || event.source !== parent || event.data?.type !== 'sml-gravity-start') return;
+  window.removeEventListener('message', start);
+  var url = new URL(event.data.url, location.origin);
+  if (url.origin !== location.origin) return;
+  url.search = ''; url.hash = '';
+  history.replaceState(null, '', url.href);
+  window.GRAVITY_PIXEL_CONFIG = {
+    sanitizeUrls: true, captureAdvertiserUserId: false, enableFingerprinting: false,
+    hashIdentityFields: false, captureIdentityFields: false, captureDebugFields: false,
+    autoCaptureClicks: false, ignoreGPC: false, ignoreCMP: false
+  };
+  !function(w,d,t,u,n,a,m){w['GravityPixelObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments)},w[n].l=1*new Date();a=d.createElement(t),
+  m=d.getElementsByTagName(t)[0];a.async=1;a.src=u;m.parentNode.insertBefore(a,m)
+  }(window,document,'script','https://code.trygravity.ai/gr-pix.js','gravity');
+  gravity('init', '9bc163fa-ceb2-4455-bf86-ec2871cf3f48');
+});
+</script></body></html>

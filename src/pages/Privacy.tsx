@@ -1,6 +1,7 @@
 import MainNavigation from '@/components/MainNavigation';
 import { SEOHead } from '@/components/SEOHead';
 import { useLanguage } from '@/contexts/LanguageContext';
+import GravityPrivacyNotice from '@/components/GravityPrivacyNotice';
 
 const Privacy = () => {
   const { t, language } = useLanguage();
@@ -75,6 +76,7 @@ const Privacy = () => {
               <h2 className="text-xl font-semibold">9. Changes to Privacy Policy</h2>
               <p className="text-foreground/80 leading-relaxed">This privacy policy is effective from January 1, 2026. Changes will be announced via notice at least 7 days before the effective date.</p>
             </section>
+            <GravityPrivacyNotice />
           </div>
         </main>
       </div>
@@ -191,6 +193,7 @@ const Privacy = () => {
               이 개인정보 처리방침은 2026년 1월 1일부터 적용됩니다. 법령 및 방침에 따른 변경 내용의 추가, 삭제 및 정정이 있는 경우에는 변경사항의 시행 7일 전부터 공지사항을 통하여 고지할 것입니다.
             </p>
           </section>
+          <GravityPrivacyNotice />
         </div>
       </main>
     </div>
