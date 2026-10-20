@@ -1,4 +1,5 @@
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Button } from '@/components/ui/button';
 import { AD_NOTICE, LEGACY_AD_NOTICE, NOTICE_VERSION } from '@/lib/gravityConsent';
 
 export default function GravityPrivacyNotice() {
@@ -13,6 +14,9 @@ export default function GravityPrivacyNotice() {
       ? '광고 설정에서 선택을 변경할 수 있습니다. 이 브라우저에 임의 방문자 식별자, 선택 시각·지역·언어·안내문 버전과 수락·거절 이력을 보관하며, 철회해도 이전 수락 기록은 유지합니다. 브라우저 저장 데이터를 삭제하면 해당 기록도 삭제됩니다. Gravity 방문 쿠키는 최대 180일, 세션 쿠키는 최대 1일 사용됩니다. 위치 확인에는 동일 사이트의 /cdn-cgi/trace를 사용합니다.'
       : 'Change your choice in Advertising settings. This browser stores a random visitor reference, timestamps, region, language, notice version and acceptance/refusal history; withdrawing preserves earlier acceptance evidence. Clearing browser storage deletes this record. Gravity uses visitor cookies for up to 180 days and session cookies for up to one day. Region is determined using this site’s /cdn-cgi/trace.'}</p>
     <p className="text-sm text-muted-foreground">{NOTICE_VERSION} · <a href="https://docs.trygravity.com/advertisers/pixel" className="text-primary underline" target="_blank" rel="noopener noreferrer">Gravity</a></p>
+    <Button variant="outline" size="sm" onClick={() => window.dispatchEvent(new Event('sml:advertising-settings'))}>
+      {language === 'ko' ? '광고 설정 변경' : 'Change advertising settings'}
+    </Button>
     <details><summary className="text-sm text-muted-foreground">{language === 'ko' ? '이전 방문 전용 안내' : 'Previous visit-only notice'}</summary><p className="text-sm">gravity-visits-2026-10-20 · {LEGACY_AD_NOTICE[language]}</p></details>
   </section>;
 }
