@@ -5,12 +5,14 @@ const observed = new Set<string>();
 export const OUTCOME_EVENT = 'sml:gravity-outcome';
 
 // IDs are used locally for deduplication only; they never leave the app.
-export async function reportGravityOutcome(outcome: GravityOutcome, localId: string) {
+export async function reportGravityOutcome(outcome: GravityOutcome, localId: string, occurredAt?: string) {
   const key = `${outcome}:${localId}`;
   if (observed.has(key)) return;
   observed.add(key);
-  const choiceAtAction = readChoice();
-  const at = new Date().toISOString();
+  const current = readChoice();
+  const at = occurredAt ?? new Date().toISOString();
+  const history = current?.history.filter(item => item.at <= at) ?? [];
+  const choiceAtAction = current && history.length ? { ...current, history } : null;
   const optedOut = () => (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true || navigator.doNotTrack === '1';
   const region = await getVisitRegion();
   if (!trackingAllowed(region, choiceAtAction, optedOut()) || !trackingAllowed(region, readChoice(), optedOut())) return;

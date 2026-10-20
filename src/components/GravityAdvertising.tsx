@@ -71,20 +71,19 @@ export default function GravityAdvertising() {
 
   useEffect(() => {
     if (!user) return;
-    // The table is not in the realtime publication. Poll only during generation;
+    // The table is not in the realtime publication. Observe newly saved images;
     // the timestamp excludes old gallery rows and failed/unsaved jobs.
     const since = new Date().toISOString();
     let active = true;
     const poll = async () => {
-      if (!sessionStorage.getItem('sml_pending_generation')) return;
-      const { data, error } = await supabase.from('generated_looks').select('id,image_url')
+      const { data, error } = await supabase.from('generated_looks').select('id,image_url,created_at')
         .eq('user_id', user.id).gt('created_at', since).limit(100);
       if (!active || error) return;
       for (const look of data ?? []) {
-        if (look.image_url) void reportGravityOutcome('look_generated', look.id);
+        if (look.image_url) void reportGravityOutcome('look_generated', look.id, look.created_at);
       }
     };
-    const interval = window.setInterval(() => { void poll(); }, 3000);
+    const interval = window.setInterval(() => { void poll(); }, 15000);
     return () => { active = false; clearInterval(interval); };
   }, [user?.id]);
 
