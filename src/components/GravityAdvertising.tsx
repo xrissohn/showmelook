@@ -94,17 +94,18 @@ export default function GravityAdvertising() {
     catch { setError(true); }
   };
   return <>
-    {show && <section role="dialog" aria-label={language === 'ko' ? '광고 측정 동의' : 'Advertising consent'} className="fixed bottom-3 inset-x-3 sm:inset-x-auto sm:right-3 sm:max-w-sm z-[100] rounded-lg border border-border bg-background shadow-lg">
-      <div className="space-y-2 px-4 py-3">
-        <h2 className="text-sm font-semibold flex items-center gap-1.5"><Cookie className="w-4 h-4" aria-hidden="true" />{language === 'ko' ? '광고 측정 동의' : 'Advertising consent'}</h2>
-        <p className="text-xs leading-relaxed text-muted-foreground">{AD_NOTICE[language]}</p>
-        {optedOut && <p className="text-xs text-muted-foreground">{language === 'ko' ? '브라우저의 추적 거부 설정이 적용되어 측정이 차단됩니다.' : 'Your browser opt-out blocks advertising measurement.'}</p>}
-        {error && <p role="alert" className="text-xs text-destructive">{language === 'ko' ? '선택을 저장할 수 없어 측정이 허용되지 않았습니다.' : 'Your choice could not be saved. Tracking was not enabled.'}</p>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => choose(false)}>{language === 'ko' ? '거절' : 'Reject'}</Button>
-          <Button size="sm" disabled={optedOut} onClick={() => choose(true)}>{language === 'ko' ? '수락' : 'Accept'}</Button>
-          <Link className="text-xs text-primary underline" to="/privacy">{language === 'ko' ? '개인정보 처리방침' : 'Privacy policy'}</Link>
-          {settings && <Button variant="ghost" size="sm" onClick={() => setSettings(false)}>{language === 'ko' ? '닫기' : 'Close'}</Button>}
+    {show && <section role="dialog" aria-label={language === 'ko' ? '광고 측정 동의' : 'Advertising consent'} className="fixed bottom-2 inset-x-2 sm:inset-x-auto sm:bottom-3 sm:right-3 sm:max-w-sm z-[100] rounded-lg border border-border bg-background shadow-lg">
+      <div className="space-y-1.5 px-3 py-2 sm:space-y-2 sm:px-4 sm:py-3">
+        <h2 className="text-[12px] leading-tight font-semibold flex items-center gap-1.5 sm:text-sm"><Cookie className="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />{language === 'ko' ? '광고 측정 동의' : 'Advertising consent'}</h2>
+        <p className="text-[11px] leading-snug text-muted-foreground sm:text-xs sm:leading-relaxed">{AD_NOTICE[language]}</p>
+        {optedOut && <p className="text-[11px] text-muted-foreground sm:text-xs">{language === 'ko' ? '브라우저의 추적 거부 설정이 적용되어 측정이 차단됩니다.' : 'Your browser opt-out blocks advertising measurement.'}</p>}
+        {error && <p role="alert" className="text-[11px] text-destructive sm:text-xs">{language === 'ko' ? '선택을 저장할 수 없어 측정이 허용되지 않았습니다.' : 'Your choice could not be saved. Tracking was not enabled.'}</p>}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5 sm:gap-2">
+          {/* Tap targets stay full size on phones even though the rest of the card shrinks. */}
+          <Button variant="outline" size="sm" className="min-h-11 min-w-20 sm:min-h-0 sm:min-w-0" onClick={() => choose(false)}>{language === 'ko' ? '거절' : 'Reject'}</Button>
+          <Button size="sm" className="min-h-11 min-w-20 sm:min-h-0 sm:min-w-0" disabled={optedOut} onClick={() => choose(true)}>{language === 'ko' ? '수락' : 'Accept'}</Button>
+          <Link className="text-[11px] text-primary underline sm:text-xs" to="/privacy">{language === 'ko' ? '개인정보 처리방침' : 'Privacy policy'}</Link>
+          {settings && <Button variant="ghost" size="sm" className="min-h-11 sm:min-h-0" onClick={() => setSettings(false)}>{language === 'ko' ? '닫기' : 'Close'}</Button>}
         </div>
       </div>
     </section>}
