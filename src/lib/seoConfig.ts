@@ -115,6 +115,12 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     canonical: `${BASE_URL}/community`,
     ogImage: DEFAULT_OG_IMAGE,
   },
+  pitch: {
+    title: '쇼미룩 투자 제안 피치덱 — AI 가상피팅 커머스 플랫폼',
+    description: '사진 한 장으로 완성하는 AI 가상 피팅, 쇼미룩 ShowMeLook의 비전과 사업 계획을 소개하는 투자 제안 자료입니다.',
+    canonical: `${BASE_URL}/pitch`,
+    ogImage: DEFAULT_OG_IMAGE,
+  },
   promo: {
     title: '쇼미룩 프로모 영상 | ShowMeLook',
     description: '쇼미룩 ShowMeLook AI 가상피팅 서비스의 프로모션 영상입니다. 사진 한 장으로 만드는 나만의 스타일, 영상으로 빠르게 확인해보세요.',

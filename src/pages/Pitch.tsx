@@ -15,6 +15,7 @@ import {
   Circle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SEOHead } from '@/components/SEOHead';
 import { PITCH_CATALOG, PITCH_ROADMAP } from '@/lib/pitchFacts';
 import { TIER_FACTS } from '../../supabase/functions/_shared/serviceFacts';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, ComposedChart, Bar, Line } from 'recharts';
@@ -1771,6 +1772,7 @@ const Pitch = () => {
       </header>
       )}
 
+      <SEOHead pageKey="pitch" />
       <h1 className="sr-only">쇼미룩 투자 제안 피치덱 — AI 가상피팅 커머스 플랫폼</h1>
 
       {/* 슬라이드 컨텐츠 */}
