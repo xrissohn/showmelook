@@ -99,6 +99,13 @@
       "when": 1791356043794,
       "tag": "0014_hide_moderation_columns_from_users",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1792772688262,
+      "tag": "0015_add_performance_indexes_products_and_public_looks",
+      "breakpoints": true
     }
   ]
 }
