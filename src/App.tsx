@@ -13,7 +13,6 @@ import ShomiChannelPopup from "@/components/ShomiChannelPopup";
 import AdSenseLoader from "@/components/AdSenseLoader";
 import AppUpdateNotifier from "@/components/AppUpdateNotifier";
 import ShomiChatbot from "@/components/ShomiChatbot";
-import GravityAdvertising from "@/components/GravityAdvertising";
 // Lazy load pages for code splitting
 const Policy = lazy(() => import("./pages/Policy"));
 const Landing = lazy(() => import("./pages/Landing"));
@@ -74,7 +73,6 @@ const App = () => (
             <BrowserRouter>
               <ShomiChannelPopup />
               <AdSenseLoader />
-              <GravityAdvertising />
               <ShomiChatbot />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
