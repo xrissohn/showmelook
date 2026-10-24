@@ -1,7 +1,6 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { reportGravityOutcome } from '@/lib/gravityEvents';
 
 interface AuthContextType {
   user: User | null;
@@ -115,7 +114,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!r.ok || !r.data.success) {
       return { success: false, error: r.data.message ?? r.data.error, errorCode: r.data.error_code ?? 'server_error', reasons: r.data.reasons };
     }
-    void reportGravityOutcome('complete_registration', crypto.randomUUID());
     return { success: true, referral: r.data.referral ?? null };
   };
 
