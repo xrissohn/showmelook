@@ -106,6 +106,13 @@
       "when": 1792772688262,
       "tag": "0015_add_performance_indexes_products_and_public_looks",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792997944039,
+      "tag": "0016_admin_product_stats_rpc",
+      "breakpoints": true
     }
   ]
 }
