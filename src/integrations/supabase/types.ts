@@ -2277,6 +2277,7 @@ export type Database = {
           rating: number
         }[]
       }
+      admin_product_stats: { Args: never; Returns: Json }
       calculate_model_profile_slots: {
         Args: { p_total_amount: number }
         Returns: number
