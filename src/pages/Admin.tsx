@@ -306,7 +306,7 @@ const Admin = () => {
     try {
       const { count } = await supabase
         .from('error_logs')
-        .select('*', { count: 'exact', head: true });
+        .select('id', { count: 'exact', head: true });
       setErrorLogTotal(count || 0);
     } catch (error) {
       console.error('Error loading error log stats:', error);
@@ -401,14 +401,14 @@ const Admin = () => {
       // 이미지 관련 에러 카운트 (missing_image, image_download_failed)
       const { count: imageCount } = await supabase
         .from('pending_products')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .is('resolved_at', null)
         .in('error_type', ['missing_image', 'image_download_failed']);
       
       // 기타 에러 카운트 (머천트 오류 등, 이미지 관련 제외)
       const { count: otherCount } = await supabase
         .from('pending_products')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .is('resolved_at', null)
         .not('error_type', 'in', '("missing_image","image_download_failed")');
       
@@ -896,11 +896,10 @@ const Admin = () => {
       const errors: string[] = [];
       
       for (const productId of selectedProductIds) {
-        const { error, count } = await supabase
+        const { error } = await supabase
           .from('products_cache')
           .delete()
-          .eq('id', productId)
-          .select();
+          .eq('id', productId);
         
         if (error) {
           console.error(`[Admin] Failed to delete product ${productId}:`, error);
