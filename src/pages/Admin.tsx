@@ -782,37 +782,22 @@ const Admin = () => {
         .select('id')
         .eq('is_active', true);
 
-      // 활성 상품의 머천트/카테고리 2개 컬럼만 한 번에 조회해 클라이언트에서 집계
-      // (기존: 전체 exact count 1회 + 머천트별 exact count N회 + 카테고리 전체 스캔 1회)
-      const rows = await fetchAllRows<{ merchant_id: string | null; category: string | null }>(
-        'products_cache', 'merchant_id, category',
-        (q) => q.eq('is_active', true)
-      );
+      // 전체/머천트별/카테고리별 집계는 DB에서 한 번에 수행 (관리자 전용 RPC, 1회 왕복)
+      const { data: stats, error: statsError } = await supabase.rpc('admin_product_stats');
+      if (statsError) throw statsError;
 
-      const byMerchant: Record<string, number> = {};
-      const merchantList: string[] = [];
-      const byCategory: Record<string, number> = {};
-      const categoryList: string[] = [];
-
-      rows.forEach(item => {
-        if (item.merchant_id) {
-          byMerchant[item.merchant_id] = (byMerchant[item.merchant_id] || 0) + 1;
-        }
-        if (item.category) {
-          byCategory[item.category] = (byCategory[item.category] || 0) + 1;
-          if (!categoryList.includes(item.category)) {
-            categoryList.push(item.category);
-          }
-        }
-      });
-
-      if (merchants) {
-        merchants.forEach(m => merchantList.push(m.id));
-      }
+      const agg = (stats || {}) as {
+        total?: number;
+        by_merchant?: Record<string, number>;
+        by_category?: Record<string, number>;
+      };
+      const byMerchant = agg.by_merchant || {};
+      const byCategory = agg.by_category || {};
+      const merchantList: string[] = merchants ? merchants.map(m => m.id) : [];
 
       setAvailableMerchants(merchantList.sort());
-      setAvailableCategories(categoryList.sort());
-      setProductStats({ total: rows.length, byMerchant, byCategory });
+      setAvailableCategories(Object.keys(byCategory).sort());
+      setProductStats({ total: agg.total || 0, byMerchant, byCategory });
     } catch (error) {
       console.error('Error loading product stats:', error);
     }
