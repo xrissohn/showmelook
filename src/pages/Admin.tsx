@@ -776,50 +776,28 @@ const Admin = () => {
 
   const loadProductStats = async () => {
     try {
-      // 전체 개수
-      const { count: total } = await supabase
-        .from('products_cache')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true);
-
       // 머천트 목록 조회 (distinct)
       const { data: merchants } = await supabase
         .from('merchants')
         .select('id')
         .eq('is_active', true);
 
-      const byMerchant: Record<string, number> = {};
-      const merchantList: string[] = [];
-      
-      if (merchants && merchants.length > 0) {
-        // 각 머천트별 개수를 병렬로 조회
-        const countPromises = merchants.map(async (m) => {
-          const { count } = await supabase
-            .from('products_cache')
-            .select('*', { count: 'exact', head: true })
-            .eq('is_active', true)
-            .eq('merchant_id', m.id);
-          return { merchantId: m.id, count: count || 0 };
-        });
-
-        const results = await Promise.all(countPromises);
-        results.forEach(r => {
-          merchantList.push(r.merchantId);
-          if (r.count > 0) {
-            byMerchant[r.merchantId] = r.count;
-          }
-        });
-      }
-
-      // 카테고리 목록 조회 (전체 상품 대상 - 페이지네이션)
-      const categoryData = await fetchAllRows<{ category: string }>(
-        'products_cache', 'category',
+      // 활성 상품의 머천트/카테고리 2개 컬럼만 한 번에 조회해 클라이언트에서 집계
+      // (기존: 전체 exact count 1회 + 머천트별 exact count N회 + 카테고리 전체 스캔 1회)
+      const rows = await fetchAllRows<{ merchant_id: string | null; category: string | null }>(
+        'products_cache', 'merchant_id, category',
         (q) => q.eq('is_active', true)
       );
 
+      const byMerchant: Record<string, number> = {};
+      const merchantList: string[] = [];
       const byCategory: Record<string, number> = {};
       const categoryList: string[] = [];
-      categoryData.forEach(item => {
+
+      rows.forEach(item => {
+        if (item.merchant_id) {
+          byMerchant[item.merchant_id] = (byMerchant[item.merchant_id] || 0) + 1;
+        }
         if (item.category) {
           byCategory[item.category] = (byCategory[item.category] || 0) + 1;
           if (!categoryList.includes(item.category)) {
@@ -828,9 +806,13 @@ const Admin = () => {
         }
       });
 
+      if (merchants) {
+        merchants.forEach(m => merchantList.push(m.id));
+      }
+
       setAvailableMerchants(merchantList.sort());
       setAvailableCategories(categoryList.sort());
-      setProductStats({ total: total || 0, byMerchant, byCategory });
+      setProductStats({ total: rows.length, byMerchant, byCategory });
     } catch (error) {
       console.error('Error loading product stats:', error);
     }
@@ -1014,24 +996,19 @@ const Admin = () => {
       // 전체 개수는 count 쿼리로 (1000개 제한 우회)
       const { count: totalCount } = await supabase
         .from('products_cache')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('is_active', true);
-
-      const { count: withDnaCount } = await supabase
-        .from('products_cache')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .not('dna_meta', 'is', null);
-
-      const total = totalCount || 0;
-      const withDna = withDnaCount || 0;
-      const withoutDna = total - withDna;
 
       // DNA 메타 분석 - 전체 상품 대상 (페이지네이션)
       const products = await fetchAllRows<{ dna_meta: unknown }>(
         'products_cache', 'dna_meta',
         (q) => q.eq('is_active', true).not('dna_meta', 'is', null)
       );
+
+      const total = totalCount || 0;
+      // DNA 있는 상품 수는 위 조회 결과 수와 동일하므로 별도 count 쿼리 생략
+      const withDna = products.length;
+      const withoutDna = total - withDna;
 
       const byTarget: Record<string, number> = {};
       const bySlot: Record<string, number> = {};
