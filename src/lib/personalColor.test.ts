@@ -118,3 +118,29 @@ describe('recommendation priority', () => {
     expect(parseSavedPersonalColor(null)).toBeNull();
   });
 });
+
+import { confirmSavedRow, analyzePersonalColor as analyzeFn, buildManualPersonalColor as buildManual } from './personalColor';
+
+describe('save confirmation', () => {
+  const v = buildManual('autumn_warm', 'ko');
+  it('accepts only the caller row with the new value', () => {
+    expect(confirmSavedRow([{ user_id: 'u1', personal_color: v }], 'u1', v)?.season).toBe('autumn_warm');
+  });
+  it('rejects when no row was updated', () => {
+    expect(() => confirmSavedRow([], 'u1', v)).toThrow('not_saved');
+  });
+  it('rejects another user row', () => {
+    expect(() => confirmSavedRow([{ user_id: 'u2', personal_color: v }], 'u1', v)).toThrow('not_saved');
+  });
+  it('delete is confirmed only when the column came back empty', () => {
+    expect(confirmSavedRow([{ user_id: 'u1', personal_color: null }], 'u1', null)).toBeNull();
+    expect(() => confirmSavedRow([{ user_id: 'u1', personal_color: v }], 'u1', null)).toThrow('not_saved');
+  });
+});
+
+describe('consent on every send', () => {
+  it('sends nothing without current consent', async () => {
+    const res = await analyzeFn('data:image/jpeg;base64,AAAA', 'ko', { consent: false });
+    expect(res).toEqual({ status: 'error', code: 'consent_required' });
+  });
+});
