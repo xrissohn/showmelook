@@ -1177,6 +1177,27 @@ export type Database = {
         }
         Relationships: []
       }
+      personal_color_usage: {
+        Row: {
+          analysis_count: number
+          updated_at: string
+          usage_date: string
+          user_id: string
+        }
+        Insert: {
+          analysis_count?: number
+          updated_at?: string
+          usage_date: string
+          user_id: string
+        }
+        Update: {
+          analysis_count?: number
+          updated_at?: string
+          usage_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_feedback: {
         Row: {
           action_type: string
@@ -1427,6 +1448,7 @@ export type Database = {
           gender: string | null
           height: number | null
           id: string
+          personal_color: Json | null
           style_preferences: string[] | null
           updated_at: string
           user_id: string
@@ -1443,6 +1465,7 @@ export type Database = {
           gender?: string | null
           height?: number | null
           id?: string
+          personal_color?: Json | null
           style_preferences?: string[] | null
           updated_at?: string
           user_id: string
@@ -1459,6 +1482,7 @@ export type Database = {
           gender?: string | null
           height?: number | null
           id?: string
+          personal_color?: Json | null
           style_preferences?: string[] | null
           updated_at?: string
           user_id?: string
@@ -2338,6 +2362,10 @@ export type Database = {
       }
       has_user_liked_look: { Args: { _look_id: string }; Returns: boolean }
       increment_daily_generation_usage: {
+        Args: { _usage_date: string; _user_id: string }
+        Returns: number
+      }
+      increment_personal_color_usage: {
         Args: { _usage_date: string; _user_id: string }
         Returns: number
       }

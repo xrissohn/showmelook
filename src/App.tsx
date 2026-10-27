@@ -19,6 +19,7 @@ const Landing = lazy(() => import("./pages/Landing"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ProfileSetup = lazy(() => import("./pages/ProfileSetup"));
 const ProfileEdit = lazy(() => import("./pages/ProfileEdit"));
+const PersonalColorStudio = lazy(() => import("./pages/PersonalColorStudio"));
 const StyleGenerator = lazy(() => import("./pages/StyleGenerator"));
 const Cart = lazy(() => import("./pages/Cart"));
 const Install = lazy(() => import("./pages/Install"));
@@ -80,6 +81,7 @@ const App = () => (
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/profile-setup" element={<ProfileSetup />} />
                   <Route path="/profile-edit" element={<ProfileEdit />} />
+                  <Route path="/personal-color" element={<PersonalColorStudio />} />
                   <Route path="/style" element={<StyleGenerator />} />
                   <Route path="/cart" element={<Cart />} />
                   <Route path="/install" element={<Install />} />

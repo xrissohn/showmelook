@@ -1,0 +1,4 @@
+## One-off service emails (`supabase/functions/send-outbox-email`)
+
+- To send a single service email (support notice, apology, account fix) from `noreply@showmelook.com`, insert a row into `admin_email_outbox` (service role / SQL only: `to_email`, `subject`, `html`, optional `text_body`, `reply_to`, `note`), then POST to `send-outbox-email` (for example with `net.http_post` from SQL). The function sends pending rows via Resend and writes back `status`, `provider_id` or `error`. Rationale: lets support mail go out from the service address without anyone handling the Resend key.
+- The endpoint is public (`verify_jwt = false`) but takes nothing from the request: it only sends rows already queued with database access, at most 5 per call, and answers with counts only. Rows are claimed atomically (`claim_admin_email_outbox`), so overlapping calls never send twice. Use `reply_to: contact@showmelook.com` when the text invites a reply.

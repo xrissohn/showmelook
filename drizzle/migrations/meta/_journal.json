@@ -120,6 +120,13 @@
       "when": 1793084550152,
       "tag": "0017_admin_dna_stats_rpc",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793123311563,
+      "tag": "0018_add_personal_color",
+      "breakpoints": true
     }
   ]
 }
