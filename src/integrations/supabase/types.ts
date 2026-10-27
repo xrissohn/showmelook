@@ -2265,6 +2265,7 @@ export type Database = {
       }
     }
     Functions: {
+      admin_dna_stats: { Args: never; Returns: Json }
       admin_flagged_look_feedback: {
         Args: { p_limit?: number }
         Returns: {
