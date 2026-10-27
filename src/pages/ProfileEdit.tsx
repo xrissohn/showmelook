@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Camera, Check, Save } from 'lucide-react';
 import MainNavigation from '@/components/MainNavigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PersonalColorCard from '@/components/personal-color/PersonalColorCard';
 
 const ProfileEdit = () => {
   const { t } = useLanguage();
@@ -238,6 +239,10 @@ const ProfileEdit = () => {
                 className="hidden"
               />
             </div>
+          </section>
+
+          <section className="animate-fade-in-up">
+            <PersonalColorCard />
           </section>
 
           {/* Body Info Section */}

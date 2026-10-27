@@ -66,6 +66,12 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     canonical: `${BASE_URL}/admin`,
     noindex: true,
   },
+  personalColor: {
+    title: '퍼스널 컬러 스튜디오 | 쇼미룩',
+    description: '사진 한 장으로 나에게 어울리는 톤을 추정하고 내 색으로 코디를 추천받아요.',
+    canonical: `${BASE_URL}/personal-color`,
+    noindex: true,
+  },
   profileEdit: {
     title: '프로필 수정 | 쇼미룩',
     description: '내 프로필 정보를 수정합니다.',

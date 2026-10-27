@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import PersonalColorAppliedNote, { type PersonalColorApplied } from '@/components/personal-color/PersonalColorAppliedNote';
 import { useCartCount, notifyCartChanged } from '@/hooks/useCartCount';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -3063,6 +3064,7 @@ const StyleGenerator = () => {
     budget?: number; // 사용자가 요청에 쓴 예산 (없으면 undefined)
     overBudget?: boolean;
     mode?: 'evaluation' | 'recommendation';
+    personalColor?: PersonalColorApplied | null;
   } | null>(null);
 
   // 구매 버튼 로딩 상태
@@ -4586,6 +4588,7 @@ const StyleGenerator = () => {
           ageGroup: effectiveAgeGroup,
           stylePreferences: effectiveStylePrefs,
           profileName: selectedGenerationProfile?.full_name || userProfile?.full_name,
+          applyPersonalColor: !isFamilyProfile, // 🎨 본인 프로필일 때만 저장된 퍼스널 컬러 참고
           // 📷 사진 분석 구조화 데이터 직접 전달 (DB 직접 매칭용)
           ...(styleImageAnalysis ? { photoAnalysisItems: styleImageAnalysis } : {}),
         }
@@ -4618,6 +4621,7 @@ const StyleGenerator = () => {
           autoSelectedCount: data.look.autoSelectedCount || 0,
           budget: data.look.budget ?? undefined,
           overBudget: !!data.look.overBudget,
+          personalColor: data.look.personalColor ?? null,
           mode: data.mode || 'recommendation',
         });
 
@@ -4871,6 +4875,7 @@ const StyleGenerator = () => {
         ageGroup: effectiveAgeGroup,
         stylePreferences: effectiveStylePrefs,
         profileName: selectedGenerationProfile?.full_name || userProfile?.full_name,
+        applyPersonalColor: !isFamilyProfile, // 🎨 본인 프로필일 때만 저장된 퍼스널 컬러 참고
         // 📷 사진 분석 구조화 데이터 직접 전달 (DB 직접 매칭용)
         ...(styleImageAnalysis ? { photoAnalysisItems: styleImageAnalysis } : {}),
       }
@@ -4925,6 +4930,7 @@ const StyleGenerator = () => {
             autoSelectedCount: recData.look.autoSelectedCount || 0,
             budget: recData.look.budget ?? undefined,
             overBudget: !!recData.look.overBudget,
+            personalColor: recData.look.personalColor ?? null,
             mode: recData.mode || 'recommendation',
           });
           
@@ -5953,6 +5959,7 @@ const StyleGenerator = () => {
                       ) : (
                         /* 추천 모드: 구조화된 UI */
                         <div className="space-y-2 text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
+                          {customResult.personalColor && <PersonalColorAppliedNote info={customResult.personalColor} />}
                           {(customResult.styleReasoning || '').split('\n').filter(line => line.trim()).map((line, i) => {
                             const trimmed = line.trim();
                             // 이모지로 시작하는 섹션 헤더
