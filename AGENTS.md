@@ -58,3 +58,9 @@
 
 - To send a single service email (support notice, apology, account fix) from `noreply@showmelook.com`, insert a row into `admin_email_outbox` (service role / SQL only: `to_email`, `subject`, `html`, optional `text_body`, `reply_to`, `note`), then POST to `send-outbox-email` (for example with `net.http_post` from SQL). The function sends pending rows via Resend and writes back `status`, `provider_id` or `error`. Rationale: lets support mail go out from the service address without anyone handling the Resend key.
 - The endpoint is public (`verify_jwt = false`) but takes nothing from the request: it only sends rows already queued with database access, at most 5 per call, and answers with counts only. Rows are claimed atomically (`claim_admin_email_outbox`), so overlapping calls never send twice. Use `reply_to: contact@showmelook.com` when the text invites a reply.
+
+## Personal color (`analyze-personal-color`, `_shared/personalColor.ts`, `/personal-color`)
+
+- Tone rules (seasons, reference palettes, AI-result validation, soft recommendation bonus) live only in `_shared/personalColor.ts`, used by the edge functions and the web app. Rationale: one definition for analysis, UI and recommendation.
+- `analyze-personal-color` requires sign-in and explicit consent, caps non-admins per day via `increment_personal_color_usage`, forwards the photo only to the AI gateway and never stores or logs it; malformed AI output is an error, never a filled-in result. Rationale: cost/abuse control and privacy.
+- `profiles.personal_color` belongs to the main user only; `style-recommend` reads it from the verified user's row only when the client sends `applyPersonalColor: true` (never for family profiles). Explicit colors or photo requests switch the tone to prompt-reference only; product colors are never altered. Rationale: the user's request always wins and family models stay separate.
