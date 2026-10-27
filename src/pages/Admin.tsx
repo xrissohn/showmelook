@@ -977,43 +977,27 @@ const Admin = () => {
 
   const loadDnaStats = async () => {
     try {
-      // 전체 개수는 count 쿼리로 (1000개 제한 우회)
-      const { count: totalCount } = await supabase
-        .from('products_cache')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_active', true);
+      // DB에서 집계 (전체 상품 행 다운로드 대신 관리자 전용 RPC 사용)
+      const { data: stats, error } = await supabase.rpc('admin_dna_stats');
+      if (error) throw error;
 
-      // DNA 메타 분석 - 전체 상품 대상 (페이지네이션)
-      const products = await fetchAllRows<{ dna_meta: unknown }>(
-        'products_cache', 'dna_meta',
-        (q) => q.eq('is_active', true).not('dna_meta', 'is', null)
-      );
+      const s = stats as {
+        total: number;
+        with_dna: number;
+        by_target: Record<string, number>;
+        by_slot: Record<string, number>;
+        by_concept: Record<string, number>;
+      } | null;
+      if (!s) return;
 
-      const total = totalCount || 0;
-      // DNA 있는 상품 수는 위 조회 결과 수와 동일하므로 별도 count 쿼리 생략
-      const withDna = products.length;
-      const withoutDna = total - withDna;
-
-      const byTarget: Record<string, number> = {};
-      const bySlot: Record<string, number> = {};
-      const byConcept: Record<string, number> = {};
-      
-      if (products.length > 0) {
-        products.forEach(p => {
-          if (p.dna_meta) {
-            const meta = p.dna_meta as { target?: string; item_slot?: string; concepts?: string[] };
-            if (meta.target) byTarget[meta.target] = (byTarget[meta.target] || 0) + 1;
-            if (meta.item_slot) bySlot[meta.item_slot] = (bySlot[meta.item_slot] || 0) + 1;
-            if (meta.concepts) {
-              meta.concepts.forEach(c => {
-                byConcept[c] = (byConcept[c] || 0) + 1;
-              });
-            }
-          }
-        });
-      }
-
-      setDnaStats({ total, withDna, withoutDna, byTarget, bySlot, byConcept });
+      setDnaStats({
+        total: s.total,
+        withDna: s.with_dna,
+        withoutDna: s.total - s.with_dna,
+        byTarget: s.by_target || {},
+        bySlot: s.by_slot || {},
+        byConcept: s.by_concept || {},
+      });
     } catch (error) {
       console.error('Error loading DNA stats:', error);
     }
