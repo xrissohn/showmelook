@@ -5,7 +5,7 @@ const eqSpy = vi.fn();
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: () => ({
-      update: (v: unknown) => { updateSpy(v); return { eq: (...a: unknown[]) => { eqSpy(...a); return { select: () => Promise.resolve({ data: [{ user_id: a[1], personal_color: v }], error: null }) }; } }; },
+      update: (v: unknown) => { updateSpy(v); return { eq: (...a: unknown[]) => { eqSpy(...a); return { select: () => Promise.resolve({ data: [{ user_id: a[1], personal_color: (v as { personal_color: unknown }).personal_color }], error: null }) }; } }; },
     }),
     functions: { invoke: vi.fn() },
   },
