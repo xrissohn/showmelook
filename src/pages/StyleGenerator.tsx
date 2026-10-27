@@ -5959,7 +5959,7 @@ const StyleGenerator = () => {
                       ) : (
                         /* 추천 모드: 구조화된 UI */
                         <div className="space-y-2 text-xs sm:text-sm text-muted-foreground font-korean leading-relaxed">
-                          {customResult.personalColor && <PersonalColorAppliedNote info={customResult.personalColor} />}
+                          <PersonalColorAppliedNote info={customResult.personalColor} />
                           {(customResult.styleReasoning || '').split('\n').filter(line => line.trim()).map((line, i) => {
                             const trimmed = line.trim();
                             // 이모지로 시작하는 섹션 헤더
