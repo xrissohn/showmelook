@@ -6,6 +6,7 @@ import { parseBudgetFromRequest, BUDGET_MIN, BUDGET_SHARE } from "../_shared/bud
 import { isUsableCandidate, resolveClothingGender } from "../_shared/productFilters.ts";
 import { buildTasteProfile, emptyTasteProfile, tasteBonus } from "../_shared/tasteProfile.ts";
 import { buildInsightPromptBlock } from "../_shared/feedbackLearning.ts";
+import { parseSavedPersonalColor, personalColorMode, personalColorBonus, buildPersonalColorPromptBlock, type Season, type PersonalColorMode } from "../_shared/personalColor.ts";
 
 // ============= 인터페이스 정의 =============
 
@@ -2069,6 +2070,22 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // 🎨 퍼스널 컬러: 화면이 applyPersonalColor: true 를 보낼 때(본인 프로필로 추천할 때)만,
+    // 검증된 본인 계정의 저장값을 읽는다. 가족 프로필에는 적용하지 않는다. 없으면 기존 추천 그대로.
+    let pcSeason: Season | null = null;
+    let pcSource: string | null = null;
+    const pcMode: PersonalColorMode = personalColorMode(userRequest, !!hasPhotoAnalysis);
+    if (requestPayload.applyPersonalColor === true && userId) {
+      try {
+        const { data: pcRow } = await supabase.from('profiles').select('personal_color').eq('user_id', userId).maybeSingle();
+        const saved = parseSavedPersonalColor(pcRow?.personal_color);
+        if (saved) { pcSeason = saved.season; pcSource = saved.source; }
+      } catch (pcErr) {
+        console.warn('[style-recommend] personal color skipped:', pcErr);
+      }
+    }
+    if (pcSeason) console.log(`[style-recommend] 🎨 personal color ${pcSeason} (${pcSource}), mode=${pcMode}`);
+
     // 모델 설정 조회 (동적 모델 로드)
     const { data: modelConfigData } = await supabase
       .from('model_config')
@@ -2356,6 +2373,7 @@ serve(async (req) => {
       }));
       tasteProfile = buildTasteProfile(signals);
       insightBlock = buildInsightPromptBlock(((insRes.data || []) as InsightRow[]).map((r) => r.insight_lines || []));
+      if (pcSeason) insightBlock += buildPersonalColorPromptBlock(pcSeason, pcMode);
       console.log(`[style-recommend] Feedback learning: taste signals=${tasteProfile.signalCount}, insight block=${insightBlock ? 'yes' : 'no'}`);
     } catch (learnErr) {
       console.warn('[style-recommend] feedback learning skipped:', learnErr);
@@ -2616,7 +2634,7 @@ serve(async (req) => {
       // 가중치 조정: merchant/sub_style 매칭이 있으면 가장 높은 가중치
       // 🧠 이 사용자의 좋아요/별로예요 취향 (싫어한 상품·브랜드·스타일은 감점, 좋아한 쪽은 가산)
       const tasteScore = tasteBonus({ id: p.id, brand: p.brand, style_tags: p.style_tags, price: p.price }, tasteProfile);
-      const totalScore = merchantBonus + subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus + tasteScore;
+      const totalScore = merchantBonus + subStyleBonus + (feedbackScore * 0.18) + (conceptScore * 0.32) + (formalityScore * 0.18) + freshnessBonus + diversityBonus + tasteScore + personalColorBonus(p, pcSeason, pcMode);
       
       return { product: p, score: totalScore };
     });
@@ -3450,6 +3468,7 @@ serve(async (req) => {
         appliedGender: gender, // 실제로 적용한 옷의 성별(요청 문장이 우선)
         overBudget: budgetCap ? totalPrice > budgetCap : false,
         budgetAdjusted,
+        personalColor: pcSeason ? { season: pcSeason, source: pcSource, mode: pcMode } : null,
         stylingTips: ragResponse.stylingTips || stage1Result.dressCodeHint,
         styleTags,
       },
