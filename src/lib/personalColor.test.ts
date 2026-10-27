@@ -5,7 +5,7 @@ const eqSpy = vi.fn();
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     from: () => ({
-      update: (v: unknown) => { updateSpy(v); return { eq: (...a: unknown[]) => { eqSpy(...a); return Promise.resolve({ error: null }); } }; },
+      update: (v: unknown) => { updateSpy(v); return { eq: (...a: unknown[]) => { eqSpy(...a); return { select: () => Promise.resolve({ data: [{ user_id: a[1], personal_color: (v as { personal_color: unknown }).personal_color }], error: null }) }; } }; },
     }),
     functions: { invoke: vi.fn() },
   },
@@ -116,5 +116,31 @@ describe('recommendation priority', () => {
   it('ignores malformed saved values', () => {
     expect(parseSavedPersonalColor({ season: 'autumn_warm', source: 'guess' })).toBeNull();
     expect(parseSavedPersonalColor(null)).toBeNull();
+  });
+});
+
+import { confirmSavedRow, analyzePersonalColor as analyzeFn, buildManualPersonalColor as buildManual } from './personalColor';
+
+describe('save confirmation', () => {
+  const v = buildManual('autumn_warm', 'ko');
+  it('accepts only the caller row with the new value', () => {
+    expect(confirmSavedRow([{ user_id: 'u1', personal_color: v }], 'u1', v)?.season).toBe('autumn_warm');
+  });
+  it('rejects when no row was updated', () => {
+    expect(() => confirmSavedRow([], 'u1', v)).toThrow('not_saved');
+  });
+  it('rejects another user row', () => {
+    expect(() => confirmSavedRow([{ user_id: 'u2', personal_color: v }], 'u1', v)).toThrow('not_saved');
+  });
+  it('delete is confirmed only when the column came back empty', () => {
+    expect(confirmSavedRow([{ user_id: 'u1', personal_color: null }], 'u1', null)).toBeNull();
+    expect(() => confirmSavedRow([{ user_id: 'u1', personal_color: v }], 'u1', null)).toThrow('not_saved');
+  });
+});
+
+describe('consent on every send', () => {
+  it('sends nothing without current consent', async () => {
+    const res = await analyzeFn('data:image/jpeg;base64,AAAA', 'ko', { consent: false });
+    expect(res).toEqual({ status: 'error', code: 'consent_required' });
   });
 });

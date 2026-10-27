@@ -127,6 +127,13 @@
       "when": 1793123311563,
       "tag": "0018_add_personal_color",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793140543706,
+      "tag": "0019_tighten_personal_color_check",
+      "breakpoints": true
     }
   ]
 }

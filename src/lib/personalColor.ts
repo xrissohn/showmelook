@@ -50,30 +50,67 @@ export function interpretAnalyzeReply(data: unknown, error: { context?: { status
   return { status: 'error', code };
 }
 
-export async function analyzePersonalColor(imageData: string, language: 'ko' | 'en'): Promise<AnalyzeResponse> {
-  const call = supabase.functions.invoke('analyze-personal-color', {
-    body: { image_data: imageData, language, consent: true },
-  });
-  const timeout = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), ANALYSIS_TIMEOUT_MS));
-  const res = await Promise.race([call, timeout]);
-  if (res === 'timeout') return { status: 'error', code: 'timeout' };
-  let bodyCode: string | undefined;
-  if (res.error) {
-    try {
-      const body = await (res.error as { context?: Response }).context?.json?.();
-      bodyCode = body?.error_code;
-    } catch { /* ignore */ }
+/**
+ * Sends the photo for analysis. The caller passes its current consent; without it nothing is sent.
+ * `signal` lets the page cancel when the user leaves or signs out; the 60s timer is always cleared.
+ */
+export async function analyzePersonalColor(
+  imageData: string,
+  language: 'ko' | 'en',
+  opts: { consent: boolean; signal?: AbortSignal },
+): Promise<AnalyzeResponse> {
+  if (opts.consent !== true) return { status: 'error', code: 'consent_required' };
+  const controller = new AbortController();
+  const onOuterAbort = () => controller.abort();
+  opts.signal?.addEventListener('abort', onOuterAbort);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const call = supabase.functions.invoke('analyze-personal-color', {
+      body: { image_data: imageData, language, consent: true },
+      signal: controller.signal,
+    });
+    const timeout = new Promise<'timeout'>((r) => { timer = setTimeout(() => r('timeout'), ANALYSIS_TIMEOUT_MS); });
+    const res = await Promise.race([call, timeout]);
+    if (res === 'timeout') { controller.abort(); return { status: 'error', code: 'timeout' }; }
+    if (controller.signal.aborted) return { status: 'error', code: 'cancelled' };
+    let bodyCode: string | undefined;
+    if (res.error) {
+      try {
+        const body = await (res.error as { context?: Response }).context?.json?.();
+        bodyCode = body?.error_code;
+      } catch { /* ignore */ }
+    }
+    return interpretAnalyzeReply(res.data, res.error as never, bodyCode);
+  } catch {
+    return { status: 'error', code: controller.signal.aborted ? 'cancelled' : 'network' };
+  } finally {
+    if (timer) clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', onOuterAbort);
   }
-  return interpretAnalyzeReply(res.data, res.error as never, bodyCode);
 }
 
-/** Updates only personal_color on the user's own profile; other fields stay untouched. */
-export async function savePersonalColor(userId: string, value: PersonalColor | null) {
-  const { error } = await supabase
+/** Saves (or clears) only personal_color on the user's own row. Throws unless exactly that row came back. */
+export async function savePersonalColor(userId: string, value: PersonalColor | null): Promise<PersonalColor | null> {
+  const { data, error } = await supabase
     .from('profiles')
     .update({ personal_color: value as unknown as Json })
-    .eq('user_id', userId);
+    .eq('user_id', userId)
+    .select('user_id, personal_color');
   if (error) throw error;
+  return confirmSavedRow(data, userId, value);
+}
+
+/** Pure check used by savePersonalColor: the update must return the caller's own row with the new value. */
+export function confirmSavedRow(rows: unknown, userId: string, value: PersonalColor | null): PersonalColor | null {
+  const list = Array.isArray(rows) ? rows as { user_id?: string; personal_color?: unknown }[] : [];
+  if (list.length !== 1 || list[0].user_id !== userId) throw new Error('not_saved');
+  const stored = parseSavedPersonalColor(list[0].personal_color);
+  if (value === null) {
+    if (list[0].personal_color !== null && list[0].personal_color !== undefined) throw new Error('not_saved');
+    return null;
+  }
+  if (!stored || stored.season !== value.season || stored.source !== value.source) throw new Error('not_saved');
+  return stored;
 }
 
 export async function loadPersonalColor(userId: string): Promise<PersonalColor | null> {

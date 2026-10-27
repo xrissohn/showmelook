@@ -12,6 +12,8 @@ const corsHeaders = {
 const DAILY_LIMIT = 5;
 const MAX_BASE64 = 7_000_000; // ~5MB
 const MODEL = "google/gemini-3.8-flash";
+// The page gives up after 60s; stop the AI call shortly before so abandoned requests do not pile up.
+const AI_TIMEOUT_MS = 55_000;
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -68,8 +70,13 @@ Deno.serve(async (req) => {
       if ((count as number) > DAILY_LIMIT) return json({ success: false, error_code: "daily_limit", limit: DAILY_LIMIT }, 429);
     }
 
-    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiAbort = new AbortController();
+    const aiTimer = setTimeout(() => aiAbort.abort(), AI_TIMEOUT_MS);
+    let aiRes: Response;
+    try {
+    aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
+      signal: aiAbort.signal,
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
@@ -87,15 +94,24 @@ Deno.serve(async (req) => {
         max_tokens: 1200,
       }),
     });
+    } catch (fetchErr) {
+      clearTimeout(aiTimer);
+      if (aiAbort.signal.aborted) return json({ success: false, error_code: "timeout" }, 504);
+      throw fetchErr;
+    }
 
     if (!aiRes.ok) {
+      clearTimeout(aiTimer);
       console.error(`[analyze-personal-color] gateway status ${aiRes.status}`); // no photo, no body
       if (aiRes.status === 429) return json({ success: false, error_code: "busy" }, 429);
       if (aiRes.status === 402 || aiRes.status === 403) return json({ success: false, error_code: "ai_unavailable" }, 503);
       return json({ success: false, error_code: "ai_error" }, 502);
     }
 
-    const result = await aiRes.json();
+    let result: any;
+    try { result = await aiRes.json(); }
+    catch { clearTimeout(aiTimer); return json({ success: false, error_code: aiAbort.signal.aborted ? "timeout" : "analysis_failed" }, aiAbort.signal.aborted ? 504 : 502); }
+    clearTimeout(aiTimer);
     const text: string = result.choices?.[0]?.message?.content?.trim() ?? "";
     let parsed: unknown = null;
     try {

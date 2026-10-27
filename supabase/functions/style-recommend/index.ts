@@ -2144,7 +2144,7 @@ serve(async (req) => {
     // 🔥 forceRefresh가 false여도 매 요청마다 새로운 추천을 생성하여 다양성 극대화
     const skipCache = true; // Always generate fresh recommendations
     
-    if (!skipCache && !forceRefresh && !hasPhotoAnalysis) {
+    if (!skipCache && !forceRefresh && !hasPhotoAnalysis && !pcSeason) {
       const { data: cachedLook } = await supabase
         .from('style_cache')
         .select('*')
@@ -2373,11 +2373,12 @@ serve(async (req) => {
       }));
       tasteProfile = buildTasteProfile(signals);
       insightBlock = buildInsightPromptBlock(((insRes.data || []) as InsightRow[]).map((r) => r.insight_lines || []));
-      if (pcSeason) insightBlock += buildPersonalColorPromptBlock(pcSeason, pcMode);
       console.log(`[style-recommend] Feedback learning: taste signals=${tasteProfile.signalCount}, insight block=${insightBlock ? 'yes' : 'no'}`);
     } catch (learnErr) {
       console.warn('[style-recommend] feedback learning skipped:', learnErr);
     }
+    // 피드백 조회가 실패해도 퍼스널 컬러 지침은 항상 붙인다.
+    if (pcSeason) insightBlock += buildPersonalColorPromptBlock(pcSeason, pcMode);
 
     let allProducts: CachedProduct[] = (allProductsRaw || []).map(p => {
       const feedback = feedbackMap.get(p.id);
@@ -3426,8 +3427,8 @@ serve(async (req) => {
     const totalPrice = lookItems.reduce((sum, item) => sum + (item.product?.price || 0), 0);
     const styleTags = [...new Set(lookItems.flatMap(item => item.product?.style_tags || []))].slice(0, 5);
 
-    // 캐시 저장
-    if (lookItems.length >= 3) {
+    // 캐시 저장 — 퍼스널 컬러로 개인화된 결과는 공용 cache_key에 저장하지 않는다(다른 톤 사용자와 섞임 방지).
+    if (lookItems.length >= 3 && !pcSeason) {
       const productIds = lookItems.map(item => item.product?.id).filter(Boolean);
       
       await supabase

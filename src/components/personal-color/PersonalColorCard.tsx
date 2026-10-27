@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Palette, ChevronRight } from 'lucide-react';
+import { Palette, ChevronRight, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { loadPersonalColor, seasonLabel, type PersonalColor } from '@/lib/personalColor';
@@ -12,11 +12,28 @@ export default function PersonalColorCard() {
   const { language } = useLanguage();
   const lang = language === 'en' ? 'en' : 'ko';
   const [value, setValue] = useState<PersonalColor | null>(null);
+  const [failed, setFailed] = useState(false);
+  const userId = user?.id;
 
-  useEffect(() => {
-    if (!user) return;
-    loadPersonalColor(user.id).then(setValue).catch(() => setValue(null));
-  }, [user]);
+  const load = useCallback(() => {
+    if (!userId) return;
+    setFailed(false);
+    loadPersonalColor(userId).then(setValue).catch(() => { setValue(null); setFailed(true); });
+  }, [userId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  if (failed) {
+    return (
+      <div role="alert" className="rounded-3xl bg-gradient-personal-color border border-border p-5 shadow-sm flex items-center gap-4">
+        <Palette className="w-6 h-6 text-primary shrink-0" />
+        <p className="flex-1 text-sm text-foreground">{lang === 'en' ? "Couldn't load your personal color." : '퍼스널 컬러를 불러오지 못했어요.'}</p>
+        <button type="button" onClick={load} className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground">
+          <RefreshCw className="w-3.5 h-3.5" />{lang === 'en' ? 'Retry' : '다시 시도'}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <Link
