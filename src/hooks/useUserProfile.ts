@@ -11,6 +11,7 @@ interface UserProfile {
   full_name: string | null;
   gender: string | null;
   age_group: string | null;
+  personal_color?: unknown;
 }
 
 export function useUserProfile() {
@@ -45,7 +46,7 @@ export function useUserProfile() {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender, age_group')
+        .select('height, weight, body_type, style_preferences, avatar_url, full_name, gender, age_group, personal_color')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -102,6 +103,13 @@ export function useUserProfile() {
   // 초기 로딩
   useEffect(() => {
     fetchProfile();
+  }, [fetchProfile]);
+
+  // 퍼스널 컬러 저장/삭제 후 캐시 갱신
+  useEffect(() => {
+    const onUpdate = () => { cacheRef.current = null; fetchProfile(true); };
+    window.addEventListener('sml:personal-color-updated', onUpdate);
+    return () => window.removeEventListener('sml:personal-color-updated', onUpdate);
   }, [fetchProfile]);
 
   return {
