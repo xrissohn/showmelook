@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import PersonalColorStyleEntry from '@/components/personal-color/PersonalColorStyleEntry';
 import PersonalColorAppliedNote, { type PersonalColorApplied } from '@/components/personal-color/PersonalColorAppliedNote';
 import { useCartCount, notifyCartChanged } from '@/hooks/useCartCount';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -6339,6 +6340,7 @@ const StyleGenerator = () => {
                   }
                 }}
               />
+              <PersonalColorStyleEntry userId={user?.id} isFamilyProfile={selectedGenerationProfile?.type === 'family'} />
 
 
               {/* Daily Generation Limit Display */}
