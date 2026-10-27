@@ -11,7 +11,7 @@ const corsHeaders = {
 
 const DAILY_LIMIT = 5;
 const MAX_BASE64 = 7_000_000; // ~5MB
-const MODEL = "google/gemini-2.5-flash";
+const MODEL = "google/gemini-3.8-flash";
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
