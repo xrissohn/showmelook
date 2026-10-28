@@ -16,7 +16,7 @@ const NotFound = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <SEOHead pageKey="notFound" />
+      <SEOHead pageKey="notFound" custom={{ canonical: `https://showmelook.com${location.pathname}` }} />
       <MainNavigation />
       
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center pt-16">

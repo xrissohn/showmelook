@@ -1,5 +1,9 @@
 # Roadmap
 
+- [x] Fix failing SEO headings and per-page metadata; verified 14 public language/route combinations and authenticated profile edit without writes. Profile setup redirects completed users, so its active-step flow was source-checked, not exercised. No frontend publish.
+- [x] Improve the existing minimal-look guide with practical outfit combinations and accurate search copy; existing URL and three style-request links preserved.
+- [ ] Resolve server-rendered social previews for direct public URLs — blocked by hosting-level rendering/routing support; client metadata alone is insufficient.
+
 - [x] Correct shared-look search information to affiliate link lists; verified real public look, 2 tests and preview build; no frontend publish. Live Google revalidation awaits the user's publish.
 
 - [x] Fix only the Shomi button image and replace the real summer-cool unsaved preview capture; no frontend publish.

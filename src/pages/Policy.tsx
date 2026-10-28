@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
+import { SEOHead } from "@/components/SEOHead";
 import MainNavigation from "@/components/MainNavigation";
 import { useLanguage } from "@/contexts/LanguageContext";
 import {
@@ -20,10 +20,10 @@ const Policy = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Helmet>
-        <title>{en ? "Service Policy | ShowMeLook" : "서비스 규정 | 쇼미룩"}</title>
-        <link rel="canonical" href="https://showmelook.com/policy" />
-      </Helmet>
+      <SEOHead pageKey="policy" custom={en ? {
+        title: "Service Policy | ShowMeLook",
+        description: "ShowMeLook service rules: free signup, purchase-based tiers, partner-store payments and returns, virtual fitting limitations, and photo privacy.",
+      } : undefined} />
       <MainNavigation showBackButton />
       <main className="container max-w-3xl mx-auto px-4 py-12 font-korean">
         <h1 className="text-3xl font-bold mb-3">{en ? "ShowMeLook Service Policy" : "쇼미룩 서비스 규정"}</h1>

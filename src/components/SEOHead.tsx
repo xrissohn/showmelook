@@ -29,10 +29,12 @@ export const SEOHead = ({ pageKey, custom, jsonLd }: SEOHeadProps) => {
       {/* Open Graph / Facebook / KakaoTalk */}
       {seo.title && <meta property="og:title" content={seo.title} />}
       {seo.description && <meta property="og:description" content={seo.description} />}
+      <meta property="og:type" content="website" />
       {seo.ogImage && <meta property="og:image" content={seo.ogImage} />}
       {seo.canonical && <meta property="og:url" content={seo.canonical} />}
 
       {/* Twitter */}
+      <meta name="twitter:card" content="summary" />
       {seo.title && <meta name="twitter:title" content={seo.title} />}
       {seo.description && <meta name="twitter:description" content={seo.description} />}
       {seo.ogImage && <meta name="twitter:image" content={seo.ogImage} />}
