@@ -2,7 +2,7 @@
 
 - [x] Fix failing SEO headings and per-page metadata; verified 14 public language/route combinations and authenticated profile edit without writes. Profile setup redirects completed users, so its active-step flow was source-checked, not exercised. No frontend publish.
 - [x] Improve the existing minimal-look guide with practical outfit combinations and accurate search copy; existing URL and three style-request links preserved.
-- [ ] Verify actual crawler responses and correct route social previews; deferral lifted, but migration and frontend publishing still require separate approval.
+- [ ] Hosted social-preview validation awaits an explicit frontend publish: raw public requests currently return homepage metadata, unpublished external preview returns 401. Route metadata and missing SharedLook OG/Twitter tags corrected and browser-verified; do not mark the server-preview finding fixed yet. No migration or publish performed.
 
 - [x] Correct shared-look search information to affiliate link lists; verified real public look, 2 tests and preview build; no frontend publish. Live Google revalidation awaits the user's publish.
 
