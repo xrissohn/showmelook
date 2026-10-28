@@ -214,6 +214,7 @@ const ProfileEdit = () => {
 
       <div className="pt-20 sm:pt-24 pb-12 px-6">
         <div className="container mx-auto max-w-lg space-y-8">
+          <h1 className="font-korean text-3xl font-bold text-foreground">{t('profileEdit.title')}</h1>
           {/* Photo Section */}
           <section className="animate-fade-in-up">
             <h2 className="font-korean text-xl text-foreground mb-4">{t('profileEdit.profilePhoto')}</h2>

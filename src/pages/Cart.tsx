@@ -250,6 +250,7 @@ const Cart = () => {
       <MainNavigation showBackButton title={t('cart.title')} />
 
       <div className="container mx-auto px-4 sm:px-6 pt-20 sm:pt-24 pb-8 max-w-3xl">
+        <h1 className="font-korean text-3xl font-bold text-foreground mb-6">{t('cart.title')}</h1>
         {/* Guest notice banner */}
         {!user && cartItems.length > 0 && (
           <div className="mb-4 p-4 bg-accent/10 rounded-xl border border-accent/20 flex items-center justify-between">

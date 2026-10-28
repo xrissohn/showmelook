@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet-async";
+import { SEOHead } from "@/components/SEOHead";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Check, Copy, ExternalLink } from "lucide-react";
@@ -17,14 +17,7 @@ export default function Connect() {
 
   return (
     <>
-      <Helmet>
-        <title>Connect ShowMeLook to your AI assistant</title>
-        <meta
-          name="description"
-          content="Connect ShowMeLook to ChatGPT or Claude so your AI assistant can search products and browse public looks."
-        />
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
+      <SEOHead pageKey="connect" />
       <main className="min-h-screen bg-background text-foreground">
         <div className="max-w-3xl mx-auto px-6 py-12 space-y-10">
           <header className="space-y-3">

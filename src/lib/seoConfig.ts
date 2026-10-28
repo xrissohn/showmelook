@@ -108,6 +108,11 @@ export const SEO_CONFIG: Record<string, PageSEO> = {
     canonical: `${BASE_URL}/privacy`,
     ogImage: DEFAULT_OG_IMAGE,
   },
+  policy: {
+    title: '서비스 규정 | 쇼미룩',
+    description: '쇼미룩의 무료 가입, 누적 구매 등급, 제휴 쇼핑몰 결제·반품, 가상 피팅의 참고 범위와 사진 공개 기준을 확인하세요.',
+    canonical: `${BASE_URL}/policy`,
+  },
   terms: {
     title: '이용약관 | 쇼미룩',
     description: '쇼미룩 ShowMeLook 서비스 이용약관입니다. 회원의 권리와 의무, 서비스 제공 범위, 결제 및 환불 정책 등 이용 조건을 확인하실 수 있습니다.',

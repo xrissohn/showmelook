@@ -32,6 +32,8 @@ Subdirectories under `supabase/functions/` have their own `AGENTS.md`; read it b
 
 ## Cross-function rules
 
+- Use SEOHead for configured route metadata, including self-referencing canonical and social tags; article pages retain their article-specific Helmet data. Why: client navigation must not retain another page's search metadata, and client tags must never be reported as server-rendered previews.
+
 - Shared-look search data is built in `src/lib/sharedLookSearchData.ts` as an editorial ItemList of merchant links, never Product/Offer data. Why: affiliate outfit pages do not sell products or establish merchant shipping, returns or stock.
 
 - The user's requested look always wins over the profile gender and the on-screen selection: the clothing gender in the request text (`detectRequestedClothingGender` in `_shared/productFilters.ts`: 남성복·여성복, 원피스 and other gendered items, 젠더리스/유니섹스, 여장/남장, gift recipients; `resolveClothingGender`) is applied in `style-recommend` (filters, prompts, cache key; response `appliedGender`) and on the style page (`requestGender` → ads, alternatives, history). Kids mode is never overridden; the profile gender only describes the model's body in `generate-style`. Rationale: what someone wants to wear is their taste, not their profile.
