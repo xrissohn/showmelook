@@ -83,10 +83,16 @@ const updateMetaTags = (metadata: {
 
   // Helper to set meta content
   const setMeta = (selector: string, content: string) => {
-    const el = document.querySelector(selector);
-    if (el) {
-      el.setAttribute("content", content);
+    let el = document.querySelector(selector);
+    if (!el) {
+      const attribute = selector.match(/\[(name|property)="([^"]+)"\]/);
+      if (!attribute) return;
+      el = document.createElement('meta');
+      el.setAttribute(attribute[1], attribute[2]);
+      el.setAttribute('data-rh', 'true');
+      document.head.appendChild(el);
     }
+    el.setAttribute("content", content);
   };
 
   // Update OG tags
@@ -94,12 +100,14 @@ const updateMetaTags = (metadata: {
   setMeta('meta[property="og:description"]', metadata.description);
   setMeta('meta[property="og:image"]', metadata.image);
   setMeta('meta[property="og:url"]', metadata.url);
+  setMeta('meta[property="og:type"]', 'website');
 
   // Update Twitter tags
   setMeta('meta[name="twitter:title"]', metadata.title);
   setMeta('meta[name="twitter:description"]', metadata.description);
   setMeta('meta[name="twitter:image"]', metadata.image);
   setMeta('meta[name="twitter:url"]', metadata.url);
+  setMeta('meta[name="twitter:card"]', 'summary');
 
   // Update description
   setMeta('meta[name="description"]', metadata.description);
