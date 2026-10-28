@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Correct shared-look search information to affiliate link lists; verify real public look and tests; no frontend publish.
+- [x] Correct shared-look search information to affiliate link lists; verified real public look, 2 tests and preview build; no frontend publish. Live Google revalidation awaits the user's publish.
 
 - [x] Fix only the Shomi button image and replace the real summer-cool unsaved preview capture; no frontend publish.
 
