@@ -14,6 +14,7 @@ import { WatermarkOverlay } from "@/components/style/WatermarkOverlay";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAdsContentReady } from "@/hooks/useAdsContentReady";
 import LookEditorialNotes from "@/components/style/LookEditorialNotes";
+import { buildSharedLookSearchData } from "@/lib/sharedLookSearchData";
 
 
 // 카카오톡 인앱 브라우저 감지
@@ -113,7 +114,7 @@ const updateMetaTags = (metadata: {
   canonical.href = metadata.url;
 };
 
-// Inject / remove Product JSON-LD for the shared look
+// Inject / remove affiliate link-list JSON-LD for the shared look
 const LOOK_JSONLD_ID = 'shared-look-jsonld';
 const setLookJsonLd = (data: Record<string, unknown> | null) => {
   document.getElementById(LOOK_JSONLD_ID)?.remove();
@@ -254,74 +255,11 @@ const SharedLook = () => {
           products,
         } as LookData);
 
-        setLookJsonLd({
-          '@context': 'https://schema.org',
-          '@type': 'ItemList',
-          name: dynamicTitle,
-          url: `https://showmelook.com/look/${lookId}`,
-          numberOfItems: products.length,
-          itemListElement: products.map((p, i) => ({
-            '@type': 'ListItem',
-            position: i + 1,
-            item: {
-              '@type': 'Product',
-              name: p.name,
-              description: `${p.brand ? `${p.brand} ` : ''}${p.name} - 쇼미룩 AI 코디 룩에 포함된 ${p.category} 상품입니다.`,
-              image: p.image_url || imageUrl,
-              url: `https://showmelook.com/look/${lookId}`,
-              ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand } } : {}),
-              ...(p.price
-                ? {
-                    offers: {
-                      '@type': 'Offer',
-                      price: p.price,
-                      priceCurrency: 'KRW',
-                      availability: 'https://schema.org/InStock',
-                      itemCondition: 'https://schema.org/NewCondition',
-                      url: p.product_url,
-                      ...(p.brand ? { seller: { '@type': 'Organization', name: p.brand } } : {}),
-                      shippingDetails: {
-                        '@type': 'OfferShippingDetails',
-                        shippingRate: {
-                          '@type': 'MonetaryAmount',
-                          value: 0,
-                          currency: 'KRW',
-                        },
-                        shippingDestination: {
-                          '@type': 'DefinedRegion',
-                          addressCountry: 'KR',
-                        },
-                        deliveryTime: {
-                          '@type': 'ShippingDeliveryTime',
-                          handlingTime: {
-                            '@type': 'QuantitativeValue',
-                            minValue: 0,
-                            maxValue: 2,
-                            unitCode: 'DAY',
-                          },
-                          transitTime: {
-                            '@type': 'QuantitativeValue',
-                            minValue: 1,
-                            maxValue: 5,
-                            unitCode: 'DAY',
-                          },
-                        },
-                      },
-                      hasMerchantReturnPolicy: {
-                        '@type': 'MerchantReturnPolicy',
-                        applicableCountry: 'KR',
-                        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
-                        merchantReturnDays: 7,
-                        returnMethod: 'https://schema.org/ReturnByMail',
-                        returnFees: 'https://schema.org/ReturnShippingFees',
-                      },
-                    },
-                  }
-                : {}),
-            },
-          })),
-
-        });
+        setLookJsonLd(buildSharedLookSearchData(
+          dynamicTitle,
+          `https://showmelook.com/look/${lookId}`,
+          products,
+        ));
       } catch (e) {
         console.error("Error fetching look:", e);
         setError(t('sharedLook.styleNotFound'));

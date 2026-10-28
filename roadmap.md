@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Correct shared-look search information to affiliate link lists; verified real public look, 2 tests and preview build; no frontend publish. Live Google revalidation awaits the user's publish.
+
 - [x] Fix only the Shomi button image and replace the real summer-cool unsaved preview capture; no frontend publish.
 
 - [x] Gravity 광고 픽셀 전체 제거 (사용자 요청: DB 느려짐 의심) — 컴포넌트·동의 로직·이벤트·테스트·pixel html·Privacy 안내·useAuth 연결 모두 삭제
