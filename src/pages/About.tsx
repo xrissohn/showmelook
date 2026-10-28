@@ -16,6 +16,7 @@ const BASE_URL = "https://showmelook.com";
 const COPY = {
   ko: {
     metaTitle: "쇼미룩 소개 | 스타일리스트 쇼미와 AI 가상피팅",
+    metaDescription: "쇼미룩의 사진 기반 AI 가상피팅 이용 과정, 스타일리스트 쇼미, 제휴 상품 연결과 구독 없는 구매 등급 제도를 소개합니다.",
     eyebrow: "쇼미룩 소개",
     title: "\"이 옷, 나한테 어울릴까?\"\n그 망설임을 줄여주는 곳",
     lead: SERVICE_COPY.description,
@@ -46,6 +47,7 @@ const COPY = {
   },
   en: {
     metaTitle: "About ShowMeLook | Stylist Shomi & AI Virtual Fitting",
+    metaDescription: "Explore how ShowMeLook works: photo-based AI virtual fitting, stylist Shomi, partner-store product links, and purchase-based tiers without a subscription.",
     eyebrow: "About ShowMeLook",
     title: "\"Will this look good on me?\"\nWe make that question easier",
     lead: "Stylist Shomi suggests fashion styles that fit you. Try trendy looks with a single photo and build your own lookbook. Start for free!",
@@ -99,10 +101,12 @@ const About = () => {
     <>
       <Helmet>
         <title>{c.metaTitle}</title>
-        <meta name="description" content={SERVICE_COPY.description} />
+        <meta name="description" content={c.metaDescription} />
         <link rel="canonical" href={`${BASE_URL}/about`} />
         <meta property="og:title" content={c.metaTitle} />
-        <meta property="og:description" content={SERVICE_COPY.description} />
+        <meta property="og:description" content={c.metaDescription} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={`${BASE_URL}/about`} />
       </Helmet>
       <MainNavigation />
 
