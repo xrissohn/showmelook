@@ -2,7 +2,7 @@
 
 - [x] Fix failing SEO headings and per-page metadata; verified 14 public language/route combinations and authenticated profile edit without writes. Profile setup redirects completed users, so its active-step flow was source-checked, not exercised. No frontend publish.
 - [x] Improve the existing minimal-look guide with practical outfit combinations and accurate search copy; existing URL and three style-request links preserved.
-- [ ] (User deferred) Resolve server-rendered social previews for direct public URLs — requires hosting-level rendering/routing support; do not proceed without a new request.
+- [ ] Verify actual crawler responses and correct route social previews; deferral lifted, but migration and frontend publishing still require separate approval.
 
 - [x] Correct shared-look search information to affiliate link lists; verified real public look, 2 tests and preview build; no frontend publish. Live Google revalidation awaits the user's publish.
 
