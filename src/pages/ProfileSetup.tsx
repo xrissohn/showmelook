@@ -13,7 +13,7 @@ import { SEOHead } from '@/components/SEOHead';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const ProfileSetup = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { toast } = useToast();
@@ -270,10 +270,11 @@ const ProfileSetup = () => {
 
       <div className="pt-20 sm:pt-24 pb-12 px-6">
         <div className="container mx-auto max-w-lg">
+          <h1 className="font-korean text-3xl text-foreground mb-6">{language === 'en' ? 'Set up your profile' : '프로필 설정'}</h1>
           {/* Step 1: Photo Upload */}
           {step === 1 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-korean text-3xl text-foreground mb-2">{t('profileSetup.uploadPhoto')}</h1>
+              <h2 className="font-korean text-xl text-foreground mb-2">{t('profileSetup.uploadPhoto')}</h2>
               <p className="text-muted-foreground mb-8 font-korean">{t('profileSetup.aiAnalyze')}</p>
 
               <div className="mb-8">
@@ -320,7 +321,7 @@ const ProfileSetup = () => {
           {/* Step 2: Body Measurements */}
           {step === 2 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-korean text-3xl text-foreground mb-2">{t('profileSetup.bodyInfo')}</h1>
+              <h2 className="font-korean text-xl text-foreground mb-2">{t('profileSetup.bodyInfo')}</h2>
               <p className="text-muted-foreground mb-8 font-korean">{t('profileSetup.bodyInfoDesc')}</p>
 
               <div className="space-y-6 mb-8">
@@ -409,7 +410,7 @@ const ProfileSetup = () => {
           {/* Step 3: Style Preferences */}
           {step === 3 && (
             <div className="animate-fade-in-up">
-              <h1 className="font-korean text-3xl text-foreground mb-2">{t('profileSetup.selectStyle')}</h1>
+              <h2 className="font-korean text-xl text-foreground mb-2">{t('profileSetup.selectStyle')}</h2>
               <p className="text-muted-foreground mb-8 font-korean">{t('profileSetup.selectMultiple')}</p>
 
               <div className="grid grid-cols-2 gap-3 mb-8">

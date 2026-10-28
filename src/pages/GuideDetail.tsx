@@ -85,7 +85,7 @@ const GuideDetail = () => {
 
           <section className="mt-6 flex gap-4 rounded-2xl border border-border bg-muted/40 p-5">
           <img
-            src={shomiProfile.url}
+            src={new URL(shomiProfile.url, BASE_URL).href}
             alt="쇼미룩 AI 모델 쇼미"
             loading="lazy"
             className="h-16 w-16 shrink-0 rounded-full object-cover"
